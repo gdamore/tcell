@@ -24,11 +24,11 @@ import (
 // Most terminals cannot report the state of more than one button at a time --
 // that is buttons are seen together.
 type EventMouse struct {
-	t	time.Time
-        btn	ButtonMask
-        mod     ModMask
-        x       int
-        y       int
+	t   time.Time
+	btn ButtonMask
+	mod ModMask
+	x   int
+	y   int
 }
 
 func (ev *EventMouse) When() time.Time {
@@ -55,7 +55,7 @@ func NewEventMouse(x, y int, btn ButtonMask, mod ModMask) *EventMouse {
 type ButtonMask int16
 
 const (
-	Button1	ButtonMask = 1 << iota
+	Button1 ButtonMask = 1 << iota
 	Button2
 	Button3
 	Button4

@@ -27,11 +27,15 @@ import (
 func makebox(s tcell.BufferedScreen) {
 	w, h := s.Size()
 
+	if w == 0 || h == 0 {
+		return
+	}
+
 	lx := rand.Int() % w
 	ly := rand.Int() % h
 	lw := rand.Int() % (w-lx)
 	lh := rand.Int() % (h-ly)
-	st := tcell.StyleDefault.Background(tcell.Color(rand.Int() % 256))
+	st := tcell.StyleDefault.Background(tcell.Color(rand.Int() % s.Colors()))
 
 	for row := 0; row < lh; row++ {
 		for col := 0; col < lw; col++ {
@@ -69,6 +73,6 @@ func main() {
 
 	for {
 		makebox(s)
-		time.Sleep(time.Millisecond*200)
+		time.Sleep(time.Millisecond*10)
 	}
 }

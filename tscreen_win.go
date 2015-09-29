@@ -1,3 +1,5 @@
+// +build windows
+
 // Copyright 2015 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +16,24 @@
 
 package tcell
 
+// On win32 we don't have support for termios.  We probably could, and
+// may should, in a cygwin type environment.  Its not clear how to make
+// this all work nicely with both cygwin and Windows console, so we
+// decline to do so here.
+
 import (
-	"time"
+	"errors"
 )
 
-// Event is a generic interface used for passing around Events.
-// Concrete types follow.
-type Event interface {
-	// When reports the time when the event was generated.
-	When() time.Time
+func (t *tScreen) termioInit() error {
+	return errors.New("no termios on Windows")
+}
+
+func (t *tScreen) termioFini() {
+
+	return
+}
+
+func (t *tScreen) getWinSize() (int, int, error) {
+	return 0, 0, errors.New("no temrios on Windows")
 }

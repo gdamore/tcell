@@ -53,20 +53,20 @@ func NewTerminfoScreen() (Screen, error) {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	ti	 *Terminfo
-	w	 int
-	h	 int
-	in	 *os.File
-	out	 *os.File
-	cinvis	 bool
+	ti       *Terminfo
+	w        int
+	h        int
+	in       *os.File
+	out      *os.File
+	cinvis   bool
 	curstyle Style
-	evch	 chan Event
+	evch     chan Event
 	sigwinch chan os.Signal
 	quit     chan struct{}
-	keys	 map[Key][]byte
+	keys     map[Key][]byte
 	cx       int
 	cy       int
-	mouse	 []byte
+	mouse    []byte
 
 	sync.Mutex
 }
@@ -185,27 +185,27 @@ func (t *tScreen) SetCell(x, y int, style Style, ch ...rune) {
 		fg, bg, attrs := style.Decompose()
 
 		io.WriteString(t.out, ti.AttrOff)
-		if attrs & AttrBold != 0 {
+		if attrs&AttrBold != 0 {
 			io.WriteString(t.out, ti.Bold)
 		}
-		if attrs & AttrUnderline != 0 {
+		if attrs&AttrUnderline != 0 {
 			io.WriteString(t.out, ti.Underline)
 		}
-		if attrs & AttrReverse != 0{
+		if attrs&AttrReverse != 0 {
 			io.WriteString(t.out, ti.Reverse)
 		}
-		if attrs & AttrBlink != 0{
+		if attrs&AttrBlink != 0 {
 			io.WriteString(t.out, ti.Blink)
 		}
-		if attrs & AttrDim != 0 {
+		if attrs&AttrDim != 0 {
 			io.WriteString(t.out, ti.Dim)
 		}
 		if fg != ColorDefault {
-			c := int(fg)-1
+			c := int(fg) - 1
 			io.WriteString(t.out, ti.TParm(ti.SetFg, c))
 		}
 		if bg != ColorDefault {
-			c := int(bg)-1
+			c := int(bg) - 1
 			io.WriteString(t.out, ti.TParm(ti.SetBg, c))
 		}
 		t.curstyle = style
@@ -321,7 +321,7 @@ func (t *tScreen) PollEvent() Event {
 }
 
 func (t *tScreen) PostEvent(ev Event) {
-	t.evch<-ev
+	t.evch <- ev
 }
 
 func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
@@ -391,13 +391,13 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 				case 3:
 					btns = 0
 				}
-				if b[0] & 4 != 0 {
+				if b[0]&4 != 0 {
 					mod |= ModShift
 				}
-				if b[0] & 8 != 0 {
+				if b[0]&8 != 0 {
 					mod |= ModMeta
 				}
-				if b[0] & 16 != 0 {
+				if b[0]&16 != 0 {
 					mod |= ModCtrl
 				}
 				x := int(b[1]) - 33
@@ -412,7 +412,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			} else {
 				partials++
 			}
-			
+
 		} else {
 			partials++
 		}
@@ -423,7 +423,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		}
 		// If we had no partial matches, just send first character as
 		// a rune.  Others might still work.
-		if partials == 0 && !matched  {
+		if partials == 0 && !matched {
 			ev := NewEventKey(KeyRune, rune(b[0]), ModNone)
 			t.PostEvent(ev)
 			buf.ReadByte()

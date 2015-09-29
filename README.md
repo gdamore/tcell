@@ -33,6 +33,10 @@ It will respect your terminal's color space as specified within your terminfo
 entries, so that for example attempts to emit color sequences on VT100 terminals
 won't result in unintended consequences.
 
+In Windows mode, we support 16 colors, underline, bold, dim, and reverse,
+instead of just termbox's 8 colors with reverse.  (Note that there is some
+conflation with bold/dim and colors.)
+
 I started this project originally by submitting patches to the author of
 go-termbox, but due to some fundamental differences of opinion, I thought
 it might be simpler just to start from scratch.
@@ -61,6 +65,11 @@ output from the following cell, but care must be taken in the application to
 avoid explicitly attempting to set content in the next cell, otherwise the
 results are undefined.  (Normally the wide character will not be displayed.)
 
+Experience has shown that the vanilla Windows 8 console application does not
+support any of these characters properly, but at least some options like
+ConEmu do support Wide characters at least.  Combining characters are
+disabled for Windows in the release.
+
 ## Colors
 
 We assume the ANSI/XTerm color model, including the 256 color map that
@@ -75,7 +84,12 @@ know; it wouldn't be hard to add that if there is need.
 Reasonable attempts have been made to minimize sending data to terminals,
 avoiding repeated sequences or drawing the same cell on refresh updates.
 
+Windows still needs some work here, as it can make numerous system calls
+a bit less efficiently than it could.
+
 ## Terminfo
+
+(Not relevent for Windows users.)
 
 The Terminfo implementation operates with two forms of database.  The first
 is the database.go file, which contains a number of real database entries
@@ -108,10 +122,28 @@ sequences based on the XTerm X11 model.  As of this writing all popular
 terminals with mouse tracking support this model.  (Full terminfo support
 is not possible as terminfo sequences are not defined.)
 
+On Windows, the mouse works normally.
+
+Mouse wheels are unlikely to work, and I have made no effort to support them,
+given the lack of portability across emulation packages.
+
+Only button press and release events are reported at this time.  In the
+future we can easily add full tracking for Windows, and for "genuine" XTerm,
+but most alternatives don't have support for the full mouse motion events.
+
 ## Platforms
 
-This system requires a POSIX termios implementation with /dev/tty to run.
+On POSIX systems, a POSIX termios implementation with /dev/tty is required.
 It also requires functional cgo to run.  As of this writing, Cgo is available
 on all POSIX Go 1.5 platforms.
 
-Windows console support is forthcoming, cygwin should work now.
+Windows console mode applications are supported.  Unfortunately mintty
+and other cygwin style applications are not supported; modern console
+applications like ConEmu support all the good features (resize, mouse, etc.)
+The Windows version is a bit inefficient in its drawing, as it performs
+a single WriteConsoleOutput call for each on screen cell that is changed,
+but experimentally I wasn't able to notice the inefficiency.
+
+I haven't figured out how to cleanly resolve the dichotomy between cygwin
+style termios and the Windows Console API; it seems that perhaps nobody else
+has either.  If anyone has suggestions, let me know!

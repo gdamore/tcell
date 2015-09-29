@@ -263,11 +263,11 @@ const (
 )
 
 const (
-	KeyBackspace     = KeyBS
-	KeyTab           = KeyTAB
-	KeyEsc           = KeyESC
-	KeyEscape        = KeyESC
-	KeyEnter         = KeyCR
-	KeySpace         = KeySP
-	KeyBackspace2	 = KeyDEL // This is delete back, not forward
+	KeyBackspace  = KeyBS
+	KeyTab        = KeyTAB
+	KeyEsc        = KeyESC
+	KeyEscape     = KeyESC
+	KeyEnter      = KeyCR
+	KeySpace      = KeySP
+	KeyBackspace2 = KeyDEL // This is delete back, not forward
 )

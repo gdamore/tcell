@@ -45,7 +45,7 @@ type Terminfo struct {
 	Bold         string   `json:"bold,omitempty"`   // bold
 	Blink        string   `json:"blink,omitempty"`  // blink
 	Reverse      string   `json:"rev,omitempty"`    // rev
-	Dim	     string   `json:"dim,omitempty"`    // dim
+	Dim          string   `json:"dim,omitempty"`    // dim
 	EnterKeypad  string   `json:"smkx,omitempty"`   // smkx
 	ExitKeypad   string   `json:"rmkx,omitempty"`   // rmkx
 	SetFg        string   `json:"setaf,omitempty"`  // setaf
@@ -78,7 +78,7 @@ type Terminfo struct {
 	KeyDelete    string   `json:"kdch,omitempty"`   // kdch1
 	KeyHome      string   `json:"khome,omitempty"`  // khome
 	KeyEnd       string   `json:"kend,omitempty"`   // kend
-	KeyHelp       string   `json:"khlp,omitempty"`   // khlp
+	KeyHelp      string   `json:"khlp,omitempty"`   // khlp
 	KeyPgUp      string   `json:"kpp,omitempty"`    // kpp
 	KeyPgDn      string   `json:"knp,omitempty"`    // knp
 	KeyUp        string   `json:"kcuu1,omitempty"`  // kcuu1
@@ -417,8 +417,8 @@ func (t *Terminfo) TGoto(col, row int) string {
 // Color returns a string corresponding to the given foreground and background
 // colors.  Either fg or bg can be set to -1 to elide.
 func (t *Terminfo) TColor(fg, bg Color) string {
-	fi := int(fg-1)
-	bi := int(bg-1)
+	fi := int(fg - 1)
+	bi := int(bg - 1)
 	rv := ""
 	// As a special case, we map bright colors to lower versions if the
 	// color table only holds 8.  For the remaining 240 colors, the user

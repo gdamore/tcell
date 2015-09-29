@@ -79,24 +79,24 @@ type BufferedScreen interface {
 	// jarring & expensive, and should only be done when truly needed.
 	Sync()
 
-	// Show writes the contents of the buffer to the physical screen. 
+	// Show writes the contents of the buffer to the physical screen.
 	// Only the contents that have changed will be written.  This is what
 	// applications call to redraw the screen.
 	Show()
 }
 
 type cell struct {
-	ch	[]rune
-	dirty	bool
-	width   uint8
-	style	Style
+	ch    []rune
+	dirty bool
+	width uint8
+	style Style
 }
 
 type bScreen struct {
-	s	Screen
-	cells	[]cell
-	w	int
-	h	int
+	s       Screen
+	cells   []cell
+	w       int
+	h       int
 	cursorx int
 	cursory int
 	clear   bool
@@ -111,7 +111,7 @@ func (b *bScreen) Init() error {
 
 	// Allocate cells
 	b.w, b.h = b.s.Size()
-	b.cells = make([]cell, b.w * b.h)
+	b.cells = make([]cell, b.w*b.h)
 	b.cursorx = -1
 	b.cursory = -1
 	return nil
@@ -170,7 +170,7 @@ func (b *bScreen) PostEvent(ev Event) {
 
 func (b *bScreen) Clear() {
 	b.Lock()
-	for i := range(b.cells) {
+	for i := range b.cells {
 		b.cells[i].dirty = true
 		b.cells[i].style = StyleDefault
 		b.cells[i].ch = nil
@@ -203,11 +203,11 @@ func (b *bScreen) checkResize() {
 	// take the lazy approach and grow a new cells structure.  It would be
 	// bad if the window size changes very frequently, but that shouldn't
 	// happen.
-	newc := make([]cell, w * h)
+	newc := make([]cell, w*h)
 	for row := 0; row < h && row < b.h; row++ {
 		for col := 0; col < w && col < b.w; col++ {
-			newc[(row * w) + col] = b.cells[(row * b.w)+col]
-			newc[(row * w) + col].dirty = true
+			newc[(row*w)+col] = b.cells[(row*b.w)+col]
+			newc[(row*w)+col].dirty = true
 		}
 	}
 	b.w = w
@@ -223,13 +223,13 @@ func (b *bScreen) SetCell(x int, y int, style Style, ch ...rune) {
 		b.Unlock()
 		return
 	}
-	cell := &b.cells[(y * b.w) + x]
+	cell := &b.cells[(y*b.w)+x]
 
 	// check to see if its the same value, if it is, don't mark it dirty
 	match := false
 	if len(ch) == len(cell.ch) && style == cell.style {
 		match = true
-		for i, r := range(cell.ch) {
+		for i, r := range cell.ch {
 			if ch[i] != r {
 				match = false
 				break
@@ -264,7 +264,7 @@ func (b *bScreen) Show() {
 
 	for row := 0; row < b.h; row++ {
 		for col := 0; col < b.w; col++ {
-			c := &b.cells[(row * b.w) + col]
+			c := &b.cells[(row*b.w)+col]
 			if !c.dirty {
 				continue
 			}

@@ -27,14 +27,14 @@ func NewStyle() Style {
 const StyleDefault Style = 0
 
 func (s Style) Foreground(c Color) Style {
-	return (s &^ Style(0xffff0000)) | (Style(c)<<16)
+	return (s &^ Style(0xffff0000)) | (Style(c) << 16)
 }
 
 func (s Style) Background(c Color) Style {
 	return (s &^ (0xffff)) | Style(c)
 }
 
-func (s Style) Decompose() (Color, Color, AttrMask)  {
+func (s Style) Decompose() (Color, Color, AttrMask) {
 	return Color((s >> 16) & 0xffff),
 		Color(s & 0xfffff),
 		AttrMask((s >> 32) & 0xffff)
@@ -42,9 +42,9 @@ func (s Style) Decompose() (Color, Color, AttrMask)  {
 
 func (s Style) setAttrs(attrs Style, on bool) Style {
 	if on {
-		return s | (attrs<<32)
+		return s | (attrs << 32)
 	} else {
-		return s &^ (attrs<<32)
+		return s &^ (attrs << 32)
 	}
 }
 

@@ -20,10 +20,11 @@ import (
 
 // EventInterrupt is a generic wakeup event.  Its can be used to
 // to request a redraw.  It can carry an arbitrary payload, as well.
-type EventInterrupt struct{
+type EventInterrupt struct {
 	t time.Time
 	v interface{}
 }
+
 func (ev *EventInterrupt) When() time.Time {
 	return ev.t
 }

@@ -20,13 +20,13 @@ import (
 )
 
 var (
-	ErrNoDatabase = errors.New("terminal database not found")
+	ErrNoDatabase   = errors.New("terminal database not found")
 	ErrTermNotFound = errors.New("terminal entry not found")
 )
 
 type EventError struct {
-	t	time.Time
-	err	error
+	t   time.Time
+	err error
 }
 
 func (ev *EventError) When() time.Time {
