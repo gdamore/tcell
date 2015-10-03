@@ -72,7 +72,7 @@ func drawSelect(s tcell.Screen, x1, y1, x2, y2 int, sel bool) {
 	}
 }
 
-// This program just shows simple mouse and keyboard events.  Press ESC to
+// This program just shows simple mouse and keyboard events.  Press ESC twice to
 // exit.
 func main() {
 	s, e := tcell.NewScreen()
@@ -92,22 +92,26 @@ func main() {
 	s.Clear()
 
 	posfmt := "Mouse: %d, %d  "
-	btnfmt := "Buttons: %-20s"
+	btnfmt := "Buttons: %s"
+	keyfmt := "Keys: %s"
 	white := tcell.StyleDefault.
 		Foreground(tcell.ColorBrightWhite).Background(tcell.ColorRed)
 
 	mx, my := -1, -1
-	ox, oy := -1, -1 
+	ox, oy := -1, -1
 	bx, by := -1, -1
 	w, h := s.Size()
 	lchar := '*'
 	bstr := ""
+	lks := ""
+	ecnt := 0
 
 	for {
-		drawBox(s, 1, 1, 31, 3, white, ' ')
-		emitStr(s, 1, 1, white, "Press ESC to exit, C to clear.")
+		drawBox(s, 1, 1, 40, 4, white, ' ')
+		emitStr(s, 1, 1, white, "Press ESC twice to exit, C to clear.")
 		emitStr(s, 1, 2, white, fmt.Sprintf(posfmt, mx, my))
 		emitStr(s, 1, 3, white, fmt.Sprintf(btnfmt, bstr))
+		emitStr(s, 1, 4, white, fmt.Sprintf(keyfmt, lks))
 
 		s.Show()
 		bstr = ""
@@ -131,29 +135,36 @@ func main() {
 			s.SetCell(w-2, h-2, st, ev.Rune())
 			s.SetCell(w-1, h-1, st, 'K')
 			if ev.Key() == tcell.KeyEscape {
-				s.Fini()
-				os.Exit(0)
-			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
-				s.Clear()
+				ecnt++
+				if ecnt > 1 {
+					s.Fini()
+					os.Exit(0)
+				}
+			} else {
+				ecnt = 0
+				if ev.Rune() == 'C' || ev.Rune() == 'c' {
+					s.Clear()
+				}
 			}
+			lks = ev.Name()
 		case *tcell.EventMouse:
 			x, y := ev.Position()
 			button := ev.Buttons()
 			for i := uint(0); i < 8; i++ {
-				if int(button) & (1 << i) != 0 {
+				if int(button)&(1<<i) != 0 {
 					bstr += fmt.Sprintf(" Button%d", i+1)
 				}
 			}
-			if button & tcell.WheelUp != 0 {
+			if button&tcell.WheelUp != 0 {
 				bstr += " WheelUp"
 			}
-			if button & tcell.WheelDown != 0 {
+			if button&tcell.WheelDown != 0 {
 				bstr += " WheelDown"
 			}
-			if button & tcell.WheelLeft != 0 {
+			if button&tcell.WheelLeft != 0 {
 				bstr += " WheelLeft"
 			}
-			if button & tcell.WheelRight != 0 {
+			if button&tcell.WheelRight != 0 {
 				bstr += " WheelRight"
 			}
 			// Only buttons, not wheel events
@@ -166,7 +177,7 @@ func main() {
 			switch ev.Buttons() {
 			case tcell.ButtonNone:
 				if ox >= 0 {
-					bg := tcell.Color((lchar - '0')*2+1)
+					bg := tcell.Color((lchar-'0')*2 + 1)
 					drawBox(s, ox, oy, x, y,
 						up.Background(bg),
 						lchar)

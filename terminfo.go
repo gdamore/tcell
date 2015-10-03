@@ -21,8 +21,8 @@ import (
 	"io"
 	"os"
 	"path"
-	"strings"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -54,7 +54,7 @@ type Terminfo struct {
 	SetCursor    string   `json:"cup,omitempty"`    // cup
 	CursorBack1  string   `json:"cub1,omitempty"`   // cub1
 	CursorUp1    string   `json:"cuu1,omitempty"`   // cuu1
-	PadChar	     string   `json:"pad,omitempty"`	// pad
+	PadChar      string   `json:"pad,omitempty"`    // pad
 	KeyBackspace string   `json:"kbs,omitempty"`    // kbs
 	KeyF1        string   `json:"kf1,omitempty"`    // kf1
 	KeyF2        string   `json:"kf2,omitempty"`    // kf2
@@ -76,6 +76,50 @@ type Terminfo struct {
 	KeyF18       string   `json:"kf18,omitempty"`   // kf18
 	KeyF19       string   `json:"kf19,omitempty"`   // kf19
 	KeyF20       string   `json:"kf20,omitempty"`   // kf20
+	KeyF21       string   `json:"kf21,omitempty"`   // kf21
+	KeyF22       string   `json:"kf22,omitempty"`   // kf22
+	KeyF23       string   `json:"kf23,omitempty"`   // kf23
+	KeyF24       string   `json:"kf24,omitempty"`   // kf24
+	KeyF25       string   `json:"kf25,omitempty"`   // kf25
+	KeyF26       string   `json:"kf26,omitempty"`   // kf26
+	KeyF27       string   `json:"kf27,omitempty"`   // kf27
+	KeyF28       string   `json:"kf28,omitempty"`   // kf28
+	KeyF29       string   `json:"kf29,omitempty"`   // kf29
+	KeyF30       string   `json:"kf30,omitempty"`   // kf30
+	KeyF31       string   `json:"kf31,omitempty"`   // kf31
+	KeyF32       string   `json:"kf32,omitempty"`   // kf32
+	KeyF33       string   `json:"kf33,omitempty"`   // kf33
+	KeyF34       string   `json:"kf34,omitempty"`   // kf34
+	KeyF35       string   `json:"kf35,omitempty"`   // kf35
+	KeyF36       string   `json:"kf36,omitempty"`   // kf36
+	KeyF37       string   `json:"kf37,omitempty"`   // kf37
+	KeyF38       string   `json:"kf38,omitempty"`   // kf38
+	KeyF39       string   `json:"kf39,omitempty"`   // kf39
+	KeyF40       string   `json:"kf40,omitempty"`   // kf40
+	KeyF41       string   `json:"kf41,omitempty"`   // kf41
+	KeyF42       string   `json:"kf42,omitempty"`   // kf42
+	KeyF43       string   `json:"kf43,omitempty"`   // kf43
+	KeyF44       string   `json:"kf44,omitempty"`   // kf44
+	KeyF45       string   `json:"kf45,omitempty"`   // kf45
+	KeyF46       string   `json:"kf46,omitempty"`   // kf46
+	KeyF47       string   `json:"kf47,omitempty"`   // kf47
+	KeyF48       string   `json:"kf48,omitempty"`   // kf48
+	KeyF49       string   `json:"kf49,omitempty"`   // kf49
+	KeyF50       string   `json:"kf50,omitempty"`   // kf50
+	KeyF51       string   `json:"kf51,omitempty"`   // kf51
+	KeyF52       string   `json:"kf52,omitempty"`   // kf52
+	KeyF53       string   `json:"kf53,omitempty"`   // kf53
+	KeyF54       string   `json:"kf54,omitempty"`   // kf54
+	KeyF55       string   `json:"kf55,omitempty"`   // kf55
+	KeyF56       string   `json:"kf56,omitempty"`   // kf56
+	KeyF57       string   `json:"kf57,omitempty"`   // kf57
+	KeyF58       string   `json:"kf58,omitempty"`   // kf58
+	KeyF59       string   `json:"kf59,omitempty"`   // kf59
+	KeyF60       string   `json:"kf60,omitempty"`   // kf60
+	KeyF61       string   `json:"kf61,omitempty"`   // kf61
+	KeyF62       string   `json:"kf62,omitempty"`   // kf62
+	KeyF63       string   `json:"kf63,omitempty"`   // kf63
+	KeyF64       string   `json:"kf64,omitempty"`   // kf64
 	KeyInsert    string   `json:"kich,omitempty"`   // kich1
 	KeyDelete    string   `json:"kdch,omitempty"`   // kdch1
 	KeyHome      string   `json:"khome,omitempty"`  // khome
@@ -87,6 +131,11 @@ type Terminfo struct {
 	KeyDown      string   `json:"kcud1,omitempty"`  // kcud1
 	KeyLeft      string   `json:"kcub1,omitempty"`  // kcub1
 	KeyRight     string   `json:"kcuf1,omitempty"`  // kcuf1
+	KeyBacktab   string   `json:"kcbt,omitempty"`   // kcbt
+	KeyExit      string   `json:"kext,omitempty"`   // kext
+	KeyClear     string   `json:"kclr,omitempty"`   // kclr
+	KeyPrint     string   `json:"kprt,omitempty"`   // kprt
+	KeyCancel    string   `json:"kcan,omitempty"`   // kcan
 	Mouse        string   `json:"kmous,omitempty"`  // kmous
 	EnterMouse   string   `json:"smous,omitempty"`  // - no terminfo entry
 	ExitMouse    string   `json:"rmous,omitempty"`  // - no terminfo entry
@@ -423,7 +472,7 @@ func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
 		end := strings.Index(s, ">")
 		if end < 0 {
 			// unterminated.. just emit bytes unadulterated
-			io.WriteString(w, "$<" + s)
+			io.WriteString(w, "$<"+s)
 			return
 		}
 		val := s[:end]
@@ -431,9 +480,9 @@ func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
 		padus := 0
 		unit := 1000
 		dot := false
-loop:
+	loop:
 		for i := range val {
-			switch val[i] { 
+			switch val[i] {
 			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 				padus *= 10
 				padus += int(val[i] - '0')
@@ -450,7 +499,7 @@ loop:
 				break loop
 			}
 		}
-		cnt := int(((baud/8)*padus)/unit)
+		cnt := int(((baud / 8) * padus) / unit)
 		for cnt > 0 {
 			io.WriteString(w, t.PadChar)
 			cnt--

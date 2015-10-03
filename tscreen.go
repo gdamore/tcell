@@ -71,8 +71,8 @@ type tScreen struct {
 	cursorx  int
 	cursory  int
 	tiosp    *termiosPrivate
-	baud	 int
-	wasbtn	 bool
+	baud     int
+	wasbtn   bool
 
 	sync.Mutex
 }
@@ -133,6 +133,50 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKey(KeyF18, ti.KeyF18)
 	t.prepareKey(KeyF19, ti.KeyF19)
 	t.prepareKey(KeyF20, ti.KeyF20)
+	t.prepareKey(KeyF21, ti.KeyF21)
+	t.prepareKey(KeyF22, ti.KeyF22)
+	t.prepareKey(KeyF23, ti.KeyF23)
+	t.prepareKey(KeyF24, ti.KeyF24)
+	t.prepareKey(KeyF25, ti.KeyF25)
+	t.prepareKey(KeyF26, ti.KeyF26)
+	t.prepareKey(KeyF27, ti.KeyF27)
+	t.prepareKey(KeyF28, ti.KeyF28)
+	t.prepareKey(KeyF29, ti.KeyF29)
+	t.prepareKey(KeyF30, ti.KeyF30)
+	t.prepareKey(KeyF31, ti.KeyF31)
+	t.prepareKey(KeyF32, ti.KeyF32)
+	t.prepareKey(KeyF33, ti.KeyF33)
+	t.prepareKey(KeyF34, ti.KeyF34)
+	t.prepareKey(KeyF35, ti.KeyF35)
+	t.prepareKey(KeyF36, ti.KeyF36)
+	t.prepareKey(KeyF37, ti.KeyF37)
+	t.prepareKey(KeyF38, ti.KeyF38)
+	t.prepareKey(KeyF39, ti.KeyF39)
+	t.prepareKey(KeyF40, ti.KeyF40)
+	t.prepareKey(KeyF41, ti.KeyF41)
+	t.prepareKey(KeyF42, ti.KeyF42)
+	t.prepareKey(KeyF43, ti.KeyF43)
+	t.prepareKey(KeyF44, ti.KeyF44)
+	t.prepareKey(KeyF45, ti.KeyF45)
+	t.prepareKey(KeyF46, ti.KeyF46)
+	t.prepareKey(KeyF47, ti.KeyF47)
+	t.prepareKey(KeyF48, ti.KeyF48)
+	t.prepareKey(KeyF49, ti.KeyF49)
+	t.prepareKey(KeyF50, ti.KeyF50)
+	t.prepareKey(KeyF51, ti.KeyF51)
+	t.prepareKey(KeyF52, ti.KeyF52)
+	t.prepareKey(KeyF53, ti.KeyF53)
+	t.prepareKey(KeyF54, ti.KeyF54)
+	t.prepareKey(KeyF55, ti.KeyF55)
+	t.prepareKey(KeyF56, ti.KeyF56)
+	t.prepareKey(KeyF57, ti.KeyF57)
+	t.prepareKey(KeyF58, ti.KeyF58)
+	t.prepareKey(KeyF59, ti.KeyF59)
+	t.prepareKey(KeyF60, ti.KeyF60)
+	t.prepareKey(KeyF61, ti.KeyF61)
+	t.prepareKey(KeyF62, ti.KeyF62)
+	t.prepareKey(KeyF63, ti.KeyF63)
+	t.prepareKey(KeyF64, ti.KeyF64)
 	t.prepareKey(KeyInsert, ti.KeyInsert)
 	t.prepareKey(KeyDelete, ti.KeyDelete)
 	t.prepareKey(KeyHome, ti.KeyHome)
@@ -144,6 +188,10 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKey(KeyPgUp, ti.KeyPgUp)
 	t.prepareKey(KeyPgDn, ti.KeyPgDn)
 	t.prepareKey(KeyHelp, ti.KeyHelp)
+	t.prepareKey(KeyPrint, ti.KeyPrint)
+	t.prepareKey(KeyCancel, ti.KeyCancel)
+	t.prepareKey(KeyExit, ti.KeyExit)
+	t.prepareKey(KeyBacktab, ti.KeyBacktab)
 }
 
 func (t *tScreen) Fini() {
@@ -406,7 +454,6 @@ func (t *tScreen) PostEvent(ev Event) {
 	t.evch <- ev
 }
 
-
 func (t *tScreen) postMouseEvent(x, y, btn int) {
 
 	// XTerm mouse events only report at most one button at a time,
@@ -448,13 +495,13 @@ func (t *tScreen) postMouseEvent(x, y, btn int) {
 		}
 	}
 
-	if btn & 0x4 != 0 {
+	if btn&0x4 != 0 {
 		mod |= ModShift
 	}
-	if btn & 0x8 != 0 {
+	if btn&0x8 != 0 {
 		mod |= ModMeta
 	}
-	if btn & 0x10 != 0 {
+	if btn&0x10 != 0 {
 		mod |= ModCtrl
 	}
 
@@ -465,13 +512,13 @@ func (t *tScreen) postMouseEvent(x, y, btn int) {
 		x = 0
 	}
 	if x > t.w-1 {
-		x = t.w-1
+		x = t.w - 1
 	}
 	if y < 0 {
 		y = 0
 	}
 	if y > t.h-1 {
-		y = t.h-1
+		y = t.h - 1
 	}
 	ev := NewEventMouse(x, y, button, mod)
 	t.PostEvent(ev)
@@ -528,15 +575,15 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 			if dig || neg {
 				return false, false
 			}
-			neg = true	// stay in state
+			neg = true // stay in state
 
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			if state != 3 && state != 4 && state != 5 {
 				return false, false
 			}
 			val *= 10
-			val += int(b[i]-'0')
-			dig = true	// stay in state
+			val += int(b[i] - '0')
+			dig = true // stay in state
 
 		case ';':
 			if neg {
@@ -592,7 +639,7 @@ func (t *tScreen) parseXtermMouse(buf *bytes.Buffer) (bool, bool) {
 	state := 0
 	btn := 0
 	x := 0
-	y := 0 
+	y := 0
 
 	for i := range b {
 		switch state {

@@ -32,7 +32,7 @@ func makebox(s tcell.Screen) {
 		return
 	}
 
-	glyphs := []rune { '@', '#', '&', '*', '=', '%', 'Z', 'A' }
+	glyphs := []rune{'@', '#', '&', '*', '=', '%', 'Z', 'A'}
 
 	lx := rand.Int() % w
 	ly := rand.Int() % h
@@ -43,8 +43,8 @@ func makebox(s tcell.Screen) {
 	if s.Colors() > 1 {
 		st = st.Background(tcell.Color(rand.Int() % s.Colors()))
 	} else {
-		st = st.Reverse(rand.Int() % 2 == 0)
-		gl = glyphs[rand.Int() % len(glyphs)]
+		st = st.Reverse(rand.Int()%2 == 0)
+		gl = glyphs[rand.Int()%len(glyphs)]
 	}
 
 	for row := 0; row < lh; row++ {

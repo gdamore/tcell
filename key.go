@@ -15,6 +15,8 @@
 package tcell
 
 import (
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -62,6 +64,109 @@ func (ev *EventKey) Mod() ModMask {
 	return ev.mod
 }
 
+func (ev *EventKey) Name() string {
+	s := ""
+	m := []string{}
+	if ev.mod&ModShift != 0 {
+		m = append(m, "Shift")
+	}
+	if ev.mod&ModAlt != 0 {
+		m = append(m, "Alt")
+	}
+	if ev.mod&ModMeta != 0 {
+		m = append(m, "Meta")
+	}
+	if ev.mod&ModCtrl != 0 {
+		m = append(m, "Ctrl")
+	}
+
+	switch ev.key {
+	case KeyRune:
+		s = "Rune[" + string(ev.ch) + "]"
+	case KeySpace:
+		s = "Space"
+	case KeyEnter:
+		s = "Enter"
+	case KeyBackspace:
+		s = "Backspace"
+	case KeyTab:
+		s = "Tab"
+	case KeyBacktab:
+		s = "Backtab"
+	case KeyEsc:
+		s = "Esc"
+	case KeyBackspace2:
+		s = "Backspace2"
+	case KeyDelete:
+		s = "Delete"
+	case KeyInsert:
+		s = "Insert"
+	case KeyUp:
+		s = "Up"
+	case KeyDown:
+		s = "Down"
+	case KeyLeft:
+		s = "Left"
+	case KeyRight:
+		s = "Right"
+	case KeyHome:
+		s = "Home"
+	case KeyEnd:
+		s = "End"
+	case KeyUpLeft:
+		s = "UpLeft"
+	case KeyUpRight:
+		s = "UpRight"
+	case KeyDownLeft:
+		s = "DownLeft"
+	case KeyDownRight:
+		s = "DownRight"
+	case KeyCenter:
+		s = "Center"
+	case KeyPgDn:
+		s = "PgDn"
+	case KeyPgUp:
+		s = "PgUp"
+	case KeyClear:
+		s = "Clear"
+	case KeyExit:
+		s = "Exit"
+	case KeyCancel:
+		s = "Cancel"
+	case KeyPause:
+		s = "Pause"
+	case KeyPrint:
+		s = "Print"
+	case KeyCtrlSpace:
+		s = "Ctrl-Space"
+	case KeyCtrlUnderscore:
+		s = "Ctrl-_"
+	case KeyCtrlRightSq:
+		s = "Ctrl-]"
+	case KeyCtrlBackslash:
+		s = "Ctrl-\\"
+	case KeyCtrlCarat:
+		s = "Ctrl-^"
+	default:
+		if ev.key >= KeyF1 && ev.key <= KeyF64 {
+			s = fmt.Sprintf("F%d", int(ev.key-KeyF1)+1)
+		} else if ev.key >= KeyCtrlA && ev.key <= KeyCtrlZ {
+			s = fmt.Sprintf("Ctrl-%c",
+				rune(ev.key-KeyCtrlA)+'A')
+		} else {
+			s = fmt.Sprintf("Key[%d,%d]", ev.key, int(ev.ch))
+		}
+	}
+
+	if len(m) != 0 {
+		if ev.mod&ModCtrl != 0 && strings.HasPrefix(s, "Ctrl-") {
+			s = s[5:]
+		}
+		return fmt.Sprintf("%s+%s", strings.Join(m, "+"), s)
+	}
+	return s
+}
+
 // NewEventKey attempts to create a suitable event.  It parses the various
 // ASCII control sequences if KeyRune is passed for Key, but if the caller
 // has more precise information it should set that specifically.  Callers
@@ -99,7 +204,7 @@ const ModNone ModMask = 0
 // Key is a generic value for representing keys, and especially special
 // keys (function keys, cursor movement keys, etc.)  For normal keys, like
 // ASCII letters, we use KeyRune, and then expect the application to
-// inspect the Rune() member of the KeyEvent.
+// inspect the Rune() member of the EventKey.
 type Key int16
 
 const (
@@ -120,6 +225,12 @@ const (
 	KeyInsert
 	KeyDelete
 	KeyHelp
+	KeyExit
+	KeyClear
+	KeyCancel
+	KeyPrint
+	KeyPause
+	KeyBacktab
 	KeyF1
 	KeyF2
 	KeyF3
@@ -183,6 +294,7 @@ const (
 	KeyF61
 	KeyF62
 	KeyF63
+	KeyF64
 )
 
 const (
@@ -213,7 +325,7 @@ const (
 	KeyCtrlX
 	KeyCtrlY
 	KeyCtrlZ
-	KeyCtrlLeftSq
+	KeyCtrlLeftSq // Escape
 	KeyCtrlBackslash
 	KeyCtrlRightSq
 	KeyCtrlCarat

@@ -231,11 +231,12 @@ type mouseRecord struct {
 	mod   uint32
 	flags uint32
 }
+
 const (
 	mouseDoubleClick uint32 = 0x2
-	mouseHWheeled uint32 = 0x8
-	mouseVWheeled uint32 = 0x4
-	mouseMoved uint32 = 0x1
+	mouseHWheeled    uint32 = 0x8
+	mouseVWheeled    uint32 = 0x4
+	mouseMoved       uint32 = 0x1
 )
 
 type resizeRecord struct {
@@ -260,6 +261,7 @@ const (
 	vkTab    = 0x09
 	vkClear  = 0x0c
 	vkReturn = 0x0d
+	vkPause  = 0x13
 	vkEscape = 0x1b
 	vkSpace  = 0x20
 	vkPrior  = 0x21 // PgUp
@@ -270,6 +272,8 @@ const (
 	vkUp     = 0x26
 	vkRight  = 0x27
 	vkDown   = 0x28
+	vkPrint  = 0x2a
+	vkPrtScr = 0x2c
 	vkInsert = 0x2d
 	vkDelete = 0x2e
 	vkHelp   = 0x2f
@@ -371,10 +375,18 @@ func (s *cScreen) getConsoleInput() error {
 		}
 		key := KeyNUL // impossible on Windows
 		switch krec.kcode {
+		case vkCancel:
+			key = KeyCancel
 		case vkBack:
 			key = KeyBackspace
 		case vkTab:
 			key = KeyTab
+		case vkClear:
+			key = KeyClear
+		case vkPause:
+			key = KeyPause
+		case vkPrint, vkPrtScr:
+			key = KeyPrint
 		case vkPrior:
 			key = KeyPgUp
 		case vkNext:
@@ -482,15 +494,15 @@ func (s *cScreen) getConsoleInput() error {
 			btns |= Button5
 		}
 
-		if mrec.flags & mouseVWheeled != 0 {
-			if mrec.btns & 0x80000000 == 0 {
+		if mrec.flags&mouseVWheeled != 0 {
+			if mrec.btns&0x80000000 == 0 {
 				btns |= WheelUp
 			} else {
 				btns |= WheelDown
 			}
 		}
-		if mrec.flags & mouseHWheeled != 0 {
-			if mrec.btns & 0x80000000 == 0 {
+		if mrec.flags&mouseHWheeled != 0 {
+			if mrec.btns&0x80000000 == 0 {
 				btns |= WheelRight
 			} else {
 				btns |= WheelLeft
