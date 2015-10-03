@@ -586,8 +586,17 @@ func mapStyle(style Style) uint16 {
 	if b == ColorDefault {
 		b = ColorBlack
 	}
-	attr := mapColor2RGB(f)
-	attr |= (mapColor2RGB(b) << 4)
+	var attr uint16
+	// We simulate reverse by doing the color swap ourselves.
+	// Apparently windows cannot really do this except in DBCS
+	// views.
+	if a&AttrReverse != 0 {
+		attr = mapColor2RGB(b)
+		attr |= (mapColor2RGB(f) << 4)
+	} else {
+		attr = mapColor2RGB(f)
+		attr |= (mapColor2RGB(b) << 4)
+	}
 	if a&AttrBold != 0 {
 		attr |= 0x8
 	}
@@ -595,10 +604,8 @@ func mapStyle(style Style) uint16 {
 		attr &^= 0x8
 	}
 	if a&AttrUnderline != 0 {
+		// Best effort -- doesn't seem to work though.
 		attr |= 0x8000
-	}
-	if a&AttrReverse != 0 {
-		attr |= 0x4000
 	}
 	// Blink is unsupported
 	return attr
