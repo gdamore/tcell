@@ -286,7 +286,10 @@ func makeEvent(tev tcell.Event) Event {
 		return Event{Type: EventResize, Width: w, Height: h}
 	case *tcell.EventKey:
 		k := tev.Key()
-		ch := tev.Rune()
+		ch := rune(0)
+		if k == tcell.KeyRune {
+			ch = tev.Rune()
+		}
 		mod := tev.Mod()
 		return Event{
 			Type: EventKey,
