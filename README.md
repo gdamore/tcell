@@ -8,34 +8,75 @@
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/gdamore/tcell)
 
 > _Tcell is a work in progress (Beta).
-> Please use with caution; interfaces may change in before final release._
+> Please use with caution; interfaces may change in before final release.
+> That said, our confidence in Tcell's stability is increasing.  If you
+> would like to use it in your own application, it is recommended that
+> you drop a message to garrett@damore.org before commitment._
 
 Package tcell provides a cell based view for text terminals, like xterm.
 It was inspired by termbox, but differs from termbox in some important
-ways.
+ways.  It also adds signficant functionality beyond termbox.
+
+## Pure Go Terminfo Database
 
 First, it includes a full parser and expander for terminfo capability strings,
 so that it can avoid hard coding escape strings for formatting.  It also favors
 portability, and includes support for all POSIX systems, at the slight expense
-of needing cgo support for terminal initializations.  (This will be corrected
+of needing cgo support for terminal initializations.  (This may be corrected
 when Go provides standard support for terminal handling via termio ioctls on
-all POSIX platforms.)
+all POSIX platforms.)  The database itself, while built using CGO, as well
+as the parser for it, is implemented in Pure Go.
 
-Also, this code is able to operate without requiring
+The database is also flexible & extensibel, and can modified by either running a
+program to build the database, or hand editing of simple JSON files.
+
+## More Portable
+
+Tcell is portable to a wider variety of systems.  It relies on standard
+POSIX supported function calls (on POSIX platforms) for setting terminal
+modes, which leads to improved support for a broader array of platforms.
+This does come at the cost of requiring your code to be able to use CGO, but
+we believe that the vastly improved portability justifies this
+requirement.  Note that the functions called are part of the standard C
+library, so there shouldn't be any additional external requirements beyond
+that required for every POSIX program.
+
+## No async IO
+
+Termbox code is able to operate without requiring
 SIGIO signals, or asynchronous I/O, and can instead use standard Go file
-objects and Go routines.
+objects and Go routines.  This means it should be safe, especially for
+use with programs that use exec, or otherwise need to manipulate the
+tty streams.  This model is also much closer to idiomatic Go, leading
+to fewer surprises.
 
-It also includes enhanced support for Unicode, include wide characters and
-combining characters.  It also has richer support for a larger number of
+## Richer Unicode support
+
+Tcell includes enhanced support for Unicode, include wide characters and
+combining characters, provided your terminal can support them.  Note that
+Windows terminals generally don't support the full Unicode repertoire.
+
+## More Function Keys
+
+It also has richer support for a larger number of
 special keys that some terminals can send.
 
-It will respect your terminal's color space as specified within your terminfo
+## Better color handling
+
+ Tcell will respect your terminal's color space as specified within your terminfo
 entries, so that for example attempts to emit color sequences on VT100 terminals
 won't result in unintended consequences.
 
 In Windows mode, we support 16 colors, underline, bold, dim, and reverse,
 instead of just termbox's 8 colors with reverse.  (Note that there is some
 conflation with bold/dim and colors.)
+
+## Better mouse support
+
+It supports enhanced mouse tracking mode, so your application can receive
+regular mouse motion events, and wheel events, if your terminal supports it.
+
+## Why not just patch termbox-go?
 
 I started this project originally by submitting patches to the author of
 go-termbox, but due to some fundamental differences of opinion, I thought
@@ -124,12 +165,17 @@ is not possible as terminfo sequences are not defined.)
 
 On Windows, the mouse works normally.
 
-Mouse wheels are unlikely to work, and I have made no effort to support them,
-given the lack of portability across emulation packages.
+Mouse wheel buttons on various terminals are known to work, but the support
+in terminal emulators, as well as support for various buttons and
+live mouse tracking, varies widely.  As a particular datum, MacOS X Terminal
+does not support Mouse events at all (as of MacOS 10.10, aka Yosemite.)  The
+excellent iTerm application is fully supported, as is vanilla XTerm.
 
-Only button press and release events are reported at this time.  In the
-future we can easily add full tracking for Windows, and for "genuine" XTerm,
-but most alternatives don't have support for the full mouse motion events.
+Mouse tracking with live tracking also varies widely.  Current XTerm
+implementations, as well as current Screen and iTerm2, and Windows
+consoles, all support this quite nicely.  On other platforms you might
+find that only mouse click and release events are reported, with
+no intervening motion events.  It really depends on your terminal.
 
 ## Platforms
 
@@ -138,12 +184,16 @@ It also requires functional cgo to run.  As of this writing, Cgo is available
 on all POSIX Go 1.5 platforms.
 
 Windows console mode applications are supported.  Unfortunately mintty
-and other cygwin style applications are not supported; modern console
-applications like ConEmu support all the good features (resize, mouse, etc.)
-The Windows version is a bit inefficient in its drawing, as it performs
-a single WriteConsoleOutput call for each on screen cell that is changed,
-but experimentally I wasn't able to notice the inefficiency.
+and other cygwin style applications are not supported.
+
+Modern console applications like ConEmu support all the good features
+(resize, mouse tracking, etc.)
 
 I haven't figured out how to cleanly resolve the dichotomy between cygwin
 style termios and the Windows Console API; it seems that perhaps nobody else
-has either.  If anyone has suggestions, let me know!
+has either.  If anyone has suggestions, let me know!  Really, if you're
+using a Windows application, you should use the native Windows console or a
+fully compatible consule implementation.  We expect that Windows 10
+ships with a less crippled implementation than prior releases -- we haven't
+tested that, lacking Windows 10 ourselves.
+

@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
 	"strconv"
 	"sync"
 )
@@ -53,6 +54,7 @@ type Terminfo struct {
 	SetCursor    string   `json:"cup,omitempty"`    // cup
 	CursorBack1  string   `json:"cub1,omitempty"`   // cub1
 	CursorUp1    string   `json:"cuu1,omitempty"`   // cuu1
+	PadChar	     string   `json:"pad,omitempty"`	// pad
 	KeyBackspace string   `json:"kbs,omitempty"`    // kbs
 	KeyF1        string   `json:"kf1,omitempty"`    // kf1
 	KeyF2        string   `json:"kf2,omitempty"`    // kf2
@@ -406,6 +408,54 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 		}
 	}
 	return out.String()
+}
+
+func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
+	for {
+		beg := strings.Index(s, "$<")
+		if beg < 0 {
+			// Most strings don't need padding, which is good news!
+			io.WriteString(w, s)
+			return
+		}
+		io.WriteString(w, s[:beg])
+		s = s[beg+2:]
+		end := strings.Index(s, ">")
+		if end < 0 {
+			// unterminated.. just emit bytes unadulterated
+			io.WriteString(w, "$<" + s)
+			return
+		}
+		val := s[:end]
+		s = s[end+1:]
+		padus := 0
+		unit := 1000
+		dot := false
+loop:
+		for i := range val {
+			switch val[i] { 
+			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+				padus *= 10
+				padus += int(val[i] - '0')
+				if dot {
+					unit *= 10
+				}
+			case '.':
+				if !dot {
+					dot = true
+				} else {
+					break loop
+				}
+			default:
+				break loop
+			}
+		}
+		cnt := int(((baud/8)*padus)/unit)
+		for cnt > 0 {
+			io.WriteString(w, t.PadChar)
+			cnt--
+		}
+	}
 }
 
 // TGoto returns a string suitable for addressing the cursor at the given

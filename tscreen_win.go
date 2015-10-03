@@ -37,3 +37,5 @@ func (t *tScreen) termioFini() {
 func (t *tScreen) getWinSize() (int, int, error) {
 	return 0, 0, errors.New("no temrios on Windows")
 }
+
+type termiosPrivate struct{}

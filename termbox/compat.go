@@ -22,12 +22,12 @@ import (
 	"github.com/gdamore/tcell"
 )
 
-var screen tcell.BufferedScreen
+var screen tcell.Screen
 var outMode OutputMode
 
 func Init() error {
 	outMode = OutputNormal
-	if s, e := tcell.NewBufferedScreen(); e != nil {
+	if s, e := tcell.NewScreen(); e != nil {
 		return e
 	} else if e = s.Init(); e != nil {
 		return e
@@ -59,6 +59,7 @@ func Size() (int, int) {
 }
 
 type Attribute uint16
+
 const (
 	ColorDefault Attribute = iota
 	ColorBlack
@@ -71,7 +72,7 @@ const (
 	ColorWhite
 )
 const (
-	AttrBold Attribute = 1 << (9+iota)
+	AttrBold Attribute = 1 << (9 + iota)
 	AttrUnderline
 	AttrReverse
 )
@@ -113,13 +114,13 @@ func mkStyle(fg, bg Attribute) tcell.Style {
 	}
 	st = st.Foreground(tcell.Color(f))
 	st = st.Background(tcell.Color(b))
-	if (fg & AttrBold != 0 ) || (bg & AttrBold != 0) {
+	if (fg&AttrBold != 0) || (bg&AttrBold != 0) {
 		st = st.Bold(true)
 	}
-	if (fg & AttrUnderline != 0 ) || (bg & AttrUnderline != 0) {
+	if (fg&AttrUnderline != 0) || (bg&AttrUnderline != 0) {
 		st = st.Underline(true)
 	}
-	if (fg & AttrReverse != 0 ) || (bg & AttrReverse != 0) {
+	if (fg&AttrReverse != 0) || (bg&AttrReverse != 0) {
 		st = st.Reverse(true)
 	}
 	return st
@@ -137,6 +138,7 @@ func Clear(fg, bg Attribute) {
 }
 
 type InputMode int
+
 const (
 	InputCurrent InputMode = iota
 	InputEsc
@@ -150,6 +152,7 @@ func SetInputMode(mode InputMode) InputMode {
 }
 
 type OutputMode int
+
 const (
 	OutputCurrent OutputMode = iota
 	OutputNormal
@@ -159,6 +162,9 @@ const (
 )
 
 func SetOutputMode(mode OutputMode) OutputMode {
+	if screen.Colors() < 256 {
+		mode = OutputNormal
+	}
 	switch mode {
 	case OutputCurrent:
 		return outMode
@@ -185,16 +191,16 @@ type Modifier tcell.ModMask
 type Key tcell.Key
 
 type Event struct {
-	Type	EventType
-	Mod	Modifier
-	Key	Key
-	Ch	rune
-	Width	int
-	Height	int
-	Err	error
-	MouseX	int
-	MouseY	int
-	N	int
+	Type   EventType
+	Mod    Modifier
+	Key    Key
+	Ch     rune
+	Width  int
+	Height int
+	Err    error
+	MouseX int
+	MouseY int
+	N      int
 }
 
 const (
@@ -208,68 +214,68 @@ const (
 )
 
 const (
-	KeyF1	= Key(tcell.KeyF1)
-	KeyF2	= Key(tcell.KeyF2)
-	KeyF3	= Key(tcell.KeyF3)
-	KeyF4	= Key(tcell.KeyF4)
-	KeyF5	= Key(tcell.KeyF5)
-	KeyF6	= Key(tcell.KeyF6)
-	KeyF7	= Key(tcell.KeyF7)
-	KeyF8	= Key(tcell.KeyF8)
-	KeyF9	= Key(tcell.KeyF9)
-	KeyF10	= Key(tcell.KeyF10)
-	KeyF11	= Key(tcell.KeyF11)
-	KeyF12	= Key(tcell.KeyF12)
-	KeyInsert = Key(tcell.KeyInsert)
-	KeyDelete = Key(tcell.KeyDelete)
-	KeyHome = Key(tcell.KeyHome)
-	KeyEnd = Key(tcell.KeyEnd)
-	KeyArrowUp = Key(tcell.KeyUp)
-	KeyArrowDown = Key(tcell.KeyDown)
+	KeyF1         = Key(tcell.KeyF1)
+	KeyF2         = Key(tcell.KeyF2)
+	KeyF3         = Key(tcell.KeyF3)
+	KeyF4         = Key(tcell.KeyF4)
+	KeyF5         = Key(tcell.KeyF5)
+	KeyF6         = Key(tcell.KeyF6)
+	KeyF7         = Key(tcell.KeyF7)
+	KeyF8         = Key(tcell.KeyF8)
+	KeyF9         = Key(tcell.KeyF9)
+	KeyF10        = Key(tcell.KeyF10)
+	KeyF11        = Key(tcell.KeyF11)
+	KeyF12        = Key(tcell.KeyF12)
+	KeyInsert     = Key(tcell.KeyInsert)
+	KeyDelete     = Key(tcell.KeyDelete)
+	KeyHome       = Key(tcell.KeyHome)
+	KeyEnd        = Key(tcell.KeyEnd)
+	KeyArrowUp    = Key(tcell.KeyUp)
+	KeyArrowDown  = Key(tcell.KeyDown)
 	KeyArrowRight = Key(tcell.KeyRight)
-	KeyArrowLeft = Key(tcell.KeyLeft)
-	KeyCtrlA = Key(tcell.KeyCtrlA)
-	KeyCtrlB = Key(tcell.KeyCtrlB)
-	KeyCtrlC = Key(tcell.KeyCtrlC)
-	KeyCtrlD = Key(tcell.KeyCtrlD)
-	KeyCtrlE = Key(tcell.KeyCtrlE)
-	KeyCtrlF = Key(tcell.KeyCtrlF)
-	KeyCtrlG = Key(tcell.KeyCtrlG)
-	KeyCtrlH = Key(tcell.KeyCtrlH)
-	KeyCtrlI = Key(tcell.KeyCtrlI)
-	KeyCtrlJ = Key(tcell.KeyCtrlJ)
-	KeyCtrlK = Key(tcell.KeyCtrlK)
-	KeyCtrlL = Key(tcell.KeyCtrlL)
-	KeyCtrlM = Key(tcell.KeyCtrlM)
-	KeyCtrlN = Key(tcell.KeyCtrlN)
-	KeyCtrlO = Key(tcell.KeyCtrlO)
-	KeyCtrlP = Key(tcell.KeyCtrlP)
-	KeyCtrlQ = Key(tcell.KeyCtrlQ)
-	KeyCtrlR = Key(tcell.KeyCtrlR)
-	KeyCtrlS = Key(tcell.KeyCtrlS)
-	KeyCtrlT = Key(tcell.KeyCtrlT)
-	KeyCtrlU = Key(tcell.KeyCtrlU)
-	KeyCtrlV = Key(tcell.KeyCtrlV)
-	KeyCtrlW = Key(tcell.KeyCtrlW)
-	KeyCtrlX = Key(tcell.KeyCtrlX)
-	KeyCtrlY = Key(tcell.KeyCtrlY)
-	KeyCtrlZ = Key(tcell.KeyCtrlZ)
-	KeyBackspace = Key(tcell.KeyBackspace)
+	KeyArrowLeft  = Key(tcell.KeyLeft)
+	KeyCtrlA      = Key(tcell.KeyCtrlA)
+	KeyCtrlB      = Key(tcell.KeyCtrlB)
+	KeyCtrlC      = Key(tcell.KeyCtrlC)
+	KeyCtrlD      = Key(tcell.KeyCtrlD)
+	KeyCtrlE      = Key(tcell.KeyCtrlE)
+	KeyCtrlF      = Key(tcell.KeyCtrlF)
+	KeyCtrlG      = Key(tcell.KeyCtrlG)
+	KeyCtrlH      = Key(tcell.KeyCtrlH)
+	KeyCtrlI      = Key(tcell.KeyCtrlI)
+	KeyCtrlJ      = Key(tcell.KeyCtrlJ)
+	KeyCtrlK      = Key(tcell.KeyCtrlK)
+	KeyCtrlL      = Key(tcell.KeyCtrlL)
+	KeyCtrlM      = Key(tcell.KeyCtrlM)
+	KeyCtrlN      = Key(tcell.KeyCtrlN)
+	KeyCtrlO      = Key(tcell.KeyCtrlO)
+	KeyCtrlP      = Key(tcell.KeyCtrlP)
+	KeyCtrlQ      = Key(tcell.KeyCtrlQ)
+	KeyCtrlR      = Key(tcell.KeyCtrlR)
+	KeyCtrlS      = Key(tcell.KeyCtrlS)
+	KeyCtrlT      = Key(tcell.KeyCtrlT)
+	KeyCtrlU      = Key(tcell.KeyCtrlU)
+	KeyCtrlV      = Key(tcell.KeyCtrlV)
+	KeyCtrlW      = Key(tcell.KeyCtrlW)
+	KeyCtrlX      = Key(tcell.KeyCtrlX)
+	KeyCtrlY      = Key(tcell.KeyCtrlY)
+	KeyCtrlZ      = Key(tcell.KeyCtrlZ)
+	KeyBackspace  = Key(tcell.KeyBackspace)
 	KeyBackspace2 = Key(tcell.KeyBackspace2)
-	KeyTab = Key(tcell.KeyTab)
-	KeyEnter = Key(tcell.KeyEnter)
-	KeySpace = Key(tcell.KeySpace)
-	KeyEsc = Key(tcell.KeyEscape)
-	MouseLeft = Key(tcell.KeyF63)	// arbitrary assignments
-	MouseRight = Key(tcell.KeyF62)
-	MouseMiddle = Key(tcell.KeyF61)
+	KeyTab        = Key(tcell.KeyTab)
+	KeyEnter      = Key(tcell.KeyEnter)
+	KeySpace      = Key(tcell.KeySpace)
+	KeyEsc        = Key(tcell.KeyEscape)
+	MouseLeft     = Key(tcell.KeyF63) // arbitrary assignments
+	MouseRight    = Key(tcell.KeyF62)
+	MouseMiddle   = Key(tcell.KeyF61)
 )
 
 const (
 	ModAlt = Modifier(tcell.ModAlt)
 )
 
-func  makeEvent(tev tcell.Event) Event {
+func makeEvent(tev tcell.Event) Event {
 	switch tev := tev.(type) {
 	case *tcell.EventInterrupt:
 		return Event{Type: EventInterrupt}
@@ -282,9 +288,9 @@ func  makeEvent(tev tcell.Event) Event {
 		mod := tev.Mod()
 		return Event{
 			Type: EventKey,
-			Key: Key(k),
-			Ch: ch,
-			Mod: Modifier(mod),
+			Key:  Key(k),
+			Ch:   ch,
+			Mod:  Modifier(mod),
 		}
 	default:
 		return Event{Type: EventNone}

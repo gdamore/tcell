@@ -19,10 +19,19 @@ import (
 )
 
 // EventMouse is a mouse event.  It is sent on either mouse up or mouse down
-// events.  (Eventually we can also arrange for mouse motion events, but only
-// with genuine xterm -- other emulators lack support for tracking this.)
+// events.  It is also sent on mouse motion events - if the terminal supports
+// it.  We make every effort to ensure that mouse release events are delivered.
+// Hence, click drag can be identified by a motion event with the mouse down,
+// without any intervening button release.
+//
+// Mouse wheel events, when reported, may appear on their own as individual
+// impulses.
+//
 // Most terminals cannot report the state of more than one button at a time --
-// that is buttons are seen together.
+// and few can report motion events.
+//
+// Applications can inspect the time between events to figure out double clicks
+// and such.
 type EventMouse struct {
 	t   time.Time
 	btn ButtonMask
@@ -63,5 +72,9 @@ const (
 	Button6
 	Button7
 	Button8
+	WheelUp
+	WheelDown
+	WheelLeft
+	WheelRight
 )
 const ButtonNone ButtonMask = 0

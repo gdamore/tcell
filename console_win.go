@@ -17,11 +17,10 @@
 package tcell
 
 import (
-	// "fmt"
+	"sync"
 	"syscall"
+	"unicode/utf16"
 	"unsafe"
-
-	"github.com/mattn/go-runewidth"
 )
 
 type cScreen struct {
@@ -30,13 +29,21 @@ type cScreen struct {
 	mbtns uint32 // debounce mouse buttons
 	evch  chan Event
 	quit  chan struct{}
+	curx  int
+	cury  int
+	style Style
+	clear bool
 
 	w int
 	h int
 
 	oscreen consoleInfo
 	ocursor cursorInfo
-	omode   uint32
+	oimode  uint32
+	oomode  uint32
+	cells   []Cell
+
+	sync.Mutex
 }
 
 // all Windows systems are little endian
@@ -46,19 +53,18 @@ var k32 = syscall.NewLazyDLL("kernel32.dll")
 // characters (Unicode) are in use.  The documentation refers to them
 // without this suffix, as the resolution is made via preprocessor.
 var (
-	procReadConsoleInput             = k32.NewProc("ReadConsoleInputW")
-	procGetConsoleCursorInfo         = k32.NewProc("GetConsoleCursorInfo")
-	procSetConsoleCursorInfo         = k32.NewProc("SetConsoleCursorInfo")
-	procSetConsoleCursorPosition     = k32.NewProc("SetConsoleCursorPosition")
-	procSetConsoleMode               = k32.NewProc("SetConsoleMode")
-	procGetConsoleMode               = k32.NewProc("GetConsoleMode")
-	procWriteConsoleOutput           = k32.NewProc("WriteConsoleOutputW")
-	procGetConsoleScreenBufferInfo   = k32.NewProc("GetConsoleScreenBufferInfo")
-	procFillConsoleOutputAttribute   = k32.NewProc("FillConsoleOutputAttribute")
-	procFillConsoleOutputCharacter   = k32.NewProc("FillConsoleOutputCharacterW")
-	procSetConsoleWindowInfo         = k32.NewProc("SetConsoleWindowInfo")
-	procSetConsoleScreenBufferSize   = k32.NewProc("SetConsoleScreenBufferSize")
-	procSetConsoleActiveScreenBuffer = k32.NewProc("SetConsoleActiveScreenBuffer")
+	procReadConsoleInput           = k32.NewProc("ReadConsoleInputW")
+	procGetConsoleCursorInfo       = k32.NewProc("GetConsoleCursorInfo")
+	procSetConsoleCursorInfo       = k32.NewProc("SetConsoleCursorInfo")
+	procSetConsoleCursorPosition   = k32.NewProc("SetConsoleCursorPosition")
+	procSetConsoleMode             = k32.NewProc("SetConsoleMode")
+	procGetConsoleMode             = k32.NewProc("GetConsoleMode")
+	procGetConsoleScreenBufferInfo = k32.NewProc("GetConsoleScreenBufferInfo")
+	procFillConsoleOutputAttribute = k32.NewProc("FillConsoleOutputAttribute")
+	procFillConsoleOutputCharacter = k32.NewProc("FillConsoleOutputCharacterW")
+	procSetConsoleWindowInfo       = k32.NewProc("SetConsoleWindowInfo")
+	procSetConsoleScreenBufferSize = k32.NewProc("SetConsoleScreenBufferSize")
+	procSetConsoleTextAttribute    = k32.NewProc("SetConsoleTextAttribute")
 )
 
 // We have to bring in the kernel32.dll directly, so we can get access to some
@@ -85,38 +91,45 @@ func (s *cScreen) Init() error {
 		s.out = out
 	}
 
+	s.curx = -1
+	s.cury = -1
 	s.getCursorInfo(&s.ocursor)
 	s.getConsoleInfo(&s.oscreen)
-	s.getMode(&s.omode)
-
-	if err := s.setMode(modeResizeEn); err != nil {
-		syscall.Close(s.in)
-		syscall.Close(s.out)
-		return err
-	}
+	s.getOutMode(&s.oomode)
+	s.getInMode(&s.oimode)
 	s.resize()
-	s.Clear()
-	s.HideCursor()
-	//procSetConsoleActiveScreenBuffer.Call(uintptr(s.out))
+
+	s.setInMode(modeResizeEn)
+	s.setOutMode(0)
+	s.clearScreen(s.style)
+	s.hideCursor()
 	go s.scanInput()
 
 	return nil
 }
 
 func (s *cScreen) EnableMouse() {
-	s.setMode(modeResizeEn | modeMouseEn)
+	s.setInMode(modeResizeEn | modeMouseEn)
 }
 
 func (s *cScreen) DisableMouse() {
-	s.setMode(modeResizeEn)
+	s.setInMode(modeResizeEn)
 }
 
 func (s *cScreen) Fini() {
-	s.setCursorPos(0, 0)
+	s.style = StyleDefault
+	s.curx = -1
+	s.cury = -1
+
 	s.setCursorInfo(&s.ocursor)
-	s.setMode(s.omode)
+	s.setInMode(s.oimode)
+	s.setOutMode(s.oomode)
 	s.setBufferSize(int(s.oscreen.size.x), int(s.oscreen.size.y))
-	s.Clear()
+	s.clearScreen(StyleDefault)
+	s.setCursorPos(0, 0)
+	procSetConsoleTextAttribute.Call(
+		uintptr(s.out),
+		uintptr(mapStyle(StyleDefault)))
 
 	close(s.quit)
 	syscall.Close(s.in)
@@ -161,25 +174,35 @@ type rect struct {
 	bottom int16
 }
 
-func (s *cScreen) ShowCursor(x, y int) {
-	var curinfo cursorInfo
+func (s *cScreen) showCursor() {
+	s.setCursorInfo(&cursorInfo{size: 100, visible: 1})
+}
 
-	s.getCursorInfo(&curinfo)
-	if x < 0 || y < 0 {
-		if curinfo.visible == 0 {
-			return
-		}
-		curinfo.visible = 0
-		s.setCursorInfo(&curinfo)
+func (s *cScreen) hideCursor() {
+	s.setCursorInfo(&cursorInfo{size: 1, visible: 0})
+}
+
+func (s *cScreen) ShowCursor(x, y int) {
+	s.Lock()
+	s.curx = x
+	s.cury = y
+	s.Unlock()
+}
+
+func (s *cScreen) doCursor() {
+	x, y := s.curx, s.cury
+
+	if x < 0 || y < 0 || x >= s.w || y >= s.h {
+		s.setCursorPos(0, 0)
+		s.hideCursor()
 	} else {
-		curinfo.visible = 1
 		s.setCursorPos(x, y)
-		s.setCursorInfo(&curinfo)
+		s.showCursor()
 	}
 }
 
 func (c *cScreen) HideCursor() {
-	c.ShowCursor(10, 5)
+	c.ShowCursor(-1, -1)
 }
 
 type charInfo struct {
@@ -208,6 +231,12 @@ type mouseRecord struct {
 	mod   uint32
 	flags uint32
 }
+const (
+	mouseDoubleClick uint32 = 0x2
+	mouseHWheeled uint32 = 0x8
+	mouseVWheeled uint32 = 0x4
+	mouseMoved uint32 = 0x1
+)
 
 type resizeRecord struct {
 	x int16
@@ -422,7 +451,8 @@ func (s *cScreen) getConsoleInput() error {
 			return nil
 		}
 		for krec.repeat > 0 {
-			s.PostEvent(NewEventKey(key, rune(krec.ch), mod2mask(krec.mod)))
+			s.PostEvent(NewEventKey(key, rune(krec.ch),
+				mod2mask(krec.mod)))
 			krec.repeat--
 		}
 
@@ -434,13 +464,6 @@ func (s *cScreen) getConsoleInput() error {
 		mrec.mod = getu32(rec.data[8:])
 		mrec.flags = getu32(rec.data[12:]) // not using yet
 		btns := ButtonNone
-
-		if mrec.btns == s.mbtns {
-			// If the buttons have not changed,
-			// then don't report the event.  We aren't
-			// reporting motion events at this time.
-			return nil
-		}
 
 		s.mbtns = mrec.btns
 		if mrec.btns&0x1 != 0 {
@@ -459,7 +482,23 @@ func (s *cScreen) getConsoleInput() error {
 			btns |= Button5
 		}
 
-		s.PostEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns, mod2mask(mrec.mod)))
+		if mrec.flags & mouseVWheeled != 0 {
+			if mrec.btns & 0x80000000 == 0 {
+				btns |= WheelUp
+			} else {
+				btns |= WheelDown
+			}
+		}
+		if mrec.flags & mouseHWheeled != 0 {
+			if mrec.btns & 0x80000000 == 0 {
+				btns |= WheelRight
+			} else {
+				btns |= WheelLeft
+			}
+		}
+		// we ignore double click, events are delivered normally
+		s.PostEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns,
+			mod2mask(mrec.mod)))
 
 	case resizeEvent:
 		var rrec resizeRecord
@@ -554,32 +593,120 @@ func mapStyle(style Style) uint16 {
 }
 
 func (s *cScreen) SetCell(x, y int, style Style, ch ...rune) {
-	r := ' '
-	w := 0
-	for i := range ch {
-		if w = runewidth.RuneWidth(ch[i]); w != 0 {
-			r = ch[i]
-			break
-		}
+
+	s.Lock()
+	if x < 0 || y < 0 || x >= int(s.w) || y >= int(s.h) {
+		s.Unlock()
+		return
 	}
 
-	// Windows console lacks support for combining chars
-	if w == 0 {
-		r = ' '
-		w = 1
+	cell := &s.cells[(y*int(s.w))+x]
+	cell.SetCell(ch, style)
+	s.Unlock()
+}
+
+func (s *cScreen) PutCell(x, y int, cell *Cell) {
+	s.Lock()
+	if x < 0 || y < 0 || x >= int(s.w) || y >= int(s.h) {
+		s.Unlock()
+		return
 	}
+	cptr := &s.cells[(y*int(s.w))+x]
+	cptr.PutChars(cell.Ch)
+	cptr.PutStyle(cell.Style)
+	s.Unlock()
+}
 
-	rec := rect{left: int16(x), right: int16(x), top: int16(y), bottom: int16(y)}
-	pos := coord{x: int16(0), y: int16(0)}
-	siz := coord{x: 1, y: 1}
-	dat := charInfo{ch: uint16(r), attr: mapStyle(style)}
+func (s *cScreen) GetCell(x, y int) *Cell {
+	s.Lock()
+	if x < 0 || y < 0 || x >= int(s.w) || y >= int(s.h) {
+		s.Unlock()
+		return nil
+	}
+	cell := s.cells[(y*int(s.w))+x]
+	s.Unlock()
+	return &cell
+}
 
-	procWriteConsoleOutput.Call(
+func (s *cScreen) writeString(x, y int, style Style, ch []uint16) {
+	// we assume the caller has hidden the cursor
+	if len(ch) == 0 {
+		return
+	}
+	nw := uint32(len(ch))
+	procSetConsoleTextAttribute.Call(
 		uintptr(s.out),
-		uintptr(unsafe.Pointer(&dat)),
-		siz.uintptr(),
-		pos.uintptr(),
-		uintptr(unsafe.Pointer(&rec)))
+		uintptr(mapStyle(style)))
+	s.setCursorPos(x, y)
+	syscall.WriteConsole(s.out, &ch[0], nw, &nw, nil)
+}
+
+func (s *cScreen) draw() {
+	// allocate a scratch line bit enough for no combining chars.
+	// if you have combining characters, you may pay for extra allocs.
+	if s.clear {
+		s.clearScreen(s.style)
+		s.clear = false
+	}
+	buf := make([]uint16, 0, s.w)
+	wcs := buf[:]
+	style := Style(-1) // invalid attribute
+
+	x, y := -1, -1
+
+	for row := 0; row < int(s.h); row++ {
+		width := 1
+		for col := 0; col < int(s.w); col += width {
+
+			cell := &s.cells[(row*s.w)+col]
+			width = int(cell.Width)
+			if width < 1 {
+				width = 1
+			}
+
+			if !cell.Dirty || style != cell.Style {
+				s.writeString(x, y, style, wcs)
+				wcs = buf[0:0]
+				style = Style(-1)
+				if !cell.Dirty {
+					continue
+				}
+			}
+			if len(wcs) == 0 {
+				style = cell.Style
+				x = col
+				y = row
+			}
+			if len(cell.Ch) < 1 {
+				wcs = append(wcs, uint16(' '))
+			} else {
+				wcs = append(wcs, utf16.Encode(cell.Ch)...)
+			}
+			cell.Dirty = false
+		}
+		s.writeString(x, y, style, wcs)
+		wcs = buf[0:0]
+		style = Style(-1)
+	}
+}
+
+func (s *cScreen) Show() {
+	s.Lock()
+	s.hideCursor()
+	s.resize()
+	s.draw()
+	s.doCursor()
+	s.Unlock()
+}
+
+func (s *cScreen) Sync() {
+	s.Lock()
+	InvalidateCells(s.cells)
+	s.hideCursor()
+	s.resize()
+	s.draw()
+	s.doCursor()
+	s.Unlock()
 }
 
 type consoleInfo struct {
@@ -622,10 +749,9 @@ func (s *cScreen) setBufferSize(x, y int) {
 
 func (s *cScreen) Size() (int, int) {
 
-	info := consoleInfo{}
-	s.getConsoleInfo(&info)
-	w := int((info.win.right - info.win.left) + 1)
-	h := int((info.win.bottom - info.win.top) + 1)
+	s.Lock()
+	w, h := s.w, s.h
+	s.Unlock()
 
 	return w, h
 }
@@ -637,9 +763,15 @@ func (s *cScreen) resize() {
 
 	w := int((info.win.right - info.win.left) + 1)
 	h := int((info.win.bottom - info.win.top) + 1)
+
 	if s.w == w && s.h == h {
 		return
 	}
+
+	s.cells = ResizeCells(s.cells, s.w, s.h, w, h)
+	s.w = w
+	s.h = h
+
 	r := rect{0, 0, int16(w - 1), int16(h - 1)}
 	procSetConsoleWindowInfo.Call(
 		uintptr(s.out),
@@ -647,12 +779,21 @@ func (s *cScreen) resize() {
 		uintptr(unsafe.Pointer(&r)))
 
 	s.setBufferSize(w, h)
+
+	s.PostEvent(NewEventResize(w, h))
 }
 
 func (s *cScreen) Clear() {
+	s.Lock()
+	ClearCells(s.cells, s.style)
+	s.clear = true
+	s.Unlock()
+}
+
+func (s *cScreen) clearScreen(style Style) {
 	pos := coord{0, 0}
-	attr := uint16(0x7) // default white fg, black bg)
-	x, y := s.Size()
+	attr := mapStyle(style)
+	x, y := s.w, s.h
 	scratch := uint32(0)
 	count := uint32(x * y)
 
@@ -673,9 +814,11 @@ func (s *cScreen) Clear() {
 const (
 	modeMouseEn  uint32 = 0x0010
 	modeResizeEn uint32 = 0x0008
+	modeWrapEOL  uint32 = 0x0002
+	modeCooked   uint32 = 0x0001
 )
 
-func (s *cScreen) setMode(mode uint32) error {
+func (s *cScreen) setInMode(mode uint32) error {
 	rv, _, err := procSetConsoleMode.Call(
 		uintptr(s.in),
 		uintptr(mode))
@@ -685,8 +828,30 @@ func (s *cScreen) setMode(mode uint32) error {
 	return nil
 }
 
-func (s *cScreen) getMode(v *uint32) {
+func (s *cScreen) setOutMode(mode uint32) error {
+	rv, _, err := procSetConsoleMode.Call(
+		uintptr(s.out),
+		uintptr(mode))
+	if rv == 0 {
+		return err
+	}
+	return nil
+}
+
+func (s *cScreen) getInMode(v *uint32) {
 	procGetConsoleMode.Call(
 		uintptr(s.in),
 		uintptr(unsafe.Pointer(v)))
+}
+
+func (s *cScreen) getOutMode(v *uint32) {
+	procGetConsoleMode.Call(
+		uintptr(s.out),
+		uintptr(unsafe.Pointer(v)))
+}
+
+func (s *cScreen) SetStyle(style Style) {
+	s.Lock()
+	s.style = style
+	s.Unlock()
 }
