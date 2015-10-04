@@ -204,7 +204,7 @@ func (t *tScreen) Fini() {
 	t.TPuts(ti.Clear)
 	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
-	t.TPuts(ti.ExitMouse)
+	t.TPuts(ti.TParm(ti.MouseMode, 0))
 
 	t.w = 0
 	t.h = 0
@@ -401,13 +401,13 @@ func (t *tScreen) draw() {
 
 func (t *tScreen) EnableMouse() {
 	if len(t.mouse) != 0 {
-		t.TPuts(t.ti.EnterMouse)
+		t.TPuts(t.ti.TParm(t.ti.MouseMode, 1))
 	}
 }
 
 func (t *tScreen) DisableMouse() {
 	if len(t.mouse) != 0 {
-		t.TPuts(t.ti.ExitMouse)
+		t.TPuts(t.ti.TParm(t.ti.MouseMode, 0))
 	}
 }
 
@@ -752,16 +752,21 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			partials++
 		}
 
-		if part, comp := t.parseXtermMouse(buf); comp {
-			continue
-		} else if part {
-			partials++
-		}
+		// Only parse mouse records if this term claims to have
+		// mouse support
 
-		if part, comp := t.parseSgrMouse(buf); comp {
-			continue
-		} else if part {
-			partials++
+		if t.ti.Mouse != "" {
+			if part, comp := t.parseXtermMouse(buf); comp {
+				continue
+			} else if part {
+				partials++
+			}
+
+			if part, comp := t.parseSgrMouse(buf); comp {
+				continue
+			} else if part {
+				partials++
+			}
 		}
 
 		if partials == 0 || expire {

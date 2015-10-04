@@ -37,6 +37,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -213,15 +214,19 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 	// part of the terminfo databases anywhere that I've found, but
 	// is an extension.  The escape codes are documented in the XTerm
 	// manual, and all terminals that have kmous are expected to
-	// use these same codes.
-	if t.Mouse != "" {
+	// use these same codes, unless explicitly configured otherwise
+	// vi XM.  Note that in any event, we only known how to parse either
+	// x11 or SGR mouse events -- if your terminal doesn't support one
+	// of these two forms, you maybe out of luck.
+	t.MouseMode = tigetstr("XM")
+	if t.Mouse != "" && t.MouseMode == "" {
 		// we anticipate that all xterm mouse tracking compatible
 		// terminals understand mouse tracking (1000), but we hope
 		// that those that don't understand any-event tracking (1003)
 		// will at least ignore it.  Likewise we hope that terminals
 		// that don't understand SGR reporting (1006) just ignore it.
-		t.EnterMouse = "\x1b[?1000h\x1b[?1003h\x1b[?1006h"
-		t.ExitMouse = "\x1b[?1006l\x1b[?1003l\x1b[?1000l"
+		t.MouseMode = "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;"+
+			"\x1b[?1000%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c"
 	}
 	// We only support colors in ANSI 8 or 256 color mode.
 	if t.Colors < 8 || t.SetFg == "" {
@@ -314,8 +319,7 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "SetBg", t.SetBg)
 	dotGoAddStr(w, "PadChar", t.PadChar)
 	dotGoAddStr(w, "Mouse", t.Mouse)
-	dotGoAddStr(w, "EnterMouse", t.EnterMouse)
-	dotGoAddStr(w, "ExitMouse", t.ExitMouse)
+	dotGoAddStr(w, "MouseMode", t.MouseMode)
 	dotGoAddStr(w, "SetCursor", t.SetCursor)
 	dotGoAddStr(w, "CursorBack1", t.CursorBack1)
 	dotGoAddStr(w, "CursorUp1", t.CursorUp1)
@@ -442,6 +446,8 @@ func main() {
 	for alias, canon := range adata {
 		if t, ok := tdata[canon]; ok {
 			t.Aliases = append(t.Aliases, alias)
+			// sort aliases to avoid extra diffs
+			sort.Strings(t.Aliases)
 		} else {
 			if !quiet {
 				fmt.Fprintf(os.Stderr,
