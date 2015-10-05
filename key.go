@@ -40,7 +40,8 @@ import (
 //
 // Generally, terminal applications have far less visibility into keyboard
 // activity than graphical applications.  Hence, they should avoid depending
-// overly much on availability of such details.
+// overly much on availability of modifiers, or the availability of any
+// specific keys.
 type EventKey struct {
 	t   time.Time
 	mod ModMask
@@ -48,22 +49,37 @@ type EventKey struct {
 	ch  rune
 }
 
+// When returns the time when this Event was created, which should closely
+// match the time when the key was pressed.
 func (*EventKey) When() time.Time {
 	return time.Now()
 }
 
+// Rune returns the rune corresponding to the key press, if it makes sense.
+// The result is only defined if the value of Key() is KeyRune.
 func (ev *EventKey) Rune() rune {
 	return ev.ch
 }
 
+// Key returns a virtual key code.  We use this to identify specific key
+// codes, such as KeyEnter, etc.  Most control and function keys are reported
+// with unique Key values.  Normal alphanumeric and punctuation keys will
+// generally return KeyRune here; the specific key can be further decoded
+// using the Rune() function.
 func (ev *EventKey) Key() Key {
 	return ev.key
 }
 
+// ModMask returns the modifiers that were present with the key press.  Note
+// that not all platforms and terminals support this equally well, and some
+// cases we will not not know for sure.  Hence, applications should avoid
+// using this in most circumstances.
 func (ev *EventKey) Mod() ModMask {
 	return ev.mod
 }
 
+// Name returns a printable value or the key stroke.  This can be used
+// when printing the event, for example.
 func (ev *EventKey) Name() string {
 	s := ""
 	m := []string{}

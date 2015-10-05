@@ -20,6 +20,8 @@ import (
 	"errors"
 )
 
+// This stub file is for systems that have no termios.
+
 type termiosPrivate struct{}
 
 func (t *tScreen) termioInit() error {

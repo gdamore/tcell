@@ -14,10 +14,15 @@
 
 package tcell
 
-// Color represents a color.  We encode it in a 64-bit int for efficiency.
+// Style represents a complete text style, including both foreground
+// and background color.  We encode it in a 64-bit int for efficiency.
 // The coding is (MSB): <16b rsvd><16b attr><16b fgcolor><16b bgcolor>.
 // This gives 16bit color options, if it ever becomes truly necessary.
-// I can't see a need to get beyond 256 colors.
+// However, applications must not rely on this encoding.
+//
+// Note that not all terminals can display all colors or attributes, and
+// many might have specific incompatibilities between specific attributes
+// and color combinations.
 type Style int64
 
 func NewStyle() Style {
@@ -26,15 +31,21 @@ func NewStyle() Style {
 
 const StyleDefault Style = 0
 
+// Foreground returns a new style based on s, with the foreground color set
+// as requested.  ColorDefault can be used to select the global default.
 func (s Style) Foreground(c Color) Style {
 	return (s &^ Style(0xffff0000)) | (Style(c) << 16)
 }
 
+// Background returns a new style based on s, with the background color set
+// as requested.  ColorDefault can be used to select the global default.
 func (s Style) Background(c Color) Style {
 	return (s &^ (0xffff)) | Style(c)
 }
 
-func (s Style) Decompose() (Color, Color, AttrMask) {
+// Decompose breaks a style up, returning the foreground, background,
+// and other attributes.
+func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
 	return Color((s >> 16) & 0xffff),
 		Color(s & 0xfffff),
 		AttrMask((s >> 32) & 0xffff)
@@ -53,22 +64,33 @@ func (s Style) Normal() Style {
 	return s &^ (Style(0xfffff) << 32)
 }
 
+// Bold returns a new style based on s, with the bold attribute set
+// as requested.
 func (s Style) Bold(on bool) Style {
 	return s.setAttrs(Style(AttrBold), on)
 }
 
+// Blink returns a new style based on s, with the blink attribute set
+// as requested.
 func (s Style) Blink(on bool) Style {
 	return s.setAttrs(Style(AttrBlink), on)
 }
 
+// Dim returns a new style based on s, with the dim attribute set
+// as requested.
 func (s Style) Dim(on bool) Style {
 	return s.setAttrs(Style(AttrDim), on)
 }
 
+// Reverse returns a new style based on s, with the reverse attribute set
+// as requested.  (Reverse usually changes the foreground and background
+// colors.)
 func (s Style) Reverse(on bool) Style {
 	return s.setAttrs(Style(AttrReverse), on)
 }
 
+// Reverse returns a new style based on s, with the underline attribute set
+// as requested.
 func (s Style) Underline(on bool) Style {
 	return s.setAttrs(Style(AttrUnderline), on)
 }

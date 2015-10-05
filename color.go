@@ -20,6 +20,8 @@ package tcell
 type Color int16
 
 const (
+	// ColorDefault is used to leave the Color unchanged from whatever
+	// system or teminal default may exist.
 	ColorDefault Color = iota
 	ColorBlack
 	ColorRed

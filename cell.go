@@ -81,6 +81,9 @@ func (c *Cell) SetCell(ch []rune, style Style) {
 	c.PutStyle(style)
 }
 
+// PutChars is a handy way to write runes to the Cell, without changing its
+// style.  The first rune should be a printable non-zero width value, and
+// subsequent values may be combining marks.
 func (c *Cell) PutChars(ch []rune) {
 
 	var mainc rune
@@ -120,10 +123,14 @@ func (c *Cell) PutChars(ch []rune) {
 	c.Width = width
 }
 
+// PutChar writes a single rune into the cells location.  The rune should be a
+// a normal (not combining) printable character.
 func (c *Cell) PutChar(ch rune) {
 	c.PutChars([]rune{ch})
 }
 
+// PutStyle changes the style of the given Cell, without altering the character
+// content.
 func (c *Cell) PutStyle(style Style) {
 	if c.Style != style {
 		c.Style = style

@@ -14,10 +14,9 @@
 
 package tcell
 
-// Screen represents the physical (or emulated) screen, without any buffering.
+// Screen represents the physical (or emulated) screen.
 // This can be a terminal window or a physical console.  Platforms implement
-// this differerently.  Applications are unlikely to interface directly with
-// this.
+// this differerently.
 type Screen interface {
 	// Init initializes the screen for use.
 	Init() error
@@ -25,7 +24,9 @@ type Screen interface {
 	// Fini finalizes the screen also releasing resources.
 	Fini()
 
-	// Clear erases the screen.
+	// Clear erases the screen.  The contents of any screen buffers
+	// will also be cleared.  This has the logical effect of
+	// filling the screen with spaces, using the global default style.
 	Clear()
 
 	// SetCell sets the cell at the given location.
@@ -61,7 +62,7 @@ type Screen interface {
 	GetCell(x, y int) *Cell
 
 	// SetStyle sets the default style to use when clearing the screen
-	// or when StyleDefault is specified.  If it is also STyleDefault,
+	// or when StyleDefault is specified.  If it is also StyleDefault,
 	// then whatever system/terminal default is relevant will be used.
 	SetStyle(style Style)
 
@@ -93,13 +94,13 @@ type Screen interface {
 	DisableMouse()
 
 	// Colors returns the number of colors.  All colors are assumed to
-	// use the ANSI color map.
+	// use the ANSI color map.  If a terminal is monochrome, it will
+	// return 0.
 	Colors() int
 
 	// Show takes any output that was deferred due to buffering, and
-	// flushes it to the physical display.  It does so in the least
-	// expensive and disruptive manner possible, only making writes that
-	// are believed to actually be necessary.
+	// flushes it to the physical display.  It does so in the most
+	// efficient and least visually disruptive manner possible.
 	Show()
 
 	// Sync works like Show(), but it updates every visible cell on the
@@ -119,6 +120,8 @@ type Screen interface {
 	CharacterSet() string
 }
 
+// NewScreen returns a default Screen suitable for the user's terminal
+// environment.
 func NewScreen() (Screen, error) {
 	// First we attempt to obtain a terminfo screen.  This should work
 	// in most places if $TERM is set.

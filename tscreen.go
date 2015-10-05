@@ -26,6 +26,14 @@ import (
 	"golang.org/x/text/transform"
 )
 
+// NewTerminfoScreen returns a Screen that uses the stock TTY interface
+// and POSIX termios, combined with a terminfo description taken from
+// the $TERM environment variable.  It returns an error if the terminal
+// is not supported for any reason.
+//
+// For terminals that do not support dynamic resize events, the $LINES
+// $COLUMNS environment variables can be set to the actual window size,
+// otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
 	ti, e := LookupTerminfo(os.Getenv("TERM"))
 	if e != nil {
@@ -285,7 +293,6 @@ func (t *tScreen) GetCell(x, y int) *Cell {
 	return &cell
 }
 
-
 func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 
 	// all the character sets we care about are ASCII supersets
@@ -323,7 +330,7 @@ func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 					buf = append(buf, '?')
 				}
 			}
-		}  else {
+		} else {
 			buf = append(buf, nb...)
 		}
 	} else if len(buf) == 0 {
@@ -925,7 +932,7 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 					ev := NewEventKey(KeyRune, r, ModNone)
 					t.PostEvent(ev)
 				}
-				for eat := 0; eat < nin; eat++  {
+				for eat := 0; eat < nin; eat++ {
 					buf.ReadByte()
 				}
 				return true, true
