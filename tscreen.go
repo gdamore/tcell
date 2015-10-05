@@ -285,9 +285,55 @@ func (t *tScreen) GetCell(x, y int) *Cell {
 	return &cell
 }
 
+
+func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
+
+	// all the character sets we care about are ASCII supersets
+	if r < 0x80 {
+		buf = append(buf, byte(r))
+		return buf
+	}
+
+	enc := t.encoder
+	if enc == nil {
+		// This is probably ASCII.  Only append a filler character
+		// for the main rune, ignoring combining runes.
+		if len(buf) == 0 {
+			buf = append(buf, '?')
+		}
+		return buf
+	}
+
+	nb := make([]byte, 6)
+	ob := make([]byte, 6)
+	num := utf8.EncodeRune(ob, r)
+	ob = ob[:num]
+	t.encoder.Reset()
+	dst, _, err := t.encoder.Transform(nb, ob, true)
+	if err == nil {
+		nb = nb[:dst]
+		if len(nb) == 0 || nb[0] == '\x1a' {
+			// special handling for replacement chars,
+			// we can't display them, so use "?" for primary char, and
+			// elide combining
+			if len(buf) == 0 {
+				if acs, ok := t.acs[r]; ok {
+					buf = append(buf, []byte(acs)...)
+				} else {
+					buf = append(buf, '?')
+				}
+			}
+		}  else {
+			buf = append(buf, nb...)
+		}
+	} else if len(buf) == 0 {
+		buf = append(buf, '?')
+	}
+	return buf
+}
+
 func (t *tScreen) drawCell(x, y int, cell *Cell) {
-	// XXX: this would be a place to check for hazeltine not being able
-	// to display ~, or possibly non-UTF-8 locales, etc.
+	// XXX: check for hazeltine not being able to display ~
 
 	ti := t.ti
 
@@ -342,11 +388,6 @@ func (t *tScreen) drawCell(x, y int, cell *Cell) {
 		} else {
 			str = string(cell.Ch)
 		}
-		if width == 2 && x >= t.w-1 {
-			// too wide to fit; emit space instead
-			width = 1
-			str = " "
-		}
 	default:
 		// Non-Unicode systems.  Make do.
 		switch len(cell.Ch) {
@@ -354,34 +395,15 @@ func (t *tScreen) drawCell(x, y int, cell *Cell) {
 			str = " "
 			width = 1
 		default:
-			// For combining characters, we just drop the
-			// combining mark -- its probably the best we can
-			// do in terms of compromises.  We don't know of any 8-bit
-			// fonts that support combining characters.
+			buf := make([]byte, 0, 6)
 
-			if r := cell.Ch[0]; r < 0x80 {
-				str = string(r)
-			} else if repl, ok := t.acs[cell.Ch[0]]; ok {
-				str = repl
+			for _, r := range cell.Ch {
+				buf = t.encodeRune(r, buf)
+			}
+			if len(buf) == 0 {
+				str = " "
 			} else {
-				str = "?"
-				if t.encoder != nil {
-					nb := make([]byte, 6)
-					ob := make([]byte, 6)
-					num := utf8.EncodeRune(ob, cell.Ch[0])
-					ob = ob[:num]
-					t.encoder.Reset()
-					dst, _, err := t.encoder.Transform(nb, ob, true)
-					if err == nil {
-						nb = nb[:dst]
-						str = string(nb)
-					}
-					// special handling for replacement chars, we can't really
-					// display them, so use "?"
-					if str == "\x1a" {
-						str = "?"
-					}
-				}
+				str = string(buf)
 			}
 		}
 		if cell.Width > 1 && str == "?" {
@@ -396,6 +418,11 @@ func (t *tScreen) drawCell(x, y int, cell *Cell) {
 		}
 	}
 
+	if width == 2 && x >= t.w-1 {
+		// too wide to fit; emit space instead
+		width = 1
+		str = " "
+	}
 	io.WriteString(t.out, str)
 	t.cy = y
 	t.cx = x + width
@@ -859,51 +886,54 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 	b := buf.Bytes()
 	if b[0] >= ' ' && b[0] <= 0x7F {
 		// printable ASCII easy to deal with -- no encodings
-		buf.ReadByte()
 		ev := NewEventKey(KeyRune, rune(b[0]), ModNone)
 		t.PostEvent(ev)
+		buf.ReadByte()
 		return true, true
 	}
-	if b[0] >= 0x80 {
-		switch t.charset {
-		case "UTF-8":
-			if utf8.FullRune(b) {
-				r, _, e := buf.ReadRune()
-				if e == nil {
-					ev := NewEventKey(KeyRune, r, ModNone)
-					t.PostEvent(ev)
-					return true, true
-				}
-			}
-		case "US-ASCII":
-			// ASCII cannot generate this, so most likely it was
-			// entered as an Alt sequence
-			ev := NewEventKey(KeyRune, rune(b[0]-128), ModAlt)
-			t.PostEvent(ev)
-			buf.ReadByte()
-			return true, true
 
-		default:
-			utfb := make([]byte, 0, 6)
-			for l := 1; l < len(b); l++ {
-				t.encoder.Reset()
-				nout, _, err := t.encoder.Transform(utfb, b[:l], true)
-				if err == nil {
-					r, nbytes := utf8.DecodeRune(utfb[:nout])
-					ev := NewEventKey(KeyRune, r, ModNone)
-					t.PostEvent(ev)
-					for nbytes >= 0 {
-						buf.ReadByte()
-						nbytes--
-					}
-					break
-				}
+	if b[0] < 0x80 {
+		// No encodings start with low numbered values
+		return false, false
+	}
+
+	switch t.charset {
+	case "UTF-8":
+		if utf8.FullRune(b) {
+			r, _, e := buf.ReadRune()
+			if e == nil {
+				ev := NewEventKey(KeyRune, r, ModNone)
+				t.PostEvent(ev)
+				return true, true
 			}
 		}
-		// Looks like potential escape
-		return true, false
+	case "US-ASCII":
+		// ASCII cannot generate this, so most likely it was
+		// entered as an Alt sequence
+		ev := NewEventKey(KeyRune, rune(b[0]-128), ModAlt)
+		t.PostEvent(ev)
+		buf.ReadByte()
+		return true, true
+
+	default:
+		utfb := make([]byte, 12)
+		for l := 1; l <= len(b); l++ {
+			t.decoder.Reset()
+			nout, nin, _ := t.decoder.Transform(utfb, b[:l], true)
+			if nout != 0 {
+				if r, _ := utf8.DecodeRune(utfb[:nout]); r != utf8.RuneError {
+					ev := NewEventKey(KeyRune, r, ModNone)
+					t.PostEvent(ev)
+				}
+				for eat := 0; eat < nin; eat++  {
+					buf.ReadByte()
+				}
+				return true, true
+			}
+		}
 	}
-	return false, false
+	// Looks like potential escape
+	return true, false
 }
 
 func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
@@ -949,7 +979,8 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		if partials == 0 || expire {
 			// Nothing was going to match, or we timed out
 			// waiting for more data -- just deliver the characters
-			// to the app & let them sort it out.
+			// to the app & let them sort it out.  Possibly we should only
+			// do this for control characters such like ESC.
 			by, _ := buf.ReadByte()
 			ev := NewEventKey(KeyRune, rune(by), ModNone)
 			t.PostEvent(ev)
@@ -964,6 +995,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 
 func (t *tScreen) inputLoop() {
 	buf := &bytes.Buffer{}
+
 	chunk := make([]byte, 128)
 	for {
 		select {
