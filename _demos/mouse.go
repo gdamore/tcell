@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/encoding"
 )
 
 var defStyle tcell.Style
@@ -90,6 +91,9 @@ func drawSelect(s tcell.Screen, x1, y1, x2, y2 int, sel bool) {
 // This program just shows simple mouse and keyboard events.  Press ESC twice to
 // exit.
 func main() {
+
+	encoding.Register()
+
 	s, e := tcell.NewScreen()
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", e)

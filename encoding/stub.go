@@ -1,4 +1,4 @@
-// +build nacl plan9
+// +build windows nacl plan9
 
 // Copyright 2015 The TCell Authors
 //
@@ -14,25 +14,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package encoding
 
-import (
-	"errors"
-)
+func Register() {
+	// So Windows is only UTF-16LE (yay!)
 
-type termiosPrivate struct{}
-
-func (t *tScreen) termioInit() error {
-	return errors.New("no termios support on this platform")
-}
-
-func (t *tScreen) termioFini() {
-}
-
-func (t *tScreen) getCharset() string {
-	return ""
-}
-
-func (t *tScreen) getWinSize() (int, int, error) {
-	return 0, 0, errors.New("no termios support on this platform")
+	// Other platforms that don't use termios/terminfo are pretty much unsupported.
+	// Therefore, we shouldn't bring in all this stuff because it creates a lot of
+	// bloat for those platforms.  So, just punt.
 }

@@ -172,8 +172,6 @@ func (t *tScreen) termioInit() error {
 		t.h = h
 	}
 
-	t.charset = t.getCharset()
-
 	return nil
 
 failed:

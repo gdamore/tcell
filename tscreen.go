@@ -16,11 +16,14 @@ package tcell
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"strconv"
 	"sync"
 	"unicode/utf8"
+
+	"golang.org/x/text/transform"
 )
 
 func NewTerminfoScreen() (Screen, error) {
@@ -76,6 +79,8 @@ type tScreen struct {
 	wasbtn   bool
 	acs      map[rune]string
 	charset  string
+	encoder  transform.Transformer
+	decoder  transform.Transformer
 
 	sync.Mutex
 }
@@ -84,11 +89,25 @@ func (t *tScreen) Init() error {
 	t.evch = make(chan Event, 2)
 	t.indoneq = make(chan struct{})
 	t.charset = "UTF-8"
+
+	t.charset = t.getCharset()
+	switch t.charset {
+	case "UTF-8", "US-ASCII":
+		t.encoder = nil
+		t.decoder = nil
+	default:
+		if enc := GetEncoding(t.charset); enc != nil {
+			t.encoder = enc.NewEncoder()
+			t.decoder = enc.NewDecoder()
+		} else {
+			return errors.New("no support for charset " + t.charset)
+		}
+	}
+	ti := t.ti
+
 	if e := t.termioInit(); e != nil {
 		return e
 	}
-
-	ti := t.ti
 
 	t.TPuts(ti.EnterCA)
 	t.TPuts(ti.EnterKeypad)
@@ -337,13 +356,32 @@ func (t *tScreen) drawCell(x, y int, cell *Cell) {
 		default:
 			// For combining characters, we just drop the
 			// combining mark -- its probably the best we can
-			// do in terms of compromises.
+			// do in terms of compromises.  We don't know of any 8-bit
+			// fonts that support combining characters.
+
 			if r := cell.Ch[0]; r < 0x80 {
 				str = string(r)
 			} else if repl, ok := t.acs[cell.Ch[0]]; ok {
 				str = repl
 			} else {
 				str = "?"
+				if t.encoder != nil {
+					nb := make([]byte, 6)
+					ob := make([]byte, 6)
+					num := utf8.EncodeRune(ob, cell.Ch[0])
+					ob = ob[:num]
+					t.encoder.Reset()
+					dst, _, err := t.encoder.Transform(nb, ob, true)
+					if err == nil {
+						nb = nb[:dst]
+						str = string(nb)
+					}
+					// special handling for replacement chars, we can't really
+					// display them, so use "?"
+					if str == "\x1a" {
+						str = "?"
+					}
+				}
 			}
 		}
 		if cell.Width > 1 {
@@ -842,12 +880,21 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 			return true, true
 
 		default:
-			// This would be an excellent place to transform
-			// these into UTF-8
-			ev := NewEventKey(KeyRune, rune(b[0]), ModNone)
-			t.PostEvent(ev)
-			buf.ReadByte()
-			return true, true
+			utfb := make([]byte, 0, 6)
+			for l := 1; l < len(b); l++ {
+				t.encoder.Reset()
+				nout, _, err := t.encoder.Transform(utfb, b[:l], true)
+				if err == nil {
+					r, nbytes := utf8.DecodeRune(utfb[:nout])
+					ev := NewEventKey(KeyRune, r, ModNone)
+					t.PostEvent(ev)
+					for nbytes >= 0 {
+						buf.ReadByte()
+						nbytes--
+					}
+					break
+				}
+			}
 		}
 		// Looks like potential escape
 		return true, false
