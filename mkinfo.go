@@ -208,6 +208,9 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 	t.KeyPrint = tigetstr("kprt")
 	t.KeyHelp = tigetstr("khlp")
 	t.KeyClear = tigetstr("kclr")
+	t.AltChars = tigetstr("acsc")
+	t.EnterAcs = tigetstr("smacs")
+	t.ExitAcs = tigetstr("rmacs")
 	t.Mouse = tigetstr("kmous")
 	// If the kmous entry is present, then we need to record the
 	// the codes to enter and exit mouse mode.  Sadly, this is not
@@ -225,7 +228,7 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		// that those that don't understand any-event tracking (1003)
 		// will at least ignore it.  Likewise we hope that terminals
 		// that don't understand SGR reporting (1006) just ignore it.
-		t.MouseMode = "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;"+
+		t.MouseMode = "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;" +
 			"\x1b[?1000%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c"
 	}
 	// We only support colors in ANSI 8 or 256 color mode.
@@ -318,6 +321,9 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "SetFg", t.SetFg)
 	dotGoAddStr(w, "SetBg", t.SetBg)
 	dotGoAddStr(w, "PadChar", t.PadChar)
+	dotGoAddStr(w, "AltChars", t.AltChars)
+	dotGoAddStr(w, "EnterAcs", t.EnterAcs)
+	dotGoAddStr(w, "ExitAcs", t.ExitAcs)
 	dotGoAddStr(w, "Mouse", t.Mouse)
 	dotGoAddStr(w, "MouseMode", t.MouseMode)
 	dotGoAddStr(w, "SetCursor", t.SetCursor)

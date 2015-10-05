@@ -108,6 +108,11 @@ func (s *cScreen) Init() error {
 	return nil
 }
 
+func (s *cScreen) CharacterSet() string {
+	// We are always UTF-16LE on Windows
+	return "UTF-16LE"
+}
+
 func (s *cScreen) EnableMouse() {
 	s.setInMode(modeResizeEn | modeMouseEn)
 }

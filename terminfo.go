@@ -138,6 +138,9 @@ type Terminfo struct {
 	KeyCancel    string   `json:"kcan,omitempty"`   // kcan
 	Mouse        string   `json:"kmous,omitempty"`  // kmous
 	MouseMode    string   `json:"XM,omitempty"`     // XM
+	AltChars     string   `json:"acsc,omitempty"`   // acsc
+	EnterAcs     string   `json:"smacs,omitempty"`  // smacs
+	ExitAcs      string   `json:"rmacs,omitempty"`  // rmacs
 }
 
 type stack []string

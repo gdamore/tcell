@@ -266,8 +266,8 @@ const (
 	KeyEnter      = Key(tcell.KeyEnter)
 	KeySpace      = Key(tcell.KeySpace)
 	KeyEsc        = Key(tcell.KeyEscape)
-	KeyPgdn	      = Key(tcell.KeyPgDn)
-	KeyPgup	      = Key(tcell.KeyPgUp)
+	KeyPgdn       = Key(tcell.KeyPgDn)
+	KeyPgup       = Key(tcell.KeyPgUp)
 	MouseLeft     = Key(tcell.KeyF63) // arbitrary assignments
 	MouseRight    = Key(tcell.KeyF62)
 	MouseMiddle   = Key(tcell.KeyF61)

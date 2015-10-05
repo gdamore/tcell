@@ -20,7 +20,7 @@ import (
 	"errors"
 )
 
-type termiosPrivate struct {}
+type termiosPrivate struct{}
 
 func (t *tScreen) termioInit() error {
 	return errors.New("no termios support on this platform")

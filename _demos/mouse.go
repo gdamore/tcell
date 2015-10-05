@@ -42,8 +42,23 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, r rune) {
 		x1, x2 = x2, x1
 	}
 
-	for row := y1; row <= y2; row++ {
-		for col := x1; col <= x2; col++ {
+	for col := x1; col <= x2; col++ {
+		s.SetCell(col, y1, style, tcell.RuneHLine)
+		s.SetCell(col, y2, style, tcell.RuneHLine)
+	}
+	for row := y1 + 1; row < y2; row++ {
+		s.SetCell(x1, row, style, tcell.RuneVLine)
+		s.SetCell(x2, row, style, tcell.RuneVLine)
+	}
+	if y1 != y2 && x1 != x2 {
+		// Only add corners if we need to
+		s.SetCell(x1, y1, style, tcell.RuneULCorner)
+		s.SetCell(x2, y1, style, tcell.RuneURCorner)
+		s.SetCell(x1, y2, style, tcell.RuneLLCorner)
+		s.SetCell(x2, y2, style, tcell.RuneLRCorner)
+	}
+	for row := y1 + 1; row < y2; row++ {
+		for col := x1 + 1; col < x2; col++ {
 			s.SetCell(col, row, style, r)
 		}
 	}
@@ -107,11 +122,11 @@ func main() {
 	ecnt := 0
 
 	for {
-		drawBox(s, 1, 1, 40, 4, white, ' ')
-		emitStr(s, 1, 1, white, "Press ESC twice to exit, C to clear.")
-		emitStr(s, 1, 2, white, fmt.Sprintf(posfmt, mx, my))
-		emitStr(s, 1, 3, white, fmt.Sprintf(btnfmt, bstr))
-		emitStr(s, 1, 4, white, fmt.Sprintf(keyfmt, lks))
+		drawBox(s, 1, 1, 42, 6, white, ' ')
+		emitStr(s, 2, 2, white, "Press ESC twice to exit, C to clear.")
+		emitStr(s, 2, 3, white, fmt.Sprintf(posfmt, mx, my))
+		emitStr(s, 2, 4, white, fmt.Sprintf(btnfmt, bstr))
+		emitStr(s, 2, 5, white, fmt.Sprintf(keyfmt, lks))
 
 		s.Show()
 		bstr = ""

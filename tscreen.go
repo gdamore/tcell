@@ -35,6 +35,7 @@ func NewTerminfoScreen() (Screen, error) {
 		t.mouse = []byte(ti.Mouse)
 	}
 	t.prepareKeys()
+	t.buildAcsMap()
 	t.w = ti.Columns
 	t.h = ti.Lines
 	t.sigwinch = make(chan os.Signal, 1)
@@ -73,6 +74,8 @@ type tScreen struct {
 	tiosp    *termiosPrivate
 	baud     int
 	wasbtn   bool
+	acs      map[rune]string
+	charset  string
 
 	sync.Mutex
 }
@@ -80,6 +83,7 @@ type tScreen struct {
 func (t *tScreen) Init() error {
 	t.evch = make(chan Event, 2)
 	t.indoneq = make(chan struct{})
+	t.charset = "UTF-8"
 	if e := t.termioInit(); e != nil {
 		return e
 	}
@@ -310,16 +314,50 @@ func (t *tScreen) drawCell(x, y int, cell *Cell) {
 
 	width := int(cell.Width)
 	var str string
-	if len(cell.Ch) == 0 {
-		str = " "
-	} else {
-		str = string(cell.Ch)
+
+	switch t.charset {
+	case "UTF-8":
+		if len(cell.Ch) == 0 {
+			str = " "
+			width = 1
+		} else {
+			str = string(cell.Ch)
+		}
+		if width == 2 && x >= t.w-1 {
+			// too wide to fit; emit space instead
+			width = 1
+			str = " "
+		}
+	default:
+		// Non-Unicode systems.  Make do.
+		switch len(cell.Ch) {
+		case 0:
+			str = " "
+			width = 1
+		default:
+			// For combining characters, we just drop the
+			// combining mark -- its probably the best we can
+			// do in terms of compromises.
+			if r := cell.Ch[0]; r < 0x80 {
+				str = string(r)
+			} else if repl, ok := t.acs[cell.Ch[0]]; ok {
+				str = repl
+			} else {
+				str = "?"
+			}
+		}
+		if cell.Width > 1 {
+			// No FullWidth character support
+			if x < t.w-1 {
+				str = "? "
+				width = 2
+			} else {
+				str = "?"
+				width = 1
+			}
+		}
 	}
-	if width == 2 && x >= t.w-1 {
-		// too wide to fit; emit space instead
-		width = 1
-		str = " "
-	}
+
 	io.WriteString(t.out, str)
 	t.cy = y
 	t.cx = x + width
@@ -391,6 +429,9 @@ func (t *tScreen) draw() {
 				continue
 			}
 			t.drawCell(col, row, cell)
+			if cell.Width > 1 {
+				col++
+			}
 			cell.Dirty = false
 		}
 	}
@@ -447,6 +488,73 @@ func (t *tScreen) PollEvent() Event {
 		return nil
 	case ev := <-t.evch:
 		return ev
+	}
+}
+
+// bulidAcsMap builds a map of characters that we translate from Unicode to
+// alternate character encodings.  To do this, we use the standard VT100 ACS
+// maps.  This is only done if the terminal lacks support for Unicode; we
+// always prefer to emit Unicode glyphs when we are able.
+
+type acsMap struct {
+	utf   rune   // UTF-8 glyph
+	vt100 rune   // VT100 name
+	ascii string // ASCII default
+}
+
+func (t *tScreen) buildAcsMap() {
+	acsstr := t.ti.AltChars
+	vtNames := []acsMap{
+		{RuneSterling, '}', "f"},
+		{RuneDArrow, '.', "v"},
+		{RuneLArrow, ',', "<"},
+		{RuneRArrow, '+', ">"},
+		{RuneUArrow, '-', "^"},
+		{RuneBullet, '~', "o"},
+		{RuneBoard, 'h', "#"},
+		{RuneCkBoard, 'a', ":"},
+		{RuneDegree, 'f', "\\"},
+		{RuneDiamond, '`', "+"},
+		{RuneGEqual, 'z', ">"},
+		{RunePi, '{', "*"},
+		{RuneHLine, 'q', "-"},
+		{RuneLantern, 'i', "#"},
+		{RunePlus, 'n', "+"},
+		{RuneLEqual, 'y', "<"},
+		{RuneLLCorner, 'm', "+"},
+		{RuneLRCorner, 'j', "+"},
+		{RuneNEqual, '|', "!"},
+		{RunePlMinus, 'g', "#"},
+		{RuneS1, 'o', "~"},
+		{RuneS3, 'p', "-"},
+		{RuneS7, 'r', "-"},
+		{RuneS9, 's', "_"},
+		{RuneBlock, '0', "#"},
+		{RuneTTee, 'w', "+"},
+		{RuneRTee, 'u', "+"},
+		{RuneLTee, 't', "+"},
+		{RuneBTee, 'v', "+"},
+		{RuneULCorner, 'l', "+"},
+		{RuneURCorner, 'k', "+"},
+		{RuneVLine, 'x', "|"},
+	}
+	t.acs = make(map[rune]string)
+	for i := range vtNames {
+		// prefill defaults
+		t.acs[vtNames[i].utf] = vtNames[i].ascii
+	}
+	for len(acsstr) > 2 {
+		srcv := rune(acsstr[0])
+		dstv := string(acsstr[1])
+		// O(n*2), but n is pretty small (30)
+		for i := range vtNames {
+			if srcv == vtNames[i].vt100 {
+				t.acs[vtNames[i].utf] =
+					t.ti.EnterAcs + dstv + t.ti.ExitAcs
+				break
+			}
+		}
+		acsstr = acsstr[2:]
 	}
 }
 
@@ -715,13 +823,31 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 		return true, true
 	}
 	if b[0] >= 0x80 {
-		if utf8.FullRune(b) {
-			r, _, e := buf.ReadRune()
-			if e == nil {
-				ev := NewEventKey(KeyRune, r, ModNone)
-				t.PostEvent(ev)
-				return true, true
+		switch t.charset {
+		case "UTF-8":
+			if utf8.FullRune(b) {
+				r, _, e := buf.ReadRune()
+				if e == nil {
+					ev := NewEventKey(KeyRune, r, ModNone)
+					t.PostEvent(ev)
+					return true, true
+				}
 			}
+		case "US-ASCII":
+			// ASCII cannot generate this, so most likely it was
+			// entered as an Alt sequence
+			ev := NewEventKey(KeyRune, rune(b[0]-128), ModAlt)
+			t.PostEvent(ev)
+			buf.ReadByte()
+			return true, true
+
+		default:
+			// This would be an excellent place to transform
+			// these into UTF-8
+			ev := NewEventKey(KeyRune, rune(b[0]), ModNone)
+			t.PostEvent(ev)
+			buf.ReadByte()
+			return true, true
 		}
 		// Looks like potential escape
 		return true, false
@@ -828,4 +954,8 @@ func (t *tScreen) Sync() {
 	InvalidateCells(t.cells)
 	t.draw()
 	t.Unlock()
+}
+
+func (t *tScreen) CharacterSet() string {
+	return t.charset
 }
