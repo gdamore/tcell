@@ -384,7 +384,7 @@ func (t *tScreen) drawCell(x, y int, cell *Cell) {
 				}
 			}
 		}
-		if cell.Width > 1 {
+		if cell.Width > 1 && str == "?" {
 			// No FullWidth character support
 			if x < t.w-1 {
 				str = "? "
