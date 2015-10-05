@@ -86,7 +86,7 @@ type tScreen struct {
 }
 
 func (t *tScreen) Init() error {
-	t.evch = make(chan Event, 2)
+	t.evch = make(chan Event, 10)
 	t.indoneq = make(chan struct{})
 	t.charset = "UTF-8"
 
@@ -597,7 +597,11 @@ func (t *tScreen) buildAcsMap() {
 }
 
 func (t *tScreen) PostEvent(ev Event) {
-	t.evch <- ev
+	select {
+	case t.evch <- ev:
+	default:
+		// drop the event on the floor
+	}
 }
 
 func (t *tScreen) postMouseEvent(x, y, btn int) {

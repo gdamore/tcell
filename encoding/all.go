@@ -27,7 +27,7 @@ import (
 )
 
 func Register() {
-	tcell.RegisterEncoding("ISO8859-1", charmap.ISO8859_15)	// alias for now
+	tcell.RegisterEncoding("ISO8859-1", charmap.ISO8859_15) // alias for now
 	tcell.RegisterEncoding("ISO8859-13", charmap.ISO8859_13)
 	tcell.RegisterEncoding("ISO8859-14", charmap.ISO8859_14)
 	tcell.RegisterEncoding("ISO8859-15", charmap.ISO8859_15)
@@ -59,37 +59,37 @@ func Register() {
 
 	// Common aliaess
 	aliases := map[string]string{
-		"8859-1":		"ISO8859-1",
-		"ISO-8859-1":		"ISO8859-1",
-		"8859-13":		"ISO8859-13",
-		"ISO-8859-13":		"ISO8859-13",
-		"8859-14":		"ISO8859-14",
-		"ISO-8859-14":		"ISO8859-14",
-		"8859-15":		"ISO8859-15",
-		"ISO-8859-15":		"ISO8859-15",
-		"8859-16":		"ISO8859-16",
-		"ISO-8859-16":		"ISO8859-16",
-		"8859-2":		"ISO8859-2",
-		"ISO-8859-2":		"ISO8859-2",
-		"8859-3":		"ISO8859-3",
-		"ISO-8859-3":		"ISO8859-3",
-		"8859-4":		"ISO8859-4",
-		"ISO-8859-4":		"ISO8859-4",
-		"8859-5":		"ISO8859-5",
-		"ISO-8859-5":		"ISO8859-5",
-		"8859-6":		"ISO8859-6",
-		"ISO-8859-6":		"ISO8859-6",
-		"8859-7":		"ISO8859-7",
-		"ISO-8859-7":		"ISO8859-7",
-		"8859-8":		"ISO8859-8",
-		"ISO-8859-8":		"ISO8859-8",
+		"8859-1":      "ISO8859-1",
+		"ISO-8859-1":  "ISO8859-1",
+		"8859-13":     "ISO8859-13",
+		"ISO-8859-13": "ISO8859-13",
+		"8859-14":     "ISO8859-14",
+		"ISO-8859-14": "ISO8859-14",
+		"8859-15":     "ISO8859-15",
+		"ISO-8859-15": "ISO8859-15",
+		"8859-16":     "ISO8859-16",
+		"ISO-8859-16": "ISO8859-16",
+		"8859-2":      "ISO8859-2",
+		"ISO-8859-2":  "ISO8859-2",
+		"8859-3":      "ISO8859-3",
+		"ISO-8859-3":  "ISO8859-3",
+		"8859-4":      "ISO8859-4",
+		"ISO-8859-4":  "ISO8859-4",
+		"8859-5":      "ISO8859-5",
+		"ISO-8859-5":  "ISO8859-5",
+		"8859-6":      "ISO8859-6",
+		"ISO-8859-6":  "ISO8859-6",
+		"8859-7":      "ISO8859-7",
+		"ISO-8859-7":  "ISO8859-7",
+		"8859-8":      "ISO8859-8",
+		"ISO-8859-8":  "ISO8859-8",
 
-		"SJIS":			"Shift_JIS",
-		"eucJP":		"EUC-JP",
-		"2022-JP":		"ISO2022JP",
-		"ISO-2022-JP":		"ISO2022JP",
+		"SJIS":        "Shift_JIS",
+		"eucJP":       "EUC-JP",
+		"2022-JP":     "ISO2022JP",
+		"ISO-2022-JP": "ISO2022JP",
 
-		"eucKR":		"EUC-KR",
+		"eucKR": "EUC-KR",
 	}
 	for n, v := range aliases {
 		tcell.RegisterEncoding(n, tcell.GetEncoding(v))

@@ -70,7 +70,6 @@ func Puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
 
 func main() {
 
-
 	s, e := tcell.NewScreen()
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
@@ -125,7 +124,7 @@ func main() {
 		tcell.RuneVLine,
 		tcell.RuneLantern,
 		tcell.RuneVLine,
-	}) + "  (bullet, lantern/section)")
+	})+"  (bullet, lantern/section)")
 	Putln(s, string([]rune{
 		tcell.RuneLTee,
 		tcell.RuneHLine,
@@ -139,7 +138,7 @@ func main() {
 		tcell.RuneVLine,
 		tcell.RuneUArrow,
 		tcell.RuneVLine,
-	}) + "  (diamond, up arrow)")
+	})+"  (diamond, up arrow)")
 	Putln(s, string([]rune{
 		tcell.RuneLLCorner,
 		tcell.RuneHLine,

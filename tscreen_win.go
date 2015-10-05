@@ -38,7 +38,6 @@ func (t *tScreen) getWinSize() (int, int, error) {
 	return 0, 0, errors.New("no temrios on Windows")
 }
 
-
 func (t *tScreen) getCharset() string {
 	return "UTF-16LE"
 }
