@@ -2,8 +2,7 @@
 
 [![Linux Status](https://img.shields.io/travis/gdamore/tcell.svg?label=linux)](https://travis-ci.org/gdamore/tcell)
 [![Windows Status](https://img.shields.io/appveyor/ci/gdamore/tcell.svg?label=windows)](https://ci.appveyor.com/project/gdamore/tcell)
-[![GitHub License](https://img.shields.io/github/license/gdamore/tcell.svg)](https://github.com/gdamore/tcell/blob/master/LICENSE)
-[![Issues](https://img.shields.io/github/issues/gdamore/tcell.svg)](https://github.com/gdamore/tcell/issues)
+[![Apache License](https://img.shields.io/badge/license-APACHE2-blue.svg)](https://github.com/gdamore/tcell/blob/master/LICENSE)
 [![Gitter](https://img.shields.io/badge/gitter-join-brightgreen.svg)](https://gitter.im/gdamore/tcell)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/gdamore/tcell)
 
