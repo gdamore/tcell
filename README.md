@@ -7,7 +7,7 @@
 [![Gitter](https://img.shields.io/badge/gitter-join-brightgreen.svg)](https://gitter.im/gdamore/tcell)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/gdamore/tcell)
 
-> _Tcell is a work in progress (Beta).
+> _Tcell is a work in progress (Gamma).
 > Please use with caution; interfaces may change in before final release.
 > That said, our confidence in Tcell's stability is increasing.  If you
 > would like to use it in your own application, it is recommended that
@@ -15,7 +15,7 @@
 
 Package tcell provides a cell based view for text terminals, like xterm.
 It was inspired by termbox, but differs from termbox in some important
-ways.  It also adds signficant functionality beyond termbox.
+ways.  It also adds substantial functionality beyond termbox.
 
 ## Pure Go Terminfo Database
 
@@ -50,11 +50,17 @@ use with programs that use exec, or otherwise need to manipulate the
 tty streams.  This model is also much closer to idiomatic Go, leading
 to fewer surprises.
 
-## Richer Unicode support
+## Richer Unicode & non-Unicode support
 
 Tcell includes enhanced support for Unicode, include wide characters and
 combining characters, provided your terminal can support them.  Note that
 Windows terminals generally don't support the full Unicode repertoire.
+
+It will also convert to and from Unicode locales, so that the program
+can work with UTF-8 internally, and get reasonable output in other locales.
+We try hard to convert to native characters on both input and output, and
+on output we even make use of the alternate character set to facilitate
+drawing certain characters.
 
 ## More Function Keys
 
@@ -63,13 +69,16 @@ special keys that some terminals can send.
 
 ## Better color handling
 
- Tcell will respect your terminal's color space as specified within your terminfo
+Tcell will respect your terminal's color space as specified within your terminfo
 entries, so that for example attempts to emit color sequences on VT100 terminals
 won't result in unintended consequences.
 
 In Windows mode, we support 16 colors, underline, bold, dim, and reverse,
 instead of just termbox's 8 colors with reverse.  (Note that there is some
 conflation with bold/dim and colors.)
+
+Tcell maps 16 colors down to 8, for Terminals that need it.  (The upper
+8 colors are just brighter versions of the lower 8.)
 
 ## Better mouse support
 
@@ -80,7 +89,8 @@ regular mouse motion events, and wheel events, if your terminal supports it.
 
 I started this project originally by submitting patches to the author of
 go-termbox, but due to some fundamental differences of opinion, I thought
-it might be simpler just to start from scratch.
+it might be simpler just to start from scratch.  At this point, Tcell has
+far exceeded the capabilities of termbox.
 
 ## Termbox compatibility 
 
@@ -89,13 +99,14 @@ directory.  To use it, try importing "github.com/gdamore/tcell/termbox"
 instead.  Most termbox-go programs will probably work without further
 modification.
 
-## Working with Unicode
+## Working With Unicode
 
-This version of the tcells expects that your terminal can support Unicode
-on output.  That is, if you submit Unicode sequences to it, it will attempt
-send Unicode to the terminal.  This works for modern xterm and other emulators,
-but legacy systems may have poor results.  I'm interested to hear reports from
-folks who need support for other character sets.
+Internally Tcell uses UTF-8, just like Go.  However, it understands how to
+convert to and from other character sets, using the capabilities of
+the golang.org/x/text/encoding packages.  Your application must supply
+them, as the full set of the most common ones bloats the program by about
+2MB.  If you're lazy, and want them all anyway, see the tcell/encoding
+sub package.
 
 ## Wide & Combining Characters
 
@@ -108,8 +119,7 @@ results are undefined.  (Normally the wide character will not be displayed.)
 
 Experience has shown that the vanilla Windows 8 console application does not
 support any of these characters properly, but at least some options like
-ConEmu do support Wide characters at least.  Combining characters are
-disabled for Windows in the release.
+ConEmu do support Wide characters at least.
 
 ## Colors
 
@@ -124,9 +134,6 @@ know; it wouldn't be hard to add that if there is need.
 
 Reasonable attempts have been made to minimize sending data to terminals,
 avoiding repeated sequences or drawing the same cell on refresh updates.
-
-Windows still needs some work here, as it can make numerous system calls
-a bit less efficiently than it could.
 
 ## Terminfo
 
@@ -177,6 +184,13 @@ consoles, all support this quite nicely.  On other platforms you might
 find that only mouse click and release events are reported, with
 no intervening motion events.  It really depends on your terminal.
 
+## Testablity
+
+There is a SimulationScreen, that can be used to simulate a real screen
+for automated testing.  The supplied tests do this.  The simulation contains
+event delivery, screen resizing support, and capabilities to inject events
+and examine "physical" screen contents.
+
 ## Platforms
 
 On POSIX systems, a POSIX termios implementation with /dev/tty is required.
@@ -197,3 +211,7 @@ fully compatible consule implementation.  We expect that Windows 10
 ships with a less crippled implementation than prior releases -- we haven't
 tested that, lacking Windows 10 ourselves.
 
+The nacl and plan9 platforms won't work, but compilation stubs are supplied
+for folks that want to include parts of this in software targetting those
+platforms.  The test screens will work, but as we don't know how to allocate
+a real screen object on those platforms, NewScreen() will fail.
