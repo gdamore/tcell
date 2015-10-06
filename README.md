@@ -1,5 +1,7 @@
 ## tcell
 
+[![Join the chat at https://gitter.im/gdamore/tcell](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/gdamore/tcell?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Linux Status](https://img.shields.io/travis/gdamore/tcell.svg?label=linux)](https://travis-ci.org/gdamore/tcell)
 [![Windows Status](https://img.shields.io/appveyor/ci/gdamore/tcell.svg?label=windows)](https://ci.appveyor.com/project/gdamore/tcell)
 [![GitHub License](https://img.shields.io/github/license/gdamore/tcell.svg)](https://github.com/gdamore/tcell/blob/master/LICENSE)
