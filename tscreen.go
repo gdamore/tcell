@@ -558,6 +558,8 @@ func (t *tScreen) resize() {
 			t.cells = ResizeCells(t.cells, t.w, t.h, w, h)
 			t.w = w
 			t.h = h
+
+			InvalidateCells(t.cells)
 		}
 	}
 	if ev != nil {

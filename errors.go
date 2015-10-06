@@ -33,6 +33,10 @@ func (ev *EventError) When() time.Time {
 	return ev.t
 }
 
+func (ev *EventError) Error() string {
+	return ev.err.Error()
+}
+
 func NewEventError(err error) *EventError {
 	return &EventError{t: time.Now(), err: err}
 }
