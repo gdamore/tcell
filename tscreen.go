@@ -64,6 +64,7 @@ func NewTerminfoScreen() (Screen, error) {
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
 	ti       *Terminfo
+	fini	 bool
 	w        int
 	h        int
 	in       *os.File
@@ -130,6 +131,10 @@ func (t *tScreen) Init() error {
 	t.cells = ResizeCells(nil, 0, 0, t.w, t.h)
 	t.cursorx = -1
 	t.cursory = -1
+
+	t.Lock()
+	t.fini = false
+	t.Unlock()
 	go t.inputLoop()
 
 	return nil
@@ -227,18 +232,21 @@ func (t *tScreen) prepareKeys() {
 
 func (t *tScreen) Fini() {
 	ti := t.ti
-	if t.quit != nil {
-		close(t.quit)
-	}
+	t.Lock()
+	t.w = 0
+	t.h = 0
+	t.fini = true
+	t.Unlock()
 	t.TPuts(ti.ShowCursor)
 	t.TPuts(ti.AttrOff)
 	t.TPuts(ti.Clear)
 	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
 	t.TPuts(ti.TParm(ti.MouseMode, 0))
+	if t.quit != nil {
+		close(t.quit)
+	}
 
-	t.w = 0
-	t.h = 0
 	t.cells = nil
 	t.curstyle = Style(-1)
 	t.clear = false
@@ -247,21 +255,25 @@ func (t *tScreen) Fini() {
 
 func (t *tScreen) SetStyle(style Style) {
 	t.Lock()
-	t.style = style
+	if !t.fini {
+		t.style = style
+	}
 	t.Unlock()
 }
 
 func (t *tScreen) Clear() {
 
 	t.Lock()
-	ClearCells(t.cells, t.style)
+	if !t.fini {
+		ClearCells(t.cells, t.style)
+	}
 	t.Unlock()
 }
 
 func (t *tScreen) SetCell(x, y int, style Style, ch ...rune) {
 
 	t.Lock()
-	if x < 0 || y < 0 || x >= t.w || y >= t.h {
+	if t.fini || x < 0 || y < 0 || x >= t.w || y >= t.h {
 		t.Unlock()
 		return
 	}
@@ -272,7 +284,7 @@ func (t *tScreen) SetCell(x, y int, style Style, ch ...rune) {
 
 func (t *tScreen) PutCell(x, y int, cell *Cell) {
 	t.Lock()
-	if x < 0 || y < 0 || x >= t.w || y >= t.h {
+	if t.fini || x < 0 || y < 0 || x >= t.w || y >= t.h {
 		t.Unlock()
 		return
 	}
@@ -284,7 +296,7 @@ func (t *tScreen) PutCell(x, y int, cell *Cell) {
 
 func (t *tScreen) GetCell(x, y int) *Cell {
 	t.Lock()
-	if x < 0 || y < 0 || x >= t.w || y >= t.h {
+	if t.fini || x < 0 || y < 0 || x >= t.w || y >= t.h {
 		t.Unlock()
 		return nil
 	}
@@ -437,8 +449,10 @@ func (t *tScreen) drawCell(x, y int, cell *Cell) {
 
 func (t *tScreen) ShowCursor(x, y int) {
 	t.Lock()
-	t.cursorx = x
-	t.cursory = y
+	if !t.fini {
+		t.cursorx = x
+		t.cursory = y
+	}
 	t.Unlock()
 }
 
@@ -467,8 +481,10 @@ func (t *tScreen) TPuts(s string) {
 
 func (t *tScreen) Show() {
 	t.Lock()
-	t.resize()
-	t.draw()
+	if !t.fini {
+		t.resize()
+		t.draw()
+	}
 	t.Unlock()
 }
 
