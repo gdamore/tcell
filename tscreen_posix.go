@@ -168,8 +168,7 @@ func (t *tScreen) termioInit() error {
 	signal.Notify(t.sigwinch, syscall.SIGWINCH)
 
 	if w, h, e := t.getWinSize(); e == nil && w != 0 && h != 0 {
-		t.w = w
-		t.h = h
+		t.cells.Resize(w, h)
 	}
 
 	return nil

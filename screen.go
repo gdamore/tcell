@@ -49,17 +49,20 @@ type Screen interface {
 	// Sync() are called.
 	SetCell(x int, y int, style Style, ch ...rune)
 
-	// PutCell stores the contents of the given cell at the given location.
-	// The Dirty flag on the stored cell is set to true if the contents
-	// do not match.
-	PutCell(x, y int, cell *Cell)
+	// GetContent returns the contents at the given location.  If the
+	// coordinates are out of range, then the values will be 0, nil,
+	// StyleDefault.  Note that the contents returned are logical contents
+	// and may not actually be what is displayed, but rather are what will
+	// be displayed if Show() or Sync() is called.  The width is the width
+	// in screen cells - this should either be 1 or 2.
+	GetContent(x, y int) (mainc rune, combc []rune, style Style, width int)
 
-	// GetCell returns the contents of the given cell.  If the coordinates
-	// are out of range, then nil will be returned for the rune array.
-	// This will also be the case if no content has been written to that
-	// location.  Note that the returned Cell object is a copy, and
-	// modifications made will not change the display.
-	GetCell(x, y int) *Cell
+	// SetContent sets the contents of the given cell location.  If
+	// the coordinates are out of range, then the operation is ignored.
+	// The first rune is the primary non-zero width rune.  The array
+	// that follows is a possible list of combining characters to append.
+	// The results are not displayd until Show() or Sync() is called.
+	SetContent(x int, y int, mainc rune, combc []rune, style Style)
 
 	// SetStyle sets the default style to use when clearing the screen
 	// or when StyleDefault is specified.  If it is also StyleDefault,

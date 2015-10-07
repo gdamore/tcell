@@ -71,7 +71,7 @@ func TestClearScreen(t *testing.T) {
 
 		nmatch := 0
 		for i := 0; i < x*y; i++ {
-			if len(b[i].Runes) == 0 {
+			if len(b[i].Runes) == 1 && b[i].Runes[0] == ' ' {
 				nmatch++
 			}
 		}
@@ -79,7 +79,7 @@ func TestClearScreen(t *testing.T) {
 
 		nmatch = 0
 		for i := 0; i < x*y; i++ {
-			if len(b[i].Bytes) == 1 {
+			if len(b[i].Bytes) == 1 && b[i].Bytes[0] == ' ' {
 				nmatch++
 			}
 		}
@@ -92,7 +92,6 @@ func TestClearScreen(t *testing.T) {
 			}
 		}
 		So(nmatch, ShouldEqual, x*y)
-		So(b[0].Bytes[0], ShouldEqual, ' ')
 	}))
 }
 

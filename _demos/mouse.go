@@ -30,7 +30,7 @@ var defStyle tcell.Style
 
 func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
 	for _, c := range str {
-		s.SetCell(x, y, style, c)
+		s.SetContent(x, y, c, nil, style)
 		x++
 	}
 }
@@ -44,23 +44,23 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, r rune) {
 	}
 
 	for col := x1; col <= x2; col++ {
-		s.SetCell(col, y1, style, tcell.RuneHLine)
-		s.SetCell(col, y2, style, tcell.RuneHLine)
+		s.SetContent(col, y1, tcell.RuneHLine, nil, style)
+		s.SetContent(col, y2, tcell.RuneHLine, nil, style)
 	}
 	for row := y1 + 1; row < y2; row++ {
-		s.SetCell(x1, row, style, tcell.RuneVLine)
-		s.SetCell(x2, row, style, tcell.RuneVLine)
+		s.SetContent(x1, row, tcell.RuneVLine, nil, style)
+		s.SetContent(x2, row, tcell.RuneVLine, nil, style)
 	}
 	if y1 != y2 && x1 != x2 {
 		// Only add corners if we need to
-		s.SetCell(x1, y1, style, tcell.RuneULCorner)
-		s.SetCell(x2, y1, style, tcell.RuneURCorner)
-		s.SetCell(x1, y2, style, tcell.RuneLLCorner)
-		s.SetCell(x2, y2, style, tcell.RuneLRCorner)
+		s.SetContent(x1, y1, tcell.RuneULCorner, nil, style)
+		s.SetContent(x2, y1, tcell.RuneURCorner, nil, style)
+		s.SetContent(x1, y2, tcell.RuneLLCorner, nil, style)
+		s.SetContent(x2, y2, tcell.RuneLRCorner, nil, style)
 	}
 	for row := y1 + 1; row < y2; row++ {
 		for col := x1 + 1; col < x2; col++ {
-			s.SetCell(col, row, style, r)
+			s.SetContent(col, row, r, nil, style)
 		}
 	}
 }
@@ -75,15 +75,13 @@ func drawSelect(s tcell.Screen, x1, y1, x2, y2 int, sel bool) {
 	}
 	for row := y1; row <= y2; row++ {
 		for col := x1; col <= x2; col++ {
-			if cp := s.GetCell(col, row); cp != nil {
-				st := cp.Style
-				if st == tcell.StyleDefault {
-					st = defStyle
-				}
-				st = st.Reverse(sel)
-				cp.Style = st
-				s.PutCell(col, row, cp)
+			mainc, combc, style, width := s.GetContent(col, row)
+			if style == tcell.StyleDefault {
+				style = defStyle
 			}
+			style = style.Reverse(sel)
+			s.SetContent(col, row, mainc, combc, style)
+			col += width-1
 		}
 	}
 }
@@ -149,16 +147,18 @@ func main() {
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
 			s.Sync()
-			s.SetCell(w-1, h-1, st, 'R')
+			s.SetContent(w-1, h-1, 'R', nil, st)
 		case *tcell.EventKey:
-			s.SetCell(w-2, h-2, st, ev.Rune())
-			s.SetCell(w-1, h-1, st, 'K')
+			s.SetContent(w-2, h-2, ev.Rune(), nil, st)
+			s.SetContent(w-1, h-1, 'K', nil, st)
 			if ev.Key() == tcell.KeyEscape {
 				ecnt++
 				if ecnt > 1 {
 					s.Fini()
 					os.Exit(0)
 				}
+			} else if ev.Key() == tcell.KeyCtrlL {
+				s.Sync()
 			} else {
 				ecnt = 0
 				if ev.Rune() == 'C' || ev.Rune() == 'c' {
@@ -227,10 +227,10 @@ func main() {
 				bx, by = x, y
 			}
 			lchar = ch
-			s.SetCell(w-1, h-1, st, 'M')
+			s.SetContent(w-1, h-1, 'M', nil, st)
 			mx, my = x, y
 		default:
-			s.SetCell(w-1, h-1, st, 'X')
+			s.SetContent(w-1, h-1, 'X', nil, st)
 		}
 
 		if ox >= 0 && bx >= 0 {

@@ -84,16 +84,15 @@ type SimCell struct {
 }
 
 type simscreen struct {
-	logw  int
-	logh  int
 	physw int
 	physh int
+	fini  bool
 	style Style
 	evch  chan Event
 	quit  chan struct{}
 
 	front     []SimCell
-	back      []Cell
+	back      CellBuffer
 	clear     bool
 	cursorx   int
 	cursory   int
@@ -113,8 +112,6 @@ func (s *simscreen) Init() error {
 	s.fillchar = 'X'
 	s.fillstyle = StyleDefault
 	s.mouse = false
-	s.logw = 80
-	s.logh = 25
 	s.physw = 80
 	s.physh = 25
 	s.cursorx = -1
@@ -135,21 +132,22 @@ func (s *simscreen) Init() error {
 	}
 
 	s.front = make([]SimCell, s.physw*s.physh)
-	s.back = ResizeCells(nil, 0, 0, s.logw, s.logh)
+	s.back.Resize(80, 25)
 
 	return nil
 }
 
 func (s *simscreen) Fini() {
+	s.Lock()
+	s.fini = true
+	s.back.Resize(0, 0)
+	s.Unlock()
 	if s.quit != nil {
 		close(s.quit)
 	}
-	s.logw = 0
-	s.logh = 0
 	s.physw = 0
 	s.physh = 0
 	s.front = nil
-	s.back = nil
 }
 
 func (s *simscreen) SetStyle(style Style) {
@@ -161,73 +159,64 @@ func (s *simscreen) SetStyle(style Style) {
 func (s *simscreen) Clear() {
 
 	s.Lock()
-	ClearCells(s.back, s.style)
+	s.back.Fill(' ', s.style)
 	s.Unlock()
 }
 
 func (s *simscreen) SetCell(x, y int, style Style, ch ...rune) {
 
-	s.Lock()
-	if x < 0 || y < 0 || x >= s.logw || y >= s.logh {
-		s.Unlock()
-		return
+	if len(ch) > 0 {
+		s.SetContent(x, y, ch[0], ch[1:], style)
+	} else {
+		s.SetContent(x, y, ' ', nil, style)
 	}
-	cell := &s.back[(y*s.logw)+x]
-	cell.SetCell(ch, style)
+}
+
+func (s *simscreen) SetContent(x, y int, mainc rune, combc []rune, st Style) {
+
+	s.Lock()
+	s.back.SetContent(x, y, mainc, combc, st)
 	s.Unlock()
 }
 
-func (s *simscreen) PutCell(x, y int, cell *Cell) {
+func (s *simscreen) GetContent(x, y int) (rune, []rune, Style, int) {
+	var mainc rune
+	var combc []rune
+	var style Style
+	var width int
 	s.Lock()
-	if x < 0 || y < 0 || x >= s.logw || y >= s.logh {
-		s.Unlock()
-		return
-	}
-	cp := &s.back[(y*s.logw)+x]
-	cp.PutStyle(cell.Style)
-	cp.PutChars(cell.Ch)
+	mainc, combc, style, width = s.back.GetContent(x, y)
 	s.Unlock()
+	return mainc, combc, style, width
 }
 
-func (s *simscreen) GetCell(x, y int) *Cell {
-	s.Lock()
-	if x < 0 || y < 0 || x >= s.logw || y >= s.logh {
-		s.Unlock()
-		return nil
-	}
-	cell := s.back[(y*s.logw)+x]
-	s.Unlock()
-	return &cell
-}
+func (s *simscreen) drawCell(x, y int) int {
 
-func (s *simscreen) drawCell(x, y int, cell *Cell) {
+	mainc, combc, style, width := s.back.GetContent(x, y)
+	if !s.back.Dirty(x, y) {
+		return width
+	}
 	if x >= s.physw || y >= s.physh || x < 0 || y < 0 {
-		return
+		return width
 	}
 	simc := &s.front[(y*s.physw)+x]
-	if cell.Style == StyleDefault {
-		simc.Style = s.style
-	} else {
-		simc.Style = cell.Style
+
+	if style == StyleDefault {
+		style = s.style
 	}
-	simc.Runes = nil
-	simc.Runes = append(simc.Runes, cell.Ch...)
+	simc.Style = style
+	simc.Runes = append([]rune{mainc}, combc...)
 
 	// now emit runes - taking care to not overrun width with a
 	// wide character, and to ensure that we emit exactly one regular
 	// character followed up by any residual combing characters
 
-	width := int(cell.Width)
 	simc.Bytes = nil
 
-	if len(cell.Ch) == 0 {
-		simc.Bytes = []byte{' '}
-		return
-	}
-	if width > 1 && x >= s.physw-1 {
+	if x > s.physw-width {
 		simc.Runes = []rune{' '}
 		simc.Bytes = []byte{' '}
-		return
+		return width
 	}
 
 	enc := s.encoder
@@ -239,7 +228,7 @@ func (s *simscreen) drawCell(x, y int, cell *Cell) {
 		if enc == nil {
 			simc.Bytes = append(simc.Bytes, ubuf[:l]...)
 			if s.charset == "US-ASCII" {
-				return
+				return width
 			}
 			continue
 		}
@@ -253,6 +242,8 @@ func (s *simscreen) drawCell(x, y int, cell *Cell) {
 			simc.Bytes = append(simc.Bytes, lbuf[:nout]...)
 		}
 	}
+	s.back.SetDirty(x, y, false)
+	return width
 }
 
 func (s *simscreen) ShowCursor(x, y int) {
@@ -299,28 +290,18 @@ func (s *simscreen) clearScreen() {
 }
 
 func (s *simscreen) draw() {
-	// hide the cursor while we move stuff around
 	s.hideCursor()
-
 	if s.clear {
 		s.clearScreen()
 	}
 
-	for row := 0; row < s.logh; row++ {
-		for col := 0; col < s.logw; col++ {
-			cell := &s.back[(row*s.logw)+col]
-			if !cell.Dirty {
-				continue
-			}
-			s.drawCell(col, row, cell)
-			if cell.Width > 1 {
-				col++
-			}
-			cell.Dirty = false
+	w, h := s.back.Size()
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			width := s.drawCell(x, y)
+			x += width - 1
 		}
 	}
-
-	// restore the cursor
 	s.showCursor()
 }
 
@@ -334,21 +315,17 @@ func (s *simscreen) DisableMouse() {
 
 func (s *simscreen) Size() (int, int) {
 	s.Lock()
-	w, h := s.logw, s.logh
+	w, h := s.back.Size()
 	s.Unlock()
 	return w, h
 }
 
 func (s *simscreen) resize() {
-	var ev Event
 	w, h := s.physw, s.physh
-	if w != s.logw || h != s.logh {
-		ev = NewEventResize(w, h)
-		s.back = ResizeCells(s.back, s.logw, s.logh, w, h)
-		s.logw = w
-		s.logh = h
-	}
-	if ev != nil {
+	ow, oh := s.back.Size()
+	if w != ow || h != oh {
+		s.back.Resize(w, h)
+		ev := NewEventResize(w, h)
 		s.PostEvent(ev)
 	}
 }
@@ -465,7 +442,7 @@ func (s *simscreen) Sync() {
 	s.Lock()
 	s.clear = true
 	s.resize()
-	InvalidateCells(s.back)
+	s.back.Invalidate()
 	s.draw()
 	s.Unlock()
 }

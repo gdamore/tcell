@@ -128,11 +128,10 @@ func mkStyle(fg, bg Attribute) tcell.Style {
 
 func Clear(fg, bg Attribute) {
 	st := mkStyle(fg, bg)
-	screen.Clear()
 	w, h := screen.Size()
 	for row := 0; row < h; row++ {
 		for col := 0; col < w; col++ {
-			screen.SetCell(col, row, st, ' ')
+			screen.SetContent(col, row, ' ', nil, st)
 		}
 	}
 }
@@ -183,7 +182,7 @@ func Sync() error {
 
 func SetCell(x, y int, ch rune, fg, bg Attribute) {
 	st := mkStyle(fg, bg)
-	screen.SetCell(x, y, st, ch)
+	screen.SetContent(x, y, ch, nil, st)
 }
 
 type EventType uint8

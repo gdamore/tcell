@@ -21,119 +21,159 @@ import (
 // Cell represents a single character cell.  This is primarily intended for
 // use by Screen implementors.
 type Cell struct {
-	Ch    []rune
-	Dirty bool
-	Width uint8
-	Style Style
+	currMain  rune
+	currComb  []rune
+	currStyle Style
+	lastMain  rune
+	lastStyle Style
+	lastComb  []rune
+	width     int
 }
 
-// ClearCells clears the entire set of cells, making them all whitespace with
-// the provided attribute.
-func ClearCells(c []Cell, style Style) {
-	for i := range c {
-		c[i].Ch = nil
-		c[i].Style = style
-		c[i].Width = 1
-		c[i].Dirty = true
-	}
+type cell struct {
+	currMain  rune
+	currComb  []rune
+	currStyle Style
+	lastMain  rune
+	lastStyle Style
+	lastComb  []rune
+	width     int
 }
 
-// InvalidateCells marks all cells in the array dirty.
-func InvalidateCells(c []Cell) {
-	for i := range c {
-		c[i].Dirty = true
-	}
+type CellBuffer struct {
+	w     int
+	h     int
+	cells []cell
 }
 
-// ResizeCells is used to create a new cells array, with different dimensions,
-// while preserving the original contents.  The returned array may be the same
-// as the original, if we can reuse it.  Hence, the old array should no longer
-// be used by the caller after this call.  The cells will be marked dirty so
-// that they can be redrawn.
-func ResizeCells(oldc []Cell, oldw, oldh, neww, newh int) []Cell {
+func (cb *CellBuffer) SetContent(x int, y int,
+	mainc rune, combc []rune, style Style) {
 
-	if oldh == newh && oldw == neww {
-		return oldc
-	}
-	newc := oldc
+	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
+		c := &cb.cells[(y*cb.w)+x]
 
-	// Probably are other conditions where we could reuse, but if there is
-	// any doubt at all, its easier & safest to just realloc the window.
-	if newh > oldh || neww > oldw {
-		newc = make([]Cell, neww*newh)
-	}
-	for row := 0; row < newh && row < oldh; row++ {
-		for col := 0; col < oldw && col < neww; col++ {
-			newc[(row*neww)+col] = oldc[(row*oldw)+col]
-			newc[(row*neww)+col].Dirty = true
+		i := 0
+		for i < len(combc) {
+			r := combc[i]
+			if runewidth.RuneWidth(r) != 0 {
+				// not a combining character, yank it
+				combc = append(combc[:i-1], combc[i+1:]...)
+				continue
+			}
+			i++
 		}
+
+		if c.currMain != mainc {
+			c.width = runewidth.RuneWidth(mainc)
+			c.width = 1
+		}
+		c.currMain = mainc
+		c.currComb = combc
+		c.currStyle = style
 	}
-	return newc
 }
 
-// SetCell writes the contents into the cell.  It ensures that at most one
-// nonzero width rune is present in the Ch array (and if any zero width runes
-// are present without a non-zero one, then a space is inserted), and updates
-// the Dirty bit if the contents are different than they were.
-func (c *Cell) SetCell(ch []rune, style Style) {
-
-	c.PutChars(ch)
-	c.PutStyle(style)
-}
-
-// PutChars is a handy way to write runes to the Cell, without changing its
-// style.  The first rune should be a printable non-zero width value, and
-// subsequent values may be combining marks.
-func (c *Cell) PutChars(ch []rune) {
-
+func (cb *CellBuffer) GetContent(x, y int) (rune, []rune, Style, int) {
 	var mainc rune
-	var width uint8
-	var compc []rune
-
-	width = 1
-	mainc = ' '
-	for _, r := range ch {
-		if r < ' ' {
-			// skip over non-printable control characters
-			continue
-		}
-		switch runewidth.RuneWidth(r) {
-		case 1:
-			mainc = r
+	var combc []rune
+	var style Style
+	var width int
+	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
+		c := &cb.cells[(y*cb.w)+x]
+		mainc, combc, style = c.currMain, c.currComb, c.currStyle
+		if width = c.width; width == 0 || mainc < ' ' {
 			width = 1
-		case 2:
-			mainc = r
-			width = 2
-		case 0:
-			compc = append(compc, r)
+			mainc = ' '
 		}
 	}
+	return mainc, combc, style, width
+}
 
-	newch := append([]rune{mainc}, compc...)
-	if len(newch) != len(c.Ch) {
-		c.Dirty = true
-	} else {
-		for i := range newch {
-			if newch[i] != c.Ch[i] {
-				c.Dirty = true
+func (cb *CellBuffer) Size() (int, int) {
+	return cb.w, cb.h
+}
+
+func (cb *CellBuffer) Invalidate() {
+	for i := range cb.cells {
+		cb.cells[i].lastMain = rune(0)
+	}
+}
+
+func (cb *CellBuffer) Dirty(x, y int) bool {
+	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
+		c := &cb.cells[(y*cb.w)+x]
+		if c.lastMain == rune(0) {
+			return true
+		}
+		if c.lastMain != c.currMain {
+			return true
+		}
+		if c.lastStyle != c.currStyle {
+			return true
+		}
+		if len(c.lastComb) != len(c.currComb) {
+			return true
+		}
+		for i := range c.lastComb {
+			if c.lastComb[i] != c.currComb[i] {
+				return true
 			}
 		}
 	}
-	c.Ch = newch
-	c.Width = width
+	return false
 }
 
-// PutChar writes a single rune into the cells location.  The rune should be a
-// a normal (not combining) printable character.
-func (c *Cell) PutChar(ch rune) {
-	c.PutChars([]rune{ch})
+func (cb *CellBuffer) SetDirty(x, y int, dirty bool) {
+	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
+		c := &cb.cells[(y*cb.w)+x]
+		if dirty {
+			c.lastMain = rune(0)
+		} else {
+			if c.currMain == rune(0) {
+				c.currMain = ' '
+			}
+			c.lastMain = c.currMain
+			c.lastComb = c.currComb
+			c.lastStyle = c.currStyle
+		}
+	}
 }
 
-// PutStyle changes the style of the given Cell, without altering the character
-// content.
-func (c *Cell) PutStyle(style Style) {
-	if c.Style != style {
-		c.Style = style
-		c.Dirty = true
+// Resize is used to resize the cells array, with different dimensions,
+// while preserving the original contents.  The cells will be invalidated
+// so that they can be redrawn.
+func (cb *CellBuffer) Resize(w, h int) {
+
+	if cb.h == h && cb.w == w {
+		return
+	}
+
+	newc := make([]cell, w*h)
+	for y := 0; y < h && y < cb.h; y++ {
+		for x := 0; x < w && x < cb.w; x++ {
+			oc := &cb.cells[(y*cb.w)+x]
+			nc := &newc[(y*w)+x]
+			nc.currMain = oc.currMain
+			nc.currComb = oc.currComb
+			nc.currStyle = oc.currStyle
+			nc.width = oc.width
+			nc.lastMain = rune(0)
+		}
+	}
+	cb.cells = newc
+	cb.h = h
+	cb.w = w
+}
+
+// Fill fills the entire cell buffer array with the specified character
+// and style.  Normally choose ' ' to clear the screen.  This API doesn't
+// support combining characters.  (Why would you want to fill with combining
+// characters?!?)
+func (cb *CellBuffer) Fill(r rune, style Style) {
+	for i := range cb.cells {
+		c := &cb.cells[i]
+		c.currMain = r
+		c.currComb = nil
+		c.currStyle = style
 	}
 }

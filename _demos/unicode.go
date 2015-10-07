@@ -47,23 +47,23 @@ func Puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
 			}
 		case 1:
 			if len(deferred) != 0 {
-				s.SetCell(x+i, y, style, deferred...)
+				s.SetContent(x+i, y, deferred[0], deferred[1:], style)
 				i += dwidth
 			}
-			deferred = deferred[0:0]
+			deferred = nil
 			dwidth = 1
 		case 2:
 			if len(deferred) != 0 {
-				s.SetCell(x+i, y, style, deferred...)
+				s.SetContent(x+i, y, deferred[0], deferred[1:], style)
 				i += dwidth
 			}
-			deferred = deferred[0:0]
+			deferred = nil
 			dwidth = 2
 		}
 		deferred = append(deferred, r)
 	}
 	if len(deferred) != 0 {
-		s.SetCell(x+i, y, style, deferred...)
+		s.SetContent(x+i, y, deferred[0], deferred[1:], style)
 		i += dwidth
 	}
 }
