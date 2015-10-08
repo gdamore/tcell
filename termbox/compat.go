@@ -289,7 +289,7 @@ func makeEvent(tev tcell.Event) Event {
 		if k == tcell.KeyRune {
 			ch = tev.Rune()
 		}
-		mod := tev.Mod()
+		mod := tev.Modifiers()
 		return Event{
 			Type: EventKey,
 			Key:  Key(k),
