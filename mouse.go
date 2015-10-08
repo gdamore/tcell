@@ -22,18 +22,18 @@ import (
 // events.  It is also sent on mouse motion events - if the terminal supports
 // it.  We make every effort to ensure that mouse release events are delivered.
 // Hence, click drag can be identified by a motion event with the mouse down,
-// without any intervening button release.
+// without any intervening button release.  On some terminals only the initiating
+// press and terminating release event will be delivered.
 //
 // Mouse wheel events, when reported, may appear on their own as individual
 // impulses; that is, there will normally not be a release event delivered
 // for mouse wheel movements.
 //
 // Most terminals cannot report the state of more than one button at a time --
-// and many cannot report motion events.  (Windows consoles, modern XTerm, and
-// modern emulators like iTerm2, are known to support this well, though.)
+// and some cannot report motion events unless a button is pressed.
 //
-// Applications can inspect the time between events to figure out double clicks
-// and such.
+// Applications can inspect the time between events to resolve double or
+// triple clicks.
 type EventMouse struct {
 	t   time.Time
 	btn ButtonMask
@@ -42,11 +42,12 @@ type EventMouse struct {
 	y   int
 }
 
+// When returns the time when this EventMouse was created.
 func (ev *EventMouse) When() time.Time {
 	return ev.t
 }
 
-// ButtonMask returns the list of buttons that were pressed.
+// Buttons returns the list of buttons that were pressed or wheel motions.
 func (ev *EventMouse) Buttons() ButtonMask {
 	return ev.btn
 }
@@ -69,26 +70,27 @@ func NewEventMouse(x, y int, btn ButtonMask, mod ModMask) *EventMouse {
 	return &EventMouse{t: time.Now(), x: x, y: y, btn: btn, mod: mod}
 }
 
-// BtnMask is a mask of mouse buttons.
+// ButtonMask is a mask of mouse buttons and wheel events.  Mouse button presses
+// are normally delivered as both press and release events.  Mouse wheel events
+// are normally just single impulse events.  Windows supports up to eight
+// separate buttons plus all four wheel directions, but XTerm can only support
+// mouse buttons 1-3 and wheel up/down.  Its not unheard of for terminals
+// to support only one or two buttons (think Macs).  Old terminals, and true
+// emulations (such as vt100) won't support mice at all, of course.
 type ButtonMask int16
 
 const (
-	// Button1 is usually the left mouse button.
-	Button1 ButtonMask = 1 << iota
-	// Button2 is usually the middle mouse button, for three button mice.
-	Button2
-	// Button3 is usually the right mouse button on 2 or 3 button mice.
-	Button3
-	Button4
-	Button5
+	Button1 ButtonMask = 1 << iota // Usually left mouse button.
+	Button2                        // Usually the middle mouse button.
+	Button3                        // Usually the right mouse button.
+	Button4                        // Often a side button (thumb/next).
+	Button5                        // Often a side button (thumb/prev).
 	Button6
 	Button7
 	Button8
-	// WheelUp indicates the wheel being moved up, away from the user.
-	WheelUp
-	// WheelDown indicates the wheel being moved down, towards the user.
-	WheelDown
-	WheelLeft
-	WheelRight
+	WheelUp                   // Wheel motion up/away from user.
+	WheelDown                 // Wheel motion down/towards user.
+	WheelLeft                 // Wheel motion to left.
+	WheelRight                // Wheel motion to right.
+	ButtonNone ButtonMask = 0 // No button or wheel events.
 )
-const ButtonNone ButtonMask = 0

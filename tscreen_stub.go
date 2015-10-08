@@ -16,16 +16,12 @@
 
 package tcell
 
-import (
-	"errors"
-)
-
 // This stub file is for systems that have no termios.
 
 type termiosPrivate struct{}
 
 func (t *tScreen) termioInit() error {
-	return errors.New("no termios support on this platform")
+	return ErrNoScreen
 }
 
 func (t *tScreen) termioFini() {
@@ -36,5 +32,5 @@ func (t *tScreen) getCharset() string {
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {
-	return 0, 0, errors.New("no termios support on this platform")
+	return 0, 0, ErrNoScreen
 }

@@ -70,11 +70,11 @@ func (ev *EventKey) Key() Key {
 	return ev.key
 }
 
-// ModMask returns the modifiers that were present with the key press.  Note
+// Modifiers returns the modifiers that were present with the key press.  Note
 // that not all platforms and terminals support this equally well, and some
 // cases we will not not know for sure.  Hence, applications should avoid
 // using this in most circumstances.
-func (ev *EventKey) Mod() ModMask {
+func (ev *EventKey) Modifiers() ModMask {
 	return ev.mod
 }
 
@@ -397,5 +397,5 @@ const (
 	KeyEscape     = KeyESC
 	KeyEnter      = KeyCR
 	KeySpace      = KeySP
-	KeyBackspace2 = KeyDEL // This is delete back, not forward
+	KeyBackspace2 = KeyDEL
 )

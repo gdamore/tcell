@@ -15,6 +15,7 @@
 package tcell
 
 import (
+	"strings"
 	"sync"
 
 	"golang.org/x/text/encoding"
@@ -22,10 +23,15 @@ import (
 
 var encodings map[string]encoding.Encoding
 var encodingLk sync.Mutex
+var encodingFallback EncodingFallback = EncodingFallbackFail
 
 // RegisterEncoding may be called by the application to register an encoding.
 // The presence of additional encodings will facilitate application usage with
 // terminal environments where the I/O subsystem does not support Unicode.
+//
+// Windows systems use Unicode natively, and do not need any of the encoding
+// subsystem when using Windows Console screens.
+//
 // Please see the Go documentation for golang.org/x/text/encoding -- most of
 // the common ones exist already as stock variables.  For example, ISO8859-15
 // can be registered using the following code:
@@ -43,15 +49,11 @@ var encodingLk sync.Mutex
 // These are expected to have the following pattern:
 //
 //	 $language[.$codeset[@$variant]
-
+//
 // We extract only the $codeset part, which will usually be something like
 // UTF-8 or ISO8859-15 or KOI8-R.  Note that if the locale is either "POSIX"
 // or "C", then we assume US-ASCII (the POSIX 'portable character set'
 // and assume all other characters are somehow invalid.)
-//
-// On Windows systems, the Console is assumed to be UTF-16LE.  As we
-// communicate with the console subsystem using UTF-16LE, no conversions are
-// necessary.  So none of this is required for Windows systems.
 //
 // Modern POSIX systems and terminal emulators may use UTF-8, and for those
 // systems, this API is also unnecessary.  For example, Darwin (MacOS X) and
@@ -64,12 +66,43 @@ var encodingLk sync.Mutex
 // increase quite a bit as each encoding is added.  The East Asian encodings
 // have been seen to add 100-200K per encoding to the application size.
 //
-func RegisterEncoding(name string, enc encoding.Encoding) {
+func RegisterEncoding(charset string, enc encoding.Encoding) {
 	encodingLk.Lock()
-	if encodings == nil {
-		encodings = make(map[string]encoding.Encoding)
-	}
-	encodings[name] = enc
+	charset = strings.ToLower(charset)
+	encodings[charset] = enc
+	encodingLk.Unlock()
+}
+
+// EncodingFallback describes how the system behavees when the locale
+// requires a character set that we do not support.  The system always
+// supports UTF-8 and US-ASCII. On Windows consoles, UTF-16LE is also
+// supported automatically.  Other character sets must be added using the
+// RegisterEncoding API.  (A large group of nearly all of them can be
+// added using the RegisterAll function in the encoding sub package.)
+type EncodingFallback int
+
+const (
+	// EncodingFallbackFail behavior causes GetEncoding to fail
+	// when it cannot find an encoding.
+	EncodingFallbackFail = iota
+
+	// EncodingFallbackASCII behaviore causes GetEncoding to fall back
+	// to a 7-bit ASCII encoding, if no other encoding can be found.
+	EncodingFallbackASCII
+
+	// EncodingFallbackUTF8 behavior causes GetEncoding to assume
+	// UTF8 can pass unmodified upon failure.  Note that this behavior
+	// is not recommended, unless you are sure your terminal can cope
+	// with real UTF8 sequences.
+	EncodingFallbackUTF8
+)
+
+// SetEncodingFallback changes the behavior of GetEncoding when a suitable
+// encoding is not found.  The default is EncodingFallbackFail, which
+// causes GetEncoding to simply return nil.
+func SetEncodingFallback(fb EncodingFallback) {
+	encodingLk.Lock()
+	encodingFallback = fb
 	encodingLk.Unlock()
 }
 
@@ -77,11 +110,25 @@ func RegisterEncoding(name string, enc encoding.Encoding) {
 // for the given character set name.  Note that this will return nil for
 // either the Unicode (UTF-8) or ASCII encodings, since we don't use
 // encodings for them but instead have our own native methods.
-func GetEncoding(name string) encoding.Encoding {
+func GetEncoding(charset string) encoding.Encoding {
+	charset = strings.ToLower(charset)
 	encodingLk.Lock()
 	defer encodingLk.Unlock()
-	if enc, ok := encodings[name]; ok {
+	if enc, ok := encodings[charset]; ok {
 		return enc
 	}
+	switch encodingFallback {
+	case EncodingFallbackASCII:
+		return ASCII
+	case EncodingFallbackUTF8:
+		return encoding.Nop
+	}
 	return nil
+}
+
+func init() {
+	// We always support UTF-8 and ASCII.
+	encodings = make(map[string]encoding.Encoding)
+	encodings["utf-8"] = UTF8
+	encodings["us-ascii"] = ASCII
 }

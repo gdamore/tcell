@@ -1,5 +1,3 @@
-// +build windows nacl plan9
-
 // Copyright 2015 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +14,21 @@
 
 package encoding
 
-func Register() {
-	// So Windows is only UTF-16LE (yay!)
+import (
+	"golang.org/x/text/encoding"
+)
 
-	// Other platforms that don't use termios/terminfo are pretty much unsupported.
-	// Therefore, we shouldn't bring in all this stuff because it creates a lot of
-	// bloat for those platforms.  So, just punt.
+// ISO8859_1 represents the 8-bit ISO8859-1 scheme.  It decodes directly to
+// UTF-8 without change, as all ISO8859-1 values are legal UTF-8.
+// Unicode values less than 256 (i.e. 8 bits) map 1:1 with 8859-1.
+// It encodes runes outside of that to 0x1A, the ASCII substitution character.
+var ISO8859_1 encoding.Encoding
+
+func init() {
+	cm := &cmap{}
+	cm.Init()
+
+	// No further mapping needed for ISO8859-1, as there is exactly a 1:1
+	// mapping between the Unicode and 8859-1 namespaces.
+	ISO8859_1 = cm
 }

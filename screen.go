@@ -29,24 +29,8 @@ type Screen interface {
 	// filling the screen with spaces, using the global default style.
 	Clear()
 
-	// SetCell sets the cell at the given location.
-	// The ch list contains at most one rune of width > 0, and the
-	// runes with zero width (combining marks) must follow the first
-	// non-zero width character.  (If only combining marks are present,
-	// a space character will be filled in.)
-	//
-	// Note that double wide runes occupy two cells, and attempts to
-	// place a character at the immediately adjacent cell will have
-	// undefined effects.  Double wide runes that are printed in the
-	// last column will be replaced with a single width space on output.
-	//
-	// SetCell may change the cursor location.  Callers should explictly
-	// save and restore cursor state if neccesary.  The cursor visibility
-	// is not affected, so callers probably should hide the cursor when
-	// calling this.
-	//
-	// Note that the results will not be visible until either Show() or
-	// Sync() are called.
+	// SetCell is an older API, and will be removed.  Please use
+	// SetContent instead; SetCell is implemented in terms of SetContent.
 	SetCell(x int, y int, style Style, ch ...rune)
 
 	// GetContent returns the contents at the given location.  If the
@@ -54,14 +38,23 @@ type Screen interface {
 	// StyleDefault.  Note that the contents returned are logical contents
 	// and may not actually be what is displayed, but rather are what will
 	// be displayed if Show() or Sync() is called.  The width is the width
-	// in screen cells - this should either be 1 or 2.
+	// in screen cells; most often this will be 1, but some East Asian
+	// characters require two cells.
 	GetContent(x, y int) (mainc rune, combc []rune, style Style, width int)
 
 	// SetContent sets the contents of the given cell location.  If
 	// the coordinates are out of range, then the operation is ignored.
+	//
 	// The first rune is the primary non-zero width rune.  The array
-	// that follows is a possible list of combining characters to append.
+	// that follows is a possible list of combining characters to append,
+	// and will usually be nil (no combining characters.)
+	//
 	// The results are not displayd until Show() or Sync() is called.
+	//
+	// Note that wide (East Asian full width) runes occupy two cells,
+	// and attempts to place character at next cell to the right will have
+	// undefined effects.  Wide runes that are printed in the
+	// last column will be replaced with a single width space on output.
 	SetContent(x int, y int, mainc rune, combc []rune, style Style)
 
 	// SetStyle sets the default style to use when clearing the screen
@@ -101,15 +94,18 @@ type Screen interface {
 	// return 0.
 	Colors() int
 
-	// Show takes any output that was deferred due to buffering, and
-	// flushes it to the physical display.  It does so in the most
-	// efficient and least visually disruptive manner possible.
+	// Show makes all the content changes made using SetContent() visible
+	// on the display.
+	//
+	// It does so in the most efficient and least visually disruptive
+	// manner possible.
 	Show()
 
 	// Sync works like Show(), but it updates every visible cell on the
 	// physical display, assuming that it is not synchronized with any
 	// internal model.  This may be both expensive and visually jarring,
 	// so it should only be used when believed to actually be necessary.
+	//
 	// Typically this is called as a result of a user-requested redraw
 	// (e.g. to clear up on screen corruption caused by some other program),
 	// or during a resize event.

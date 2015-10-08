@@ -18,18 +18,6 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// Cell represents a single character cell.  This is primarily intended for
-// use by Screen implementors.
-type Cell struct {
-	currMain  rune
-	currComb  []rune
-	currStyle Style
-	lastMain  rune
-	lastStyle Style
-	lastComb  []rune
-	width     int
-}
-
 type cell struct {
 	currMain  rune
 	currComb  []rune
@@ -40,12 +28,20 @@ type cell struct {
 	width     int
 }
 
+// CellBuffer represents a two dimensional array of character cells.
+// This is primarily intended for use by Screen implementors; it
+// contains much of the common code they need.  To create one, just
+// declare a variable of its type; no explicit initialization is necessary.
+//
+// CellBuffer is not thread safe.
 type CellBuffer struct {
 	w     int
 	h     int
 	cells []cell
 }
 
+// SetContent sets the contents (primary rune, combining runes,
+// and style) for a cell at a given location.
 func (cb *CellBuffer) SetContent(x int, y int,
 	mainc rune, combc []rune, style Style) {
 
@@ -65,7 +61,6 @@ func (cb *CellBuffer) SetContent(x int, y int,
 
 		if c.currMain != mainc {
 			c.width = runewidth.RuneWidth(mainc)
-			c.width = 1
 		}
 		c.currMain = mainc
 		c.currComb = combc
@@ -73,6 +68,10 @@ func (cb *CellBuffer) SetContent(x int, y int,
 	}
 }
 
+// GetContent returns the contents of a character cell, including the
+// primary rune, any combining character runes (which will usually be
+// nil), the style, and the display width in cells.  (The width can be
+// either 1, normally, or 2 for East Asian full-width characters.)
 func (cb *CellBuffer) GetContent(x, y int) (rune, []rune, Style, int) {
 	var mainc rune
 	var combc []rune
@@ -89,16 +88,22 @@ func (cb *CellBuffer) GetContent(x, y int) (rune, []rune, Style, int) {
 	return mainc, combc, style, width
 }
 
+// Size returns the (width, height) in cells of the buffer.
 func (cb *CellBuffer) Size() (int, int) {
 	return cb.w, cb.h
 }
 
+// Invalidate marks all characters within the buffer as dirty.
 func (cb *CellBuffer) Invalidate() {
 	for i := range cb.cells {
 		cb.cells[i].lastMain = rune(0)
 	}
 }
 
+// Dirty checks if a character at the given location needs an
+// to be refreshed on the physical display.  This returns true
+// if the cell content is different since the last time it was
+// marked clean.
 func (cb *CellBuffer) Dirty(x, y int) bool {
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		c := &cb.cells[(y*cb.w)+x]
@@ -123,6 +128,9 @@ func (cb *CellBuffer) Dirty(x, y int) bool {
 	return false
 }
 
+// SetDirty is normally used to indicate that a cell has
+// been displayed (in which case dirty is false), or to manually
+// force a cell to be marked dirty.
 func (cb *CellBuffer) SetDirty(x, y int, dirty bool) {
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		c := &cb.cells[(y*cb.w)+x]
@@ -167,8 +175,7 @@ func (cb *CellBuffer) Resize(w, h int) {
 
 // Fill fills the entire cell buffer array with the specified character
 // and style.  Normally choose ' ' to clear the screen.  This API doesn't
-// support combining characters.  (Why would you want to fill with combining
-// characters?!?)
+// support combining characters.
 func (cb *CellBuffer) Fill(r rune, style Style) {
 	for i := range cb.cells {
 		c := &cb.cells[i]

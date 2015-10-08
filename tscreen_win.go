@@ -16,26 +16,21 @@
 
 package tcell
 
-// On win32 we don't have support for termios.  We probably could, and
+// On Windows we don't have support for termios.  We probably could, and
 // may should, in a cygwin type environment.  Its not clear how to make
 // this all work nicely with both cygwin and Windows console, so we
 // decline to do so here.
 
-import (
-	"errors"
-)
-
 func (t *tScreen) termioInit() error {
-	return errors.New("no termios on Windows")
+	return ErrNoScreen
 }
 
 func (t *tScreen) termioFini() {
-
 	return
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {
-	return 0, 0, errors.New("no temrios on Windows")
+	return 0, 0, ErrNoScreen
 }
 
 func (t *tScreen) getCharset() string {

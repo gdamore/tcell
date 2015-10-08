@@ -227,9 +227,8 @@ func (t *tScreen) getCharset() string {
 
 func (t *tScreen) getWinSize() (int, int, error) {
 	var cx, cy C.int
-	if r, e := C.getwinsize(C.int(t.out.Fd()), &cx, &cy); r == 0 {
-		return int(cx), int(cy), nil
-	} else {
+	if r, e := C.getwinsize(C.int(t.out.Fd()), &cx, &cy); r != 0 {
 		return 0, 0, e
 	}
+	return int(cx), int(cy), nil
 }

@@ -16,7 +16,6 @@ package tcell
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"os"
 	"strconv"
@@ -91,17 +90,11 @@ func (t *tScreen) Init() error {
 	t.charset = "UTF-8"
 
 	t.charset = t.getCharset()
-	switch t.charset {
-	case "UTF-8", "US-ASCII":
-		t.encoder = nil
-		t.decoder = nil
-	default:
-		if enc := GetEncoding(t.charset); enc != nil {
-			t.encoder = enc.NewEncoder()
-			t.decoder = enc.NewDecoder()
-		} else {
-			return errors.New("no support for charset " + t.charset)
-		}
+	if enc := GetEncoding(t.charset); enc != nil {
+		t.encoder = enc.NewEncoder()
+		t.decoder = enc.NewDecoder()
+	} else {
+		return ErrNoCharset
 	}
 	ti := t.ti
 
@@ -292,12 +285,6 @@ func (t *tScreen) SetCell(x, y int, style Style, ch ...rune) {
 
 func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 
-	// all the character sets we care about are ASCII supersets
-	if r < 0x80 {
-		buf = append(buf, byte(r))
-		return buf
-	}
-
 	enc := t.encoder
 	if enc == nil {
 		// This is probably ASCII.  Only append a filler character
@@ -341,7 +328,6 @@ func (t *tScreen) drawCell(x, y int) int {
 	ti := t.ti
 
 	mainc, combc, style, width := t.cells.GetContent(x, y)
-
 	if !t.cells.Dirty(x, y) {
 		return width
 	}
@@ -394,26 +380,18 @@ func (t *tScreen) drawCell(x, y int) int {
 
 	var str string
 
-	switch t.charset {
-	case "UTF-8":
-		str = string(mainc)
-		if combc != nil {
-			str += string(combc)
-		}
-	default:
-		// Non-Unicode systems.  Make do.
-		buf := make([]byte, 0, 6)
+	buf := make([]byte, 0, 6)
 
-		buf = t.encodeRune(mainc, buf)
-		for _, r := range combc {
-			buf = t.encodeRune(r, buf)
-		}
+	buf = t.encodeRune(mainc, buf)
+	for _, r := range combc {
+		buf = t.encodeRune(r, buf)
+	}
 
-		str = string(buf)
-		if width > 1 && str == "?" {
-			// No FullWidth character support
-			str = "? "
-		}
+	str = string(buf)
+	if width > 1 && str == "?" {
+		// No FullWidth character support
+		str = "? "
+		t.cx = -1
 	}
 
 	// XXX: check for hazeltine not being able to display ~
@@ -426,6 +404,9 @@ func (t *tScreen) drawCell(x, y int) int {
 	io.WriteString(t.out, str)
 	t.cx += width
 	t.cells.SetDirty(x, y, false)
+	if width > 1 {
+		t.cx = -1
+	}
 
 	return width
 }
@@ -502,6 +483,14 @@ func (t *tScreen) draw() {
 	for y := 0; y < t.h; y++ {
 		for x := 0; x < t.w; x++ {
 			width := t.drawCell(x, y)
+			if width > 1 {
+				if x+1 < t.w {
+					// this is necessary so that if we ever
+					// go back to drawing that cell, we
+					// actually will *draw* it.
+					t.cells.SetDirty(x+1, y, true)
+				}
+			}
 			x += width - 1
 		}
 	}
@@ -750,7 +739,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 			state = 3
 
 		case '-':
-			if state != 3 || state != 4 || state != 5 {
+			if state != 3 && state != 4 && state != 5 {
 				return false, false
 			}
 			if dig || neg {
@@ -897,43 +886,28 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 	}
 
 	if b[0] < 0x80 {
-		// No encodings start with low numbered values
+		// Low numbered values are control keys, not runes.
 		return false, false
 	}
 
-	switch t.charset {
-	case "UTF-8":
-		if utf8.FullRune(b) {
-			r, _, e := buf.ReadRune()
-			if e == nil {
+	utfb := make([]byte, 12)
+	for l := 1; l <= len(b); l++ {
+		t.decoder.Reset()
+		nout, nin, e := t.decoder.Transform(utfb, b[:l], true)
+		if e == transform.ErrShortSrc {
+			continue
+		}
+		if nout != 0 {
+			r, _ := utf8.DecodeRune(utfb[:nout])
+			if r != utf8.RuneError {
 				ev := NewEventKey(KeyRune, r, ModNone)
 				t.PostEvent(ev)
-				return true, true
 			}
-		}
-	case "US-ASCII":
-		// ASCII cannot generate this, so most likely it was
-		// entered as an Alt sequence
-		ev := NewEventKey(KeyRune, rune(b[0]-128), ModAlt)
-		t.PostEvent(ev)
-		buf.ReadByte()
-		return true, true
-
-	default:
-		utfb := make([]byte, 12)
-		for l := 1; l <= len(b); l++ {
-			t.decoder.Reset()
-			nout, nin, _ := t.decoder.Transform(utfb, b[:l], true)
-			if nout != 0 {
-				if r, _ := utf8.DecodeRune(utfb[:nout]); r != utf8.RuneError {
-					ev := NewEventKey(KeyRune, r, ModNone)
-					t.PostEvent(ev)
-				}
-				for eat := 0; eat < nin; eat++ {
-					buf.ReadByte()
-				}
-				return true, true
+			for nin > 0 {
+				buf.ReadByte()
+				nin--
 			}
+			return true, true
 		}
 	}
 	// Looks like potential escape
@@ -983,8 +957,8 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		if partials == 0 || expire {
 			// Nothing was going to match, or we timed out
 			// waiting for more data -- just deliver the characters
-			// to the app & let them sort it out.  Possibly we should only
-			// do this for control characters such like ESC.
+			// to the app & let them sort it out.  Possibly we
+			// should only do this for control characters like ESC.
 			by, _ := buf.ReadByte()
 			ev := NewEventKey(KeyRune, rune(by), ModNone)
 			t.PostEvent(ev)

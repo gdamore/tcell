@@ -1,5 +1,3 @@
-// +build !windows,!nacl,!plan9
-
 // Copyright 2015 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,8 +24,16 @@ import (
 	"golang.org/x/text/encoding/traditionalchinese"
 )
 
+// Register registers all known encodings.  This is a short-cut to
+// add full character set support to your program.  Note that this can
+// add several megabytes to your program's size, because some of the encoodings
+// are rather large (particularly those from East Asia.)
 func Register() {
-	tcell.RegisterEncoding("ISO8859-1", charmap.ISO8859_15) // alias for now
+	// We supply latin1 and latin5, because Go doesn't
+	tcell.RegisterEncoding("ISO8859-1", ISO8859_1)
+	tcell.RegisterEncoding("ISO8859-9", ISO8859_9)
+
+	tcell.RegisterEncoding("ISO8859-10", charmap.ISO8859_10)
 	tcell.RegisterEncoding("ISO8859-13", charmap.ISO8859_13)
 	tcell.RegisterEncoding("ISO8859-14", charmap.ISO8859_14)
 	tcell.RegisterEncoding("ISO8859-15", charmap.ISO8859_15)
@@ -39,14 +45,12 @@ func Register() {
 	tcell.RegisterEncoding("ISO8859-6", charmap.ISO8859_6)
 	tcell.RegisterEncoding("ISO8859-7", charmap.ISO8859_7)
 	tcell.RegisterEncoding("ISO8859-8", charmap.ISO8859_8)
-	// ISO8859-9 is missing -- not present in GO, which is a shame since its basically
-	// almost 8859-1/-15.
 	tcell.RegisterEncoding("KOI8-R", charmap.KOI8R)
 	tcell.RegisterEncoding("KOI8-U", charmap.KOI8U)
 
 	// Asian stuff
 	tcell.RegisterEncoding("EUC-JP", japanese.EUCJP)
-	tcell.RegisterEncoding("Shift_JIS", japanese.ShiftJIS)
+	tcell.RegisterEncoding("SHIFT_JIS", japanese.ShiftJIS)
 	tcell.RegisterEncoding("ISO2022JP", japanese.ISO2022JP)
 
 	tcell.RegisterEncoding("EUC-KR", korean.EUCKR)
@@ -83,16 +87,28 @@ func Register() {
 		"ISO-8859-7":  "ISO8859-7",
 		"8859-8":      "ISO8859-8",
 		"ISO-8859-8":  "ISO8859-8",
+		"8859-9":      "ISO8859-9",
+		"ISO-8859-9":  "ISO8859-9",
 
 		"SJIS":        "Shift_JIS",
-		"eucJP":       "EUC-JP",
+		"EUCJP":       "EUC-JP",
 		"2022-JP":     "ISO2022JP",
 		"ISO-2022-JP": "ISO2022JP",
 
-		"eucKR": "EUC-KR",
+		"EUCKR": "EUC-KR",
+
+		// ISO646 isn't quite exactly ASCII, but the 1991 IRV
+		// (international reference version) is so.  This helps
+		// some older systems that may use "646" for POSIX locales.
+		"646":    "US-ASCII",
+		"ISO646": "US-ASCII",
+
+		// Other names for UTF-8
+		"UTF8": "UTF-8",
 	}
 	for n, v := range aliases {
-		tcell.RegisterEncoding(n, tcell.GetEncoding(v))
+		if enc := tcell.GetEncoding(v); enc != nil {
+			tcell.RegisterEncoding(n, enc)
+		}
 	}
-
 }

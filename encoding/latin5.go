@@ -12,31 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package encoding
 
 import (
-	"time"
+	"golang.org/x/text/encoding"
 )
 
-// EventResize is sent when the window size changes.
-type EventResize struct {
-	t time.Time
-	w int
-	h int
-}
+// ISO8859_9 represents the 8-bit ISO8859-1 scheme.  It decodes to UTF-8
+// unchanged for all 256 positions except for six positions.
+var ISO8859_9 encoding.Encoding
 
-// NewEventResize creates an EventResize with the new updated window size,
-// which is given in character cells.
-func NewEventResize(width, height int) *EventResize {
-	return &EventResize{t: time.Now(), w: width, h: height}
-}
-
-// When returns the time when the Event was created.
-func (ev *EventResize) When() time.Time {
-	return ev.t
-}
-
-// Size returns the new window size as width, height in character cells.
-func (ev *EventResize) Size() (int, int) {
-	return ev.w, ev.h
+func init() {
+	cm := &cmap{}
+	cm.Init()
+	cm.Map(0xD0, 'Ğ')
+	cm.Map(0xDD, 'İ')
+	cm.Map(0xDE, 'Ş')
+	cm.Map(0xF0, 'ğ')
+	cm.Map(0xFD, 'ı')
+	cm.Map(0xFE, 'ş')
+	ISO8859_9 = cm
 }

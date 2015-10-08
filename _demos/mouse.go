@@ -24,14 +24,23 @@ import (
 
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/encoding"
+
+	"github.com/mattn/go-runewidth"
 )
 
 var defStyle tcell.Style
 
 func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
 	for _, c := range str {
-		s.SetContent(x, y, c, nil, style)
-		x++
+		var comb []rune
+		w := runewidth.RuneWidth(c)
+		if w == 0 {
+			comb = []rune{c}
+			c = ' '
+			w = 1
+		}
+		s.SetContent(x, y, c, comb, style)
+		x += w
 	}
 }
 
@@ -81,7 +90,7 @@ func drawSelect(s tcell.Screen, x1, y1, x2, y2 int, sel bool) {
 			}
 			style = style.Reverse(sel)
 			s.SetContent(col, row, mainc, combc, style)
-			col += width-1
+			col += width - 1
 		}
 	}
 }

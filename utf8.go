@@ -15,28 +15,20 @@
 package tcell
 
 import (
-	"time"
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/transform"
 )
 
-// EventResize is sent when the window size changes.
-type EventResize struct {
-	t time.Time
-	w int
-	h int
+type validUtf8 struct{}
+
+// UTF8 is an encoding for UTF-8.  All it does is verify that the UTF-8
+// in is valid.
+var UTF8 encoding.Encoding = validUtf8{}
+
+func (validUtf8) NewDecoder() transform.Transformer {
+	return encoding.UTF8Validator
 }
 
-// NewEventResize creates an EventResize with the new updated window size,
-// which is given in character cells.
-func NewEventResize(width, height int) *EventResize {
-	return &EventResize{t: time.Now(), w: width, h: height}
-}
-
-// When returns the time when the Event was created.
-func (ev *EventResize) When() time.Time {
-	return ev.t
-}
-
-// Size returns the new window size as width, height in character cells.
-func (ev *EventResize) Size() (int, int) {
-	return ev.w, ev.h
+func (validUtf8) NewEncoder() transform.Transformer {
+	return encoding.UTF8Validator
 }

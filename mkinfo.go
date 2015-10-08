@@ -269,7 +269,7 @@ func dotGoAddArr(w io.Writer, n string, a []string) {
 	if len(a) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "		%-13s []string{ ", n+":")
+	fmt.Fprintf(w, "		%-13s []string{", n+":")
 	did := false
 	for _, b := range a {
 		if did {
@@ -278,7 +278,7 @@ func dotGoAddArr(w io.Writer, n string, a []string) {
 		did = true
 		fmt.Fprintf(w, "%q", b)
 	}
-	fmt.Fprintln(w, " },")
+	fmt.Fprintln(w, "},")
 }
 
 func dotGoHeader(w io.Writer) {

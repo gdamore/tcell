@@ -47,12 +47,17 @@ type cScreen struct {
 	sync.Mutex
 }
 
-// all Windows systems are little endian
 var k32 = syscall.NewLazyDLL("kernel32.dll")
 
+// We have to bring in the kernel32.dll directly, so we can get access to some
+// system calls that the core Go API lacks.
+//
 // Note that Windows appends some functions with W to indicate that wide
 // characters (Unicode) are in use.  The documentation refers to them
 // without this suffix, as the resolution is made via preprocessor.
+// We have to bring in the kernel32.dll directly, so we can get access to some
+// system calls that the core Go API lacks.
+
 var (
 	procReadConsoleInput           = k32.NewProc("ReadConsoleInputW")
 	procGetConsoleCursorInfo       = k32.NewProc("GetConsoleCursorInfo")
@@ -68,9 +73,9 @@ var (
 	procSetConsoleTextAttribute    = k32.NewProc("SetConsoleTextAttribute")
 )
 
-// We have to bring in the kernel32.dll directly, so we can get access to some
-// system calls that the core Go API lacks.
-
+// NewConsoleScreen returns a Screen for the Windows console associated
+// with the current process.  The Screen makes use of the Windows Console
+// API to display content and read events.
 func NewConsoleScreen() (Screen, error) {
 	return &cScreen{}, nil
 }
@@ -218,8 +223,8 @@ func (s *cScreen) doCursor() {
 	}
 }
 
-func (c *cScreen) HideCursor() {
-	c.ShowCursor(-1, -1)
+func (s *cScreen) HideCursor() {
+	s.ShowCursor(-1, -1)
 }
 
 type charInfo struct {
@@ -511,6 +516,15 @@ func (s *cScreen) getConsoleInput() error {
 		if mrec.btns&0x10 != 0 {
 			btns |= Button5
 		}
+		if mrec.btns&0x20 != 0 {
+			btns |= Button6
+		}
+		if mrec.btns&0x40 != 0 {
+			btns |= Button7
+		}
+		if mrec.btns&0x80 != 0 {
+			btns |= Button8
+		}
 
 		if mrec.flags&mouseVWheeled != 0 {
 			if mrec.btns&0x80000000 == 0 {
@@ -701,7 +715,7 @@ func (s *cScreen) draw() {
 					continue
 				}
 			}
-			if x > s.w - width {
+			if x > s.w-width {
 				mainc = ' '
 				combc = nil
 				width = 1

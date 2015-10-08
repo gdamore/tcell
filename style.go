@@ -23,12 +23,12 @@ package tcell
 // Note that not all terminals can display all colors or attributes, and
 // many might have specific incompatibilities between specific attributes
 // and color combinations.
+//
+// To use Style, just declare a variable of its type.
 type Style int64
 
-func NewStyle() Style {
-	return Style(0)
-}
-
+// StyleDefault represents a default style, based upon the context.
+// It is the zero value.
 const StyleDefault Style = 0
 
 // Foreground returns a new style based on s, with the foreground color set
@@ -54,9 +54,8 @@ func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
 func (s Style) setAttrs(attrs Style, on bool) Style {
 	if on {
 		return s | (attrs << 32)
-	} else {
-		return s &^ (attrs << 32)
 	}
+	return s &^ (attrs << 32)
 }
 
 // Normal returns the style with all attributes disabled.
@@ -89,7 +88,7 @@ func (s Style) Reverse(on bool) Style {
 	return s.setAttrs(Style(AttrReverse), on)
 }
 
-// Reverse returns a new style based on s, with the underline attribute set
+// Underline returns a new style based on s, with the underline attribute set
 // as requested.
 func (s Style) Underline(on bool) Style {
 	return s.setAttrs(Style(AttrUnderline), on)

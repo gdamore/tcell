@@ -43,6 +43,7 @@ go build mkinfo.go
 # first make the database.go file
 echo "Building Go database"
 ./mkinfo -go database.go `cat models.txt aliases.txt`
+go fmt database.go
 
 echo "Building JSON database"
 

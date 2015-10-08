@@ -188,9 +188,8 @@ func (st stack) PushBool(i bool) stack {
 func nextch(s string, index int) (byte, int) {
 	if index < len(s) {
 		return s[index], index + 1
-	} else {
-		return 0, index
 	}
+	return 0, index
 }
 
 // static vars
@@ -461,6 +460,12 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 	return out.String()
 }
 
+// TPuts emits the string to the writer, but expands inline padding
+// indications (of the form $<[delay]> where [delay] is msec) to
+// a suitable number of padding characters (usually null bytes) based
+// upon the supplied baud.  At high baud rates, more padding characters
+// will be inserted.  All Terminfo based strings should be emitted using
+// this function.
 func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
 	for {
 		beg := strings.Index(s, "$<")
@@ -515,7 +520,7 @@ func (t *Terminfo) TGoto(col, row int) string {
 	return t.TParm(t.SetCursor, row, col)
 }
 
-// Color returns a string corresponding to the given foreground and background
+// TColor returns a string corresponding to the given foreground and background
 // colors.  Either fg or bg can be set to -1 to elide.
 func (t *Terminfo) TColor(fg, bg Color) string {
 	fi := int(fg - 1)
@@ -567,21 +572,21 @@ func AddTerminfo(t *Terminfo) {
 }
 
 func loadFromFile(fname string, term string) (*Terminfo, error) {
-	if f, e := os.Open(fname); e != nil {
-		return nil, ErrNoDatabase
-	} else {
-		d := json.NewDecoder(f)
-		for {
-			t := &Terminfo{}
-			if e := d.Decode(t); e != nil {
-				if e == io.EOF {
-					return nil, ErrTermNotFound
-				}
-				return nil, e
+	f, e := os.Open(fname)
+	if e != nil {
+		return nil, e
+	}
+	d := json.NewDecoder(f)
+	for {
+		t := &Terminfo{}
+		if e := d.Decode(t); e != nil {
+			if e == io.EOF {
+				return nil, ErrTermNotFound
 			}
-			if t.Name == term {
-				return t, nil
-			}
+			return nil, e
+		}
+		if t.Name == term {
+			return t, nil
 		}
 	}
 }
@@ -599,21 +604,17 @@ func LookupTerminfo(name string) (*Terminfo, error) {
 	dblock.Unlock()
 
 	if t == nil {
-		var e error
 		// Load the database located here.  Its expected that TCELLSDB
 		// points either to a single JSON file, or to a directory of
 		// of files all of which should be loaded.
 		if pth := os.Getenv("TCELLDB"); pth != "" {
-			t, e = loadFromFile(pth, name)
+			t, _ = loadFromFile(pth, name)
 		} else {
 			pth = path.Join(os.Getenv("GOPATH"), "src",
 				"github.com", "gdamore", "tcell",
 				"database.json")
-			t, e = loadFromFile(pth, name)
+			t, _ = loadFromFile(pth, name)
 
-		}
-		if t == nil {
-			return nil, e
 		}
 		if t != nil {
 			dblock.Lock()
