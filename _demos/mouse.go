@@ -14,8 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// boxes just displays random colored boxes on your terminal screen.
-// Press ESC to exit the program.
+// mouse displays a text box and tests mouse interaction.  As you click
+// and drag, boxes are displayed on screen.  Other events are reported in
+// the box.  Press ESC twice to exit the program.
 package main
 
 import (
