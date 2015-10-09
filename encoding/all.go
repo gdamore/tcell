@@ -15,6 +15,7 @@
 package encoding
 
 import (
+	"github.com/gdamore/encoding"
 	"github.com/gdamore/tcell"
 
 	"golang.org/x/text/encoding/charmap"
@@ -30,8 +31,8 @@ import (
 // are rather large (particularly those from East Asia.)
 func Register() {
 	// We supply latin1 and latin5, because Go doesn't
-	tcell.RegisterEncoding("ISO8859-1", ISO8859_1)
-	tcell.RegisterEncoding("ISO8859-9", ISO8859_9)
+	tcell.RegisterEncoding("ISO8859-1", encoding.ISO8859_1)
+	tcell.RegisterEncoding("ISO8859-9", encoding.ISO8859_9)
 
 	tcell.RegisterEncoding("ISO8859-10", charmap.ISO8859_10)
 	tcell.RegisterEncoding("ISO8859-13", charmap.ISO8859_13)

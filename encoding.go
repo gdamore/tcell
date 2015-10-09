@@ -17,8 +17,10 @@ package tcell
 import (
 	"strings"
 	"sync"
-
+	
 	"golang.org/x/text/encoding"
+
+	gencoding "github.com/gdamore/encoding"
 )
 
 var encodings map[string]encoding.Encoding
@@ -119,7 +121,7 @@ func GetEncoding(charset string) encoding.Encoding {
 	}
 	switch encodingFallback {
 	case EncodingFallbackASCII:
-		return ASCII
+		return gencoding.ASCII
 	case EncodingFallbackUTF8:
 		return encoding.Nop
 	}
@@ -129,6 +131,6 @@ func GetEncoding(charset string) encoding.Encoding {
 func init() {
 	// We always support UTF-8 and ASCII.
 	encodings = make(map[string]encoding.Encoding)
-	encodings["utf-8"] = UTF8
-	encodings["us-ascii"] = ASCII
+	encodings["utf-8"] = gencoding.UTF8
+	encodings["us-ascii"] = gencoding.ASCII
 }
