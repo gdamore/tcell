@@ -42,8 +42,8 @@ that required for every POSIX program.
 
 ## No async IO
 
-Termbox code is able to operate without requiring
-SIGIO signals, or asynchronous I/O, and can instead use standard Go file
+Tcell is able to operate without requiring SIGIO signals (unlike Termbox),
+or asynchronous I/O, and can instead use standard Go file
 objects and Go routines.  This means it should be safe, especially for
 use with programs that use exec, or otherwise need to manipulate the
 tty streams.  This model is also much closer to idiomatic Go, leading
@@ -58,7 +58,7 @@ Windows terminals generally don't support the full Unicode repertoire.
 It will also convert to and from Unicode locales, so that the program
 can work with UTF-8 internally, and get reasonable output in other locales.
 We try hard to convert to native characters on both input and output, and
-on output we even make use of the alternate character set to facilitate
+on output Tcell even makes use of the alternate character set to facilitate
 drawing certain characters.
 
 ## More Function Keys
@@ -72,7 +72,7 @@ Tcell will respect your terminal's color space as specified within your terminfo
 entries, so that for example attempts to emit color sequences on VT100 terminals
 won't result in unintended consequences.
 
-In Windows mode, we support 16 colors, underline, bold, dim, and reverse,
+In Windows mode, Tcell supports 16 colors, bold, dim, and reverse,
 instead of just termbox's 8 colors with reverse.  (Note that there is some
 conflation with bold/dim and colors.)
 
@@ -81,7 +81,7 @@ Tcell maps 16 colors down to 8, for Terminals that need it.  (The upper
 
 ## Better mouse support
 
-It supports enhanced mouse tracking mode, so your application can receive
+Tcell supports enhanced mouse tracking mode, so your application can receive
 regular mouse motion events, and wheel events, if your terminal supports it.
 
 ## Why not just patch termbox-go?
@@ -100,21 +100,21 @@ modification.
 
 ## Working With Unicode
 
-Internally Tcell uses UTF-8, just like Go.  However, it understands how to
+Internally Tcell uses UTF-8, just like Go.  However, Tcell understands how to
 convert to and from other character sets, using the capabilities of
 the golang.org/x/text/encoding packages.  Your application must supply
 them, as the full set of the most common ones bloats the program by about
-2MB.  If you're lazy, and want them all anyway, see the tcell/encoding
-sub package.
+2MB.  If you're lazy, and want them all anyway, see the encoding
+sub-directory.
 
 ## Wide & Combining Characters
 
-The Setcell() API takes a sequence of runes; exactly least one of them should
-be a non-zero width.  Combining runes may follow.  If any of the runes
-is a wide (East Asian) rune occupying two cells, then the library will skip
-output from the following cell, but care must be taken in the application to
-avoid explicitly attempting to set content in the next cell, otherwise the
-results are undefined.  (Normally the wide character will not be displayed.)
+The SetContent() API takes a primary rune, and an optional list of combining
+runes.  If any of the runes is a wide (East Asian) rune occupying two cells,
+then the library will skip output from the following cell, but care must be
+taken in the application to avoid explicitly attempting to set content in the
+next cell, otherwise the results are undefined.  (Normally wide character
+is displayed, and the other character is not; do not depend on that behavior.)
 
 Experience has shown that the vanilla Windows 8 console application does not
 support any of these characters properly, but at least some options like
@@ -122,7 +122,7 @@ ConEmu do support Wide characters at least.
 
 ## Colors
 
-We assume the ANSI/XTerm color model, including the 256 color map that
+Tcell assumes the ANSI/XTerm color model, including the 256 color map that
 XTerm uses when it supports 256 colors.  The terminfo guidance will be
 honored, with respect to the number of colors supported.  Also, only
 terminals which expose ANSI style setaf and setab will support color;
@@ -192,9 +192,13 @@ and examine "physical" screen contents.
 
 ## Platforms
 
+### Systems (Linux, FreeBSD, MacOS, Solaris, etc.)
+
 On POSIX systems, a POSIX termios implementation with /dev/tty is required.
-It also requires functional cgo to run.  As of this writing, Cgo is available
+It also requires functional CGO to run.  As of this writing, CGO is available
 on all POSIX Go 1.5 platforms.
+
+### Windows
 
 Windows console mode applications are supported.  Unfortunately mintty
 and other cygwin style applications are not supported.
@@ -206,11 +210,12 @@ I haven't figured out how to cleanly resolve the dichotomy between cygwin
 style termios and the Windows Console API; it seems that perhaps nobody else
 has either.  If anyone has suggestions, let me know!  Really, if you're
 using a Windows application, you should use the native Windows console or a
-fully compatible consule implementation.  We expect that Windows 10
-ships with a less crippled implementation than prior releases -- we haven't
-tested that, lacking Windows 10 ourselves.
+fully compatible consule implementation.  Hopefully the Windows 10 console
+is more functional in this regard.
+
+### Plan9 and Native Client (Nacl)
 
 The nacl and plan9 platforms won't work, but compilation stubs are supplied
 for folks that want to include parts of this in software targetting those
-platforms.  The test screens will work, but as we don't know how to allocate
-a real screen object on those platforms, NewScreen() will fail.
+platforms.  The Simulation screen works, but as Tcell doesn't know how to
+allocate a real screen object on those platforms, NewScreen() will fail.
