@@ -17,7 +17,7 @@ package tcell
 import (
 	"strings"
 	"sync"
-	
+
 	"golang.org/x/text/encoding"
 
 	gencoding "github.com/gdamore/encoding"

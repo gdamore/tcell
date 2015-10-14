@@ -141,6 +141,7 @@ type Terminfo struct {
 	AltChars     string   `json:"acsc,omitempty"`   // acsc
 	EnterAcs     string   `json:"smacs,omitempty"`  // smacs
 	ExitAcs      string   `json:"rmacs,omitempty"`  // rmacs
+	EnableAcs    string   `json:"enacs,omitempty"`  // enacs
 }
 
 type stack []string

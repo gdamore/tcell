@@ -114,6 +114,7 @@ func (t *tScreen) Init() error {
 	t.TPuts(ti.EnterCA)
 	t.TPuts(ti.EnterKeypad)
 	t.TPuts(ti.HideCursor)
+	t.TPuts(ti.EnableAcs)
 	t.TPuts(ti.Clear)
 
 	t.quit = make(chan struct{})
@@ -596,20 +597,17 @@ func (t *tScreen) buildAcsMap() {
 		{RuneVLine, 'x', "|"},
 	}
 	t.acs = make(map[rune]string)
-	for i := range vtNames {
+	rev := make(map[rune]rune)
+	for _, vt := range vtNames {
 		// prefill defaults
-		t.acs[vtNames[i].utf] = vtNames[i].ascii
+		t.acs[vt.utf] = vt.ascii
+		rev[vt.vt100] = vt.utf
 	}
 	for len(acsstr) > 2 {
 		srcv := rune(acsstr[0])
 		dstv := string(acsstr[1])
-		// O(n*2), but n is pretty small (30)
-		for i := range vtNames {
-			if srcv == vtNames[i].vt100 {
-				t.acs[vtNames[i].utf] =
-					t.ti.EnterAcs + dstv + t.ti.ExitAcs
-				break
-			}
+		if utf, ok := rev[srcv]; ok {
+			t.acs[utf] = t.ti.EnterAcs + dstv + t.ti.ExitAcs
 		}
 		acsstr = acsstr[2:]
 	}

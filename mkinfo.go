@@ -211,6 +211,7 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 	t.AltChars = tigetstr("acsc")
 	t.EnterAcs = tigetstr("smacs")
 	t.ExitAcs = tigetstr("rmacs")
+	t.EnableAcs = tigetstr("enacs")
 	t.Mouse = tigetstr("kmous")
 	// If the kmous entry is present, then we need to record the
 	// the codes to enter and exit mouse mode.  Sadly, this is not
@@ -324,6 +325,7 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "AltChars", t.AltChars)
 	dotGoAddStr(w, "EnterAcs", t.EnterAcs)
 	dotGoAddStr(w, "ExitAcs", t.ExitAcs)
+	dotGoAddStr(w, "EnableAcs", t.EnableAcs)
 	dotGoAddStr(w, "Mouse", t.Mouse)
 	dotGoAddStr(w, "MouseMode", t.MouseMode)
 	dotGoAddStr(w, "SetCursor", t.SetCursor)
