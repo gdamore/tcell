@@ -1033,3 +1033,30 @@ func (t *tScreen) UnregisterRuneFallback(orig rune) {
 	delete(t.fallback, orig)
 	t.Unlock()
 }
+
+func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
+
+	if enc := t.encoder; enc != nil {
+		nb := make([]byte, 6)
+		ob := make([]byte, 6)
+		num := utf8.EncodeRune(ob, r)
+
+		enc.Reset()
+		dst, _, err := enc.Transform(nb, ob[:num], true)
+		if dst != 0 && err == nil && nb[0] != '\x1A' {
+			return true
+		}
+	}
+	// Terminal fallbacks always permitted, since we assume they are
+	// basically nearly perfect renditions.
+	if _, ok := t.acs[r]; ok {
+		return true
+	}
+	if !checkFallbacks {
+		return false
+	}
+	if _, ok := t.fallback[r]; ok {
+		return true
+	}
+	return false
+}

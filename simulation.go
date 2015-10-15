@@ -497,3 +497,25 @@ func (s *simscreen) UnregisterRuneFallback(r rune) {
 	delete(s.fallback, r)
 	s.Unlock()
 }
+
+func (s *simscreen) CanDisplay(r rune, checkFallbacks bool) bool {
+
+	if enc := s.encoder; enc != nil {
+		nb := make([]byte, 6)
+		ob := make([]byte, 6)
+		num := utf8.EncodeRune(ob, r)
+
+		enc.Reset()
+		dst, _, err := enc.Transform(nb, ob[:num], true)
+		if dst != 0 && err == nil && nb[0] != '\x1A' {
+			return true
+		}
+	}
+	if !checkFallbacks {
+		return false
+	}
+	if _, ok := s.fallback[r]; ok {
+		return true
+	}
+	return false
+}

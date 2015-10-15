@@ -918,3 +918,10 @@ func (s *cScreen) RegisterRuneFallback(r rune, subst string) {
 
 func (s *cScreen) UnregisterRuneFallback(r rune) {
 }
+
+func (s *cScreen) CanDisplay(r rune, checkFallbacks bool) bool {
+	// We presume we can display anything -- we're Unicode.
+	// (Sadly this not precisely true.  Combinings are especially
+	// poorly supported under Windows.)
+	return true
+}
