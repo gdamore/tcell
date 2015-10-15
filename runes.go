@@ -53,3 +53,60 @@ const (
 	RuneURCorner = '┐'
 	RuneVLine    = '│'
 )
+
+// RuneFallbacks is the default map of fallback strings that will be
+// used to replace a rune when no other more appropriate transformation
+// is available, and the rune cannot be displayed directly.
+//
+// New entries may be added to this map over time, as it becomes clear
+// that such is desirable.  Characters that represent either letters or
+// numbers should not be added to this list unless it is certain that
+// the meaning will still convey unambiguously.
+//
+// As an example, it would be appropriate to add an ASCII mapping for
+// the full width form of the letter 'A', but it would not be appropriate
+// to do so a glyph representing the country China.
+//
+// Programs that desire richer fallbacks may register additional ones,
+// or change or even remove these mappings with Screen.RegisterRuneFallback
+// Screen.UnregisterRuneFallback methods.
+//
+// Note that Unicode is presumed to be able to display all glyphs.
+// This is a pretty poor assumption, but there is no easy way to
+// figure out which glyphs are supported in a given font.  Hence,
+// some care in selecting the characters you support in your application
+// is still appropriate.
+var RuneFallbacks = map[rune]string{
+	RuneSterling: "f",
+	RuneDArrow:   "v",
+	RuneLArrow:   "<",
+	RuneRArrow:   ">",
+	RuneUArrow:   "^",
+	RuneBullet:   "o",
+	RuneBoard:    "#",
+	RuneCkBoard:  ":",
+	RuneDegree:   "\\",
+	RuneDiamond:  "+",
+	RuneGEqual:   ">",
+	RunePi:       "*",
+	RuneHLine:    "-",
+	RuneLantern:  "#",
+	RunePlus:     "+",
+	RuneLEqual:   "<",
+	RuneLLCorner: "+",
+	RuneLRCorner: "+",
+	RuneNEqual:   "!",
+	RunePlMinus:  "#",
+	RuneS1:       "~",
+	RuneS3:       "-",
+	RuneS7:       "-",
+	RuneS9:       "_",
+	RuneBlock:    "#",
+	RuneTTee:     "+",
+	RuneRTee:     "+",
+	RuneLTee:     "+",
+	RuneBTee:     "+",
+	RuneULCorner: "+",
+	RuneURCorner: "+",
+	RuneVLine:    "|",
+}

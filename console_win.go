@@ -910,3 +910,11 @@ func (s *cScreen) SetStyle(style Style) {
 	s.style = style
 	s.Unlock()
 }
+
+// No fallback rune support, since we have Unicode.  Yay!
+
+func (s *cScreen) RegisterRuneFallback(r rune, subst string) {
+}
+
+func (s *cScreen) UnregisterRuneFallback(r rune) {
+}

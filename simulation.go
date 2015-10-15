@@ -15,7 +15,6 @@
 package tcell
 
 import (
-	"errors"
 	"sync"
 	"unicode/utf8"
 
@@ -103,6 +102,7 @@ type simscreen struct {
 	decoder   transform.Transformer
 	fillchar  rune
 	fillstyle Style
+	fallback  map[rune]string
 
 	sync.Mutex
 }
@@ -118,22 +118,21 @@ func (s *simscreen) Init() error {
 	s.cursory = -1
 	s.style = StyleDefault
 
-	switch s.charset {
-	case "UTF-8", "US-ASCII":
-		s.encoder = nil
-		s.decoder = nil
-	default:
-		if enc := GetEncoding(s.charset); enc != nil {
-			s.encoder = enc.NewEncoder()
-			s.decoder = enc.NewDecoder()
-		} else {
-			return errors.New("no support for charset " + s.charset)
-		}
+	if enc := GetEncoding(s.charset); enc != nil {
+		s.encoder = enc.NewEncoder()
+		s.decoder = enc.NewDecoder()
+	} else {
+		return ErrNoCharset
 	}
 
 	s.front = make([]SimCell, s.physw*s.physh)
 	s.back.Resize(80, 25)
 
+	// default fallbacks
+	s.fallback = make(map[rune]string)
+	for k, v := range RuneFallbacks {
+		s.fallback[k] = v
+	}
 	return nil
 }
 
@@ -219,26 +218,35 @@ func (s *simscreen) drawCell(x, y int) int {
 		return width
 	}
 
-	enc := s.encoder
-	ubuf := make([]byte, 12)
 	lbuf := make([]byte, 12)
+	ubuf := make([]byte, 12)
+	nout := 0
 
 	for _, r := range simc.Runes {
+
 		l := utf8.EncodeRune(ubuf, r)
-		if enc == nil {
-			simc.Bytes = append(simc.Bytes, ubuf[:l]...)
-			if s.charset == "US-ASCII" {
-				return width
-			}
-			continue
+
+		if enc := s.encoder; enc != nil {
+			nout, _, _ = enc.Transform(lbuf, ubuf[:l], true)
+		} else {
+			nout = 0
 		}
-		nout, _, _ := enc.Transform(lbuf, ubuf[:l], true)
-		if nout == 1 && lbuf[0] == '\x1a' {
-			// replacement character
-			if simc.Bytes == nil {
+
+		if nout == 0 || lbuf[0] == '\x1a' {
+
+			// skip combining
+
+			if subst, ok := s.fallback[r]; ok {
+				simc.Bytes = append(simc.Bytes,
+					[]byte(subst)...)
+
+			} else if r >= ' ' && r <= '~' {
+				simc.Bytes = append(simc.Bytes, byte(r))
+
+			} else if simc.Bytes == nil {
 				simc.Bytes = append(simc.Bytes, '?')
 			}
-		} else if nout > 0 {
+		} else {
 			simc.Bytes = append(simc.Bytes, lbuf[:nout]...)
 		}
 	}
@@ -476,4 +484,16 @@ func (s *simscreen) GetCursor() (int, int, bool) {
 	x, y, vis := s.cursorx, s.cursory, s.cursorvis
 	s.Unlock()
 	return x, y, vis
+}
+
+func (s *simscreen) RegisterRuneFallback(r rune, subst string) {
+	s.Lock()
+	s.fallback[r] = subst
+	s.Unlock()
+}
+
+func (s *simscreen) UnregisterRuneFallback(r rune) {
+	s.Lock()
+	delete(s.fallback, r)
+	s.Unlock()
 }

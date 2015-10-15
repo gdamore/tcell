@@ -111,12 +111,41 @@ type Screen interface {
 	// or during a resize event.
 	Sync()
 
-	// CharacterSet() returns information about the character set.
+	// CharacterSet returns information about the character set.
 	// This isn't the full locale, but it does give us the input/ouput
 	// character set.  Note that this is just for diagnostic purposes,
 	// we normally translate input/output to/from UTF-8, regardless of
 	// what the user's environment is.
 	CharacterSet() string
+
+	// RegisterRuneFallback adds a fallback for runes that are not
+	// part of the character set -- for example one coudld register
+	// o as a fallback for ø.  This should be done cautiously for
+	// characters that might be displayed ordinarily in language
+	// specific text -- characters that could change the meaning of
+	// of written text would be dangerous.  The intention here is to
+	// facilitate fallback characters in pseudo-graphical applications.
+	//
+	// If the terminal has fallbacks already in place via an alternate
+	// character set, those are used in preference.  Also, standard
+	// fallbacks for graphical characters in the ACSC terminfo string
+	// are registered implicitly.
+
+	// The display string should be the same width as original rune.
+	// This makes it possible to register two character replacements
+	// for full width East Asian characters, for example.
+	//
+	// It is recommended that replacement strings consist only of
+	// 7-bit ASCII, since other characters may not display everywhere.
+	RegisterRuneFallback(r rune, subst string)
+
+	// UnregisterRuneFallback unmaps a replacement.  It will unmap
+	// the implicit ASCII replacements for alternate characters as well.
+	// When an unmapped char needs to be displayed, but no suitable
+	// glyph is available, '?' is emitted instead.  It is not possible
+	// to "disable" the use of alternate characters that are supported
+	// by your terminal except by changing the terminal database.
+	UnregisterRuneFallback(r rune)
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal

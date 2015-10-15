@@ -47,6 +47,10 @@ func NewTerminfoScreen() (Screen, error) {
 	t.prepareKeys()
 	t.buildAcsMap()
 	t.sigwinch = make(chan os.Signal, 10)
+	t.fallback = make(map[rune]string)
+	for k, v := range RuneFallbacks {
+		t.fallback[k] = v
+	}
 
 	return t, nil
 }
@@ -80,6 +84,7 @@ type tScreen struct {
 	charset  string
 	encoder  transform.Transformer
 	decoder  transform.Transformer
+	fallback map[rune]string
 
 	sync.Mutex
 }
@@ -286,41 +291,31 @@ func (t *tScreen) SetCell(x, y int, style Style, ch ...rune) {
 
 func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 
-	enc := t.encoder
-	if enc == nil {
-		// This is probably ASCII.  Only append a filler character
-		// for the main rune, ignoring combining runes.
-		if len(buf) == 0 {
-			buf = append(buf, '?')
-		}
-		return buf
-	}
-
 	nb := make([]byte, 6)
 	ob := make([]byte, 6)
 	num := utf8.EncodeRune(ob, r)
 	ob = ob[:num]
-	t.encoder.Reset()
-	dst, _, err := t.encoder.Transform(nb, ob, true)
-	if err == nil {
-		nb = nb[:dst]
-		if len(nb) == 0 || nb[0] == '\x1a' {
-			// special handling for replacement chars,
-			// we can't display them, so use "?" for primary char,
-			// and elide combining
-			if len(buf) == 0 {
-				if acs, ok := t.acs[r]; ok {
-					buf = append(buf, []byte(acs)...)
-				} else {
-					buf = append(buf, '?')
-				}
-			}
-		} else {
-			buf = append(buf, nb...)
-		}
-	} else if len(buf) == 0 {
-		buf = append(buf, '?')
+	dst := 0
+	var err error
+	if enc := t.encoder; enc != nil {
+		enc.Reset()
+		dst, _, err = enc.Transform(nb, ob, true)
 	}
+	if err != nil || dst == 0 || nb[0] == '\x1a' {
+		// Combining characters are elided
+		if len(buf) == 0 {
+			if acs, ok := t.acs[r]; ok {
+				buf = append(buf, []byte(acs)...)
+			} else if fb, ok := t.fallback[r]; ok {
+				buf = append(buf, []byte(fb)...)
+			} else {
+				buf = append(buf, '?')
+			}
+		}
+	} else {
+		buf = append(buf, nb[:dst]...)
+	}
+
 	return buf
 }
 
@@ -549,65 +544,65 @@ func (t *tScreen) PollEvent() Event {
 	}
 }
 
-// bulidAcsMap builds a map of characters that we translate from Unicode to
+// vtACSNames is a map of bytes defined by terminfo that are used in
+// the terminals Alternate Character Set to represent other glyphs.
+// For example, the upper left corner of the box drawing set can be
+// displayed by printing "l" while in the alternate character set.
+// Its not quite that simple, since the "l" is the terminfo name,
+// and it may be necessary to use a different character based on
+// the terminal implementation (or the terminal may lack support for
+// this altogether).  See buildAcsMap below for detail.
+var vtACSNames = map[byte]rune{
+	'+': RuneRArrow,
+	',': RuneLArrow,
+	'-': RuneUArrow,
+	'.': RuneDArrow,
+	'0': RuneBlock,
+	'`': RuneDiamond,
+	'a': RuneCkBoard,
+	'b': '␉', // VT100, Not defined by terminfo
+	'c': '␌', // VT100, Not defined by terminfo
+	'd': '␋', // VT100, Not defined by terminfo
+	'e': '␊', // VT100, Not defined by terminfo
+	'f': RuneDegree,
+	'g': RunePlMinus,
+	'h': RuneBoard,
+	'i': RuneLantern,
+	'j': RuneLRCorner,
+	'k': RuneURCorner,
+	'l': RuneULCorner,
+	'm': RuneLLCorner,
+	'n': RunePlus,
+	'o': RuneS1,
+	'p': RuneS3,
+	'q': RuneHLine,
+	'r': RuneS7,
+	's': RuneS9,
+	't': RuneLTee,
+	'u': RuneRTee,
+	'v': RuneBTee,
+	'w': RuneTTee,
+	'x': RuneVLine,
+	'y': RuneLEqual,
+	'z': RuneGEqual,
+	'{': RunePi,
+	'|': RuneNEqual,
+	'}': RuneSterling,
+	'~': RuneBullet,
+}
+
+// buildAcsMap builds a map of characters that we translate from Unicode to
 // alternate character encodings.  To do this, we use the standard VT100 ACS
 // maps.  This is only done if the terminal lacks support for Unicode; we
 // always prefer to emit Unicode glyphs when we are able.
-
-type acsMap struct {
-	utf   rune   // UTF-8 glyph
-	vt100 rune   // VT100 name
-	ascii string // ASCII default
-}
-
 func (t *tScreen) buildAcsMap() {
 	acsstr := t.ti.AltChars
-	vtNames := []acsMap{
-		{RuneSterling, '}', "f"},
-		{RuneDArrow, '.', "v"},
-		{RuneLArrow, ',', "<"},
-		{RuneRArrow, '+', ">"},
-		{RuneUArrow, '-', "^"},
-		{RuneBullet, '~', "o"},
-		{RuneBoard, 'h', "#"},
-		{RuneCkBoard, 'a', ":"},
-		{RuneDegree, 'f', "\\"},
-		{RuneDiamond, '`', "+"},
-		{RuneGEqual, 'z', ">"},
-		{RunePi, '{', "*"},
-		{RuneHLine, 'q', "-"},
-		{RuneLantern, 'i', "#"},
-		{RunePlus, 'n', "+"},
-		{RuneLEqual, 'y', "<"},
-		{RuneLLCorner, 'm', "+"},
-		{RuneLRCorner, 'j', "+"},
-		{RuneNEqual, '|', "!"},
-		{RunePlMinus, 'g', "#"},
-		{RuneS1, 'o', "~"},
-		{RuneS3, 'p', "-"},
-		{RuneS7, 'r', "-"},
-		{RuneS9, 's', "_"},
-		{RuneBlock, '0', "#"},
-		{RuneTTee, 'w', "+"},
-		{RuneRTee, 'u', "+"},
-		{RuneLTee, 't', "+"},
-		{RuneBTee, 'v', "+"},
-		{RuneULCorner, 'l', "+"},
-		{RuneURCorner, 'k', "+"},
-		{RuneVLine, 'x', "|"},
-	}
 	t.acs = make(map[rune]string)
-	rev := make(map[rune]rune)
-	for _, vt := range vtNames {
-		// prefill defaults
-		t.acs[vt.utf] = vt.ascii
-		rev[vt.vt100] = vt.utf
-	}
 	for len(acsstr) > 2 {
-		srcv := rune(acsstr[0])
+		srcv := acsstr[0]
 		dstv := string(acsstr[1])
-		if utf, ok := rev[srcv]; ok {
-			t.acs[utf] = t.ti.EnterAcs + dstv + t.ti.ExitAcs
+		if r, ok := vtACSNames[srcv]; ok {
+			t.acs[r] = t.ti.EnterAcs + dstv + t.ti.ExitAcs
 		}
 		acsstr = acsstr[2:]
 	}
@@ -1025,4 +1020,16 @@ func (t *tScreen) Sync() {
 
 func (t *tScreen) CharacterSet() string {
 	return t.charset
+}
+
+func (t *tScreen) RegisterRuneFallback(orig rune, fallback string) {
+	t.Lock()
+	t.fallback[orig] = fallback
+	t.Unlock()
+}
+
+func (t *tScreen) UnregisterRuneFallback(orig rune) {
+	t.Lock()
+	delete(t.fallback, orig)
+	t.Unlock()
 }
