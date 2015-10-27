@@ -122,7 +122,7 @@ func main() {
 	btnfmt := "Buttons: %s"
 	keyfmt := "Keys: %s"
 	white := tcell.StyleDefault.
-		Foreground(tcell.ColorBrightWhite).Background(tcell.ColorRed)
+		Foreground(tcell.ColorWhite).Background(tcell.ColorRed)
 
 	mx, my := -1, -1
 	ox, oy := -1, -1
@@ -143,10 +143,10 @@ func main() {
 		s.Show()
 		bstr = ""
 		ev := s.PollEvent()
-		st := tcell.StyleDefault.Background(tcell.ColorBrightRed)
+		st := tcell.StyleDefault.Background(tcell.ColorRed)
 		up := tcell.StyleDefault.
-			Background(tcell.ColorBrightBlue).
-			Foreground(tcell.ColorBrightGreen)
+			Background(tcell.ColorBlue).
+			Foreground(tcell.ColorBlack)
 		w, h = s.Size()
 
 		// always clear any old selection box
@@ -206,7 +206,7 @@ func main() {
 			switch ev.Buttons() {
 			case tcell.ButtonNone:
 				if ox >= 0 {
-					bg := tcell.Color((lchar-'0')*2 + 1)
+					bg := tcell.Color((lchar - '0') * 2)
 					drawBox(s, ox, oy, x, y,
 						up.Background(bg),
 						lchar)

@@ -80,40 +80,48 @@ const (
 func mkStyle(fg, bg Attribute) tcell.Style {
 	st := tcell.StyleDefault
 
-	f := int(fg) & 0x1ff
-	b := int(bg) & 0x1ff
+	f := tcell.Color(int(fg)&0x1ff) - 1
+	b := tcell.Color(int(bg)&0x1ff) - 1
 
 	switch outMode {
 	case Output256:
+		if f != tcell.ColorDefault {
+			f %= tcell.Color(256)
+		}
+		if b != tcell.ColorDefault {
+			b %= tcell.Color(256)
+		}
 		break
 	case Output216:
-		if f > 216 {
-			f = int(ColorDefault)
-		} else if f != int(ColorDefault) {
-			f += 16
+		if f != tcell.ColorDefault {
+			f %= tcell.Color(216)
+			f += tcell.Color(16)
 		}
-		if b > 216 {
-			b = int(ColorDefault)
-		} else if b != int(ColorDefault) {
-			b += 16
+		if b != tcell.ColorDefault {
+			b %= tcell.Color(216)
+			b += tcell.Color(16)
 		}
 	case OutputGrayscale:
-		if f > 24 {
-			f = int(ColorDefault)
-		} else if f != int(ColorDefault) {
-			f += 232
+		if f != tcell.ColorDefault {
+			f %= tcell.Color(24)
+			f += tcell.Color(232)
 		}
-		if b > 24 {
-			b = int(ColorDefault)
-		} else if b != int(ColorDefault) {
-			b += 232
+		if b != tcell.ColorDefault {
+			b %= tcell.Color(24)
+			b += tcell.Color(232)
 		}
 	case OutputNormal:
-		f &= 0xf
-		b &= 0xf
+		if f != tcell.ColorDefault {
+			f %= tcell.Color(16)
+		}
+		if b != tcell.ColorDefault {
+			b %= tcell.Color(16)
+		}
+	default:
+		f = tcell.ColorDefault
+		b = tcell.ColorDefault
 	}
-	st = st.Foreground(tcell.Color(f))
-	st = st.Background(tcell.Color(b))
+	st = st.Foreground(f).Background(b)
 	if (fg&AttrBold != 0) || (bg&AttrBold != 0) {
 		st = st.Bold(true)
 	}

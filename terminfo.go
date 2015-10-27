@@ -524,8 +524,8 @@ func (t *Terminfo) TGoto(col, row int) string {
 // TColor returns a string corresponding to the given foreground and background
 // colors.  Either fg or bg can be set to -1 to elide.
 func (t *Terminfo) TColor(fg, bg Color) string {
-	fi := int(fg - 1)
-	bi := int(bg - 1)
+	fi := int(fg)
+	bi := int(bg)
 	rv := ""
 	// As a special case, we map bright colors to lower versions if the
 	// color table only holds 8.  For the remaining 240 colors, the user

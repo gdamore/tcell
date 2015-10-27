@@ -341,6 +341,24 @@ func (t *tScreen) drawCell(x, y int) int {
 		fg, bg, attrs := style.Decompose()
 
 		t.TPuts(ti.AttrOff)
+		// Special tweak for 8 color terminals, used when the color is
+		// one of the highlighted versions of the base 16.
+		if t.Colors() == 8 {
+			if fg >= Color(8) && fg < Color(16) {
+				fg -= Color(8)
+			}
+			if bg >= Color(8) && fg < Color(16) {
+				bg -= Color(8)
+			}
+		}
+		if fg != ColorDefault {
+			c := int(fg)
+			t.TPuts(ti.TParm(ti.SetFg, c))
+		}
+		if bg != ColorDefault {
+			c := int(bg)
+			t.TPuts(ti.TParm(ti.SetBg, c))
+		}
 		if attrs&AttrBold != 0 {
 			t.TPuts(ti.Bold)
 		}
@@ -355,14 +373,6 @@ func (t *tScreen) drawCell(x, y int) int {
 		}
 		if attrs&AttrDim != 0 {
 			t.TPuts(ti.Dim)
-		}
-		if fg != ColorDefault {
-			c := int(fg) - 1
-			t.TPuts(ti.TParm(ti.SetFg, c))
-		}
-		if bg != ColorDefault {
-			c := int(bg) - 1
-			t.TPuts(ti.TParm(ti.SetBg, c))
 		}
 		t.curstyle = style
 	}

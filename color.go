@@ -14,29 +14,46 @@
 
 package tcell
 
-// Color represents a color.  Colors numeric values are taken from the XTerm
-// 256 color map, except that they are offset by one, to allow 0 to indicate
-// the default (unset) color.
-type Color int16
+// Color represents a color.  The low numeric values are the same as used
+// by ECMA-48, and beyond that XTerm.  A 24-bit RGB value may be used by
+// adding in the ColorIsRGB flag.  For Color names we use the W3C approved
+// color names.
+//
+// Note that on various terminals colors may be approximated however, or
+// not supported at all.  If no suitable representation for a color is known,
+// the library will simply not set any color, deferring to whatever default
+// attributes the terminal uses.
+type Color int32
 
 const (
 	// ColorDefault is used to leave the Color unchanged from whatever
 	// system or teminal default may exist.
-	ColorDefault Color = iota
-	ColorBlack
-	ColorRed
+	ColorDefault Color = -1
+
+	// ColorIsRGB is used to indicate that the numeric value is not
+	// a known color constant, but rather an RGB value.  The lower
+	// order 3 bytes are RGB.
+	ColorIsRGB Color = 1 << 24
+)
+
+// Note that the order of these options is important -- it follows the
+// definitions used by ECMA and XTerm.  Hence any further named colors
+// must begin at a value not less than 256.
+const (
+	ColorBlack Color = iota
+	ColorMaroon
 	ColorGreen
+	ColorOlive
+	ColorNavy
+	ColorPurple
+	ColorTeal
+	ColorSilver
+	ColorGrey
+	ColorRed
+	ColorLime
 	ColorYellow
 	ColorBlue
-	ColorMagenta
-	ColorCyan
+	ColorFuchsia
+	ColorAqua
 	ColorWhite
-	ColorGrey
-	ColorBrightRed
-	ColorBrightGreen
-	ColorBrightYellow
-	ColorBrightBlue
-	ColorBrightMagenta
-	ColorBrightCyan
-	ColorBrightWhite
 )
