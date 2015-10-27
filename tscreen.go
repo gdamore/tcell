@@ -85,6 +85,8 @@ type tScreen struct {
 	encoder  transform.Transformer
 	decoder  transform.Transformer
 	fallback map[rune]string
+	colors   map[Color]Color
+	palette  []Color
 
 	sync.Mutex
 }
@@ -121,6 +123,14 @@ func (t *tScreen) Init() error {
 	t.TPuts(ti.HideCursor)
 	t.TPuts(ti.EnableAcs)
 	t.TPuts(ti.Clear)
+
+	t.colors = make(map[Color]Color)
+	t.palette = make([]Color, t.Colors())
+	for i := 0; i < t.Colors(); i++ {
+		t.palette[i] = Color(i)
+		// identity map for our builtin colors
+		t.colors[Color(i)] = Color(i)
+	}
 
 	t.quit = make(chan struct{})
 
@@ -343,21 +353,24 @@ func (t *tScreen) drawCell(x, y int) int {
 		t.TPuts(ti.AttrOff)
 		// Special tweak for 8 color terminals, used when the color is
 		// one of the highlighted versions of the base 16.
-		if t.Colors() == 8 {
-			if fg >= Color(8) && fg < Color(16) {
-				fg -= Color(8)
-			}
-			if bg >= Color(8) && fg < Color(16) {
-				bg -= Color(8)
-			}
-		}
+
 		if fg != ColorDefault {
-			c := int(fg)
-			t.TPuts(ti.TParm(ti.SetFg, c))
+			if v, ok := t.colors[fg]; ok {
+				fg = v
+			} else if v = FindColor(fg, t.palette); v != ColorDefault {
+				t.colors[fg] = v
+				fg = v
+			}
+			t.TPuts(ti.TParm(ti.SetFg, int(fg)))
 		}
 		if bg != ColorDefault {
-			c := int(bg)
-			t.TPuts(ti.TParm(ti.SetBg, c))
+			if v, ok := t.colors[bg]; ok {
+				bg = v
+			} else if v = FindColor(bg, t.palette); v != ColorDefault {
+				t.colors[bg] = v
+				bg = v
+			}
+			t.TPuts(ti.TParm(ti.SetBg, int(bg)))
 		}
 		if attrs&AttrBold != 0 {
 			t.TPuts(ti.Bold)

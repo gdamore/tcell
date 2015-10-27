@@ -43,8 +43,49 @@ type cScreen struct {
 	oimode  uint32
 	oomode  uint32
 	cells   CellBuffer
+	colors  map[Color]Color
 
 	sync.Mutex
+}
+
+var winLock sync.Mutex
+
+var winPalette = []Color{
+	ColorBlack,
+	ColorMaroon,
+	ColorGreen,
+	ColorNavy,
+	ColorOlive,
+	ColorPurple,
+	ColorTeal,
+	ColorSilver,
+	ColorGray,
+	ColorRed,
+	ColorLime,
+	ColorBlue,
+	ColorYellow,
+	ColorFuchsia,
+	ColorAqua,
+	ColorWhite,
+}
+
+var winColors = map[Color]Color{
+	ColorBlack:   ColorBlack,
+	ColorMaroon:  ColorMaroon,
+	ColorGreen:   ColorGreen,
+	ColorNavy:    ColorNavy,
+	ColorOlive:   ColorOlive,
+	ColorPurple:  ColorPurple,
+	ColorTeal:    ColorTeal,
+	ColorSilver:  ColorSilver,
+	ColorGray:    ColorGray,
+	ColorRed:     ColorRed,
+	ColorLime:    ColorLime,
+	ColorBlue:    ColorBlue,
+	ColorYellow:  ColorYellow,
+	ColorFuchsia: ColorFuchsia,
+	ColorAqua:    ColorAqua,
+	ColorWhite:   ColorWhite,
 }
 
 var k32 = syscall.NewLazyDLL("kernel32.dll")
@@ -570,40 +611,51 @@ func (s *cScreen) Colors() int {
 
 // Windows uses RGB signals
 func mapColor2RGB(c Color) uint16 {
+
+	winLock.Lock()
+	if v, ok := winColors[c]; ok {
+		c = v
+	} else {
+		v = FindColor(c, winPalette)
+		winColors[c] = v
+		c = v
+	}
+	winLock.Unlock()
+
 	switch c {
 	case ColorBlack:
 		return 0
 		// primaries
-	case ColorRed:
+	case ColorMaroon:
 		return 0x4
 	case ColorGreen:
 		return 0x2
-	case ColorBlue:
+	case ColorNavy:
 		return 0x1
-	case ColorYellow:
+	case ColorOlive:
 		return 0x6
-	case ColorMagenta:
+	case ColorPurple:
 		return 0x5
-	case ColorCyan:
+	case ColorTeal:
 		return 0x3
-	case ColorWhite:
+	case ColorSilver:
 		return 0x7
 	// bright variants
 	case ColorGrey:
 		return 0x8
-	case ColorBrightRed:
+	case ColorRed:
 		return 0xc
-	case ColorBrightGreen:
+	case ColorLime:
 		return 0xa
-	case ColorBrightBlue:
+	case ColorBlue:
 		return 0x9
-	case ColorBrightYellow:
+	case ColorYellow:
 		return 0xe
-	case ColorBrightMagenta:
+	case ColorFuchsia:
 		return 0xd
-	case ColorBrightCyan:
+	case ColorAqua:
 		return 0xb
-	case ColorBrightWhite:
+	case ColorWhite:
 		return 0xf
 	}
 	return 0
