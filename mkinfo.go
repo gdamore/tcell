@@ -87,10 +87,32 @@ func tigetstr(s string) string {
 // capabilities encoded in the program.  It should never need to be run by
 // an end user, but developers can use this to add codes for additional
 // terminal types.
+//
+// If a terminal name ending with -truecolor is given, and we cannot find
+// one, we will try to fabricte one from either the -256color (if present)
+// or the unadorned base name, adding the XTerm specific 24-bit color
+// escapes.  We believe that all 24-bit capable terminals use the same
+// escape sequences, and terminfo has yet to evolve to support this.
 func getinfo(name string) (*tcell.Terminfo, error) {
+	addTrueColor := false
 	rsn := C.int(0)
 	C.noenv()
 	rv, _ := C.setupterm(C.CString(name), 1, &rsn)
+	if rv == C.ERR {
+		if strings.HasSuffix(name, "-truecolor") {
+			base := name[:len(name)-len("-truecolor")]
+			// Probably -256color is closest to what we want
+			rv, _ = C.setupterm(C.CString(base+"-256color"), 1,
+				&rsn)
+			// Otherwise try the base
+			if rv == C.ERR {
+				rv, _ = C.setupterm(C.CString(base), 1, &rsn)
+			}
+			if rv != C.ERR {
+				addTrueColor = true
+			}
+		}
+	}
 	if rv == C.ERR {
 		switch rsn {
 		case 1:
@@ -249,6 +271,12 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		}
 	}
 
+	// For some terminals we fabricate a -truecolor entry, that may
+	// not exist in terminfo.
+	if addTrueColor {
+		t.SetFgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%dm"
+		t.SetBgRGB = "\x1b[48;2;%p1%d;%p2%d;%p3%dm"
+	}
 	return t, nil
 }
 
@@ -326,6 +354,8 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "EnterAcs", t.EnterAcs)
 	dotGoAddStr(w, "ExitAcs", t.ExitAcs)
 	dotGoAddStr(w, "EnableAcs", t.EnableAcs)
+	dotGoAddStr(w, "SetFgRGB", t.SetFgRGB)
+	dotGoAddStr(w, "SetBgRGB", t.SetBgRGB)
 	dotGoAddStr(w, "Mouse", t.Mouse)
 	dotGoAddStr(w, "MouseMode", t.MouseMode)
 	dotGoAddStr(w, "SetCursor", t.SetCursor)

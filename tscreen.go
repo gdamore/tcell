@@ -57,36 +57,37 @@ func NewTerminfoScreen() (Screen, error) {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	ti       *Terminfo
-	h        int
-	w        int
-	fini     bool
-	cells    CellBuffer
-	in       *os.File
-	out      *os.File
-	curstyle Style
-	style    Style
-	evch     chan Event
-	sigwinch chan os.Signal
-	quit     chan struct{}
-	indoneq  chan struct{}
-	keys     map[Key][]byte
-	cx       int
-	cy       int
-	mouse    []byte
-	clear    bool
-	cursorx  int
-	cursory  int
-	tiosp    *termiosPrivate
-	baud     int
-	wasbtn   bool
-	acs      map[rune]string
-	charset  string
-	encoder  transform.Transformer
-	decoder  transform.Transformer
-	fallback map[rune]string
-	colors   map[Color]Color
-	palette  []Color
+	ti        *Terminfo
+	h         int
+	w         int
+	fini      bool
+	cells     CellBuffer
+	in        *os.File
+	out       *os.File
+	curstyle  Style
+	style     Style
+	evch      chan Event
+	sigwinch  chan os.Signal
+	quit      chan struct{}
+	indoneq   chan struct{}
+	keys      map[Key][]byte
+	cx        int
+	cy        int
+	mouse     []byte
+	clear     bool
+	cursorx   int
+	cursory   int
+	tiosp     *termiosPrivate
+	baud      int
+	wasbtn    bool
+	acs       map[rune]string
+	charset   string
+	encoder   transform.Transformer
+	decoder   transform.Transformer
+	fallback  map[rune]string
+	colors    map[Color]Color
+	palette   []Color
+	truecolor bool
 
 	sync.Mutex
 }
@@ -118,19 +119,29 @@ func (t *tScreen) Init() error {
 		return e
 	}
 
+	if t.ti.SetFgRGB != "" && t.ti.SetBgRGB != "" {
+		t.truecolor = true
+	}
+	// A user who wants to have his themes honored can
+	// set this environment variable.
+	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
+		t.truecolor = false
+	}
+	if !t.truecolor {
+		t.colors = make(map[Color]Color)
+		t.palette = make([]Color, t.Colors())
+		for i := 0; i < t.Colors(); i++ {
+			t.palette[i] = Color(i)
+			// identity map for our builtin colors
+			t.colors[Color(i)] = Color(i)
+		}
+	}
+
 	t.TPuts(ti.EnterCA)
 	t.TPuts(ti.EnterKeypad)
 	t.TPuts(ti.HideCursor)
 	t.TPuts(ti.EnableAcs)
 	t.TPuts(ti.Clear)
-
-	t.colors = make(map[Color]Color)
-	t.palette = make([]Color, t.Colors())
-	for i := 0; i < t.Colors(); i++ {
-		t.palette[i] = Color(i)
-		// identity map for our builtin colors
-		t.colors[Color(i)] = Color(i)
-	}
 
 	t.quit = make(chan struct{})
 
@@ -351,10 +362,13 @@ func (t *tScreen) drawCell(x, y int) int {
 		fg, bg, attrs := style.Decompose()
 
 		t.TPuts(ti.AttrOff)
-		// Special tweak for 8 color terminals, used when the color is
-		// one of the highlighted versions of the base 16.
 
-		if fg != ColorDefault {
+		if fg == ColorDefault {
+			t.TPuts("")
+		} else if t.truecolor {
+			r, g, b := fg.RGB()
+			t.TPuts(ti.TParm(ti.SetFgRGB, int(r), int(g), int(b)))
+		} else {
 			if v, ok := t.colors[fg]; ok {
 				fg = v
 			} else if v = FindColor(fg, t.palette); v != ColorDefault {
@@ -363,7 +377,13 @@ func (t *tScreen) drawCell(x, y int) int {
 			}
 			t.TPuts(ti.TParm(ti.SetFg, int(fg)))
 		}
-		if bg != ColorDefault {
+
+		if bg == ColorDefault {
+			t.TPuts("")
+		} else if t.truecolor {
+			r, g, b := bg.RGB()
+			t.TPuts(ti.TParm(ti.SetBgRGB, int(r), int(g), int(b)))
+		} else {
 			if v, ok := t.colors[bg]; ok {
 				bg = v
 			} else if v = FindColor(bg, t.palette); v != ColorDefault {
@@ -555,6 +575,9 @@ func (t *tScreen) resize() {
 
 func (t *tScreen) Colors() int {
 	// this doesn't change, no need for lock
+	if t.truecolor {
+		return 1 << 24
+	}
 	return t.ti.Colors
 }
 

@@ -50,6 +50,12 @@ func TestTerminfo(t *testing.T) {
 		})
 
 		// This tests some conditionals
+		Convey("TParm extended formats work", func() {
+			s := ti.TParm("A[%p1%2.2X]B", 47)
+			So(s, ShouldEqual, "A[2F]B")
+		})
+
+		// This tests some conditionals
 		Convey("TParm colors work", func() {
 			s := ti.TParm(ti.SetFg, 7)
 			So(s, ShouldEqual, "\x1b[37m")

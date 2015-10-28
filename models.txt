@@ -46,3 +46,4 @@ xfce
 xnuppc
 xterm
 xterm-256color
+xterm-truecolor

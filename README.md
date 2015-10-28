@@ -129,6 +129,29 @@ terminals which expose ANSI style setaf and setab will support color;
 if you have a color terminal that only has setf and setb, please let me
 know; it wouldn't be hard to add that if there is need.
 
+## 24-bit Color
+
+Tcell _supports true color_!  (That is, if your terminal can support it,
+Tcell can accurately display 24-bit color.)
+
+To use 24-bit color, you need to use a terminal that supports it.  Modern
+xterm and similar teminal emulators can support this.  As terminfo lacks any
+way to describe this capability, we fabricate the capability for
+terminals with names ending in *-truecolor.  The stock distribution ships
+with a database that defines xterm-truecolor.  To try it out, set your
+TERM variable to xterm-truecolor.
+
+When using TrueColor, programs will display the colors that the programmer
+intended, overriding any "themes" you may have set in your terminal
+emulator.  (For some cases, accurate color fidelity is more important
+than respecting themes.  For other cases, such as typical text apps that
+only use a few colors, its more desirable to respect the themes that
+the user has established.)
+
+If you find this undesirable, you can either use a TERM variable
+that lacks the TRUECOLOR setting, or set TCELL_TRUECOLOR=disable in your
+environment.
+
 ## Performance
 
 Reasonable attempts have been made to minimize sending data to terminals,
