@@ -80,8 +80,20 @@ type Screen interface {
 	// Furthermore, this will return nil if the Screen is finalized.
 	PollEvent() Event
 
-	// PostEvent posts an event into the event stream.
-	PostEvent(Event)
+	// PostEvent tries to post an event into the event stream.  This
+	// can fail if the event queue is full.  In that case, the event
+	// is dropped, and ErrEventQFull is returned.
+	PostEvent(ev Event) error
+
+	// PostEventWait is like PostEvent, but if the queue is full, it
+	// blocks until there is space in the queue, making delivery
+	// reliable.  However, it is VERY important that this function
+	// never be called from within whatever event loop is polling
+	// with PollEvent(), otherwise a deadlock may arise.
+	//
+	// For this reason, when using this function, the use of a
+	// Goroutine is recommended to ensure no deadlock can occur.
+	PostEventWait(ev Event)
 
 	// EnableMouse enables the mouse.  (If your terminal supports it.)
 	EnableMouse()
@@ -157,6 +169,11 @@ type Screen interface {
 	// also return true if the terminal can replace the glyph with
 	// one that is visually indistinguishable from the one requested.
 	CanDisplay(r rune, checkFallbacks bool) bool
+
+	// Resize does nothing, since its generally not possible to
+	// ask a screen to resize, but it allows the Screen to implement
+	// the View interface.
+	Resize(int, int, int, int)
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal

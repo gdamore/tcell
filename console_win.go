@@ -123,7 +123,7 @@ func NewConsoleScreen() (Screen, error) {
 
 func (s *cScreen) Init() error {
 
-	s.evch = make(chan Event, 2)
+	s.evch = make(chan Event, 10)
 	s.quit = make(chan struct{})
 
 	if in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0); e != nil {
@@ -196,10 +196,16 @@ func (s *cScreen) Fini() {
 	syscall.Close(s.out)
 }
 
-func (s *cScreen) PostEvent(ev Event) {
+func (s *cScreen) PostEventWait(ev Event) {
+	s.evch <- ev
+}
+
+func (s *cScreen) PostEvent(ev Event) error {
 	select {
-	case <-s.quit:
 	case s.evch <- ev:
+		return nil
+	default:
+		return ErrEventQFull
 	}
 }
 
@@ -977,3 +983,5 @@ func (s *cScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 	// poorly supported under Windows.)
 	return true
 }
+
+func (s *cScreen) Resize(int, int, int, int) {}

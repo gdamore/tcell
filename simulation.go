@@ -49,16 +49,16 @@ type SimulationScreen interface {
 	// InjectMouse injects a mouse event.
 	InjectMouse(x, y int, buttons ButtonMask, mod ModMask)
 
-	// Resize resizes the underlying physical screen.  It also causes
+	// SetSize resizes the underlying physical screen.  It also causes
 	// a resize event to be injected during the next Show() or Sync().
 	// A new physical contents array will be allocated (with data from
 	// the old copied), so any prior value obtained with GetContents
 	// won't be used anymore
-	Resize(width, height int)
+	SetSize(width, height int)
 
 	// GetContents returns screen contents as an array of
 	// cells, along with the physical width & height.   Note that the
-	// physical contents will be used until the next time Resize()
+	// physical contents will be used until the next time SetSize()
 	// is called.
 	GetContents() (cells []SimCell, width int, height int)
 
@@ -351,11 +351,16 @@ func (s *simscreen) PollEvent() Event {
 	}
 }
 
-func (s *simscreen) PostEvent(ev Event) {
+func (s *simscreen) PostEventWait(ev Event) {
+	s.evch <- ev
+}
+
+func (s *simscreen) PostEvent(ev Event) error {
 	select {
 	case s.evch <- ev:
+		return nil
 	default:
-		// drop the event on the floor
+		return ErrEventQFull
 	}
 }
 
@@ -459,7 +464,7 @@ func (s *simscreen) CharacterSet() string {
 	return s.charset
 }
 
-func (s *simscreen) Resize(w, h int) {
+func (s *simscreen) SetSize(w, h int) {
 	s.Lock()
 	newc := make([]SimCell, w*h)
 	for row := 0; row < h && row < s.physh; row++ {
@@ -519,3 +524,5 @@ func (s *simscreen) CanDisplay(r rune, checkFallbacks bool) bool {
 	}
 	return false
 }
+
+func (s *simscreen) Resize(int, int, int, int) {}

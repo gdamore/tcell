@@ -132,7 +132,7 @@ func TestResize(t *testing.T) {
 		So(sc.Style, ShouldEqual, st)
 
 		Convey("Do resize", func() {
-			s.Resize(30, 10)
+			s.SetSize(30, 10)
 			s.Show()
 			b2, x2, y2 := s.GetContents()
 			So(b2, ShouldNotEqual, b)

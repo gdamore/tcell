@@ -24,3 +24,27 @@ type Event interface {
 	// When reports the time when the event was generated.
 	When() time.Time
 }
+
+// EventTime is a simple base event class, suitable for easy reuse.
+// It can be used to deliver actual timer events as well.
+type EventTime struct {
+	when time.Time
+}
+
+func (e *EventTime) When() time.Time {
+	return e.when
+}
+
+func (e *EventTime) SetEventTime(t time.Time) {
+	e.when = t
+}
+
+func (e *EventTime) SetEventNow() {
+	e.SetEventTime(time.Now())
+}
+
+// EventHandler is anything that handles events.  If the handler has
+// consumed the event, it should return true.  False otherwise.
+type EventHandler interface {
+	HandleEvent(Event) bool
+}

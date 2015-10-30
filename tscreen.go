@@ -654,11 +654,16 @@ func (t *tScreen) buildAcsMap() {
 	}
 }
 
-func (t *tScreen) PostEvent(ev Event) {
+func (t *tScreen) PostEventWait(ev Event) {
+	t.evch <- ev
+}
+
+func (t *tScreen) PostEvent(ev Event) error {
 	select {
 	case t.evch <- ev:
+		return nil
 	default:
-		// drop the event on the floor
+		return ErrEventQFull
 	}
 }
 
@@ -1106,3 +1111,5 @@ func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 	}
 	return false
 }
+
+func (t *tScreen) Resize(int, int, int, int) {}
