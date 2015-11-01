@@ -340,6 +340,42 @@ func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 	return buf
 }
 
+func (t *tScreen) sendFg(fg Color) {
+	ti := t.ti
+	if fg == ColorDefault {
+		return
+	} else if t.truecolor {
+		r, g, b := fg.RGB()
+		t.TPuts(ti.TParm(ti.SetFgRGB, int(r), int(g), int(b)))
+	} else {
+		if v, ok := t.colors[fg]; ok {
+			fg = v
+		} else if v = FindColor(fg, t.palette); v != ColorDefault {
+			t.colors[fg] = v
+			fg = v
+		}
+		t.TPuts(ti.TParm(ti.SetFg, int(fg)))
+	}
+}
+
+func (t *tScreen) sendBg(bg Color) {
+	ti := t.ti
+	if bg == ColorDefault {
+		return
+	} else if t.truecolor {
+		r, g, b := bg.RGB()
+		t.TPuts(ti.TParm(ti.SetBgRGB, int(r), int(g), int(b)))
+	} else {
+		if v, ok := t.colors[bg]; ok {
+			bg = v
+		} else if v = FindColor(bg, t.palette); v != ColorDefault {
+			t.colors[bg] = v
+			bg = v
+		}
+		t.TPuts(ti.TParm(ti.SetBg, int(bg)))
+	}
+}
+
 func (t *tScreen) drawCell(x, y int) int {
 
 	ti := t.ti
@@ -363,35 +399,8 @@ func (t *tScreen) drawCell(x, y int) int {
 
 		t.TPuts(ti.AttrOff)
 
-		if fg == ColorDefault {
-			t.TPuts("")
-		} else if t.truecolor {
-			r, g, b := fg.RGB()
-			t.TPuts(ti.TParm(ti.SetFgRGB, int(r), int(g), int(b)))
-		} else {
-			if v, ok := t.colors[fg]; ok {
-				fg = v
-			} else if v = FindColor(fg, t.palette); v != ColorDefault {
-				t.colors[fg] = v
-				fg = v
-			}
-			t.TPuts(ti.TParm(ti.SetFg, int(fg)))
-		}
-
-		if bg == ColorDefault {
-			t.TPuts("")
-		} else if t.truecolor {
-			r, g, b := bg.RGB()
-			t.TPuts(ti.TParm(ti.SetBgRGB, int(r), int(g), int(b)))
-		} else {
-			if v, ok := t.colors[bg]; ok {
-				bg = v
-			} else if v = FindColor(bg, t.palette); v != ColorDefault {
-				t.colors[bg] = v
-				bg = v
-			}
-			t.TPuts(ti.TParm(ti.SetBg, int(bg)))
-		}
+		t.sendFg(fg)
+		t.sendBg(bg)
 		if attrs&AttrBold != 0 {
 			t.TPuts(ti.Bold)
 		}
@@ -491,6 +500,9 @@ func (t *tScreen) Show() {
 }
 
 func (t *tScreen) clearScreen() {
+	fg, bg, _ := t.style.Decompose()
+	t.sendFg(fg)
+	t.sendBg(bg)
 	t.TPuts(t.ti.Clear)
 	t.clear = false
 }

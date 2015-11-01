@@ -80,6 +80,12 @@ func SetScreen(scr tcell.Screen) {
 	appScreen = scr
 }
 
+func AppSetStyle(style tcell.Style) {
+	if appScreen != nil {
+		appScreen.SetStyle(style)
+	}
+}
+
 func RunApplication() {
 
 	if appScreen == nil {

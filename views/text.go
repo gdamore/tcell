@@ -20,7 +20,8 @@ import (
 	"github.com/gdamore/tcell"
 )
 
-// Text is a Widget with a single line of text with a single style.
+// Text is a Widget with containing a block of text, which can optionally
+// be styled.
 type Text struct {
 	view    View
 	align   Alignment

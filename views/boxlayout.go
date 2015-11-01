@@ -78,6 +78,7 @@ func (b *BoxLayout) layout() {
 	if totf == 0 {
 		resid = 0
 	}
+
 	for _, c := range b.cells {
 		if c.fill > 0 {
 			c.frac = float64(extra) * c.fill / totf
@@ -186,8 +187,14 @@ func (b *BoxLayout) SetView(view View) {
 func (b *BoxLayout) HandleEvent(ev tcell.Event) bool {
 	switch ev.(type) {
 	case *EventWidgetContent:
+		// This can only have come from one of our children.
 		b.changed = true
 		return true
+	}
+	for _, c := range b.cells {
+		if c.widget.HandleEvent(ev) {
+			return true
+		}
 	}
 	return false
 }
@@ -203,25 +210,61 @@ func (b *BoxLayout) AddWidget(widget Widget, fill float64) {
 	b.cells = append(b.cells, c)
 	b.changed = true
 	widget.Watch(b)
+	b.layout()
+	b.PostEventWidgetContent(b)
+}
+
+// InsertWidget inserts a widget at the given offset.  Offset 0 is the
+// front.  If the index is longer than the number of widgets, then it
+// just gets appended to the end.
+func (b *BoxLayout) InsertWidget(index int, widget Widget, fill float64) {
+	c := &boxLayoutCell{
+		widget: widget,
+		fill:   fill,
+		view:   NewViewPort(b.view, 0, 0, 0, 0),
+	}
+	c.widget.SetView(c.view)
+	if index < 0 {
+		index = 0
+	}
+	if index > len(b.cells) {
+		index = len(b.cells)
+	}
+	b.cells = append(b.cells, c)
+	copy(b.cells[index+1:], b.cells[index:])
+	b.cells[index] = c
+	widget.Watch(b)
+	b.layout()
 	b.PostEventWidgetContent(b)
 }
 
 func (b *BoxLayout) RemoveWidget(widget Widget) {
 	for i := 0; i < len(b.cells); i++ {
 		if b.cells[i].widget == widget {
-			b.cells = append(b.cells[:i-1], b.cells[i+1:]...)
+			b.cells = append(b.cells[:i], b.cells[i+1:]...)
 			return
 		}
 	}
 	b.changed = true
 	widget.Unwatch(b)
+	b.layout()
 	b.PostEventWidgetContent(b)
 }
 
+func (b *BoxLayout) Widgets() []Widget {
+	w := make([]Widget, 0, len(b.cells))
+	for _, c := range b.cells {
+		w = append(w, c.widget)
+	}
+	return w
+}
+
 func (b *BoxLayout) SetOrientation(orient Orientation) {
-	b.orient = orient
-	b.changed = true
-	b.PostEventWidgetContent(b)
+	if b.orient != orient {
+		b.orient = orient
+		b.changed = true
+		b.PostEventWidgetContent(b)
+	}
 }
 
 // SetStyle sets the style used.
