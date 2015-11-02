@@ -1,4 +1,4 @@
-// +build !windows,!nacl,!plan9
+// +build !windows,!nacl,!plan9,!darwin
 
 // Copyright 2015 The TCell Authors
 //
