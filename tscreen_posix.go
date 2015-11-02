@@ -1,4 +1,4 @@
-// +build !windows,!nacl,!plan9,!darwin
+// +build solaris
 
 // Copyright 2015 The TCell Authors
 //
@@ -19,7 +19,6 @@ package tcell
 import (
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 )
 
@@ -197,32 +196,6 @@ func (t *tScreen) termioFini() {
 	if t.in != nil {
 		t.in.Close()
 	}
-}
-
-func (t *tScreen) getCharset() string {
-	// Let's also determine the character set.  This can help us later.
-	// Per POSIX, we search for LC_ALL first, then LC_CTYPE, and
-	// finally LANG.  First one set wins.
-	locale := ""
-	if locale = os.Getenv("LC_ALL"); locale == "" {
-		if locale = os.Getenv("LC_CTYPE"); locale == "" {
-			locale = os.Getenv("LANG")
-		}
-	}
-	if locale == "POSIX" || locale == "C" {
-		return "US-ASCII"
-	}
-	if i := strings.IndexRune(locale, '@'); i >= 0 {
-		locale = locale[:i]
-	}
-	if i := strings.IndexRune(locale, '.'); i >= 0 {
-		locale = locale[i+1:]
-	}
-	if locale == "" {
-		return "UTF-8"
-	}
-	// XXX: add support for aliases
-	return locale
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {

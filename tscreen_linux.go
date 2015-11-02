@@ -1,4 +1,4 @@
-// +build darwin
+// +build linux
 
 // Copyright 2015 The TCell Authors
 //
@@ -19,7 +19,6 @@ package tcell
 import (
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -42,15 +41,15 @@ func (t *tScreen) termioInit() error {
 	}
 
 	tios = uintptr(unsafe.Pointer(t.tiosp))
-	ioc = uintptr(syscall.TIOCGETA)
+	ioc = uintptr(syscall.TCGETS)
 	fd = uintptr(t.out.Fd())
 	if _, _, e1 := syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0); e1 != 0 {
 		e = e1
 		goto failed
 	}
 
-	// On this platform (FreeBSD and family), the baud rate is stored
-	// directly as an integer in termios.c_ospeed.  No bitmasking required.
+	// On this platform, the baud rate is stored
+	// directly as an integer in termios.c_ospeed.
 	t.baud = int(t.tiosp.Ospeed)
 	newtios = *t.tiosp
 	newtios.Iflag &^= syscall.IGNBRK | syscall.BRKINT | syscall.PARMRK |
@@ -71,7 +70,9 @@ func (t *tScreen) termioInit() error {
 	newtios.Cc[syscall.VTIME] = 1
 	tios = uintptr(unsafe.Pointer(&newtios))
 
-	ioc = uintptr(syscall.TIOCSETA)
+	// Well this kind of sucks, because we don't have TCSETSF, but only
+	// TCSETS.  This can leave some output unflushed.
+	ioc = uintptr(syscall.TCSETS)
 	if _, _, e1 := syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0); e1 != 0 {
 		e = e1
 		goto failed
@@ -103,7 +104,8 @@ func (t *tScreen) termioFini() {
 
 	if t.out != nil {
 		fd := uintptr(t.out.Fd())
-		ioc := uintptr(syscall.TIOCSETAF)
+		// XXX: We'd really rather do TCSETSF here!
+		ioc := uintptr(syscall.TCSETS)
 		tios := uintptr(unsafe.Pointer(t.tiosp))
 		syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0)
 		t.out.Close()
@@ -111,32 +113,6 @@ func (t *tScreen) termioFini() {
 	if t.in != nil {
 		t.in.Close()
 	}
-}
-
-func (t *tScreen) getCharset() string {
-	// Let's also determine the character set.  This can help us later.
-	// Per POSIX, we search for LC_ALL first, then LC_CTYPE, and
-	// finally LANG.  First one set wins.
-	locale := ""
-	if locale = os.Getenv("LC_ALL"); locale == "" {
-		if locale = os.Getenv("LC_CTYPE"); locale == "" {
-			locale = os.Getenv("LANG")
-		}
-	}
-	if locale == "POSIX" || locale == "C" {
-		return "US-ASCII"
-	}
-	if i := strings.IndexRune(locale, '@'); i >= 0 {
-		locale = locale[:i]
-	}
-	if i := strings.IndexRune(locale, '.'); i >= 0 {
-		locale = locale[i+1:]
-	}
-	if locale == "" {
-		return "UTF-8"
-	}
-	// XXX: add support for aliases
-	return locale
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {

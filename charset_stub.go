@@ -1,4 +1,4 @@
-// +build nacl plan9
+// +build plan9 nacl
 
 // Copyright 2015 The TCell Authors
 //
@@ -16,17 +16,6 @@
 
 package tcell
 
-// This stub file is for systems that have no termios.
-
-type termiosPrivate struct{}
-
-func (t *tScreen) termioInit() error {
-	return ErrNoScreen
-}
-
-func (t *tScreen) termioFini() {
-}
-
-func (t *tScreen) getWinSize() (int, int, error) {
-	return 0, 0, ErrNoScreen
+func GetCharset() string {
+	return ""
 }

@@ -97,7 +97,7 @@ func (t *tScreen) Init() error {
 	t.indoneq = make(chan struct{})
 	t.charset = "UTF-8"
 
-	t.charset = t.getCharset()
+	t.charset = GetCharset()
 	if enc := GetEncoding(t.charset); enc != nil {
 		t.encoder = enc.NewEncoder()
 		t.decoder = enc.NewDecoder()
