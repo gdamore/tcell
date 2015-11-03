@@ -16,7 +16,9 @@ package tcell
 
 // Style represents a complete text style, including both foreground
 // and background color.  We encode it in a 64-bit int for efficiency.
-// The coding is (MSB): <8b flags><24b fgcolor><8b attr><24b bgcolor>.
+// The coding is (MSB): <8b flags><1b><24b fgcolor><7b attr><1b><24b bgcolor>.
+// The <1b> is set true to indicate that the color is an RGB color, rather
+// than a named index.
 //
 // This gives 24bit color options, if it ever becomes truly necessary.
 // However, applications must not rely on this encoding.
@@ -38,7 +40,7 @@ const StyleDefault Style = 0
 
 // styleFlags -- used internally for now.
 const (
-	styleBgSet = 1 << (iota + 56)
+	styleBgSet = 1 << (iota + 57)
 	styleFgSet
 	stylePalette
 )
@@ -75,21 +77,21 @@ func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
 	} else {
 		bg = ColorDefault
 	}
-	attr = AttrMask((s >> 24) & 0xff)
+	attr = AttrMask(s) & AttrMaskAll
 
 	return fg, bg, attr
 }
 
 func (s Style) setAttrs(attrs Style, on bool) Style {
 	if on {
-		return s | (attrs << 24)
+		return s | attrs
 	}
-	return s &^ (attrs << 24)
+	return s &^ attrs
 }
 
 // Normal returns the style with all attributes disabled.
 func (s Style) Normal() Style {
-	return s &^ (Style(0xff) << 24)
+	return s &^ Style(AttrMaskAll)
 }
 
 // Bold returns a new style based on s, with the bold attribute set

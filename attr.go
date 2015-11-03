@@ -21,7 +21,7 @@ type AttrMask int
 // NB: the colors listed here are in the order that ANSI terminals expect.
 
 const (
-	AttrBold AttrMask = 1 << iota
+	AttrBold AttrMask = 1 << (25 + iota)
 	AttrBlink
 	AttrReverse
 	AttrUnderline
@@ -30,3 +30,5 @@ const (
 	// AttrNone is just normal text.
 	AttrNone AttrMask = 0
 )
+
+const AttrMaskAll = AttrBold | AttrBlink | AttrReverse | AttrUnderline | AttrDim
