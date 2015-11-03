@@ -598,9 +598,8 @@ func loadFromFile(fname string, term string) (*Terminfo, error) {
 // LookupTerminfo attemps to find a definition for the named $TERM.
 // It first looks in the builtin database, which should cover just about
 // everyone.  If it can't find one there, then it will attempt to read
-// one from the JSON file located in either $TCELLDB, or in this package's
-// source directory.  (XXX: Perhaps move that to $HOME/.tcelldb or somesuch
-// instead?  What about somewhere in /etc?)
+// one from the JSON file located in either $TCELLDB, $HOME/.tcelldb
+// or in this package's source directory as database.json).
 func LookupTerminfo(name string) (*Terminfo, error) {
 	dblock.Lock()
 	initDB()
@@ -609,16 +608,28 @@ func LookupTerminfo(name string) (*Terminfo, error) {
 
 	if t == nil {
 		// Load the database located here.  Its expected that TCELLSDB
-		// points either to a single JSON file, or to a directory of
-		// of files all of which should be loaded.
+		// points either to a single JSON file.
 		if pth := os.Getenv("TCELLDB"); pth != "" {
 			t, _ = loadFromFile(pth, name)
-		} else {
-			pth = path.Join(os.Getenv("GOPATH"), "src",
+		}
+		if t == nil {
+			if pth := os.Getenv("HOME"); pth != "" {
+				fname := path.Join(pth, ".tcelldb")
+				t, _ = loadFromFile(fname, name)
+			}
+		}
+		if t == nil {
+			gopath := strings.Split(os.Getenv("GOPATH"),
+				string(os.PathListSeparator))
+			fname := path.Join("src",
 				"github.com", "gdamore", "tcell",
 				"database.json")
-			t, _ = loadFromFile(pth, name)
-
+			for _, pth := range gopath {
+				t, _ = loadFromFile(path.Join(pth, fname), name)
+				if t != nil {
+					break
+				}
+			}
 		}
 		if t != nil {
 			dblock.Lock()

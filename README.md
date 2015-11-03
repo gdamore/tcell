@@ -174,8 +174,8 @@ that are compiled into the program directly.  This should minimize calling
 out to database file searches.
 
 The second is a JSON file, that contains the same information, which can
-be located either by the $TCELLDB environment file, or is located in the
-Go source directory.
+be located either by the $TCELLDB environment file, $HOME/.tcelldb, or is
+located in the Go source directory as database.json.
 
 These files (both the Go database.go and the database.json) file can be
 generated using the mkinfo.go program.  If you need to regnerate the
