@@ -47,31 +47,31 @@ const (
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Foreground(c Color) Style {
 	if c == ColorDefault {
-		return (s &^ (0xffffff00000000 | styleFgSet))
+		return (s &^ (0x1ffffff00000000 | styleFgSet))
 	}
-	return (s &^ Style(0xffffff00000000)) |
-		((Style(c) & 0xffffff) << 32) | styleFgSet
+	return (s &^ Style(0x1ffffff00000000)) |
+		((Style(c) & 0x1ffffff) << 32) | styleFgSet
 }
 
 // Background returns a new style based on s, with the background color set
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Background(c Color) Style {
 	if c == ColorDefault {
-		return (s &^ (0xffffff | styleBgSet))
+		return (s &^ (0x1ffffff | styleBgSet))
 	}
-	return (s &^ (0xffffff)) | (Style(c) & 0xffffff) | styleBgSet
+	return (s &^ (0x1ffffff)) | (Style(c) & 0x1ffffff) | styleBgSet
 }
 
 // Decompose breaks a style up, returning the foreground, background,
 // and other attributes.
 func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
 	if s&styleFgSet != 0 {
-		fg = Color(s>>32) & 0xffffff
+		fg = Color(s>>32) & 0x1ffffff
 	} else {
 		fg = ColorDefault
 	}
 	if s&styleBgSet != 0 {
-		bg = Color(s & 0xffffff)
+		bg = Color(s & 0x1ffffff)
 	} else {
 		bg = ColorDefault
 	}
