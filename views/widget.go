@@ -62,6 +62,7 @@ type Widget interface {
 	Unwatch(handler tcell.EventHandler)
 }
 
+// EventWidget is an event delivered by a specific widget.
 type EventWidget interface {
 	Widget() Widget
 	tcell.Event

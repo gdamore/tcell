@@ -40,11 +40,13 @@ type Panel struct {
 	BoxLayout
 }
 
+// Draw draws the Panel.
 func (p *Panel) Draw() {
 	p.BoxLayout.SetOrientation(Vertical)
 	p.BoxLayout.Draw()
 }
 
+// SetTitle sets the Widget to display in the title area.
 func (p *Panel) SetTitle(w Widget) {
 	if p.title != nil {
 		p.RemoveWidget(p.title)
@@ -53,6 +55,8 @@ func (p *Panel) SetTitle(w Widget) {
 	p.title = w
 }
 
+// SetMenu sets the Widget to display in the menu area, which is
+// just below the title.
 func (p *Panel) SetMenu(w Widget) {
 	index := 0
 	if p.title != nil {
@@ -65,6 +69,7 @@ func (p *Panel) SetMenu(w Widget) {
 	p.menu = w
 }
 
+// SetContent sets the Widget to display in the content area.
 func (p *Panel) SetContent(w Widget) {
 	index := 0
 	if p.title != nil {
@@ -80,6 +85,8 @@ func (p *Panel) SetContent(w Widget) {
 	p.content = w
 }
 
+// SetStatus sets the Widget to display in the status area, which is at
+// the bottom of the panel.
 func (p *Panel) SetStatus(w Widget) {
 	index := 0
 	if p.title != nil {
@@ -98,6 +105,7 @@ func (p *Panel) SetStatus(w Widget) {
 	p.status = w
 }
 
+// NewPanel creates a new Panel.  A zero valued panel can be created too.
 func NewPanel() *Panel {
 	return &Panel{}
 }

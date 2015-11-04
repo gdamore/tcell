@@ -22,15 +22,18 @@ import (
 	"github.com/gdamore/tcell/views"
 )
 
-type MyBox struct {
+type boxL struct {
 	views.BoxLayout
 }
 
-func (m *MyBox) HandleEvent(ev tcell.Event) bool {
+var app = &views.Application{}
+var box = &boxL{}
+
+func (m *boxL) HandleEvent(ev tcell.Event) bool {
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
 		if ev.Key() == tcell.KeyEscape {
-			views.AppQuit()
+			app.Quit()
 			return true
 		}
 	}
@@ -38,14 +41,6 @@ func (m *MyBox) HandleEvent(ev tcell.Event) bool {
 }
 
 func main() {
-
-	if e := views.AppInit(); e != nil {
-		fmt.Fprintln(os.Stderr, e.Error())
-		os.Exit(1)
-	}
-
-	outer := &MyBox{}
-	outer.SetOrientation(views.Vertical)
 
 	title := &views.TextBar{}
 	title.SetStyle(tcell.StyleDefault.
@@ -57,7 +52,7 @@ func main() {
 		Foreground(tcell.ColorWhite))
 	title.SetRight("==>X", tcell.StyleDefault)
 
-	box := views.NewBoxLayout(views.Horizontal)
+	inner := views.NewBoxLayout(views.Horizontal)
 
 	l := views.NewText()
 	m := views.NewText()
@@ -76,12 +71,16 @@ func main() {
 	m.SetAlignment(views.AlignMiddle)
 	r.SetAlignment(views.AlignEnd)
 
-	box.AddWidget(l, 0)
-	box.AddWidget(m, 0.7)
-	box.AddWidget(r, 0.3)
+	inner.AddWidget(l, 0)
+	inner.AddWidget(m, 0.7)
+	inner.AddWidget(r, 0.3)
 
-	outer.AddWidget(title, 0)
-	outer.AddWidget(box, 1)
-	views.SetApplication(outer)
-	views.RunApplication()
+	box.SetOrientation(views.Vertical)
+	box.AddWidget(title, 0)
+	box.AddWidget(inner, 1)
+	app.SetRootWidget(box)
+	if e := app.Run(); e != nil {
+		fmt.Fprintln(os.Stderr, e.Error())
+		os.Exit(1)
+	}
 }

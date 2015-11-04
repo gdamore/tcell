@@ -22,6 +22,9 @@ import (
 	"github.com/gdamore/tcell/views"
 )
 
+var app = &views.Application{}
+var window = &mainWindow{}
+
 type model struct {
 	x    int
 	y    int
@@ -97,7 +100,7 @@ func (m *model) GetCell(x, y int) (rune, tcell.Style, []rune, int) {
 	return ch, style, nil, 1
 }
 
-type MyApp struct {
+type mainWindow struct {
 	view   views.View
 	main   *views.CellView
 	keybar *views.SimpleStyledText
@@ -107,18 +110,18 @@ type MyApp struct {
 	views.Panel
 }
 
-func (a *MyApp) HandleEvent(ev tcell.Event) bool {
+func (a *mainWindow) HandleEvent(ev tcell.Event) bool {
 
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
 		switch ev.Key() {
 		case tcell.KeyCtrlL:
-			views.AppRedraw()
+			app.Refresh()
 			return true
 		case tcell.KeyRune:
 			switch ev.Rune() {
 			case 'Q', 'q':
-				views.AppQuit()
+				app.Quit()
 				return true
 			case 'S', 's':
 				a.model.hide = false
@@ -142,12 +145,12 @@ func (a *MyApp) HandleEvent(ev tcell.Event) bool {
 	return a.Panel.HandleEvent(ev)
 }
 
-func (a *MyApp) Draw() {
+func (a *mainWindow) Draw() {
 	a.status.SetMarkup(a.model.loc)
 	a.Panel.Draw()
 }
 
-func (a *MyApp) updateKeys() {
+func (a *mainWindow) updateKeys() {
 	m := a.model
 	w := "[%AQ%N] Quit"
 	if !m.enab {
@@ -161,19 +164,12 @@ func (a *MyApp) updateKeys() {
 		}
 	}
 	a.keybar.SetMarkup(w)
-	views.AppDraw()
+	app.Update()
 }
 
 func main() {
 
-	app := &MyApp{}
-
-	app.model = &model{endx: 60, endy: 15}
-
-	if e := views.AppInit(); e != nil {
-		fmt.Fprintln(os.Stderr, e.Error())
-		os.Exit(1)
-	}
+	window.model = &model{endx: 60, endy: 15}
 
 	title := views.NewTextBar()
 	title.SetStyle(tcell.StyleDefault.
@@ -182,35 +178,39 @@ func main() {
 	title.SetCenter("CellView Test", tcell.StyleDefault)
 	title.SetRight("Example v1.0", tcell.StyleDefault)
 
-	app.keybar = views.NewSimpleStyledText()
-	app.keybar.SetStyleN(tcell.StyleDefault.
+	window.keybar = views.NewSimpleStyledText()
+	window.keybar.SetStyleN(tcell.StyleDefault.
 		Background(tcell.ColorSilver).
 		Foreground(tcell.ColorBlack))
-	app.keybar.SetStyleA(tcell.StyleDefault.
+	window.keybar.SetStyleA(tcell.StyleDefault.
 		Background(tcell.ColorSilver).
 		Foreground(tcell.ColorRed))
-	app.keybar.SetMarkup("[%AQ%N] Quit")
+	window.keybar.SetMarkup("[%AQ%N] Quit")
 
-	app.status = views.NewSimpleStyledText()
-	app.status.SetStyleN(tcell.StyleDefault.
+	window.status = views.NewSimpleStyledText()
+	window.status.SetStyleN(tcell.StyleDefault.
 		Background(tcell.ColorYellow).
 		Foreground(tcell.ColorBlack))
-	app.status.SetMarkup("My status is here.")
+	window.status.SetMarkup("My status is here.")
 
-	app.main = views.NewCellView()
-	app.main.SetModel(app.model)
-	app.main.SetStyle(tcell.StyleDefault.
+	window.main = views.NewCellView()
+	window.main.SetModel(window.model)
+	window.main.SetStyle(tcell.StyleDefault.
 		Background(tcell.ColorBlack))
 
-	app.SetMenu(app.keybar)
-	app.SetTitle(title)
-	app.SetContent(app.main)
-	app.SetStatus(app.status)
+	window.SetMenu(window.keybar)
+	window.SetTitle(title)
+	window.SetContent(window.main)
+	window.SetStatus(window.status)
 
-	app.updateKeys()
-	views.AppSetStyle(tcell.StyleDefault.
+	window.updateKeys()
+
+	app.SetStyle(tcell.StyleDefault.
 		Foreground(tcell.ColorWhite).
 		Background(tcell.ColorBlack))
-	views.SetApplication(app)
-	views.RunApplication()
+	app.SetRootWidget(window)
+	if e := app.Run(); e != nil {
+		fmt.Fprintln(os.Stderr, e.Error())
+		os.Exit(1)
+	}
 }

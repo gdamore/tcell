@@ -15,117 +15,167 @@
 package views
 
 import (
+	"sync"
+
 	"github.com/gdamore/tcell"
 )
 
-var appWidget Widget
-var appScreen tcell.Screen
-
-func SetApplication(app Widget) {
-	appWidget = app
+// Application represents an event-driven application running on a screen.
+type Application struct {
+	widget Widget
+	screen tcell.Screen
+	style  tcell.Style
+	err    error
+	wg     sync.WaitGroup
 }
 
-func AppInit() error {
-	if appScreen == nil {
-		if scr, e := tcell.NewScreen(); e != nil {
-			return e
-		} else {
-			appScreen = scr
+// SetRootWidget sets the primary (root, main) Widget to be displayed.
+func (app *Application) SetRootWidget(widget Widget) {
+	app.widget = widget
+}
+
+// initialize initializes the application.  It will normally attempt to
+// allocate a default screen if one is not already established.
+func (app *Application) initialize() error {
+	if app.screen == nil {
+		if app.screen, app.err = tcell.NewScreen(); app.err != nil {
+			return app.err
 		}
+		app.screen.SetStyle(app.style)
 	}
 	return nil
 }
 
-// AppQuit causes the application to shutdown gracefully.
-func AppQuit() {
+// Quit causes the application to shutdown gracefully.  It does not wait
+// for the application to exit, but returns immediately.
+func (app *Application) Quit() {
 	ev := &eventAppQuit{}
 	ev.SetEventNow()
-	if appScreen != nil {
-		go func() { appScreen.PostEventWait(ev) }()
+	if scr := app.screen; scr != nil {
+		go func() { scr.PostEventWait(ev) }()
 	}
 }
 
-// AppRedraw causes the application forcibly redraw everything.  Use this
+// Refresh causes the application forcibly redraw everything.  Use this
 // to clear up screen corruption, etc.
-func AppRedraw() {
-	ev := &eventAppRedraw{}
+func (app *Application) Refresh() {
+	ev := &eventAppRefresh{}
 	ev.SetEventNow()
-	if appScreen != nil {
-		go func() { appScreen.PostEventWait(ev) }()
+	if scr := app.screen; scr != nil {
+		go func() { scr.PostEventWait(ev) }()
 	}
 }
 
-// AppDraw asks the application to redraw itself, but only parts of it that
-// are changed are updated.
-func AppDraw() {
-	ev := &eventAppDraw{}
+// Update asks the application to draw any screen updates that have not
+// been drawn yet.
+func (app *Application) Update() {
+	ev := &eventAppUpdate{}
 	ev.SetEventNow()
-	if appScreen != nil {
-		go func() { appScreen.PostEventWait(ev) }()
+	if scr := app.screen; scr != nil {
+		go func() { scr.PostEventWait(ev) }()
 	}
 }
 
-// AppPostFunc posts a function to be executed in the context of the
+// PostFunc posts a function to be executed in the context of the
 // application's event loop.  Functions that need to update displayed
 // state, etc. can do this to avoid holding locks.
-func AppPostFunc(fn func()) {
+func (app *Application) PostFunc(fn func()) {
 	ev := &eventAppFunc{fn: fn}
 	ev.SetEventNow()
-	if appScreen != nil {
-		go func() { appScreen.PostEventWait(ev) }()
+	if scr := app.screen; scr != nil {
+		go func() { scr.PostEventWait(ev) }()
 	}
 }
 
-func SetScreen(scr tcell.Screen) {
-	appScreen = scr
-}
-
-func AppSetStyle(style tcell.Style) {
-	if appScreen != nil {
-		appScreen.SetStyle(style)
+// SetScreen sets the screen to use for the application.  This must be
+// done before the application starts to run or is initialized.
+func (app *Application) SetScreen(scr tcell.Screen) {
+	if app.screen == nil {
+		app.screen = scr
+		app.err = nil
 	}
 }
 
-func RunApplication() {
+// SetStyle sets the default style (background) to be used for Widgets
+// that have not specified any other style.
+func (app *Application) SetStyle(style tcell.Style) {
+	app.style = style
+	if app.screen != nil {
+		app.screen.SetStyle(style)
+	}
+}
 
-	if appScreen == nil {
+func (app *Application) run() {
+
+	screen := app.screen
+	widget := app.widget
+
+	if widget == nil {
+		app.wg.Done()
 		return
 	}
-	if appWidget == nil {
-		return
+	if screen == nil {
+		if e := app.initialize(); e != nil {
+			app.wg.Done()
+			return
+		}
+		screen = app.screen
 	}
-	scr := appScreen
-	scr.Init()
-
-	scr.Clear()
-	appWidget.SetView(appScreen)
+	screen.Init()
+	screen.Clear()
+	widget.SetView(screen)
 
 loop:
 	for {
-		appWidget.Draw()
-		scr.Show()
+		if widget = app.widget; widget == nil {
+			break
+		}
+		widget.Draw()
+		screen.Show()
 
-		ev := scr.PollEvent()
+		ev := screen.PollEvent()
 		switch nev := ev.(type) {
 		case *eventAppQuit:
 			break loop
-		case *eventAppDraw:
-			scr.Show()
-		case *eventAppRedraw:
-			scr.Sync()
+		case *eventAppUpdate:
+			screen.Show()
+		case *eventAppRefresh:
+			screen.Sync()
 		case *eventAppFunc:
 			nev.fn()
 		case *tcell.EventResize:
-			scr.Sync()
-			appWidget.Resize()
+			screen.Sync()
+			widget.Resize()
 		default:
-			appWidget.HandleEvent(ev)
+			widget.HandleEvent(ev)
 		}
 	}
-	scr.Fini()
+	screen.Fini()
+	app.wg.Done()
 }
 
-type eventAppDraw struct {
+// Start starts the application loop, initializing the screen
+// and starting the Event loop.  The application will run in a goroutine
+// until Quit is called.
+func (app *Application) Start() {
+	app.wg.Add(1)
+	go app.run()
+}
+
+// Wait waits until the application finishes.
+func (app *Application) Wait() error {
+	app.wg.Wait()
+	return app.err
+}
+
+// Run runs the application, waiting until the application loop exits.
+// It is equivalent to app.Start() followed by app.Wait()
+func (app *Application) Run() error {
+	app.Start()
+	return app.Wait()
+}
+
+type eventAppUpdate struct {
 	tcell.EventTime
 }
 
@@ -133,7 +183,7 @@ type eventAppQuit struct {
 	tcell.EventTime
 }
 
-type eventAppRedraw struct {
+type eventAppRefresh struct {
 	tcell.EventTime
 }
 

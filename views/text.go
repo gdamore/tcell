@@ -36,7 +36,7 @@ type Text struct {
 	WidgetWatchers
 }
 
-// Draw is called to update the displayed content.
+// Draw draws the Text.
 func (t *Text) Draw() {
 	v := t.view
 	if v == nil {
@@ -115,6 +115,7 @@ func (t *Text) Draw() {
 	}
 }
 
+// Size returns the width and height in character cells of the Text.
 func (t *Text) Size() (int, int) {
 	if len(t.text) != 0 {
 		return t.width, t.height
@@ -132,6 +133,7 @@ func (t *Text) SetAlignment(align Alignment) {
 	}
 }
 
+// Alignment returns the alignment of the Text.
 func (t *Text) Alignment() Alignment {
 	return t.align
 }

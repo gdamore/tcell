@@ -28,7 +28,7 @@ type CellModel interface {
 	MoveCursor(offx, offy int)
 }
 
-// A CellView is a flexible view of a CellModel, offering both cursor
+// CellView is a flexible view of a CellModel, offering both cursor
 // management and a panning.
 type CellView struct {
 	port     *ViewPort
@@ -44,6 +44,7 @@ type CellView struct {
 	WidgetWatchers
 }
 
+// Draw draws the content.
 func (a *CellView) Draw() {
 
 	port := a.port
@@ -125,6 +126,8 @@ func (a *CellView) keyRight() {
 	a.MakeCursorVisible()
 }
 
+// MakeCursorVisible ensures that the cursor is visible, panning the ViewPort
+// as necessary, if the cursor is enabled.
 func (a *CellView) MakeCursorVisible() {
 	if a.model == nil {
 		return
@@ -135,6 +138,8 @@ func (a *CellView) MakeCursorVisible() {
 	}
 }
 
+// HandleEvent handles events.  In particular, it handles certain key events
+// to move the cursor or pan the view.
 func (a *CellView) HandleEvent(e tcell.Event) bool {
 	if a.model == nil {
 		return false
@@ -173,6 +178,7 @@ func (a *CellView) Size() (int, int) {
 	return w, h
 }
 
+// SetModel sets the model for this CellView.
 func (a *CellView) SetModel(model CellModel) {
 	w, h := model.GetBounds()
 	model.SetCursor(0, 0)
@@ -181,6 +187,7 @@ func (a *CellView) SetModel(model CellModel) {
 	a.port.ValidateView()
 }
 
+// SetView sets the View context.
 func (a *CellView) SetView(view View) {
 	port := a.port
 	port.SetView(view)
@@ -197,6 +204,8 @@ func (a *CellView) SetView(view View) {
 	a.Resize()
 }
 
+// Resize is called when the View is resized.  It will ensure that the
+// cursor is visible, if present.
 func (a *CellView) Resize() {
 	// We might want to reflow text
 	width, height := a.view.Size()
@@ -205,20 +214,25 @@ func (a *CellView) Resize() {
 	a.MakeCursorVisible()
 }
 
+// SetCursor sets the the cursor position.
 func (a *CellView) SetCursor(x, y int) {
 	a.cursorX = x
 	a.cursorY = y
 	a.model.SetCursor(x, y)
 }
 
+// SetCursorX sets the the cursor column.
 func (a *CellView) SetCursorX(x int) {
 	a.SetCursor(x, a.cursorY)
 }
 
+// SetCursorY sets the the cursor row.
 func (a *CellView) SetCursorY(y int) {
 	a.SetCursor(a.cursorX, y)
 }
 
+// MakeVisible makes the given coordinates visible, if they are not already.
+// It does this by moving the ViewPort for the CellView.
 func (a *CellView) MakeVisible(x, y int) {
 	a.port.MakeVisible(x, y)
 }
@@ -228,6 +242,7 @@ func (a *CellView) SetStyle(s tcell.Style) {
 	a.style = s
 }
 
+// NewCellView creates a CellView.
 func NewCellView() *CellView {
 	return &CellView{
 		port:  NewViewPort(nil, 0, 0, 0, 0),

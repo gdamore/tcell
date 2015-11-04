@@ -22,15 +22,18 @@ import (
 	"github.com/gdamore/tcell/views"
 )
 
-type MyBox struct {
+type boxL struct {
 	views.BoxLayout
 }
 
-func (m *MyBox) HandleEvent(ev tcell.Event) bool {
+var box = &boxL{}
+var app = &views.Application{}
+
+func (m *boxL) HandleEvent(ev tcell.Event) bool {
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
 		if ev.Key() == tcell.KeyEscape {
-			views.AppQuit()
+			app.Quit()
 			return true
 		}
 	}
@@ -38,14 +41,6 @@ func (m *MyBox) HandleEvent(ev tcell.Event) bool {
 }
 
 func main() {
-
-	if e := views.AppInit(); e != nil {
-		fmt.Fprintln(os.Stderr, e.Error())
-		os.Exit(1)
-	}
-
-	box := &MyBox{}
-	box.SetOrientation(views.Vertical)
 
 	title := views.NewTextBar()
 	title.SetStyle(tcell.StyleDefault.
@@ -70,11 +65,15 @@ func main() {
 	mid.SetAlignment(views.VAlignCenter | views.HAlignCenter)
 	bot.SetAlignment(views.VAlignBottom | views.HAlignLeft)
 
+	box.SetOrientation(views.Vertical)
 	box.AddWidget(title, 0)
 	box.AddWidget(top, 0)
 	box.AddWidget(mid, 0.7)
 	box.AddWidget(bot, 0.3)
 
-	views.SetApplication(box)
-	views.RunApplication()
+	app.SetRootWidget(box)
+	if e := app.Run(); e != nil {
+		fmt.Fprintln(os.Stderr, e.Error())
+		os.Exit(1)
+	}
 }

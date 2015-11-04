@@ -95,7 +95,7 @@ func (b *BoxLayout) layout() {
 	// the cells with the highest residual fraction.  It should be
 	// the case that no single cell gets more than one more cell.
 	for resid > 0 {
-		var best *boxLayoutCell = nil
+		var best *boxLayoutCell
 		for _, c := range b.cells {
 			if c.fill == 0 {
 				continue
@@ -135,6 +135,7 @@ func (b *BoxLayout) layout() {
 	b.changed = false
 }
 
+// Resize adjusts the layout when the underlying View changes size.
 func (b *BoxLayout) Resize() {
 	b.layout()
 
@@ -199,7 +200,7 @@ func (b *BoxLayout) HandleEvent(ev tcell.Event) bool {
 	return false
 }
 
-// Add() adds a widget to the end of the BoxLayout.
+// AddWidget adds a widget to the end of the BoxLayout.
 func (b *BoxLayout) AddWidget(widget Widget, fill float64) {
 	c := &boxLayoutCell{
 		widget: widget,
@@ -238,6 +239,7 @@ func (b *BoxLayout) InsertWidget(index int, widget Widget, fill float64) {
 	b.PostEventWidgetContent(b)
 }
 
+// RemoveWidget removes a Widget from the layout.
 func (b *BoxLayout) RemoveWidget(widget Widget) {
 	for i := 0; i < len(b.cells); i++ {
 		if b.cells[i].widget == widget {
@@ -251,6 +253,7 @@ func (b *BoxLayout) RemoveWidget(widget Widget) {
 	b.PostEventWidgetContent(b)
 }
 
+// Widgets returns the list of Widgets for this BoxLayout.
 func (b *BoxLayout) Widgets() []Widget {
 	w := make([]Widget, 0, len(b.cells))
 	for _, c := range b.cells {
@@ -259,6 +262,7 @@ func (b *BoxLayout) Widgets() []Widget {
 	return w
 }
 
+// SetOrientation sets the orientation as either Horizontal or Vertical.
 func (b *BoxLayout) SetOrientation(orient Orientation) {
 	if b.orient != orient {
 		b.orient = orient

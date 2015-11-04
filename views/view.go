@@ -116,7 +116,7 @@ func (v *ViewPort) SetContent(x, y int, ch rune, comb []rune, s tcell.Style) {
 	v.v.SetContent(x-v.viewx+v.physx, y-v.viewy+v.physy, ch, comb, s)
 }
 
-// This moves the ViewPort the minimum necessary to make the given
+// MakeVisible moves the ViewPort the minimum necessary to make the given
 // point visible.  This should be called before any content is changed with
 // SetContent, since otherwise it may be possible to move the location onto
 // a region whose contents have been discarded.

@@ -96,7 +96,7 @@ func (t *SimpleStyledText) SetMarkup(s string) {
 	t.markup = markup
 }
 
-// SimpleStyledText returns the text that was set, including markup.
+// Markup returns the text that was set, including markup.
 func (t *SimpleStyledText) Markup() string {
 	return string(t.markup)
 }

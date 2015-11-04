@@ -18,9 +18,9 @@ import (
 	"github.com/gdamore/tcell"
 )
 
-// Spacer is a Widget that occupies no visible real-estate.  It is useful to add this
-// to layouts when expansion space is required - its blank filler.
-
+// Spacer is a Widget that occupies no visible real-estate.  It is useful to
+// add this to layouts when expansion space is required.  It expands as needed
+// with blank space.
 type Spacer struct {
 	WidgetWatchers
 }
@@ -28,6 +28,7 @@ type Spacer struct {
 // Draw is called to update the displayed content.
 func (*Spacer) Draw() {}
 
+// Size always returns 0, 0, since no size is ever *requird* to display nothing.
 func (*Spacer) Size() (int, int) {
 	return 0, 0
 }
@@ -45,7 +46,8 @@ func (s *Spacer) Resize() {
 	s.PostEventWidgetResize(s)
 }
 
-// NewSpacer creates an empty Spacer.  Its probably easier just to declare it directly.
+// NewSpacer creates an empty Spacer.  It's probably easier just to declare it
+// directly.
 func NewSpacer() *Spacer {
 	return &Spacer{}
 }
