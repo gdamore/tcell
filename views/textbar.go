@@ -15,6 +15,8 @@
 package views
 
 import (
+	"sync"
+
 	"github.com/gdamore/tcell"
 )
 
@@ -32,6 +34,7 @@ type TextBar struct {
 	lview   ViewPort
 	rview   ViewPort
 	cview   ViewPort
+	once    sync.Once
 
 	WidgetWatchers
 }
@@ -39,6 +42,7 @@ type TextBar struct {
 // SetCenter sets the center text for the textbar.  The text is
 // always center aligned.
 func (t *TextBar) SetCenter(s string, style tcell.Style) {
+	t.initialize()
 	if style == tcell.StyleDefault {
 		style = t.style
 	}
@@ -46,9 +50,9 @@ func (t *TextBar) SetCenter(s string, style tcell.Style) {
 	t.center.SetStyle(style)
 }
 
-// SetLeft sets the left text for the textbar.  It is always
-// left-aligned.
+// SetLeft sets the left text for the textbar.  It is always left-aligned.
 func (t *TextBar) SetLeft(s string, style tcell.Style) {
+	t.initialize()
 	if style == tcell.StyleDefault {
 		style = t.style
 	}
@@ -56,9 +60,9 @@ func (t *TextBar) SetLeft(s string, style tcell.Style) {
 	t.left.SetStyle(style)
 }
 
-// SetRight sets the right text for the textbar.  It is always
-// right-aligned.
+// SetRight sets the right text for the textbar.  It is always right-aligned.
 func (t *TextBar) SetRight(s string, style tcell.Style) {
+	t.initialize()
 	if style == tcell.StyleDefault {
 		style = t.style
 	}
@@ -68,22 +72,24 @@ func (t *TextBar) SetRight(s string, style tcell.Style) {
 
 // SetStyle is used to set a default style to use for the textbar, including
 // areas where no text is present.  Note that this will not change the text
-// already displayed, so call this before changing the contents.
+// already displayed, so call this before changing or setting text.
 func (t *TextBar) SetStyle(style tcell.Style) {
+	t.initialize()
 	t.style = style
 }
 
-// Initialize prepares the TextBar for use.  It must be performed before use.
-func (t *TextBar) Initialize() {
-	t.center.SetView(&t.cview)
-	t.left.SetView(&t.lview)
-	t.right.SetView(&t.rview)
-	t.center.SetAlignment(VAlignTop | HAlignCenter)
-	t.left.SetAlignment(VAlignTop | HAlignLeft)
-	t.right.SetAlignment(VAlignTop | HAlignRight)
-	t.center.Watch(t)
-	t.left.Watch(t)
-	t.right.Watch(t)
+func (t *TextBar) initialize() {
+	t.once.Do(func() {
+		t.center.SetView(&t.cview)
+		t.left.SetView(&t.lview)
+		t.right.SetView(&t.rview)
+		t.center.SetAlignment(VAlignTop | HAlignCenter)
+		t.left.SetAlignment(VAlignTop | HAlignLeft)
+		t.right.SetAlignment(VAlignTop | HAlignRight)
+		t.center.Watch(t)
+		t.left.Watch(t)
+		t.right.Watch(t)
+	})
 }
 
 func (t *TextBar) layout() {
@@ -100,7 +106,9 @@ func (t *TextBar) layout() {
 	t.changed = false
 }
 
+// SetView sets the View drawing context for this TextBar.
 func (t *TextBar) SetView(view View) {
+	t.initialize()
 	t.view = view
 	t.lview.SetView(view)
 	t.rview.SetView(view)
@@ -108,9 +116,10 @@ func (t *TextBar) SetView(view View) {
 	t.changed = true
 }
 
-// Draw draws the TextBar.
+// Draw draws the TextBar into its View context.
 func (t *TextBar) Draw() {
 
+	t.initialize()
 	if t.changed {
 		t.layout()
 	}
@@ -128,7 +137,10 @@ func (t *TextBar) Draw() {
 	t.left.Draw()
 }
 
+// Resize is called when the TextBar's View changes size, and
+// updates the layout.
 func (t *TextBar) Resize() {
+	t.initialize()
 	t.layout()
 
 	t.left.Resize()
@@ -138,6 +150,8 @@ func (t *TextBar) Resize() {
 	t.PostEventWidgetResize(t)
 }
 
+// Size implements the Size method for Widget, returning the width
+// and height in character cells.
 func (t *TextBar) Size() (int, int) {
 	w, h := 0, 0
 
@@ -159,6 +173,9 @@ func (t *TextBar) Size() (int, int) {
 	return w, h
 }
 
+// HandleEvent handles incoming events.  The only events handled are
+// those for the Text objects; when those change, the TextBar adjusts
+// the layout to accommodate.
 func (t *TextBar) HandleEvent(ev tcell.Event) bool {
 	switch ev.(type) {
 	case *EventWidgetContent:
@@ -168,10 +185,9 @@ func (t *TextBar) HandleEvent(ev tcell.Event) bool {
 	return false
 }
 
-// NewTextBar creates an empty TextBar.  This should be done to initialize
-// the values.
+// NewTextBar creates an empty, initialized TextBar.
 func NewTextBar() *TextBar {
 	t := &TextBar{}
-	t.Initialize()
+	t.initialize()
 	return t
 }

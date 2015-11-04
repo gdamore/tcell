@@ -47,7 +47,7 @@ func main() {
 	outer := &MyBox{}
 	outer.SetOrientation(views.Vertical)
 
-	title := views.NewTextBar()
+	title := &views.TextBar{}
 	title.SetStyle(tcell.StyleDefault.
 		Background(tcell.ColorYellow).
 		Foreground(tcell.ColorBlack))
