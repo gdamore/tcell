@@ -77,7 +77,7 @@ func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
 	} else {
 		bg = ColorDefault
 	}
-	attr = AttrMask(s) & AttrMaskAll
+	attr = AttrMask(s) & attrAll
 
 	return fg, bg, attr
 }
@@ -91,7 +91,7 @@ func (s Style) setAttrs(attrs Style, on bool) Style {
 
 // Normal returns the style with all attributes disabled.
 func (s Style) Normal() Style {
-	return s &^ Style(AttrMaskAll)
+	return s &^ Style(attrAll)
 }
 
 // Bold returns a new style based on s, with the bold attribute set

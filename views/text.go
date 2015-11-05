@@ -36,40 +36,63 @@ type Text struct {
 	WidgetWatchers
 }
 
+func (t *Text) clear() {
+	v := t.view
+	w, h := v.Size()
+	v.Clear()
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			v.SetContent(x, y, ' ', nil, t.style)
+		}
+	}
+}
+
+// calcY figures the initial Y offset.  Alignment is top by default.
+func (t *Text) calcY(height int) int {
+	if t.align&VAlignCenter != 0 {
+		return (height - len(t.lengths)) / 2
+	}
+	if t.align&VAlignBottom != 0 {
+		return height - len(t.lengths)
+	}
+	return 0
+}
+
+// calcX figures the initial X offset for the given line.
+// Alignment is left by default.
+func (t *Text) calcX(width, line int) int {
+	if t.align&HAlignCenter != 0 {
+		return (width - t.lengths[line]) / 2
+	}
+	if t.align&HAlignRight != 0 {
+		return width - t.lengths[line]
+	}
+	return 0
+}
+
 // Draw draws the Text.
 func (t *Text) Draw() {
 	v := t.view
 	if v == nil {
 		return
 	}
-	var x, y int
 
 	width, height := v.Size()
 	if width == 0 || height == 0 {
 		return
 	}
 
-	v.Clear()
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			v.SetContent(x, y, ' ', nil, t.style)
-		}
-	}
+	t.clear()
 
 	// Note that we might wind up with a negative X if the width
 	// is larger than the length.  That's OK, and correct even.
 	// The view will clip it properly in that case.
 
 	// We align to the left & top by default.
-	if t.align&VAlignCenter != 0 {
-		y = (height - 1) / 2
-	} else if t.align&VAlignBottom != 0 {
-		y = height - 1
-	} else {
-		y = 0
-	}
+	y := t.calcY(height)
 	r := rune(0)
 	w := 0
+	x := 0
 	var styl tcell.Style
 	var comb []rune
 	line := 0
@@ -77,13 +100,7 @@ func (t *Text) Draw() {
 	for i, l := range t.text {
 
 		if newline {
-			if t.align&HAlignCenter != 0 {
-				x = (width - t.lengths[line]) / 2
-			} else if t.align&HAlignRight != 0 {
-				x = width - t.lengths[line]
-			} else {
-				x = 0
-			}
+			x = t.calcX(width, line)
 			newline = false
 		}
 		if l == '\n' {

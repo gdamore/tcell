@@ -226,11 +226,7 @@ func (s *simscreen) drawCell(x, y int) int {
 
 		l := utf8.EncodeRune(ubuf, r)
 
-		if enc := s.encoder; enc != nil {
-			nout, _, _ = enc.Transform(lbuf, ubuf[:l], true)
-		} else {
-			nout = 0
-		}
+		nout, _, _ = s.encoder.Transform(lbuf, ubuf[:l], true)
 
 		if nout == 0 || lbuf[0] == '\x1a' {
 
@@ -398,54 +394,24 @@ outer:
 			continue
 		}
 
-		switch s.charset {
-		case "UTF-8":
-			r, l := utf8.DecodeRune(b)
-			if r == utf8.RuneError && (l == 0 || l == 1) {
-				failed = true
-				// yank off one byte
-				b = b[1:]
-			} else {
-				b = b[l:]
-				ev := NewEventKey(KeyRune, r, ModNone)
-				s.PostEvent(ev)
-				continue
-			}
+		utfb := make([]byte, len(b)*4) // worst case
+		for l := 1; l < len(b); l++ {
+			s.decoder.Reset()
+			nout, nin, _ := s.decoder.Transform(utfb, b[:l], true)
 
-		case "US-ASCII":
-			// ASCII cannot generate this, so most likely it was
-			// entered as an Alt sequence
-			ev := NewEventKey(KeyRune, rune(b[0]-128), ModAlt)
-			s.PostEvent(ev)
-			b = b[1:]
-			continue
-
-		default:
-			utfb := make([]byte, len(b)*4) // worst case
-			dec := s.decoder
-			if dec == nil {
-				failed = true
-				b = b[1:]
-				continue
-			}
-
-			// take care to consume at *most* a single rune
-			for l := 1; l < len(b); l++ {
-				dec.Reset()
-				nout, nin, _ := dec.Transform(utfb, b[:l], true)
-
-				if nout != 0 {
-					r, _ := utf8.DecodeRune(utfb[:nout])
+			if nout != 0 {
+				r, _ := utf8.DecodeRune(utfb[:nout])
+				if r != utf8.RuneError {
 					ev := NewEventKey(KeyRune, r, ModNone)
 					s.PostEvent(ev)
-					b = b[nin:]
-					continue outer
 				}
+				b = b[nin:]
+				continue outer
 			}
-			failed = true
-			b = b[1:]
-			continue
 		}
+		failed = true
+		b = b[1:]
+		continue
 	}
 
 	return failed == false

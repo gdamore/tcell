@@ -964,6 +964,9 @@ var colorNames = map[string]Color{
 	"slategrey":            ColorSlateGray,
 }
 
+// Hex returns the color's hexadecimal RGB 24-bit value with each component
+// consisting of a single byte, ala R << 16 | G << 8 | B.  If the color
+// is unknown or unset, -1 is returned.
 func (c Color) Hex() int32 {
 	if c&ColorIsRGB != 0 {
 		return (int32(c) & 0xffffff)
@@ -974,6 +977,9 @@ func (c Color) Hex() int32 {
 	return -1
 }
 
+// RGB returns the red, green, and blue components of the color, with
+// each component represented as a value 0-255.  In the event that the
+// color cannot be broken up (not set usually), -1 is returned for each value.
 func (c Color) RGB() (int32, int32, int32) {
 	v := c.Hex()
 	if v < 0 {
@@ -982,15 +988,18 @@ func (c Color) RGB() (int32, int32, int32) {
 	return (v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff
 }
 
+// NewRGBColor returns a new color with the given red, green, and blue values.
+// Each value must be represented in the range 0-255.
 func NewRGBColor(r, g, b int32) Color {
 	return NewHexColor(((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff))
 }
 
+// NewHexColor returns a color using the given 24-bit RGB value.
 func NewHexColor(v int32) Color {
 	return ColorIsRGB | Color(v)
 }
 
-// Given a color name (W3C name), return the actual color. A hex value may
+// GetColor creates a Color from a color name (W3C name). A hex value may
 // be supplied as a string in the format "#ffffff".
 func GetColor(name string) Color {
 	if c, ok := colorNames[name]; ok {

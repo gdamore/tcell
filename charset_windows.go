@@ -16,6 +16,6 @@
 
 package tcell
 
-func GetCharset() string {
+func getCharset() string {
 	return "UTF-16"
 }

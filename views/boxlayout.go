@@ -40,37 +40,22 @@ type boxLayoutCell struct {
 	view   *ViewPort
 }
 
-func (b *BoxLayout) layout() {
-	if b.view == nil {
-		return
-	}
+func (b *BoxLayout) hLayout() {
 	w, h := b.view.Size()
 
-	minx, miny, totx, toty := 0, 0, 0, 0
 	totf := 0.0
 	for _, c := range b.cells {
 		x, y := c.widget.Size()
-		totx += x
-		toty += y
 		totf += c.fill
-		if x > minx {
-			minx = x
+		b.width += x
+		if y > b.height {
+			b.height = y
 		}
-		if y > miny {
-			miny = y
-		}
+		c.pad = 0
+		c.frac = 0
 	}
 
-	extra := 0
-	if b.orient == Horizontal {
-		extra = w - totx
-		b.width = totx
-		b.height = miny
-	} else {
-		extra = h - toty
-		b.width = minx
-		b.height = toty
-	}
+	extra := w - b.width
 	if extra < 0 {
 		extra = 0
 	}
@@ -85,9 +70,6 @@ func (b *BoxLayout) layout() {
 			c.pad = int(c.frac)
 			c.frac -= float64(c.pad)
 			resid -= c.pad
-		} else {
-			c.pad = 0
-			c.frac = 0
 		}
 	}
 
@@ -109,28 +91,93 @@ func (b *BoxLayout) layout() {
 		resid--
 	}
 
-	x, y, xinc, yinc := 0, 0, 0, 0
+	x, y, xinc := 0, 0, 0
 	for _, c := range b.cells {
-		cw, ch := c.widget.Size()
+		cw, _ := c.widget.Size()
 
-		switch b.orient {
-		case Horizontal:
-			xinc = cw + c.pad
-			cw += c.pad
-			ch = h
+		xinc = cw + c.pad
+		cw += c.pad
 
-		case Vertical:
-			yinc = ch + c.pad
-			ch += c.pad
-			cw = w
-
-		default:
-			panic("Bad orientation")
-
-		}
-		c.view.Resize(x, y, cw, ch)
+		c.view.Resize(x, y, cw, h)
 		x += xinc
+	}
+}
+
+func (b *BoxLayout) vLayout() {
+	w, h := b.view.Size()
+
+	totf := 0.0
+	for _, c := range b.cells {
+		x, y := c.widget.Size()
+		b.height += y
+		totf += c.fill
+		if x > b.width {
+			b.width = x
+		}
+		c.pad = 0
+		c.frac = 0
+	}
+
+	extra := h - b.height
+	if extra < 0 {
+		extra = 0
+	}
+
+	resid := extra
+	if totf == 0 {
+		resid = 0
+	}
+
+	for _, c := range b.cells {
+		if c.fill > 0 {
+			c.frac = float64(extra) * c.fill / totf
+			c.pad = int(c.frac)
+			c.frac -= float64(c.pad)
+			resid -= c.pad
+		}
+	}
+
+	// Distribute any left over padding.  We try to give it to the
+	// the cells with the highest residual fraction.  It should be
+	// the case that no single cell gets more than one more cell.
+	for resid > 0 {
+		var best *boxLayoutCell
+		for _, c := range b.cells {
+			if c.fill == 0 {
+				continue
+			}
+			if best == nil || c.frac > best.frac {
+				best = c
+			}
+		}
+		best.pad++
+		best.frac = 0
+		resid--
+	}
+
+	x, y, yinc := 0, 0, 0
+	for _, c := range b.cells {
+		_, ch := c.widget.Size()
+
+		yinc = ch + c.pad
+		ch += c.pad
+		c.view.Resize(x, y, w, ch)
 		y += yinc
+	}
+}
+
+func (b *BoxLayout) layout() {
+	if b.view == nil {
+		return
+	}
+	b.width, b.height = 0, 0
+	switch b.orient {
+	case Horizontal:
+		b.hLayout()
+	case Vertical:
+		b.vLayout()
+	default:
+		panic("Bad orientation")
 	}
 	b.changed = false
 }

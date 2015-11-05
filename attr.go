@@ -31,4 +31,4 @@ const (
 	AttrNone AttrMask = 0
 )
 
-const AttrMaskAll = AttrBold | AttrBlink | AttrReverse | AttrUnderline | AttrDim
+const attrAll = AttrBold | AttrBlink | AttrReverse | AttrUnderline | AttrDim

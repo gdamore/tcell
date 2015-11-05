@@ -31,14 +31,17 @@ type EventTime struct {
 	when time.Time
 }
 
+// When returns the time stamp when the event occurred.
 func (e *EventTime) When() time.Time {
 	return e.when
 }
 
+// SetEventTime sets the time of occurrence for the event.
 func (e *EventTime) SetEventTime(t time.Time) {
 	e.when = t
 }
 
+// SetEventNow sets the time of occurrence for the event to the current time.
 func (e *EventTime) SetEventNow() {
 	e.SetEventTime(time.Now())
 }

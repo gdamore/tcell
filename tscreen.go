@@ -97,7 +97,7 @@ func (t *tScreen) Init() error {
 	t.indoneq = make(chan struct{})
 	t.charset = "UTF-8"
 
-	t.charset = GetCharset()
+	t.charset = getCharset()
 	if enc := GetEncoding(t.charset); enc != nil {
 		t.encoder = enc.NewEncoder()
 		t.decoder = enc.NewDecoder()
@@ -679,6 +679,23 @@ func (t *tScreen) PostEvent(ev Event) error {
 	}
 }
 
+func (t *tScreen) clip(x, y int) (int, int) {
+	w, h := t.cells.Size()
+	if x < 0 {
+		x = 0
+	}
+	if y < 0 {
+		y = 0
+	}
+	if x > w-1 {
+		x = w - 1
+	}
+	if y > h-1 {
+		y = h - 1
+	}
+	return x, y
+}
+
 func (t *tScreen) postMouseEvent(x, y, btn int) {
 
 	// XTerm mouse events only report at most one button at a time,
@@ -733,19 +750,8 @@ func (t *tScreen) postMouseEvent(x, y, btn int) {
 	// Some terminals will report mouse coordinates outside the
 	// screen, especially with click-drag events.  Clip the coordinates
 	// to the screen in that case.
-	if x < 0 {
-		x = 0
-	}
-	if y < 0 {
-		y = 0
-	}
-	w, h := t.cells.Size()
-	if x > w-1 {
-		x = w - 1
-	}
-	if y > h-1 {
-		y = h - 1
-	}
+	x, y = t.clip(x, y)
+
 	ev := NewEventMouse(x, y, button, mod)
 	t.PostEvent(ev)
 }
