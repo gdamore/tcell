@@ -18,17 +18,15 @@ package tcell
 // Note that support for attributes may vary widely across terminals.
 type AttrMask int
 
-// NB: the colors listed here are in the order that ANSI terminals expect.
-
+// Attributes are not colors, but affect the display of text.  They can
+// be combined.
 const (
 	AttrBold AttrMask = 1 << (25 + iota)
 	AttrBlink
 	AttrReverse
 	AttrUnderline
 	AttrDim
-
-	// AttrNone is just normal text.
-	AttrNone AttrMask = 0
+	AttrNone AttrMask = 0	// Just normal text.
 )
 
 const attrAll = AttrBold | AttrBlink | AttrReverse | AttrUnderline | AttrDim

@@ -261,13 +261,15 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 // possible to report modifier keys.
 type ModMask int16
 
+// These are the modifiers keys that can be sent either with a key press,
+// or a mouse event.
 const (
 	ModShift ModMask = 1 << iota
 	ModCtrl
 	ModAlt
 	ModMeta
+	ModNone ModMask = 0
 )
-const ModNone ModMask = 0
 
 // Key is a generic value for representing keys, and especially special
 // keys (function keys, cursor movement keys, etc.)  For normal keys, like
@@ -275,6 +277,10 @@ const ModNone ModMask = 0
 // inspect the Rune() member of the EventKey.
 type Key int16
 
+// This is the list of named keys.  KeyRune is special however, in that it is
+// a place holder key indicating that a printable character was sent.  The
+// actual value of the rune will be transported in the Rune of the associated
+// EventKey.
 const (
 	KeyRune Key = iota + 256
 	KeyUp
@@ -365,6 +371,8 @@ const (
 	KeyF64
 )
 
+// These are the control keys.  Note that they overlap with other keys,
+// perhaps.  For example, KeyCtrlH is the same as KeyBackspace.
 const (
 	KeyCtrlSpace Key = iota
 	KeyCtrlA
@@ -442,6 +450,7 @@ const (
 	KeyDEL Key = 0x7F
 )
 
+// These keys are aliases for other names.
 const (
 	KeyBackspace  = KeyBS
 	KeyTab        = KeyTAB

@@ -423,6 +423,8 @@ const (
 	ColorYellowGreen
 )
 
+// These are aliases for the color gray, because some of us spell
+// it as grey.
 const (
 	ColorGrey           = ColorGray
 	ColorDimGrey        = ColorDimGray

@@ -79,6 +79,7 @@ func NewEventMouse(x, y int, btn ButtonMask, mod ModMask) *EventMouse {
 // emulations (such as vt100) won't support mice at all, of course.
 type ButtonMask int16
 
+// These are the actual button values.
 const (
 	Button1 ButtonMask = 1 << iota // Usually left mouse button.
 	Button2                        // Usually the middle mouse button.

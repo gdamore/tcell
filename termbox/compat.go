@@ -64,8 +64,11 @@ func Size() (int, int) {
 	return screen.Size()
 }
 
+// Attribute affects the presentation of characters, such as color, boldness,
+// and so forth.
 type Attribute uint16
 
+// Colors first.  The order here is significant.
 const (
 	ColorDefault Attribute = iota
 	ColorBlack
@@ -77,6 +80,8 @@ const (
 	ColorCyan
 	ColorWhite
 )
+
+// Other attributes.
 const (
 	AttrBold Attribute = 1 << (9 + iota)
 	AttrUnderline
@@ -139,6 +144,7 @@ func Clear(fg, bg Attribute) {
 // InputMode is not used.
 type InputMode int
 
+// Unused input modes; here for compatibility.
 const (
 	InputCurrent InputMode = iota
 	InputEsc
@@ -156,6 +162,7 @@ func SetInputMode(mode InputMode) InputMode {
 // are used.  See the termbox documentation for an explanation.
 type OutputMode int
 
+// OutputMode values.
 const (
 	OutputCurrent OutputMode = iota
 	OutputNormal
@@ -216,6 +223,7 @@ type Event struct {
 	N      int
 }
 
+// Event types.
 const (
 	EventNone EventType = iota
 	EventKey
@@ -226,6 +234,7 @@ const (
 	EventRaw
 )
 
+// Keys codes.
 const (
 	KeyF1         = Key(tcell.KeyF1)
 	KeyF2         = Key(tcell.KeyF2)
@@ -286,6 +295,7 @@ const (
 	MouseMiddle   = Key(tcell.KeyF61)
 )
 
+// Modifiers.
 const (
 	ModAlt = Modifier(tcell.ModAlt)
 )
