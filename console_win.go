@@ -125,17 +125,17 @@ func (s *cScreen) Init() error {
 	s.evch = make(chan Event, 10)
 	s.quit = make(chan struct{})
 
-	if in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0); e != nil {
+	in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0)
+	if e != nil {
 		return e
-	} else {
-		s.in = in
 	}
-	if out, e := syscall.Open("CONOUT$", syscall.O_RDWR, 0); e != nil {
+	s.in = in
+	out, e := syscall.Open("CONOUT$", syscall.O_RDWR, 0)
+	if e != nil {
 		syscall.Close(s.in)
 		return e
-	} else {
-		s.out = out
 	}
+	s.out = out
 
 	s.Lock()
 

@@ -83,50 +83,35 @@ const (
 	AttrReverse
 )
 
+func fixColor(c tcell.Color) tcell.Color { 
+	if c == tcell.ColorDefault {
+		return c
+	}
+	switch outMode {
+	case OutputNormal:
+		c  %= tcell.Color(16)
+	case Output256:
+		c %= tcell.Color(256)
+	case Output216:
+		c %= tcell.Color(216)
+		c += tcell.Color(16)
+	case OutputGrayscale:
+		c %= tcell.Color(24)
+		c += tcell.Color(232)
+	default:
+		c = tcell.ColorDefault
+	}
+	return c
+}
+
 func mkStyle(fg, bg Attribute) tcell.Style {
 	st := tcell.StyleDefault
 
 	f := tcell.Color(int(fg)&0x1ff) - 1
 	b := tcell.Color(int(bg)&0x1ff) - 1
 
-	switch outMode {
-	case Output256:
-		if f != tcell.ColorDefault {
-			f %= tcell.Color(256)
-		}
-		if b != tcell.ColorDefault {
-			b %= tcell.Color(256)
-		}
-		break
-	case Output216:
-		if f != tcell.ColorDefault {
-			f %= tcell.Color(216)
-			f += tcell.Color(16)
-		}
-		if b != tcell.ColorDefault {
-			b %= tcell.Color(216)
-			b += tcell.Color(16)
-		}
-	case OutputGrayscale:
-		if f != tcell.ColorDefault {
-			f %= tcell.Color(24)
-			f += tcell.Color(232)
-		}
-		if b != tcell.ColorDefault {
-			b %= tcell.Color(24)
-			b += tcell.Color(232)
-		}
-	case OutputNormal:
-		if f != tcell.ColorDefault {
-			f %= tcell.Color(16)
-		}
-		if b != tcell.ColorDefault {
-			b %= tcell.Color(16)
-		}
-	default:
-		f = tcell.ColorDefault
-		b = tcell.ColorDefault
-	}
+	f = fixColor(f)
+	b = fixColor(b)
 	st = st.Foreground(f).Background(b)
 	if (fg|bg)&AttrBold != 0 {
 		st = st.Bold(true)
