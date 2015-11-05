@@ -83,13 +83,13 @@ const (
 	AttrReverse
 )
 
-func fixColor(c tcell.Color) tcell.Color { 
+func fixColor(c tcell.Color) tcell.Color {
 	if c == tcell.ColorDefault {
 		return c
 	}
 	switch outMode {
 	case OutputNormal:
-		c  %= tcell.Color(16)
+		c %= tcell.Color(16)
 	case Output256:
 		c %= tcell.Color(256)
 	case Output216:
