@@ -16,7 +16,7 @@ package tcell
 
 // Style represents a complete text style, including both foreground
 // and background color.  We encode it in a 64-bit int for efficiency.
-// The coding is (MSB): <8b flags><1b><24b fgcolor><7b attr><1b><24b bgcolor>.
+// The coding is (MSB): <7b flags><1b><24b fgcolor><7b attr><1b><24b bgcolor>.
 // The <1b> is set true to indicate that the color is an RGB color, rather
 // than a named index.
 //
