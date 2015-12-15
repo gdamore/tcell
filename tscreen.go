@@ -978,6 +978,9 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 
 func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 
+	t.Lock()
+	defer t.Unlock()
+
 	for {
 		b := buf.Bytes()
 		if len(b) == 0 {
