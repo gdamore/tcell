@@ -27,7 +27,7 @@ terms=/tmp/terms.$$
 # worrying about.
 
 # now get the rest
-all=`toe | cut -f1`
+all=`toe -a | cut -f1`
 echo Scanning terminal definitions
 echo > $terms
 for f in $all; do

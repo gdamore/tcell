@@ -22,6 +22,7 @@ pcansi
 rxvt
 rxvt-16color
 rxvt-256color
+rxvt-unicode-256color
 screen
 sun
 sun-color
