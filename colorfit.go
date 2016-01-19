@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -27,16 +27,16 @@ func FindColor(c Color, palette []Color) Color {
 	dist := float64(0)
 	r, g, b := c.RGB()
 	c1 := colorful.Color{
-		float64(r) / 255.0,
-		float64(g) / 255.0,
-		float64(b) / 255.0,
+		R: float64(r) / 255.0,
+		G: float64(g) / 255.0,
+		B: float64(b) / 255.0,
 	}
 	for _, d := range palette {
 		r, g, b = d.RGB()
 		c2 := colorful.Color{
-			float64(r) / 255.0,
-			float64(g) / 255.0,
-			float64(b) / 255.0,
+			R: float64(r) / 255.0,
+			G: float64(g) / 255.0,
+			B: float64(b) / 255.0,
 		}
 		// CIE94 is more accurate, but really really expensive.
 		nd := c1.DistanceCIE76(c2)
