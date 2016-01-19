@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -491,4 +491,12 @@ func (s *simscreen) CanDisplay(r rune, checkFallbacks bool) bool {
 	return false
 }
 
+func (s *simscreen) HasMouse() bool {
+	return false
+}
+
 func (s *simscreen) Resize(int, int, int, int) {}
+
+func (s *simscreen) HasKey(Key) bool {
+	return true
+}

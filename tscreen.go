@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -1128,6 +1128,20 @@ func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 		return false
 	}
 	if _, ok := t.fallback[r]; ok {
+		return true
+	}
+	return false
+}
+
+func (t *tScreen) HasMouse() bool {
+	return len(t.mouse) != 0
+}
+
+func (t *tScreen) HasKey(k Key) bool {
+	if k == KeyRune {
+		return true
+	}
+	if _, exist := t.keys[k]; exist {
 		return true
 	}
 	return false

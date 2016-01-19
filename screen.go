@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -101,6 +101,12 @@ type Screen interface {
 	// DisableMouse disables the mouse.
 	DisableMouse()
 
+	// HasMouse returns true if the terminal (apparently) supports a
+	// mouse.  Note that the a return value of true doesn't guarantee that
+	// a mouse/pointing device is present; a false return definitely
+	// indicates no mouse support is available.
+	HasMouse() bool
+
 	// Colors returns the number of colors.  All colors are assumed to
 	// use the ANSI color map.  If a terminal is monochrome, it will
 	// return 0.
@@ -174,6 +180,16 @@ type Screen interface {
 	// ask a screen to resize, but it allows the Screen to implement
 	// the View interface.
 	Resize(int, int, int, int)
+
+	// HasKey returns true if the keyboard is believed to have the
+	// key.  In some cases a keyboard may have keys with this name
+	// but no support for them, while in others a key may be reported
+	// as supported but not actually be usable (such as some emulators
+	// that hijack certain keys).  Its best not to depend to strictly
+	// on this function, but it can be used for hinting when building
+	// menus, displayed hot-keys, etc.  Note that KeyRune (literal
+	// runes) is always true.
+	HasKey(Key) bool
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
