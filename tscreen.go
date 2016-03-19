@@ -976,6 +976,18 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 	return true, false
 }
 
+func (t *tScreen) parseControlKey(buf *bytes.Buffer) bool {
+	b := buf.Bytes()
+
+	if b[0] < 0x80 {
+		by, _ := buf.ReadByte()
+		ev := NewEventKey(KeyRune, rune(by), ModNone)
+		t.PostEvent(ev)
+		return true
+	}
+	return false
+}
+
 func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 
 	t.Lock()
@@ -1017,6 +1029,10 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			} else if part {
 				partials++
 			}
+		}
+
+		if comp := t.parseControlKey(buf); comp {
+			continue
 		}
 
 		if partials == 0 || expire {
