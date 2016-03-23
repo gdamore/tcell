@@ -40,7 +40,8 @@ func NewTerminfoScreen() (Screen, error) {
 	}
 	t := &tScreen{ti: ti}
 
-	t.keys = make(map[Key][]byte)
+	t.keyexist = make(map[Key]bool)
+	t.keycodes = make(map[string]Key)
 	if len(ti.Mouse) > 0 {
 		t.mouse = []byte(ti.Mouse)
 	}
@@ -70,7 +71,8 @@ type tScreen struct {
 	sigwinch  chan os.Signal
 	quit      chan struct{}
 	indoneq   chan struct{}
-	keys      map[Key][]byte
+	keyexist  map[Key]bool
+	keycodes  map[string]Key
 	cx        int
 	cy        int
 	mouse     []byte
@@ -138,7 +140,6 @@ func (t *tScreen) Init() error {
 	}
 
 	t.TPuts(ti.EnterCA)
-	t.TPuts(ti.EnterKeypad)
 	t.TPuts(ti.HideCursor)
 	t.TPuts(ti.EnableAcs)
 	t.TPuts(ti.Clear)
@@ -162,7 +163,11 @@ func (t *tScreen) Init() error {
 
 func (t *tScreen) prepareKey(key Key, val string) {
 	if val != "" {
-		t.keys[key] = []byte(val)
+		// Do not overrride codes that already exist
+		if _, exist := t.keycodes[val]; !exist {
+			t.keyexist[key] = true
+			t.keycodes[val] = key
+		}
 	}
 }
 
@@ -249,16 +254,54 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKey(KeyExit, ti.KeyExit)
 	t.prepareKey(KeyBacktab, ti.KeyBacktab)
 
+	// Sadly, xterm handling of keycodes is somewhat erratic.  In
+	// particular, different codes are sent depending on application
+	// mode is in use or not, and the entries for many of these are
+	// simply absent from terminfo on many systems.  So we insert
+	// a number of escape sequences if they are not already used, in
+	// order to have the widest correct usage.  Note that prepareKey
+	// will not inject codes if the escape sequence is already known.
+	// We also only do this for terminals that have the application
+	// mode present.
+
+	// Cursor mode
+	if ti.EnterKeypad != "" {
+		t.prepareKey(KeyUp, "\x1b[A")
+		t.prepareKey(KeyDown, "\x1b[B")
+		t.prepareKey(KeyRight, "\x1b[C")
+		t.prepareKey(KeyLeft, "\x1b[D")
+		t.prepareKey(KeyEnd, "\x1b[F")
+		t.prepareKey(KeyHome, "\x1b[H")
+		t.prepareKey(KeyDelete, "\x1b[3~")
+		t.prepareKey(KeyHome, "\x1b[1~")
+		t.prepareKey(KeyEnd, "\x1b[4~")
+		t.prepareKey(KeyPgUp, "\x1b[5~")
+		t.prepareKey(KeyPgDn, "\x1b[6~")
+
+		// Application mode
+		t.prepareKey(KeyUp, "\x1bOA")
+		t.prepareKey(KeyDown, "\x1bOB")
+		t.prepareKey(KeyRight, "\x1bOC")
+		t.prepareKey(KeyLeft, "\x1bOD")
+		t.prepareKey(KeyHome, "\x1bOH")
+	}
+
 outer:
+	// Add key mappings for control keys.
 	for i := 0; i < ' '; i++ {
-		for _, esc := range t.keys {
-			if esc[0] == byte(i) {
+		// Do not insert direct key codes for ambiguous keys.
+		// For example, ESC is used for lots of other keys, so
+		// when parsing this we don't want to fast path handling
+		// of it, but instead wait a bit before parsing it as in
+		// isolation.
+		for esc := range t.keycodes {
+			if []byte(esc)[0] == byte(i) {
 				continue outer
 			}
 		}
-		b := make([]byte, 1)
-		b[0] = byte(i)
-		t.keys[Key(i)] = b
+
+		t.keyexist[Key(i)] = true
+		t.keycodes[string(rune(i))] = Key(i)
 	}
 }
 
@@ -928,7 +971,8 @@ func (t *tScreen) parseXtermMouse(buf *bytes.Buffer) (bool, bool) {
 func (t *tScreen) parseFunctionKey(buf *bytes.Buffer) (bool, bool) {
 	b := buf.Bytes()
 	partial := false
-	for k, esc := range t.keys {
+	for e, k := range t.keycodes {
+		esc := []byte(e)
 		if bytes.HasPrefix(b, esc) {
 			// matched
 			var r rune
@@ -1153,10 +1197,7 @@ func (t *tScreen) HasKey(k Key) bool {
 	if k == KeyRune {
 		return true
 	}
-	if _, exist := t.keys[k]; exist {
-		return true
-	}
-	return false
+	return t.keyexist[k]
 }
 
 func (t *tScreen) Resize(int, int, int, int) {}

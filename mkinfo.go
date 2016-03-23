@@ -254,6 +254,7 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		t.MouseMode = "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;" +
 			"\x1b[?1000%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c"
 	}
+
 	// We only support colors in ANSI 8 or 256 color mode.
 	if t.Colors < 8 || t.SetFg == "" {
 		t.Colors = 0
