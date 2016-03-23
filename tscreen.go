@@ -248,6 +248,18 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKey(KeyCancel, ti.KeyCancel)
 	t.prepareKey(KeyExit, ti.KeyExit)
 	t.prepareKey(KeyBacktab, ti.KeyBacktab)
+
+outer:
+	for i := 0; i < ' '; i++ {
+		for _, esc := range t.keys {
+			if esc[0] == byte(i) {
+				continue outer
+			}
+		}
+		b := make([]byte, 1)
+		b[0] = byte(i)
+		t.keys[Key(i)] = b
+	}
 }
 
 func (t *tScreen) Fini() {
