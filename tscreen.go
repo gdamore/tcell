@@ -881,7 +881,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 				btn, val = val, 0
 				neg, dig, state = false, false, 4
 			case 4:
-				x, val = val, 0
+				x, val = val-1, 0
 				neg, dig, state = false, false, 5
 			default:
 				return false, false
@@ -894,7 +894,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 			if neg {
 				val = -val
 			}
-			y = val
+			y = val - 1
 
 			// We don't care about the motion bit
 			btn &^= 32
