@@ -35,11 +35,12 @@ import (
 // Applications can inspect the time between events to resolve double or
 // triple clicks.
 type EventMouse struct {
-	t   time.Time
-	btn ButtonMask
-	mod ModMask
-	x   int
-	y   int
+	t      time.Time
+	btn    ButtonMask
+	mod    ModMask
+	motion bool
+	x      int
+	y      int
 }
 
 // When returns the time when this EventMouse was created.
@@ -64,10 +65,15 @@ func (ev *EventMouse) Position() (int, int) {
 	return ev.x, ev.y
 }
 
+// HasMotion returns whether the mouse event was a mouse motion event or not
+func (ev *EventMouse) HasMotion() bool {
+	return ev.motion
+}
+
 // NewEventMouse is used to create a new mouse event.  Applications
 // shouldn't need to use this; its mostly for screen implementors.
-func NewEventMouse(x, y int, btn ButtonMask, mod ModMask) *EventMouse {
-	return &EventMouse{t: time.Now(), x: x, y: y, btn: btn, mod: mod}
+func NewEventMouse(x, y int, btn ButtonMask, mod ModMask, motion bool) *EventMouse {
+	return &EventMouse{t: time.Now(), x: x, y: y, btn: btn, mod: mod, motion: motion}
 }
 
 // ButtonMask is a mask of mouse buttons and wheel events.  Mouse button presses

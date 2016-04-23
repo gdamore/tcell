@@ -361,7 +361,7 @@ func (s *simscreen) PostEvent(ev Event) error {
 }
 
 func (s *simscreen) InjectMouse(x, y int, buttons ButtonMask, mod ModMask) {
-	ev := NewEventMouse(x, y, buttons, mod)
+	ev := NewEventMouse(x, y, buttons, mod, false)
 	s.PostEvent(ev)
 }
 
