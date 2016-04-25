@@ -352,6 +352,28 @@ func (t *tScreen) prepareKeys() {
 		t.prepareKey(KeyRight, "\x1bOC")
 		t.prepareKey(KeyLeft, "\x1bOD")
 		t.prepareKey(KeyHome, "\x1bOH")
+
+		// Extra arrow key commands
+		t.prepareKey(KeyAltUp, "\x1b[1;9A")
+		t.prepareKey(KeyAltDown, "\x1b[1;9B")
+		t.prepareKey(KeyAltLeft, "\x1b[1;9D")
+		t.prepareKey(KeyAltRight, "\x1b[1;9C")
+		t.prepareKey(KeyShiftUp, "\x1b[1;2A")
+		t.prepareKey(KeyShiftDown, "\x1b[1;2B")
+		t.prepareKey(KeyShiftLeft, "\x1b[1;2D")
+		t.prepareKey(KeyShiftRight, "\x1b[1;2C")
+		t.prepareKey(KeyCtrlUp, "\x1b[1;5A")
+		t.prepareKey(KeyCtrlDown, "\x1b[1;5B")
+		t.prepareKey(KeyCtrlLeft, "\x1b[1;5D")
+		t.prepareKey(KeyCtrlRight, "\x1b[1;5C")
+		t.prepareKey(KeyAltShiftUp, "\x1b[1;10A")
+		t.prepareKey(KeyAltShiftDown, "\x1b[1;10B")
+		t.prepareKey(KeyAltShiftLeft, "\x1b[1;10D")
+		t.prepareKey(KeyAltShiftRight, "\x1b[1;10C")
+		t.prepareKey(KeyCtrlShiftUp, "\x1b[1;6A")
+		t.prepareKey(KeyCtrlShiftDown, "\x1b[1;6B")
+		t.prepareKey(KeyCtrlShiftLeft, "\x1b[1;6D")
+		t.prepareKey(KeyCtrlShiftRight, "\x1b[1;6C")
 	}
 
 outer:
