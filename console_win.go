@@ -553,7 +553,7 @@ func (s *cScreen) getConsoleInput() error {
 		btns := mrec2btns(mrec.btns, mrec.flags)
 		// we ignore double click, events are delivered normally
 		s.PostEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns,
-			mod2mask(mrec.mod)))
+			mod2mask(mrec.mod), false))
 
 	case resizeEvent:
 		var rrec resizeRecord
