@@ -850,7 +850,7 @@ func (t *tScreen) clip(x, y int) (int, int) {
 	return x, y
 }
 
-func (t *tScreen) postMouseEvent(x, y, btn int) {
+func (t *tScreen) postMouseEvent(x, y, btn int, motion bool) {
 
 	// XTerm mouse events only report at most one button at a time,
 	// which may include a wheel button.  Wheel motion events are
@@ -906,7 +906,7 @@ func (t *tScreen) postMouseEvent(x, y, btn int) {
 	// to the screen in that case.
 	x, y = t.clip(x, y)
 
-	ev := NewEventMouse(x, y, button, mod)
+	ev := NewEventMouse(x, y, button, mod, motion)
 	t.PostEvent(ev)
 }
 
@@ -1023,7 +1023,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 				buf.ReadByte()
 				i--
 			}
-			t.postMouseEvent(x, y, btn)
+			t.postMouseEvent(x, y, btn, motion)
 			return true, true
 		}
 	}
@@ -1076,7 +1076,7 @@ func (t *tScreen) parseXtermMouse(buf *bytes.Buffer) (bool, bool) {
 				buf.ReadByte()
 				i--
 			}
-			t.postMouseEvent(x, y, btn)
+			t.postMouseEvent(x, y, btn, false)
 			return true, true
 		}
 	}
