@@ -90,6 +90,7 @@ type tScreen struct {
 	colors    map[Color]Color
 	palette   []Color
 	truecolor bool
+	escaped   bool
 
 	sync.Mutex
 }
@@ -973,6 +974,9 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer) (bool, bool) {
 	partial := false
 	for e, k := range t.keycodes {
 		esc := []byte(e)
+		if (len(esc) == 1) && (esc[0] == '\x1b') {
+			continue
+		}
 		if bytes.HasPrefix(b, esc) {
 			// matched
 			var r rune
@@ -997,7 +1001,12 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 	b := buf.Bytes()
 	if b[0] >= ' ' && b[0] <= 0x7F {
 		// printable ASCII easy to deal with -- no encodings
-		ev := NewEventKey(KeyRune, rune(b[0]), ModNone)
+		mod := ModNone
+		if t.escaped {
+			mod = ModAlt
+			t.escaped = false
+		}
+		ev := NewEventKey(KeyRune, rune(b[0]), mod)
 		t.PostEvent(ev)
 		buf.ReadByte()
 		return true, true
@@ -1018,7 +1027,12 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 		if nout != 0 {
 			r, _ := utf8.DecodeRune(utfb[:nout])
 			if r != utf8.RuneError {
-				ev := NewEventKey(KeyRune, r, ModNone)
+				mod := ModNone
+				if t.escaped {
+					mod = ModAlt
+					t.escaped = false
+				}
+				ev := NewEventKey(KeyRune, r, mod)
 				t.PostEvent(ev)
 			}
 			for nin > 0 {
@@ -1076,12 +1090,28 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		}
 
 		if partials == 0 || expire {
+			if b[0] == '\x1b' {
+				if len(b) == 1 {
+					ev := NewEventKey(KeyEsc, 0, ModNone)
+					t.PostEvent(ev)
+					t.escaped = false
+				} else {
+					t.escaped = true
+				}
+				buf.ReadByte()
+				continue
+			}
 			// Nothing was going to match, or we timed out
 			// waiting for more data -- just deliver the characters
 			// to the app & let them sort it out.  Possibly we
 			// should only do this for control characters like ESC.
 			by, _ := buf.ReadByte()
-			ev := NewEventKey(KeyRune, rune(by), ModNone)
+			mod := ModNone
+			if t.escaped {
+				t.escaped = false
+				mod = ModAlt
+			}
+			ev := NewEventKey(KeyRune, rune(by), mod)
 			t.PostEvent(ev)
 			continue
 		}
