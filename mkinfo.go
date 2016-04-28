@@ -235,6 +235,50 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 	t.ExitAcs = tigetstr("rmacs")
 	t.EnableAcs = tigetstr("enacs")
 	t.Mouse = tigetstr("kmous")
+	t.KeyShfRight = tigetstr("kRIT")
+	t.KeyShfLeft = tigetstr("kLFT")
+	t.KeyShfHome = tigetstr("kHOM")
+	t.KeyShfEnd = tigetstr("kEND")
+
+	// Terminfo lacks descriptions for a bunch of modified keys,
+	// but modern XTerm and emulators often have them.  Let's add them,
+	// if the shifted right and left arrows are defined.
+	if t.KeyShfRight == "\x1b[1;2C" && t.KeyShfLeft == "\x1b[1;2D" {
+		t.KeyShfUp = "\x1b[1;2A"
+		t.KeyShfDown = "\x1b[1;2B"
+		t.KeyAltUp = "\x1b[1;9A"
+		t.KeyAltDown = "\x1b[1;9B"
+		t.KeyAltRight = "\x1b[1;9C"
+		t.KeyAltLeft = "\x1b[1;9D"
+		t.KeyCtrlUp = "\x1b[1;5A"
+		t.KeyCtrlDown = "\x1b[1;5B"
+		t.KeyCtrlRight = "\x1b[1;5C"
+		t.KeyCtrlLeft = "\x1b[1;5D"
+	}
+	// And also for Home and End
+	if t.KeyShfHome == "\x1b[1;2H" && t.KeyShfEnd == "\x1b[1;2F" {
+		t.KeyCtrlHome = "\x1b[1;5H"
+		t.KeyCtrlEnd = "\x1b[1;5F"
+		t.KeyAltHome = "\x1b[1;9H"
+		t.KeyAltEnd = "\x1b[1;9F"
+	}
+
+	// And the same thing for rxvt and workalikes (Eterm, aterm, etc.)
+	// It seems that urxvt at least send ESC as ALT prefix for these,
+	// although some places seem to indicate a separate ALT key sesquence.
+	if t.KeyShfRight == "\x1b[c" && t.KeyShfLeft == "\x1b[d" {
+		t.KeyShfUp = "\x1b[a"
+		t.KeyShfDown = "\x1b[b"
+		t.KeyCtrlUp = "\x1b[Oa"
+		t.KeyCtrlDown = "\x1b[Ob"
+		t.KeyCtrlRight = "\x1b[Oc"
+		t.KeyCtrlLeft = "\x1b[Od"
+	}
+	if t.KeyShfHome == "\x1b[7$" && t.KeyShfEnd == "\x1b[8$" {
+		t.KeyCtrlHome = "\x1b[7^"
+		t.KeyCtrlEnd = "\x1b[8^"
+	}
+
 	// If the kmous entry is present, then we need to record the
 	// the codes to enter and exit mouse mode.  Sadly, this is not
 	// part of the terminfo databases anywhere that I've found, but
@@ -278,6 +322,7 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		t.SetFgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%dm"
 		t.SetBgRGB = "\x1b[48;2;%p1%d;%p2%d;%p3%dm"
 	}
+
 	return t, nil
 }
 
@@ -443,6 +488,24 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "KeyHelp", t.KeyHelp)
 	dotGoAddStr(w, "KeyClear", t.KeyClear)
 	dotGoAddStr(w, "KeyBacktab", t.KeyBacktab)
+	dotGoAddStr(w, "KeyShfLeft", t.KeyShfLeft)
+	dotGoAddStr(w, "KeyShfRight", t.KeyShfRight)
+	dotGoAddStr(w, "KeyShfUp", t.KeyShfUp)
+	dotGoAddStr(w, "KeyShfDown", t.KeyShfDown)
+	dotGoAddStr(w, "KeyCtrlLeft", t.KeyCtrlLeft)
+	dotGoAddStr(w, "KeyCtrlRight", t.KeyCtrlRight)
+	dotGoAddStr(w, "KeyCtrlUp", t.KeyCtrlUp)
+	dotGoAddStr(w, "KeyCtrlDown", t.KeyCtrlDown)
+	dotGoAddStr(w, "KeyAltLeft", t.KeyAltLeft)
+	dotGoAddStr(w, "KeyAltRight", t.KeyAltRight)
+	dotGoAddStr(w, "KeyAltUp", t.KeyAltUp)
+	dotGoAddStr(w, "KeyAltDown", t.KeyAltDown)
+	dotGoAddStr(w, "KeyShfHome", t.KeyShfHome)
+	dotGoAddStr(w, "KeyShfEnd", t.KeyShfEnd)
+	dotGoAddStr(w, "KeyCtrlHome", t.KeyCtrlHome)
+	dotGoAddStr(w, "KeyCtrlEnd", t.KeyCtrlEnd)
+	dotGoAddStr(w, "KeyAltHome", t.KeyAltHome)
+	dotGoAddStr(w, "KeyAltEnd", t.KeyAltEnd)
 	fmt.Fprintln(w, "	})")
 }
 

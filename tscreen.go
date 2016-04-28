@@ -41,7 +41,7 @@ func NewTerminfoScreen() (Screen, error) {
 	t := &tScreen{ti: ti}
 
 	t.keyexist = make(map[Key]bool)
-	t.keycodes = make(map[string]Key)
+	t.keycodes = make(map[string]*tKeyCode)
 	if len(ti.Mouse) > 0 {
 		t.mouse = []byte(ti.Mouse)
 	}
@@ -54,6 +54,12 @@ func NewTerminfoScreen() (Screen, error) {
 	}
 
 	return t, nil
+}
+
+// tKeyCode represents a combination of a key code and modifiers.
+type tKeyCode struct {
+	key Key
+	mod ModMask
 }
 
 // tScreen represents a screen backed by a terminfo implementation.
@@ -72,7 +78,7 @@ type tScreen struct {
 	quit      chan struct{}
 	indoneq   chan struct{}
 	keyexist  map[Key]bool
-	keycodes  map[string]Key
+	keycodes  map[string]*tKeyCode
 	cx        int
 	cy        int
 	mouse     []byte
@@ -162,14 +168,18 @@ func (t *tScreen) Init() error {
 	return nil
 }
 
-func (t *tScreen) prepareKey(key Key, val string) {
+func (t *tScreen) prepareKeyMod(key Key, mod ModMask, val string) {
 	if val != "" {
 		// Do not overrride codes that already exist
 		if _, exist := t.keycodes[val]; !exist {
 			t.keyexist[key] = true
-			t.keycodes[val] = key
+			t.keycodes[val] = &tKeyCode{key: key, mod: mod}
 		}
 	}
+}
+
+func (t *tScreen) prepareKey(key Key, val string) {
+	t.prepareKeyMod(key, ModNone, val)
 }
 
 func (t *tScreen) prepareKeys() {
@@ -255,6 +265,27 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKey(KeyExit, ti.KeyExit)
 	t.prepareKey(KeyBacktab, ti.KeyBacktab)
 
+	t.prepareKeyMod(KeyRight, ModShift, ti.KeyShfRight)
+	t.prepareKeyMod(KeyLeft, ModShift, ti.KeyShfLeft)
+	t.prepareKeyMod(KeyUp, ModShift, ti.KeyShfUp)
+	t.prepareKeyMod(KeyDown, ModShift, ti.KeyShfDown)
+	t.prepareKeyMod(KeyHome, ModShift, ti.KeyShfHome)
+	t.prepareKeyMod(KeyEnd, ModShift, ti.KeyShfEnd)
+
+	t.prepareKeyMod(KeyRight, ModCtrl, ti.KeyCtrlRight)
+	t.prepareKeyMod(KeyLeft, ModCtrl, ti.KeyCtrlLeft)
+	t.prepareKeyMod(KeyUp, ModCtrl, ti.KeyCtrlUp)
+	t.prepareKeyMod(KeyDown, ModCtrl, ti.KeyCtrlDown)
+	t.prepareKeyMod(KeyHome, ModCtrl, ti.KeyCtrlHome)
+	t.prepareKeyMod(KeyEnd, ModCtrl, ti.KeyCtrlEnd)
+
+	t.prepareKeyMod(KeyRight, ModAlt, ti.KeyAltRight)
+	t.prepareKeyMod(KeyLeft, ModAlt, ti.KeyAltLeft)
+	t.prepareKeyMod(KeyUp, ModAlt, ti.KeyAltUp)
+	t.prepareKeyMod(KeyDown, ModAlt, ti.KeyAltDown)
+	t.prepareKeyMod(KeyHome, ModAlt, ti.KeyAltHome)
+	t.prepareKeyMod(KeyEnd, ModAlt, ti.KeyAltEnd)
+
 	// Sadly, xterm handling of keycodes is somewhat erratic.  In
 	// particular, different codes are sent depending on application
 	// mode is in use or not, and the entries for many of these are
@@ -302,7 +333,14 @@ outer:
 		}
 
 		t.keyexist[Key(i)] = true
-		t.keycodes[string(rune(i))] = Key(i)
+
+		mod := ModCtrl
+		switch Key(i) {
+		case KeyBS, KeyTAB, KeyESC, KeyCR:
+			// directly typeable- no control sequence
+			mod = ModNone
+		}
+		t.keycodes[string(rune(i))] = &tKeyCode{key: Key(i), mod: mod}
 	}
 }
 
@@ -983,7 +1021,12 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer) (bool, bool) {
 			if len(esc) == 1 {
 				r = rune(b[0])
 			}
-			ev := NewEventKey(k, r, ModNone)
+			mod := k.mod
+			if t.escaped {
+				mod |= ModAlt
+				t.escaped = false
+			}
+			ev := NewEventKey(k.key, r, mod)
 			t.PostEvent(ev)
 			for i := 0; i < len(esc); i++ {
 				buf.ReadByte()
