@@ -97,6 +97,7 @@ type tScreen struct {
 	palette   []Color
 	truecolor bool
 	escaped   bool
+	buttondn  bool
 
 	sync.Mutex
 }
@@ -862,6 +863,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 	var x, y, btn, state int
 	dig := false
 	neg := false
+	motion := false
 	i := 0
 	val := 0
 
@@ -935,12 +937,27 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 			}
 			y = val - 1
 
-			// We don't care about the motion bit
+			motion = (btn & 32) != 0
 			btn &^= 32
 			if b[i] == 'm' {
 				// mouse release, clear all buttons
 				btn |= 3
 				btn &^= 0x40
+				t.buttondn = false
+			} else if motion {
+				/*
+				 * Some broken terminals appear to send
+				 * mouse button one motion events, instead of
+				 * encoding 35 (no buttons) into these events.
+				 * We resolve these by looking for a non-motion
+				 * event first.
+				 */
+				if !t.buttondn {
+					btn |= 3
+					btn &^= 0x40
+				}
+			} else {
+				t.buttondn = true
 			}
 			// consume the event bytes
 			for i >= 0 {
