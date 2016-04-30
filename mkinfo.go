@@ -246,10 +246,14 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 	if t.KeyShfRight == "\x1b[1;2C" && t.KeyShfLeft == "\x1b[1;2D" {
 		t.KeyShfUp = "\x1b[1;2A"
 		t.KeyShfDown = "\x1b[1;2B"
-		t.KeyAltUp = "\x1b[1;9A"
-		t.KeyAltDown = "\x1b[1;9B"
-		t.KeyAltRight = "\x1b[1;9C"
-		t.KeyAltLeft = "\x1b[1;9D"
+		t.KeyMetaUp = "\x1b[1;9A"
+		t.KeyMetaDown = "\x1b[1;9B"
+		t.KeyMetaRight = "\x1b[1;9C"
+		t.KeyMetaLeft = "\x1b[1;9D"
+		t.KeyAltUp = "\x1b[1;3A"
+		t.KeyAltDown = "\x1b[1;3B"
+		t.KeyAltRight = "\x1b[1;3C"
+		t.KeyAltLeft = "\x1b[1;3D"
 		t.KeyCtrlUp = "\x1b[1;5A"
 		t.KeyCtrlDown = "\x1b[1;5B"
 		t.KeyCtrlRight = "\x1b[1;5C"
@@ -496,6 +500,10 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "KeyCtrlRight", t.KeyCtrlRight)
 	dotGoAddStr(w, "KeyCtrlUp", t.KeyCtrlUp)
 	dotGoAddStr(w, "KeyCtrlDown", t.KeyCtrlDown)
+	dotGoAddStr(w, "KeyMetaLeft", t.KeyMetaLeft)
+	dotGoAddStr(w, "KeyMetaRight", t.KeyMetaRight)
+	dotGoAddStr(w, "KeyMetaUp", t.KeyMetaUp)
+	dotGoAddStr(w, "KeyMetaDown", t.KeyMetaDown)
 	dotGoAddStr(w, "KeyAltLeft", t.KeyAltLeft)
 	dotGoAddStr(w, "KeyAltRight", t.KeyAltRight)
 	dotGoAddStr(w, "KeyAltUp", t.KeyAltUp)
@@ -504,6 +512,8 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "KeyShfEnd", t.KeyShfEnd)
 	dotGoAddStr(w, "KeyCtrlHome", t.KeyCtrlHome)
 	dotGoAddStr(w, "KeyCtrlEnd", t.KeyCtrlEnd)
+	dotGoAddStr(w, "KeyMetaHome", t.KeyMetaHome)
+	dotGoAddStr(w, "KeyMetaEnd", t.KeyMetaEnd)
 	dotGoAddStr(w, "KeyAltHome", t.KeyAltHome)
 	dotGoAddStr(w, "KeyAltEnd", t.KeyAltEnd)
 	fmt.Fprintln(w, "	})")
