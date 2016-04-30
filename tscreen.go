@@ -287,6 +287,13 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKeyMod(KeyHome, ModAlt, ti.KeyAltHome)
 	t.prepareKeyMod(KeyEnd, ModAlt, ti.KeyAltEnd)
 
+	t.prepareKeyMod(KeyRight, ModMeta, ti.KeyMetaRight)
+	t.prepareKeyMod(KeyLeft, ModMeta, ti.KeyMetaLeft)
+	t.prepareKeyMod(KeyUp, ModMeta, ti.KeyMetaUp)
+	t.prepareKeyMod(KeyDown, ModMeta, ti.KeyMetaDown)
+	t.prepareKeyMod(KeyHome, ModMeta, ti.KeyMetaHome)
+	t.prepareKeyMod(KeyEnd, ModMeta, ti.KeyMetaEnd)
+
 	// Sadly, xterm handling of keycodes is somewhat erratic.  In
 	// particular, different codes are sent depending on application
 	// mode is in use or not, and the entries for many of these are

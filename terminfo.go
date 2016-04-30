@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -156,17 +156,23 @@ type Terminfo struct {
 	SetFgRGB     string `json:"_setfrgb,omitempty"` // setfrgb
 	SetBgRGB     string `json:"_setbrgb,omitempty"` // setbrgb
 	KeyShfUp     string `json:"_kscu1,omitempty"`   // shift-up
-	KeyShfDown   string `json:"_kscud1,omitempty"`  // shift-left
+	KeyShfDown   string `json:"_kscud1,omitempty"`  // shift-down
 	KeyCtrlUp    string `json:"_kccu1,omitempty"`   // ctrl-up
 	KeyCtrlDown  string `json:"_kccud1,omitempty"`  // ctrl-left
 	KeyCtrlRight string `json:"_kccuf1,omitempty"`  // ctrl-right
 	KeyCtrlLeft  string `json:"_kccub1,omitempty"`  // ctrl-left
+	KeyMetaUp    string `json:"_kmcu1,omitempty"`   // meta-up
+	KeyMetaDown  string `json:"_kmcud1,omitempty"`  // meta-left
+	KeyMetaRight string `json:"_kmcuf1,omitempty"`  // meta-right
+	KeyMetaLeft  string `json:"_kmcub1,omitempty"`  // meta-left
 	KeyAltUp     string `json:"_kacu1,omitempty"`   // alt-up
 	KeyAltDown   string `json:"_kacud1,omitempty"`  // alt-left
 	KeyAltRight  string `json:"_kacuf1,omitempty"`  // alt-right
 	KeyAltLeft   string `json:"_kacub1,omitempty"`  // alt-left
 	KeyCtrlHome  string `json:"_kchome,omitempty"`
 	KeyCtrlEnd   string `json:"_kcend,omitempty"`
+	KeyMetaHome  string `json:"_kmhome,omitempty"`
+	KeyMetaEnd   string `json:"_kmend,omitempty"`
 	KeyAltHome   string `json:"_kahome,omitempty"`
 	KeyAltEnd    string `json:"_kaend,omitempty"`
 }
