@@ -1212,7 +1212,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		}
 
 		if b[0] != '\x1b' && len(b) > 1 {
-			ev := &EventPaste{t: time.Now(), text: string(b)}
+			ev := &EventPaste{t: time.Now(), text: string(bytes.Replace(b, []byte("\r"), []byte("\n"), -1))}
 			t.PostEvent(ev)
 			for i := 0; i < len(b); i++ {
 				buf.ReadByte()
