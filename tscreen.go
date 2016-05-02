@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/text/transform"
@@ -1202,6 +1203,15 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		if len(b) == 0 {
 			buf.Reset()
 			return
+		}
+
+		if b[0] != '\x1b' && len(b) > 1 {
+			ev := &EventPaste{t: time.Now(), text: string(b)}
+			t.PostEvent(ev)
+			for i := 0; i < len(b); i++ {
+				buf.ReadByte()
+			}
+			continue
 		}
 
 		partials := 0
