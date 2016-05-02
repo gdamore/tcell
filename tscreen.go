@@ -1211,6 +1211,15 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			return
 		}
 
+		if b[0] != '\x1b' && len(b) > 1 {
+			ev := &EventPaste{t: time.Now(), text: string(b)}
+			t.PostEvent(ev)
+			for i := 0; i < len(b); i++ {
+				buf.ReadByte()
+			}
+			continue
+		}
+
 		partials := 0
 
 		if part, comp := t.parseRune(buf); comp {
