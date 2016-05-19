@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -21,26 +21,28 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+// This terminfo entry is a stripped down version from
+// xterm-256color, but I've added some of my own entries.
+var testTerminfo = &Terminfo{
+	Name:      "simulation_test",
+	Columns:   80,
+	Lines:     24,
+	Colors:    256,
+	Bell:      "\a",
+	Blink:     "\x1b2ms$<2>",
+	Reverse:   "\x1b[7m",
+	SetFg:     "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
+	SetBg:     "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
+	AltChars:  "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
+	Mouse:     "\x1b[M",
+	MouseMode: "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;\x1b[?1000%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c",
+	SetCursor: "\x1b[%i%p1%d;%p2%dH",
+	PadChar:   "\x00",
+}
+
 func TestTerminfo(t *testing.T) {
 
-	// This terminfo entry is a stripped down version from
-	// xterm-256color, but I've added some of my own entries.
-	ti := &Terminfo{
-		Name:      "simulation_test",
-		Columns:   80,
-		Lines:     24,
-		Colors:    256,
-		Bell:      "\a",
-		Blink:     "\x1b2ms$<2>",
-		Reverse:   "\x1b[7m",
-		SetFg:     "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
-		SetBg:     "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
-		AltChars:  "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-		Mouse:     "\x1b[M",
-		MouseMode: "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;\x1b[?1000%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c",
-		SetCursor: "\x1b[%i%p1%d;%p2%dH",
-		PadChar:   "\x00",
-	}
+	ti := testTerminfo
 
 	Convey("Terminfo parameter processing", t, func() {
 		// This tests %i, and basic parameter strings too
@@ -93,4 +95,13 @@ func TestTerminfo(t *testing.T) {
 			So(s, ShouldEqual, "\x1b2ms")
 		})
 	})
+}
+
+func BenchmarkSetFgBg(b *testing.B) {
+	ti := testTerminfo
+
+	for i := 0; i < b.N; i++ {
+		ti.TParm(ti.SetFg, 100, 200)
+		ti.TParm(ti.SetBg, 100, 200)
+	}
 }

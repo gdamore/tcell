@@ -177,46 +177,83 @@ type Terminfo struct {
 	KeyAltEnd    string `json:"_kaend,omitempty"`
 }
 
-type stack []string
+type stackElem struct {
+	s string
+	i int
+	isStr bool
+	isInt bool
+}
+
+type stack []stackElem
 
 func (st stack) Push(v string) stack {
-	return append(st, v)
+	e := stackElem {
+		s: v,
+		isStr: true,
+	}
+	return append(st, e)
 }
 
 func (st stack) Pop() (string, stack) {
 	v := ""
 	if len(st) > 0 {
-		v = st[len(st)-1]
+		e := st[len(st)-1]
 		st = st[:len(st)-1]
+		if e.isStr {
+			v = e.s
+		} else {
+			v = strconv.Itoa(e.i)
+		}
 	}
 	return v, st
 }
 
 func (st stack) PopInt() (int, stack) {
-	v := ""
-	v, st = st.Pop()
-	i, _ := strconv.Atoi(v)
-	return i, st
+	if len(st) > 0 {
+		e := st[len(st)-1]
+		st = st[:len(st)-1]
+		if e.isInt {
+			return e.i, st
+		} else if (e.isStr) {
+			i, _ := strconv.Atoi(e.s)
+			return i, st
+		}
+	}
+	return 0, st
 }
 
 func (st stack) PopBool() (bool, stack) {
-	v := ""
-	v, st = st.Pop()
-	if v == "1" {
-		return true, st
+	if len(st) > 0 {
+		e := st[len(st)-1]
+		st = st[:len(st)-1]
+		if e.isStr {
+			if e.s == "1" {
+				return true, st
+			} else {
+				return false, st
+			}
+		} else if e.i == 1 {
+			return true, st
+		} else {
+			return false, st
+		}
 	}
 	return false, st
 }
 
 func (st stack) PushInt(i int) stack {
-	return st.Push(strconv.Itoa(i))
+	e := stackElem {
+		i: i,
+		isInt: true,
+	}
+	return append(st, e)
 }
 
 func (st stack) PushBool(i bool) stack {
 	if i {
-		return st.Push("1")
+		return st.PushInt(1)
 	}
-	return st.Push("0")
+	return st.PushInt(0)
 }
 
 func nextch(s string, index int) (byte, int) {
@@ -229,6 +266,51 @@ func nextch(s string, index int) (byte, int) {
 // static vars
 var svars [26]string
 
+// paramsBuffer handles some persistent state for TParam.  Technically we
+// could probably dispense with this, but caching buffer arrays gives us
+// a nice little performance boost.  Furthermore, we know that TParam is
+// rarely (never?) called re-entrantly, so we can just reuse the same
+// buffers, making it thread-safe by stashing a lock.
+type paramsBuffer struct {
+	out bytes.Buffer
+	buf bytes.Buffer
+	lk sync.Mutex
+}
+
+// Start initializes the params buffer with the initial string data.
+// It also locks the paramsBuffer.  The caller must call End() when
+// finished.
+func (pb *paramsBuffer) Start(s string) {
+	pb.lk.Lock()
+	pb.out.Reset()
+	pb.buf.Reset()
+	pb.buf.WriteString(s)
+}
+
+// End returns the final output from TParam, but it also releases the lock.
+func (pb *paramsBuffer) End() string {
+	s := pb.out.String()
+	pb.lk.Unlock()
+	return s
+}
+
+// NextCh returns the next input character to the expander.
+func (pb *paramsBuffer) NextCh() (byte, error) {
+	return pb.buf.ReadByte()
+}
+
+// PutCh "emits" (rather schedules for output) a single byte character.
+func (pb *paramsBuffer) PutCh(ch byte) {
+	pb.out.WriteByte(ch)
+}
+
+// PutString schedules a string for output.
+func (pb *paramsBuffer) PutString(s string) {
+	pb.out.WriteString(s)
+}
+
+var pb = &paramsBuffer{}
+
 // TParm takes a terminfo parameterized string, such as setaf or cup, and
 // evaluates the string, and returns the result with the parameter
 // applied.
@@ -240,8 +322,7 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 	var dvars [26]string
 	var params [9]int
 
-	buf := bytes.NewBufferString(s)
-	out := &bytes.Buffer{}
+	pb.Start(s)
 
 	// make sure we always have 9 parameters -- makes it easier
 	// later to skip checks
@@ -253,17 +334,17 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 
 	for {
 
-		ch, err := buf.ReadByte()
+		ch, err := pb.NextCh()
 		if err != nil {
 			break
 		}
 
 		if ch != '%' {
-			out.WriteByte(ch)
+			pb.PutCh(ch)
 			continue
 		}
 
-		ch, err = buf.ReadByte()
+		ch, err = pb.NextCh()
 		if err != nil {
 			// XXX Error
 			break
@@ -271,7 +352,7 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 
 		switch ch {
 		case '%': // quoted %
-			out.WriteByte(ch)
+			pb.PutCh(ch)
 
 		case 'i': // increment both parameters (ANSI cup support)
 			params[0]++
@@ -282,37 +363,41 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 			// efficiency.  They could be handled by the richer
 			// format support below, less efficiently.
 			a, stk = stk.Pop()
-			out.WriteString(a)
+			pb.PutString(a)
 
 		case 'd':
 			ai, stk = stk.PopInt()
-			out.WriteString(strconv.Itoa(ai))
+			pb.PutString(strconv.Itoa(ai))
 
 		case '0', '1', '2', '3', '4', 'x', 'X', 'o', ':':
+			// This is pretty suboptimal, but this is rarely used.
+			// None of the mainstream terminals use any of this,
+			// and it would surprise me if this code is ever
+			// executed outside of test cases.
 			f := "%"
 			if ch == ':' {
-				ch, _ = buf.ReadByte()
+				ch, _ = pb.NextCh()
 			}
 			f += string(ch)
 			for ch == '+' || ch == '-' || ch == '#' || ch == ' ' {
+				ch, _ = pb.NextCh()
 				f += string(ch)
-				ch, _ = buf.ReadByte()
 			}
 			for (ch >= '0' && ch <= '9') || ch == '.' {
-				ch, _ = buf.ReadByte()
+				ch, _ = pb.NextCh()
 				f += string(ch)
 			}
 			switch ch {
 			case 'd', 'x', 'X', 'o':
 				ai, stk = stk.PopInt()
-				out.WriteString(fmt.Sprintf(f, ai))
+				pb.PutString(fmt.Sprintf(f, ai))
 			case 'c', 's':
 				a, stk = stk.Pop()
-				out.WriteString(fmt.Sprintf(f, a))
+				pb.PutString(fmt.Sprintf(f, a))
 			}
 
 		case 'p': // push parameter
-			ch, _ = buf.ReadByte()
+			ch, _ = pb.NextCh()
 			ai = int(ch - '1')
 			if ai >= 0 && ai < len(params) {
 				stk = stk.PushInt(params[ai])
@@ -321,7 +406,7 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 			}
 
 		case 'P': // pop & store variable
-			ch, _ = buf.ReadByte()
+			ch, _ = pb.NextCh()
 			if ch >= 'A' && ch <= 'Z' {
 				svars[int(ch-'A')], stk = stk.Pop()
 			} else if ch >= 'a' && ch <= 'z' {
@@ -329,7 +414,7 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 			}
 
 		case 'g': // recall & push variable
-			ch, _ = buf.ReadByte()
+			ch, _ = pb.NextCh()
 			if ch >= 'A' && ch <= 'Z' {
 				stk = stk.Push(svars[int(ch-'A')])
 			} else if ch >= 'a' && ch <= 'z' {
@@ -337,17 +422,17 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 			}
 
 		case '\'': // push(char)
-			ch, _ = buf.ReadByte()
-			buf.ReadByte() // must be ' but we don't check
+			ch, _ = pb.NextCh()
+			pb.NextCh() // must be ' but we don't check
 			stk = stk.Push(string(ch))
 
 		case '{': // push(int)
 			ai = 0
-			ch, _ = buf.ReadByte()
+			ch, _ = pb.NextCh()
 			for ch >= '0' && ch <= '9' {
 				ai *= 10
 				ai += int(ch - '0')
-				ch, _ = buf.ReadByte()
+				ch, _ = pb.NextCh()
 			}
 			// ch must be '}' but no verification
 			stk = stk.PushInt(ai)
@@ -440,14 +525,14 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 			// this loop consumes everything until we hit our else,
 			// or the end of the conditional
 			for {
-				ch, err = buf.ReadByte()
+				ch, err = pb.NextCh()
 				if err != nil {
 					break
 				}
 				if ch != '%' {
 					continue
 				}
-				ch, _ = buf.ReadByte()
+				ch, _ = pb.NextCh()
 				switch ch {
 				case ';':
 					if nest == 0 {
@@ -470,14 +555,14 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 			nest = 0
 		elloop:
 			for {
-				ch, err = buf.ReadByte()
+				ch, err = pb.NextCh()
 				if err != nil {
 					break
 				}
 				if ch != '%' {
 					continue
 				}
-				ch, _ = buf.ReadByte()
+				ch, _ = pb.NextCh()
 				switch ch {
 				case ';':
 					if nest == 0 {
@@ -493,7 +578,8 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 
 		}
 	}
-	return out.String()
+
+	return pb.End()
 }
 
 // TPuts emits the string to the writer, but expands inline padding
