@@ -129,7 +129,7 @@ func (t *tScreen) Init() error {
 		return e
 	}
 
-	if t.ti.SetFgRGB != "" && t.ti.SetBgRGB != "" {
+	if t.ti.SetFgBgRGB != "" || t.ti.SetFgRGB != "" || t.ti.SetBgRGB != "" {
 		t.truecolor = true
 	}
 	// A user who wants to have his themes honored can
@@ -442,39 +442,63 @@ func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 	return buf
 }
 
-func (t *tScreen) sendFg(fg Color) {
+func (t *tScreen) sendFgBg(fg Color, bg Color) {
 	ti := t.ti
-	if fg == ColorDefault {
+	if ti.Colors == 0 {
 		return
-	} else if t.truecolor {
-		r, g, b := fg.RGB()
-		t.TPuts(ti.TParm(ti.SetFgRGB, int(r), int(g), int(b)))
-	} else {
+	}
+	if t.truecolor {
+		if ti.SetFgBgRGB != "" &&
+		    fg != ColorDefault && bg != ColorDefault {
+			r1, g1, b1 := fg.RGB()
+			r2, g2, b2 := bg.RGB()
+			t.TPuts(ti.TParm(ti.SetFgBgRGB,
+				int(r1), int(g1), int(b1),
+				int(r2), int(g2), int(b2)))
+		} else {
+			if fg != ColorDefault && ti.SetFgRGB != "" {
+				r, g, b := fg.RGB()
+				t.TPuts(ti.TParm(ti.SetFgRGB,
+					int(r), int(g), int(b)))
+			}
+			if bg != ColorDefault && ti.SetBgRGB != "" {
+				r, g, b := fg.RGB()
+				t.TPuts(ti.TParm(ti.SetBgRGB,
+					int(r), int(g), int(b)))
+			}
+		}
+		return
+	}
+
+	if fg != ColorDefault {
 		if v, ok := t.colors[fg]; ok {
 			fg = v
-		} else if v = FindColor(fg, t.palette); v != ColorDefault {
+		} else {
+			v = FindColor(fg, t.palette)
 			t.colors[fg] = v
 			fg = v
 		}
-		t.TPuts(ti.TParm(ti.SetFg, int(fg)))
 	}
-}
 
-func (t *tScreen) sendBg(bg Color) {
-	ti := t.ti
-	if bg == ColorDefault {
-		return
-	} else if t.truecolor {
-		r, g, b := bg.RGB()
-		t.TPuts(ti.TParm(ti.SetBgRGB, int(r), int(g), int(b)))
-	} else {
+	if bg != ColorDefault {
 		if v, ok := t.colors[bg]; ok {
 			bg = v
-		} else if v = FindColor(bg, t.palette); v != ColorDefault {
+		} else {
+			v = FindColor(bg, t.palette)
 			t.colors[bg] = v
 			bg = v
 		}
-		t.TPuts(ti.TParm(ti.SetBg, int(bg)))
+	}
+
+	if ti.SetFgBg != "" && fg != ColorDefault && bg != ColorDefault {
+		t.TPuts(ti.TParm(ti.SetFgBg, int(fg), int(bg)))
+	} else {
+		if fg != ColorDefault && ti.SetFg != "" {
+			t.TPuts(ti.TParm(ti.SetFg, int(fg)))
+		}
+		if bg != ColorDefault && ti.SetBg != "" {
+			t.TPuts(ti.TParm(ti.SetBg, int(bg)))
+		}
 	}
 }
 
@@ -501,8 +525,7 @@ func (t *tScreen) drawCell(x, y int) int {
 
 		t.TPuts(ti.AttrOff)
 
-		t.sendFg(fg)
-		t.sendBg(bg)
+		t.sendFgBg(fg, bg)
 		if attrs&AttrBold != 0 {
 			t.TPuts(ti.Bold)
 		}
@@ -601,8 +624,7 @@ func (t *tScreen) Show() {
 
 func (t *tScreen) clearScreen() {
 	fg, bg, _ := t.style.Decompose()
-	t.sendFg(fg)
-	t.sendBg(bg)
+	t.sendFgBg(fg, bg)
 	t.TPuts(t.ti.Clear)
 	t.clear = false
 }

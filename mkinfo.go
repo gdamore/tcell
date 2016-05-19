@@ -36,6 +36,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -325,6 +326,20 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 	if addTrueColor {
 		t.SetFgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%dm"
 		t.SetBgRGB = "\x1b[48;2;%p1%d;%p2%d;%p3%dm"
+		t.SetFgBgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%d;" +
+			"48;2;%p4%d;%p5%d;%p6%dm"
+	}
+
+	// For terminals that use "standard" SGR sequences, lets combine the
+	// foreground and background together.
+	if strings.HasPrefix(t.SetFg, "\x1b[") &&
+	   strings.HasPrefix(t.SetBg, "\x1b[") &&
+	   strings.HasSuffix(t.SetFg, "m") &&
+	   strings.HasSuffix(t.SetBg, "m") {
+		fg := t.SetFg[:len(t.SetFg)-1]
+		r := regexp.MustCompile("%p1")
+		bg := r.ReplaceAllString(t.SetBg[2:], "%p2")
+		t.SetFgBg = fg + ";" + bg
 	}
 
 	return t, nil
@@ -399,6 +414,7 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "ExitKeypad", t.ExitKeypad)
 	dotGoAddStr(w, "SetFg", t.SetFg)
 	dotGoAddStr(w, "SetBg", t.SetBg)
+	dotGoAddStr(w, "SetFgBg", t.SetFgBg)
 	dotGoAddStr(w, "PadChar", t.PadChar)
 	dotGoAddStr(w, "AltChars", t.AltChars)
 	dotGoAddStr(w, "EnterAcs", t.EnterAcs)
@@ -406,6 +422,7 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "EnableAcs", t.EnableAcs)
 	dotGoAddStr(w, "SetFgRGB", t.SetFgRGB)
 	dotGoAddStr(w, "SetBgRGB", t.SetBgRGB)
+	dotGoAddStr(w, "SetFgBgRGB", t.SetFgBgRGB)
 	dotGoAddStr(w, "Mouse", t.Mouse)
 	dotGoAddStr(w, "MouseMode", t.MouseMode)
 	dotGoAddStr(w, "SetCursor", t.SetCursor)

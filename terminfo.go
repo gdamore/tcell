@@ -153,6 +153,8 @@ type Terminfo struct {
 	// Terminal support for these are going to vary amongst XTerm
 	// emulations, so don't depend too much on them in your application.
 
+	SetFgBg      string `json:"_setfgbg,omitempty"` // setfgbg
+	SetFgBgRGB   string `json:"_setfgbgrgb,omitempty"` // setfgbgrgb
 	SetFgRGB     string `json:"_setfrgb,omitempty"` // setfrgb
 	SetBgRGB     string `json:"_setbrgb,omitempty"` // setbrgb
 	KeyShfUp     string `json:"_kscu1,omitempty"`   // shift-up
