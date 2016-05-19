@@ -580,9 +580,7 @@ func (t *tScreen) showCursor() {
 		t.hideCursor()
 		return
 	}
-	if t.cx != x || t.cy != y {
-		t.TPuts(t.ti.TGoto(x, y))
-	}
+	t.TPuts(t.ti.TGoto(x, y))
 	t.TPuts(t.ti.ShowCursor)
 	t.cx = x
 	t.cy = y
