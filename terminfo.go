@@ -153,35 +153,53 @@ type Terminfo struct {
 	// Terminal support for these are going to vary amongst XTerm
 	// emulations, so don't depend too much on them in your application.
 
-	SetFgBg      string `json:"_setfgbg,omitempty"` // setfgbg
-	SetFgBgRGB   string `json:"_setfgbgrgb,omitempty"` // setfgbgrgb
-	SetFgRGB     string `json:"_setfrgb,omitempty"` // setfrgb
-	SetBgRGB     string `json:"_setbrgb,omitempty"` // setbrgb
-	KeyShfUp     string `json:"_kscu1,omitempty"`   // shift-up
-	KeyShfDown   string `json:"_kscud1,omitempty"`  // shift-down
-	KeyCtrlUp    string `json:"_kccu1,omitempty"`   // ctrl-up
-	KeyCtrlDown  string `json:"_kccud1,omitempty"`  // ctrl-left
-	KeyCtrlRight string `json:"_kccuf1,omitempty"`  // ctrl-right
-	KeyCtrlLeft  string `json:"_kccub1,omitempty"`  // ctrl-left
-	KeyMetaUp    string `json:"_kmcu1,omitempty"`   // meta-up
-	KeyMetaDown  string `json:"_kmcud1,omitempty"`  // meta-left
-	KeyMetaRight string `json:"_kmcuf1,omitempty"`  // meta-right
-	KeyMetaLeft  string `json:"_kmcub1,omitempty"`  // meta-left
-	KeyAltUp     string `json:"_kacu1,omitempty"`   // alt-up
-	KeyAltDown   string `json:"_kacud1,omitempty"`  // alt-left
-	KeyAltRight  string `json:"_kacuf1,omitempty"`  // alt-right
-	KeyAltLeft   string `json:"_kacub1,omitempty"`  // alt-left
-	KeyCtrlHome  string `json:"_kchome,omitempty"`
-	KeyCtrlEnd   string `json:"_kcend,omitempty"`
-	KeyMetaHome  string `json:"_kmhome,omitempty"`
-	KeyMetaEnd   string `json:"_kmend,omitempty"`
-	KeyAltHome   string `json:"_kahome,omitempty"`
-	KeyAltEnd    string `json:"_kaend,omitempty"`
+	SetFgBg         string `json:"_setfgbg,omitempty"`    // setfgbg
+	SetFgBgRGB      string `json:"_setfgbgrgb,omitempty"` // setfgbgrgb
+	SetFgRGB        string `json:"_setfrgb,omitempty"`    // setfrgb
+	SetBgRGB        string `json:"_setbrgb,omitempty"`    // setbrgb
+	KeyShfUp        string `json:"_kscu1,omitempty"`      // shift-up
+	KeyShfDown      string `json:"_kscud1,omitempty"`     // shift-down
+	KeyCtrlUp       string `json:"_kccu1,omitempty"`      // ctrl-up
+	KeyCtrlDown     string `json:"_kccud1,omitempty"`     // ctrl-left
+	KeyCtrlRight    string `json:"_kccuf1,omitempty"`     // ctrl-right
+	KeyCtrlLeft     string `json:"_kccub1,omitempty"`     // ctrl-left
+	KeyMetaUp       string `json:"_kmcu1,omitempty"`      // meta-up
+	KeyMetaDown     string `json:"_kmcud1,omitempty"`     // meta-left
+	KeyMetaRight    string `json:"_kmcuf1,omitempty"`     // meta-right
+	KeyMetaLeft     string `json:"_kmcub1,omitempty"`     // meta-left
+	KeyAltUp        string `json:"_kacu1,omitempty"`      // alt-up
+	KeyAltDown      string `json:"_kacud1,omitempty"`     // alt-left
+	KeyAltRight     string `json:"_kacuf1,omitempty"`     // alt-right
+	KeyAltLeft      string `json:"_kacub1,omitempty"`     // alt-left
+	KeyCtrlHome     string `json:"_kchome,omitempty"`
+	KeyCtrlEnd      string `json:"_kcend,omitempty"`
+	KeyMetaHome     string `json:"_kmhome,omitempty"`
+	KeyMetaEnd      string `json:"_kmend,omitempty"`
+	KeyAltHome      string `json:"_kahome,omitempty"`
+	KeyAltEnd       string `json:"_kaend,omitempty"`
+	KeyAltShfUp     string `json:"_kascu1,omitempty"`
+	KeyAltShfDown   string `json:"_kascud1,omitempty"`
+	KeyAltShfLeft   string `json:"_kascub1,omitempty"`
+	KeyAltShfRight  string `json:"_kascuf1,omitempty"`
+	KeyMetaShfUp    string `json:"_kmscu1,omitempty"`
+	KeyMetaShfDown  string `json:"_kmscud1,omitempty"`
+	KeyMetaShfLeft  string `json:"_kmscub1,omitempty"`
+	KeyMetaShfRight string `json:"_kmscuf1,omitempty"`
+	KeyCtrlShfUp    string `json:"_kcscu1,omitempty"`
+	KeyCtrlShfDown  string `json:"_kcscud1,omitempty"`
+	KeyCtrlShfLeft  string `json:"_kcscub1,omitempty"`
+	KeyCtrlShfRight string `json:"_kcscuf1,omitempty"`
+	KeyCtrlShfHome  string `json:"_kcHOME,omitempty"`
+	KeyCtrlShfEnd   string `json:"_kcEND,omitempty"`
+	KeyAltShfHome   string `json:"_kaHOME,omitempty"`
+	KeyAltShfEnd    string `json:"_kaEND,omitempty"`
+	KeyMetaShfHome  string `json:"_kmHOME,omitempty"`
+	KeyMetaShfEnd   string `json:"_kmEND,omitempty"`
 }
 
 type stackElem struct {
-	s string
-	i int
+	s     string
+	i     int
 	isStr bool
 	isInt bool
 }
@@ -189,8 +207,8 @@ type stackElem struct {
 type stack []stackElem
 
 func (st stack) Push(v string) stack {
-	e := stackElem {
-		s: v,
+	e := stackElem{
+		s:     v,
 		isStr: true,
 	}
 	return append(st, e)
@@ -216,7 +234,7 @@ func (st stack) PopInt() (int, stack) {
 		st = st[:len(st)-1]
 		if e.isInt {
 			return e.i, st
-		} else if (e.isStr) {
+		} else if e.isStr {
 			i, _ := strconv.Atoi(e.s)
 			return i, st
 		}
@@ -244,8 +262,8 @@ func (st stack) PopBool() (bool, stack) {
 }
 
 func (st stack) PushInt(i int) stack {
-	e := stackElem {
-		i: i,
+	e := stackElem{
+		i:     i,
 		isInt: true,
 	}
 	return append(st, e)
@@ -276,7 +294,7 @@ var svars [26]string
 type paramsBuffer struct {
 	out bytes.Buffer
 	buf bytes.Buffer
-	lk sync.Mutex
+	lk  sync.Mutex
 }
 
 // Start initializes the params buffer with the initial string data.
@@ -672,9 +690,9 @@ func (t *Terminfo) TColor(fg, bg Color) string {
 }
 
 var (
-	dblock sync.Mutex
+	dblock    sync.Mutex
 	terminfos = make(map[string]*Terminfo)
-	aliases = make(map[string]string)
+	aliases   = make(map[string]string)
 )
 
 // AddTerminfo can be called to register a new Terminfo entry.

@@ -261,7 +261,10 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 type ModMask int16
 
 // These are the modifiers keys that can be sent either with a key press,
-// or a mouse event.
+// or a mouse event.  Note that as of now, due to the confusion associated
+// with Meta, and the lack of support for it on many/most platforms, the
+// current implementations never use it.  Instead, they use ModAlt, even for
+// events that could possibly have been distinguished from ModAlt.
 const (
 	ModShift ModMask = 1 << iota
 	ModCtrl

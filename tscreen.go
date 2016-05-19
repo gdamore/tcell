@@ -287,12 +287,33 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKeyMod(KeyHome, ModAlt, ti.KeyAltHome)
 	t.prepareKeyMod(KeyEnd, ModAlt, ti.KeyAltEnd)
 
-	t.prepareKeyMod(KeyRight, ModMeta, ti.KeyMetaRight)
-	t.prepareKeyMod(KeyLeft, ModMeta, ti.KeyMetaLeft)
-	t.prepareKeyMod(KeyUp, ModMeta, ti.KeyMetaUp)
-	t.prepareKeyMod(KeyDown, ModMeta, ti.KeyMetaDown)
-	t.prepareKeyMod(KeyHome, ModMeta, ti.KeyMetaHome)
-	t.prepareKeyMod(KeyEnd, ModMeta, ti.KeyMetaEnd)
+	t.prepareKeyMod(KeyRight, ModAlt, ti.KeyMetaRight)
+	t.prepareKeyMod(KeyLeft, ModAlt, ti.KeyMetaLeft)
+	t.prepareKeyMod(KeyUp, ModAlt, ti.KeyMetaUp)
+	t.prepareKeyMod(KeyDown, ModAlt, ti.KeyMetaDown)
+	t.prepareKeyMod(KeyHome, ModAlt, ti.KeyMetaHome)
+	t.prepareKeyMod(KeyEnd, ModAlt, ti.KeyMetaEnd)
+
+	t.prepareKeyMod(KeyRight, ModAlt|ModShift, ti.KeyAltShfRight)
+	t.prepareKeyMod(KeyLeft, ModAlt|ModShift, ti.KeyAltShfLeft)
+	t.prepareKeyMod(KeyUp, ModAlt|ModShift, ti.KeyAltShfUp)
+	t.prepareKeyMod(KeyDown, ModAlt|ModShift, ti.KeyAltShfDown)
+	t.prepareKeyMod(KeyHome, ModAlt|ModShift, ti.KeyAltShfHome)
+	t.prepareKeyMod(KeyEnd, ModAlt|ModShift, ti.KeyAltShfEnd)
+
+	t.prepareKeyMod(KeyRight, ModAlt|ModShift, ti.KeyMetaShfRight)
+	t.prepareKeyMod(KeyLeft, ModAlt|ModShift, ti.KeyMetaShfLeft)
+	t.prepareKeyMod(KeyUp, ModAlt|ModShift, ti.KeyMetaShfUp)
+	t.prepareKeyMod(KeyDown, ModAlt|ModShift, ti.KeyMetaShfDown)
+	t.prepareKeyMod(KeyHome, ModAlt|ModShift, ti.KeyMetaShfHome)
+	t.prepareKeyMod(KeyEnd, ModAlt|ModShift, ti.KeyMetaShfEnd)
+
+	t.prepareKeyMod(KeyRight, ModCtrl|ModShift, ti.KeyCtrlShfRight)
+	t.prepareKeyMod(KeyLeft, ModCtrl|ModShift, ti.KeyCtrlShfLeft)
+	t.prepareKeyMod(KeyUp, ModCtrl|ModShift, ti.KeyCtrlShfUp)
+	t.prepareKeyMod(KeyDown, ModCtrl|ModShift, ti.KeyCtrlShfDown)
+	t.prepareKeyMod(KeyHome, ModCtrl|ModShift, ti.KeyCtrlShfHome)
+	t.prepareKeyMod(KeyEnd, ModCtrl|ModShift, ti.KeyCtrlShfEnd)
 
 	// Sadly, xterm handling of keycodes is somewhat erratic.  In
 	// particular, different codes are sent depending on application
@@ -449,7 +470,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 	}
 	if t.truecolor {
 		if ti.SetFgBgRGB != "" &&
-		    fg != ColorDefault && bg != ColorDefault {
+			fg != ColorDefault && bg != ColorDefault {
 			r1, g1, b1 := fg.RGB()
 			r2, g2, b2 := bg.RGB()
 			t.TPuts(ti.TParm(ti.SetFgBgRGB,
@@ -863,7 +884,7 @@ func (t *tScreen) postMouseEvent(x, y, btn int) {
 		mod |= ModShift
 	}
 	if btn&0x8 != 0 {
-		mod |= ModMeta
+		mod |= ModAlt
 	}
 	if btn&0x10 != 0 {
 		mod |= ModCtrl

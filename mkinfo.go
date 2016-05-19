@@ -259,6 +259,20 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		t.KeyCtrlDown = "\x1b[1;5B"
 		t.KeyCtrlRight = "\x1b[1;5C"
 		t.KeyCtrlLeft = "\x1b[1;5D"
+		t.KeyAltShfUp = "\x1b[1;4A"
+		t.KeyAltShfDown = "\x1b[1;4B"
+		t.KeyAltShfRight = "\x1b[1;4C"
+		t.KeyAltShfLeft = "\x1b[1;4D"
+
+		t.KeyMetaShfUp = "\x1b[1;10A"
+		t.KeyMetaShfDown = "\x1b[1;10B"
+		t.KeyMetaShfRight = "\x1b[1;10C"
+		t.KeyMetaShfLeft = "\x1b[1;10D"
+
+		t.KeyCtrlShfUp = "\x1b[1;6A"
+		t.KeyCtrlShfDown = "\x1b[1;6B"
+		t.KeyCtrlShfRight = "\x1b[1;6C"
+		t.KeyCtrlShfLeft = "\x1b[1;6D"
 	}
 	// And also for Home and End
 	if t.KeyShfHome == "\x1b[1;2H" && t.KeyShfEnd == "\x1b[1;2F" {
@@ -266,6 +280,12 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		t.KeyCtrlEnd = "\x1b[1;5F"
 		t.KeyAltHome = "\x1b[1;9H"
 		t.KeyAltEnd = "\x1b[1;9F"
+		t.KeyCtrlShfHome = "\x1b[1;6H"
+		t.KeyCtrlShfEnd = "\x1b[1;6F"
+		t.KeyAltShfHome = "\x1b[1;4H"
+		t.KeyAltShfEnd = "\x1b[1;4F"
+		t.KeyMetaShfHome = "\x1b[1;10H"
+		t.KeyMetaShfEnd = "\x1b[1;10F"
 	}
 
 	// And the same thing for rxvt and workalikes (Eterm, aterm, etc.)
@@ -333,9 +353,9 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 	// For terminals that use "standard" SGR sequences, lets combine the
 	// foreground and background together.
 	if strings.HasPrefix(t.SetFg, "\x1b[") &&
-	   strings.HasPrefix(t.SetBg, "\x1b[") &&
-	   strings.HasSuffix(t.SetFg, "m") &&
-	   strings.HasSuffix(t.SetBg, "m") {
+		strings.HasPrefix(t.SetBg, "\x1b[") &&
+		strings.HasSuffix(t.SetFg, "m") &&
+		strings.HasSuffix(t.SetBg, "m") {
 		fg := t.SetFg[:len(t.SetFg)-1]
 		r := regexp.MustCompile("%p1")
 		bg := r.ReplaceAllString(t.SetBg[2:], "%p2")
@@ -525,6 +545,18 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "KeyAltRight", t.KeyAltRight)
 	dotGoAddStr(w, "KeyAltUp", t.KeyAltUp)
 	dotGoAddStr(w, "KeyAltDown", t.KeyAltDown)
+	dotGoAddStr(w, "KeyAltShfLeft", t.KeyAltShfLeft)
+	dotGoAddStr(w, "KeyAltShfRight", t.KeyAltShfRight)
+	dotGoAddStr(w, "KeyAltShfUp", t.KeyAltShfUp)
+	dotGoAddStr(w, "KeyAltShfDown", t.KeyAltShfDown)
+	dotGoAddStr(w, "KeyMetaShfLeft", t.KeyMetaShfLeft)
+	dotGoAddStr(w, "KeyMetaShfRight", t.KeyMetaShfRight)
+	dotGoAddStr(w, "KeyMetaShfUp", t.KeyMetaShfUp)
+	dotGoAddStr(w, "KeyMetaShfDown", t.KeyMetaShfDown)
+	dotGoAddStr(w, "KeyCtrlShfLeft", t.KeyCtrlShfLeft)
+	dotGoAddStr(w, "KeyCtrlShfRight", t.KeyCtrlShfRight)
+	dotGoAddStr(w, "KeyCtrlShfUp", t.KeyCtrlShfUp)
+	dotGoAddStr(w, "KeyCtrlShfDown", t.KeyCtrlShfDown)
 	dotGoAddStr(w, "KeyShfHome", t.KeyShfHome)
 	dotGoAddStr(w, "KeyShfEnd", t.KeyShfEnd)
 	dotGoAddStr(w, "KeyCtrlHome", t.KeyCtrlHome)
@@ -533,6 +565,12 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "KeyMetaEnd", t.KeyMetaEnd)
 	dotGoAddStr(w, "KeyAltHome", t.KeyAltHome)
 	dotGoAddStr(w, "KeyAltEnd", t.KeyAltEnd)
+	dotGoAddStr(w, "KeyCtrlShfHome", t.KeyCtrlShfHome)
+	dotGoAddStr(w, "KeyCtrlShfEnd", t.KeyCtrlShfEnd)
+	dotGoAddStr(w, "KeyMetaShfHome", t.KeyMetaShfHome)
+	dotGoAddStr(w, "KeyMetaShfEnd", t.KeyMetaShfEnd)
+	dotGoAddStr(w, "KeyAltShfHome", t.KeyAltShfHome)
+	dotGoAddStr(w, "KeyAltShfEnd", t.KeyAltShfEnd)
 	fmt.Fprintln(w, "	})")
 }
 
