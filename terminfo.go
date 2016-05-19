@@ -296,6 +296,7 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 			f += string(ch)
 			for ch == '+' || ch == '-' || ch == '#' || ch == ' ' {
 				f += string(ch)
+				ch, _ = buf.ReadByte()
 			}
 			for (ch >= '0' && ch <= '9') || ch == '.' {
 				ch, _ = buf.ReadByte()
@@ -582,23 +583,15 @@ func (t *Terminfo) TColor(fg, bg Color) string {
 	return rv
 }
 
-var terminfos map[string]*Terminfo
-var aliases map[string]string
-var dblock sync.Mutex
-
-func initDB() {
-	if terminfos == nil {
-		terminfos = make(map[string]*Terminfo)
-	}
-	if aliases == nil {
-		aliases = make(map[string]string)
-	}
-}
+var (
+	dblock sync.Mutex
+	terminfos = make(map[string]*Terminfo)
+	aliases = make(map[string]string)
+)
 
 // AddTerminfo can be called to register a new Terminfo entry.
 func AddTerminfo(t *Terminfo) {
 	dblock.Lock()
-	initDB()
 	terminfos[t.Name] = t
 	for _, x := range t.Aliases {
 		terminfos[x] = t
@@ -633,7 +626,6 @@ func loadFromFile(fname string, term string) (*Terminfo, error) {
 // or in this package's source directory as database.json).
 func LookupTerminfo(name string) (*Terminfo, error) {
 	dblock.Lock()
-	initDB()
 	t := terminfos[name]
 	dblock.Unlock()
 
