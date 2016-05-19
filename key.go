@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -79,7 +79,6 @@ func (ev *EventKey) Modifiers() ModMask {
 }
 
 var keyNames = map[Key]string{
-	KeySpace:          "Space",
 	KeyEnter:          "Enter",
 	KeyBackspace:      "Backspace",
 	KeyTab:            "Tab",
@@ -240,7 +239,7 @@ func (ev *EventKey) Name() string {
 // has more precise information it should set that specifically.  Callers
 // that aren't sure about modifier state (most) should just pass ModNone.
 func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
-	if k == KeyRune && (ch <= ' ' || ch == 0x7f) {
+	if k == KeyRune && (ch < ' ' || ch == 0x7f) {
 		// Turn specials into proper key codes.  This is for
 		// control characters and the DEL.
 		k = Key(ch)
@@ -446,7 +445,6 @@ const (
 	KeyGS
 	KeyRS
 	KeyUS
-	KeySP
 	KeyDEL Key = 0x7F
 )
 
@@ -457,6 +455,5 @@ const (
 	KeyEsc        = KeyESC
 	KeyEscape     = KeyESC
 	KeyEnter      = KeyCR
-	KeySpace      = KeySP
 	KeyBackspace2 = KeyDEL
 )

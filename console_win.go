@@ -949,7 +949,6 @@ func (s *cScreen) HasKey(k Key) bool {
 		KeyBackspace: true,
 		KeyTab:       true,
 		KeyEscape:    true,
-		KeySpace:     true,
 		KeyPause:     true,
 		KeyPrint:     true,
 		KeyPgUp:      true,
