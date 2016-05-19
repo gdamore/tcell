@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -286,13 +286,13 @@ const (
 	KeyBackspace2 = Key(tcell.KeyBackspace2)
 	KeyTab        = Key(tcell.KeyTab)
 	KeyEnter      = Key(tcell.KeyEnter)
-	KeySpace      = Key(tcell.KeySpace)
 	KeyEsc        = Key(tcell.KeyEscape)
 	KeyPgdn       = Key(tcell.KeyPgDn)
 	KeyPgup       = Key(tcell.KeyPgUp)
 	MouseLeft     = Key(tcell.KeyF63) // arbitrary assignments
 	MouseRight    = Key(tcell.KeyF62)
 	MouseMiddle   = Key(tcell.KeyF61)
+	KeySpace      = Key(tcell.Key(' '))
 )
 
 // Modifiers.
@@ -312,6 +312,9 @@ func makeEvent(tev tcell.Event) Event {
 		ch := rune(0)
 		if k == tcell.KeyRune {
 			ch = tev.Rune()
+			if ch == ' ' {
+				k = tcell.Key(' ')
+			}
 		}
 		mod := tev.Modifiers()
 		return Event{
