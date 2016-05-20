@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+// EventPaste is an event which stores the text that is pasted in as input
 type EventPaste struct {
 	t    time.Time
 	text string
@@ -28,6 +29,7 @@ func (ev *EventPaste) When() time.Time {
 	return ev.t
 }
 
+// Text returns the pasted text
 func (ev *EventPaste) Text() string {
 	return ev.text
 }
