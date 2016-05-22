@@ -900,11 +900,15 @@ func (t *tScreen) postMouseEvent(x, y, btn int, motion bool) {
 	// button press events unless we see an intervening release event.
 	switch btn & 0x43 {
 	case 0:
-		button = Button1
-		t.wasbtn = true
+		if t.wasbtn {
+			button = Button1
+			t.wasbtn = true
+		}
 	case 1:
-		button = Button2
-		t.wasbtn = true
+		if t.wasbtn {
+			button = Button2
+			t.wasbtn = true
+		}
 	case 2:
 		button = Button3
 		t.wasbtn = true
