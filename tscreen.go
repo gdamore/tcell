@@ -1100,6 +1100,11 @@ func (t *tScreen) parseXtermMouse(buf *bytes.Buffer) (bool, bool) {
 			state++
 		case 3:
 			btn = int(b[i])
+			if btn != 128 && btn != 129 {
+				btn = int(b[i])
+			} else {
+				btn = 99
+			}
 			state++
 		case 4:
 			x = int(b[i]) - 32 - 1
