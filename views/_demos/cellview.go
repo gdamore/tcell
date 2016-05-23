@@ -1,4 +1,4 @@
-// Copyright 2015 The Tcell Authors
+// Copyright 2016 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -179,16 +179,16 @@ func main() {
 	title.SetRight("Example v1.0", tcell.StyleDefault)
 
 	window.keybar = views.NewSimpleStyledText()
-	window.keybar.SetStyleN(tcell.StyleDefault.
+	window.keybar.RegisterStyle('N', tcell.StyleDefault.
 		Background(tcell.ColorSilver).
 		Foreground(tcell.ColorBlack))
-	window.keybar.SetStyleA(tcell.StyleDefault.
+	window.keybar.RegisterStyle('A', tcell.StyleDefault.
 		Background(tcell.ColorSilver).
 		Foreground(tcell.ColorRed))
 	window.keybar.SetMarkup("[%AQ%N] Quit")
 
 	window.status = views.NewSimpleStyledText()
-	window.status.SetStyleN(tcell.StyleDefault.
+	window.status.RegisterStyle('N', tcell.StyleDefault.
 		Background(tcell.ColorYellow).
 		Foreground(tcell.ColorBlack))
 	window.status.SetMarkup("My status is here.")

@@ -1,4 +1,4 @@
-// Copyright 2015 The Tcell Authors
+// Copyright 2016 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -15,6 +15,7 @@
 package views
 
 import (
+	"unicode"
 	"github.com/gdamore/tcell"
 )
 
@@ -22,13 +23,8 @@ import (
 // using simple in-line markup.  Its intention is to make it easier to mark
 // up hot // keys for menubars, etc.
 type SimpleStyledText struct {
-	styleN tcell.Style
-	styleA tcell.Style
-	styleB tcell.Style
-	styleS tcell.Style
-	styleU tcell.Style
+	styles map[rune]tcell.Style
 	markup []rune
-	init   bool
 	Text
 }
 
@@ -42,6 +38,11 @@ type SimpleStyledText struct {
 // * %B - start bold style
 // * %U - start underline style
 //
+// Other styles can be set using %<rune>, if styles are registered.
+// Upper case characters and punctuation are reserved for use by the system.
+// Lower case are available for use by the user.  (Users may define mappings
+// for upper case letters to override system defined styles.)
+//
 // Note that for simplicity, combining styles is not supported.  By default
 // the alternate style is the same as standout (reverse) mode.
 //
@@ -54,7 +55,8 @@ func (t *SimpleStyledText) SetMarkup(s string) {
 	styl := make([]tcell.Style, 0, len(markup))
 	text := make([]rune, 0, len(markup))
 
-	style := t.StyleN()
+	style := t.styles['N']
+
 	esc := false
 	for _, r := range markup {
 		if esc {
@@ -63,19 +65,8 @@ func (t *SimpleStyledText) SetMarkup(s string) {
 			case '%':
 				text = append(text, '%')
 				styl = append(styl, style)
-			case 'N':
-				style = t.StyleN()
-			case 'A':
-				style = t.StyleA()
-			case 'B':
-				style = t.StyleB()
-			case 'S':
-				style = t.StyleS()
-			case 'U':
-				style = t.StyleU()
 			default:
-				text = append(append(text, '%'), r)
-				styl = append(append(styl, style), style)
+				style = t.styles[r]
 			}
 			continue
 		}
@@ -96,79 +87,40 @@ func (t *SimpleStyledText) SetMarkup(s string) {
 	t.markup = markup
 }
 
+// Registers a style for the given rune.  This style will be used for
+// text marked with %<r>. See SetMarkup() for more detail.  Note that
+// this must be done before using any of the styles with SetMarkup().
+// Only letters may be used when registering styles, and be advised that
+// the system may have predefined uses for upper case letters.
+func (t *SimpleStyledText) RegisterStyle(r rune, style tcell.Style) {
+	if r == 'N' {
+		t.Text.SetStyle(style)
+	}
+	if unicode.IsLetter(r) {
+		t.styles[r] = style
+	}
+}
+
+// LookupStyle returns the style registered for the given rune.
+// Returns tcell.StyleDefault if no style was previously registered
+// for the rune.
+func (t *SimpleStyledText) LookupStyle(r rune) tcell.Style {
+	return t.styles[r]
+}
+
 // Markup returns the text that was set, including markup.
 func (t *SimpleStyledText) Markup() string {
 	return string(t.markup)
 }
 
-// SetStyleN sets the style used for N (normal).
-func (t *SimpleStyledText) SetStyleN(style tcell.Style) {
-	t.styleN = style
-	t.Text.SetStyle(style)
-}
-
-// SetStyleA sets the style used for A (alternate).  Existing text is not
-// changed, so call this before doing SetText.
-func (t *SimpleStyledText) SetStyleA(style tcell.Style) {
-	t.styleA = style
-}
-
-// SetStyleB sets the style used for B (bold).  Existing text is not
-// changed, so call this before doing SetText.
-func (t *SimpleStyledText) SetStyleB(style tcell.Style) {
-	t.styleB = style
-}
-
-// SetStyleU sets the style used for U (underline).  Existing text is not
-// changed, so call this before doing SetText.
-func (t *SimpleStyledText) SetStyleU(style tcell.Style) {
-	t.styleU = style
-}
-
-// SetStyleS sets the style used for S (standout).  Existing text is not
-// changed, so call this before doing SetText.
-func (t *SimpleStyledText) SetStyleS(style tcell.Style) {
-	t.styleS = style
-}
-
-// StyleN returns the previously set N (normal) style.
-func (t *SimpleStyledText) StyleN() tcell.Style {
-	return t.styleN
-}
-
-// StyleA returns the previously set A (alternate) style.
-func (t *SimpleStyledText) StyleA() tcell.Style {
-	if t.styleA == tcell.StyleDefault {
-		return t.styleN.Reverse(true).Bold(true)
-	}
-	return t.styleA
-}
-
-// StyleB returns the previously set B (bold) style.
-func (t *SimpleStyledText) StyleB() tcell.Style {
-	if t.styleB == tcell.StyleDefault {
-		return t.styleN.Bold(true)
-	}
-	return t.styleB
-}
-
-// StyleS returns the previously set S (standout) style.
-func (t *SimpleStyledText) StyleS() tcell.Style {
-	if t.styleS == tcell.StyleDefault {
-		return t.styleN.Reverse(true)
-	}
-	return t.styleS
-}
-
-// StyleU returns the previously set U (underline) style.
-func (t *SimpleStyledText) StyleU() tcell.Style {
-	if t.styleU == tcell.StyleDefault {
-		return t.styleN.Underline(true)
-	}
-	return t.styleU
-}
-
 // NewSimpleStyledText creates an empty Text.
 func NewSimpleStyledText() *SimpleStyledText {
-	return &SimpleStyledText{}
+	ss := &SimpleStyledText{}
+	// Create map and establish default styles.
+	ss.styles = make(map[rune]tcell.Style)
+	ss.styles['N'] = tcell.StyleDefault
+	ss.styles['S'] = tcell.StyleDefault.Reverse(true)
+	ss.styles['U'] = tcell.StyleDefault.Underline(true)
+	ss.styles['B'] = tcell.StyleDefault.Bold(true)
+	return ss
 }
