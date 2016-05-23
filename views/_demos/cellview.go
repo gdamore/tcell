@@ -104,7 +104,7 @@ type mainWindow struct {
 	view   views.View
 	main   *views.CellView
 	keybar *views.SimpleStyledText
-	status *views.SimpleStyledText
+	status *views.SimpleStyledTextBar
 	model  *model
 
 	views.Panel
@@ -146,7 +146,7 @@ func (a *mainWindow) HandleEvent(ev tcell.Event) bool {
 }
 
 func (a *mainWindow) Draw() {
-	a.status.SetMarkup(a.model.loc)
+	a.status.SetLeft(a.model.loc)
 	a.Panel.Draw()
 }
 
@@ -187,11 +187,17 @@ func main() {
 		Foreground(tcell.ColorRed))
 	window.keybar.SetMarkup("[%AQ%N] Quit")
 
-	window.status = views.NewSimpleStyledText()
-	window.status.RegisterStyle('N', tcell.StyleDefault.
+	window.status = views.NewSimpleStyledTextBar()
+	window.status.SetStyle(tcell.StyleDefault.
+		Background(tcell.ColorBlue).
+		Foreground(tcell.ColorYellow))
+	window.status.RegisterLeftStyle('N', tcell.StyleDefault.
 		Background(tcell.ColorYellow).
 		Foreground(tcell.ColorBlack))
-	window.status.SetMarkup("My status is here.")
+
+	window.status.SetLeft("My status is here.")
+	window.status.SetRight("%UCellView%N demo!")
+	window.status.SetCenter("Cen%ST%Ner")
 
 	window.main = views.NewCellView()
 	window.main.SetModel(window.model)

@@ -29,6 +29,9 @@ type Screen interface {
 	// filling the screen with spaces, using the global default style.
 	Clear()
 
+	// Fill fills the screen with the given character and style.
+	Fill(rune, Style)
+
 	// SetCell is an older API, and will be removed.  Please use
 	// SetContent instead; SetCell is implemented in terms of SetContent.
 	SetCell(x int, y int, style Style, ch ...rune)

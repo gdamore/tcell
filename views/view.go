@@ -1,4 +1,4 @@
-// Copyright 2015 The Tcell Authors
+// Copyright 2016 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -26,9 +26,6 @@ type View interface {
 	// a Widget.
 	SetContent(x int, y int, ch rune, comb []rune, style tcell.Style)
 
-	// Clear clears the content.
-	Clear()
-
 	// Size represents the visible size.  The actual content may be
 	// larger or smaller.
 	Size() (int, int)
@@ -37,6 +34,12 @@ type View interface {
 	// It also tells it that it has a new offset relative to any parent
 	// view.
 	Resize(x, y, width, height int)
+
+	// Fill fills the displayed content with the given rune and style.
+	Fill(rune, tcell.Style)
+
+	// Clear clears the content.  Often just Fill(' ', tcell.StyleDefault)
+	Clear()
 }
 
 // ViewPort is an implementation of a View, that provides a smaller logical
@@ -63,11 +66,15 @@ type ViewPort struct {
 // Clear clears the displayed content, filling it with spaces of default
 // text attributes.
 func (v *ViewPort) Clear() {
-	st := tcell.StyleDefault
+	v.Fill(' ', tcell.StyleDefault)
+}
+
+// Fill fills the displayed view port with the given character and style.
+func (v *ViewPort) Fill(ch rune, style tcell.Style) {
 	if v.v != nil {
 		for y := 0; y < v.height; y++ {
 			for x := 0; x < v.width; x++ {
-				v.v.SetContent(x+v.physx, y+v.physy, ' ', nil, st)
+				v.v.SetContent(x+v.physx, y+v.physy, ch, nil, style)
 			}
 		}
 	}

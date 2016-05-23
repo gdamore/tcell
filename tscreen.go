@@ -403,9 +403,13 @@ func (t *tScreen) SetStyle(style Style) {
 }
 
 func (t *tScreen) Clear() {
+	t.Fill(' ', t.style)
+}
+
+func (t *tScreen) Fill(r rune, style Style) {
 	t.Lock()
 	if !t.fini {
-		t.cells.Fill(' ', t.style)
+		t.cells.Fill(r, style)
 	}
 	t.Unlock()
 }

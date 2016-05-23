@@ -845,9 +845,13 @@ func (s *cScreen) resize() {
 }
 
 func (s *cScreen) Clear() {
+	s.Fill(' ', s.style)
+}
+
+func (s *cScreen) Fill(r rune, style Style) {
 	s.Lock()
 	if !s.fini {
-		s.cells.Fill(' ', s.style)
+		s.cells.Fill(r, style)
 		s.clear = true
 	}
 	s.Unlock()

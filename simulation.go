@@ -156,9 +156,12 @@ func (s *simscreen) SetStyle(style Style) {
 }
 
 func (s *simscreen) Clear() {
+	s.Fill(' ', s.style)
+}
 
+func (s *simscreen) Fill(r rune, style Style) {
 	s.Lock()
-	s.back.Fill(' ', s.style)
+	s.back.Fill(r, style)
 	s.Unlock()
 }
 

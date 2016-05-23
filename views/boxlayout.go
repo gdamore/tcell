@@ -202,7 +202,8 @@ func (b *BoxLayout) Draw() {
 	if b.changed {
 		b.layout()
 	}
-	b.view.Clear()
+//	b.view.Clear()
+	b.view.Fill('*', b.style)
 	w, h := b.view.Size()
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
