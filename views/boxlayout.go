@@ -1,4 +1,4 @@
-// Copyright 2015 The Tcell Authors
+// Copyright 2016 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -202,7 +202,6 @@ func (b *BoxLayout) Draw() {
 	if b.changed {
 		b.layout()
 	}
-//	b.view.Clear()
 	b.view.Fill('*', b.style)
 	w, h := b.view.Size()
 	for y := 0; y < h; y++ {
@@ -238,6 +237,7 @@ func (b *BoxLayout) HandleEvent(ev tcell.Event) bool {
 	case *EventWidgetContent:
 		// This can only have come from one of our children.
 		b.changed = true
+		b.PostEventWidgetContent(b)
 		return true
 	}
 	for _, c := range b.cells {
@@ -255,7 +255,7 @@ func (b *BoxLayout) AddWidget(widget Widget, fill float64) {
 		fill:   fill,
 		view:   NewViewPort(b.view, 0, 0, 0, 0),
 	}
-	c.widget.SetView(c.view)
+	widget.SetView(c.view)
 	b.cells = append(b.cells, c)
 	b.changed = true
 	widget.Watch(b)

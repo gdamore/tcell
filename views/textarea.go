@@ -1,4 +1,4 @@
-// Copyright 2015 The Tcell Authors
+// Copyright 2016 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -16,6 +16,7 @@ package views
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/gdamore/tcell"
 )
@@ -26,8 +27,9 @@ import (
 // a single line to display.  All text in the TextArea has the same
 // style.  An optional soft cursor is available.
 type TextArea struct {
-	view  *CellView
 	model *linesModel
+	once  sync.Once
+	CellView
 }
 
 type linesModel struct {
@@ -38,15 +40,16 @@ type linesModel struct {
 	y      int
 	hide   bool
 	cursor bool
+	style  tcell.Style
 }
 
 func (m *linesModel) GetCell(x, y int) (rune, tcell.Style, []rune, int) {
 	var ch rune
 	if x < 0 || y < 0 || y >= len(m.lines) || x >= len(m.lines[y]) {
-		return ch, tcell.StyleDefault, nil, 1
+		return ch, m.style, nil, 1
 	}
 	// XXX: extend this to support combining and full width chars
-	return rune(m.lines[y][x]), tcell.StyleDefault, nil, 1
+	return rune(m.lines[y][x]), m.style, nil, 1
 }
 
 func (m *linesModel) GetBounds() (int, int) {
@@ -85,6 +88,7 @@ func (m *linesModel) GetCursor() (int, int, bool, bool) {
 
 // SetLines sets the content text to display.
 func (ta *TextArea) SetLines(lines []string) {
+	ta.Init()
 	m := ta.model
 	m.width = 0
 	m.height = len(lines)
@@ -94,11 +98,17 @@ func (ta *TextArea) SetLines(lines []string) {
 			m.width = len(l)
 		}
 	}
-	ta.view.SetModel(m)
+	ta.CellView.SetModel(m)
+}
+
+func (ta *TextArea) SetStyle(style tcell.Style) {
+	ta.model.style = style
+	ta.CellView.SetStyle(style)
 }
 
 // EnableCursor enables a soft cursor in the TextArea.
 func (ta *TextArea) EnableCursor(on bool) {
+	ta.Init()
 	ta.model.cursor = on
 }
 
@@ -106,41 +116,31 @@ func (ta *TextArea) EnableCursor(on bool) {
 // If on is true, the cursor is hidden.  Note that a cursor is only
 // shown if it is enabled.
 func (ta *TextArea) HideCursor(on bool) {
+	ta.Init()
 	ta.model.hide = on
-}
-
-// Draw draws the TextArea.
-func (ta *TextArea) Draw() {
-	ta.view.Draw()
-}
-
-// HandleEvent handles any events.
-func (ta *TextArea) HandleEvent(ev tcell.Event) bool {
-	return ta.view.HandleEvent(ev)
-}
-
-// Resize is called when the drawing context (View) changes size.
-func (ta *TextArea) Resize() {
-	ta.view.Resize()
-}
-
-// SetView sets the drawing context.
-func (ta *TextArea) SetView(view View) {
-	ta.view.SetView(view)
 }
 
 // SetContent is used to set the textual content, passed as a
 // single string.  Lines within the string are delimited by newlines.
 func (ta *TextArea) SetContent(text string) {
+	ta.Init()
 	lines := strings.Split(strings.Trim(text, "\n"), "\n")
 	ta.SetLines(lines)
 }
 
+// Init initializes the TextArea.
+func (ta *TextArea) Init() {
+	ta.once.Do(func() {
+		lm := &linesModel{lines: []string{}, width: 0}
+		ta.model = lm
+		ta.CellView.Init()
+		ta.CellView.SetModel(lm)
+	})
+}
+
 // NewTextArea creates a blank TextArea.
 func NewTextArea() *TextArea {
-	lm := &linesModel{lines: []string{}, width: 0}
-	ta := &TextArea{model: lm}
-	ta.view = NewCellView()
-	ta.view.SetModel(lm)
+	ta := &TextArea{}
+	ta.Init()
 	return ta
 }

@@ -1,4 +1,4 @@
-// Copyright 2015 The Tcell Authors
+// Copyright 2016 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -15,6 +15,8 @@
 package views
 
 import (
+	"sync"
+
 	"github.com/gdamore/tcell"
 )
 
@@ -40,6 +42,7 @@ type CellView struct {
 	style    tcell.Style
 	lines    []string
 	model    CellModel
+	once     sync.Once
 
 	WidgetWatchers
 }
@@ -49,7 +52,7 @@ func (a *CellView) Draw() {
 
 	port := a.port
 	model := a.model
-	port.Clear()
+	port.Fill(' ', a.style)
 
 	if a.view == nil {
 		return
@@ -185,6 +188,7 @@ func (a *CellView) SetModel(model CellModel) {
 	a.model = model
 	a.port.SetContentSize(w, h, true)
 	a.port.ValidateView()
+	a.PostEventWidgetContent(a)
 }
 
 // SetView sets the View context.
@@ -242,10 +246,17 @@ func (a *CellView) SetStyle(s tcell.Style) {
 	a.style = s
 }
 
+// Init initializes a new CellView for use.
+func (a *CellView) Init() {
+	a.once.Do(func() {
+		a.port = NewViewPort(nil, 0, 0, 0, 0)
+		a.style = tcell.StyleDefault
+	})
+}
+
 // NewCellView creates a CellView.
 func NewCellView() *CellView {
-	return &CellView{
-		port:  NewViewPort(nil, 0, 0, 0, 0),
-		style: tcell.StyleDefault,
-	}
+	cv := &CellView{}
+	cv.Init()
+	return cv
 }
