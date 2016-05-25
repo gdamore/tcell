@@ -1256,18 +1256,19 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			}
 		}
 
-		if partials == 0 || expire {
-			if b[0] == '\x1b' {
-				if len(b) == 1 {
-					ev := NewEventKey(KeyEsc, 0, ModNone)
-					t.PostEvent(ev)
-					t.escaped = false
-				} else {
-					t.escaped = true
-				}
-				buf.ReadByte()
-				continue
+		if b[0] == '\x1b' {
+			if len(b) == 1 {
+				ev := NewEventKey(KeyEsc, 0, ModNone)
+				t.PostEvent(ev)
+				t.escaped = false
+			} else {
+				t.escaped = true
 			}
+			buf.ReadByte()
+			continue
+		}
+
+		if partials == 0 || expire {
 			// Nothing was going to match, or we timed out
 			// waiting for more data -- just deliver the characters
 			// to the app & let them sort it out.  Possibly we
