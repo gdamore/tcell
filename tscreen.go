@@ -1209,7 +1209,6 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			buf.Reset()
 			return
 		}
-
 		if !bytes.Contains(b, []byte("\x1b")) && len(b) > 1 {
 			ev := &EventPaste{t: time.Now(), text: string(bytes.Replace(b, []byte("\r"), []byte("\n"), -1))}
 			t.PostEvent(ev)
@@ -1250,23 +1249,23 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			}
 		}
 
-		if b[0] == '\x1b' {
-			if len(b) == 1 {
-				ev := NewEventKey(KeyEsc, 0, ModNone)
-				t.PostEvent(ev)
-				t.escaped = false
-			} else {
-				t.escaped = true
-			}
-			buf.ReadByte()
-			continue
-		}
-
 		if partials == 0 || expire {
 			// Nothing was going to match, or we timed out
 			// waiting for more data -- just deliver the characters
 			// to the app & let them sort it out.  Possibly we
 			// should only do this for control characters like ESC.
+			if b[0] == '\x1b' {
+				if len(b) == 1 {
+					ev := NewEventKey(KeyEsc, 0, ModNone)
+					t.PostEvent(ev)
+					t.escaped = false
+				} else {
+					t.escaped = true
+				}
+				buf.ReadByte()
+				continue
+			}
+
 			by, _ := buf.ReadByte()
 			mod := ModNone
 			if t.escaped {
