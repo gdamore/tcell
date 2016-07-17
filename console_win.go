@@ -1,6 +1,6 @@
 // +build windows
 
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -26,7 +26,6 @@ import (
 type cScreen struct {
 	in    syscall.Handle
 	out   syscall.Handle
-	mbtns uint32 // debounce mouse buttons
 	evch  chan Event
 	quit  chan struct{}
 	curx  int
@@ -43,8 +42,49 @@ type cScreen struct {
 	oimode  uint32
 	oomode  uint32
 	cells   CellBuffer
+	colors  map[Color]Color
 
 	sync.Mutex
+}
+
+var winLock sync.Mutex
+
+var winPalette = []Color{
+	ColorBlack,
+	ColorMaroon,
+	ColorGreen,
+	ColorNavy,
+	ColorOlive,
+	ColorPurple,
+	ColorTeal,
+	ColorSilver,
+	ColorGray,
+	ColorRed,
+	ColorLime,
+	ColorBlue,
+	ColorYellow,
+	ColorFuchsia,
+	ColorAqua,
+	ColorWhite,
+}
+
+var winColors = map[Color]Color{
+	ColorBlack:   ColorBlack,
+	ColorMaroon:  ColorMaroon,
+	ColorGreen:   ColorGreen,
+	ColorNavy:    ColorNavy,
+	ColorOlive:   ColorOlive,
+	ColorPurple:  ColorPurple,
+	ColorTeal:    ColorTeal,
+	ColorSilver:  ColorSilver,
+	ColorGray:    ColorGray,
+	ColorRed:     ColorRed,
+	ColorLime:    ColorLime,
+	ColorBlue:    ColorBlue,
+	ColorYellow:  ColorYellow,
+	ColorFuchsia: ColorFuchsia,
+	ColorAqua:    ColorAqua,
+	ColorWhite:   ColorWhite,
 }
 
 var k32 = syscall.NewLazyDLL("kernel32.dll")
@@ -82,20 +122,20 @@ func NewConsoleScreen() (Screen, error) {
 
 func (s *cScreen) Init() error {
 
-	s.evch = make(chan Event, 2)
+	s.evch = make(chan Event, 10)
 	s.quit = make(chan struct{})
 
-	if in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0); e != nil {
+	in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0)
+	if e != nil {
 		return e
-	} else {
-		s.in = in
 	}
-	if out, e := syscall.Open("CONOUT$", syscall.O_RDWR, 0); e != nil {
+	s.in = in
+	out, e := syscall.Open("CONOUT$", syscall.O_RDWR, 0)
+	if e != nil {
 		syscall.Close(s.in)
 		return e
-	} else {
-		s.out = out
 	}
+	s.out = out
 
 	s.Lock()
 
@@ -155,10 +195,16 @@ func (s *cScreen) Fini() {
 	syscall.Close(s.out)
 }
 
-func (s *cScreen) PostEvent(ev Event) {
+func (s *cScreen) PostEventWait(ev Event) {
+	s.evch <- ev
+}
+
+func (s *cScreen) PostEvent(ev Event) error {
 	select {
-	case <-s.quit:
 	case s.evch <- ev:
+		return nil
+	default:
+		return ErrEventQFull
 	}
 }
 
@@ -325,6 +371,52 @@ const (
 	vkF24    = 0x87
 )
 
+var vkKeys = map[uint16]Key{
+	vkCancel: KeyCancel,
+	vkBack:   KeyBackspace,
+	vkTab:    KeyTab,
+	vkClear:  KeyClear,
+	vkPause:  KeyPause,
+	vkPrint:  KeyPrint,
+	vkPrtScr: KeyPrint,
+	vkPrior:  KeyPgUp,
+	vkNext:   KeyPgDn,
+	vkReturn: KeyEnter,
+	vkEnd:    KeyEnd,
+	vkHome:   KeyHome,
+	vkLeft:   KeyLeft,
+	vkUp:     KeyUp,
+	vkRight:  KeyRight,
+	vkDown:   KeyDown,
+	vkInsert: KeyInsert,
+	vkDelete: KeyDelete,
+	vkHelp:   KeyHelp,
+	vkF1:     KeyF1,
+	vkF2:     KeyF2,
+	vkF3:     KeyF3,
+	vkF4:     KeyF4,
+	vkF5:     KeyF5,
+	vkF6:     KeyF6,
+	vkF7:     KeyF7,
+	vkF8:     KeyF8,
+	vkF9:     KeyF9,
+	vkF10:    KeyF10,
+	vkF11:    KeyF11,
+	vkF12:    KeyF12,
+	vkF13:    KeyF13,
+	vkF14:    KeyF14,
+	vkF15:    KeyF15,
+	vkF16:    KeyF16,
+	vkF17:    KeyF17,
+	vkF18:    KeyF18,
+	vkF19:    KeyF19,
+	vkF20:    KeyF20,
+	vkF21:    KeyF21,
+	vkF22:    KeyF22,
+	vkF23:    KeyF23,
+	vkF24:    KeyF24,
+}
+
 // NB: All Windows platforms are little endian.  We assume this
 // never, ever change.  The following code is endian safe. and does
 // not use unsafe pointers.
@@ -357,6 +449,50 @@ func mod2mask(cks uint32) ModMask {
 		mm |= ModShift
 	}
 	return mm
+}
+
+func mrec2btns(mbtns, flags uint32) ButtonMask {
+	btns := ButtonNone
+	if mbtns&0x1 != 0 {
+		btns |= Button1
+	}
+	if mbtns&0x2 != 0 {
+		btns |= Button2
+	}
+	if mbtns&0x4 != 0 {
+		btns |= Button3
+	}
+	if mbtns&0x8 != 0 {
+		btns |= Button4
+	}
+	if mbtns&0x10 != 0 {
+		btns |= Button5
+	}
+	if mbtns&0x20 != 0 {
+		btns |= Button6
+	}
+	if mbtns&0x40 != 0 {
+		btns |= Button7
+	}
+	if mbtns&0x80 != 0 {
+		btns |= Button8
+	}
+
+	if flags&mouseVWheeled != 0 {
+		if mbtns&0x80000000 == 0 {
+			btns |= WheelUp
+		} else {
+			btns |= WheelDown
+		}
+	}
+	if flags&mouseHWheeled != 0 {
+		if mbtns&0x80000000 == 0 {
+			btns |= WheelRight
+		} else {
+			btns |= WheelLeft
+		}
+	}
+	return btns
 }
 
 func (s *cScreen) getConsoleInput() error {
@@ -397,92 +533,8 @@ func (s *cScreen) getConsoleInput() error {
 			return nil
 		}
 		key := KeyNUL // impossible on Windows
-		switch krec.kcode {
-		case vkCancel:
-			key = KeyCancel
-		case vkBack:
-			key = KeyBackspace
-		case vkTab:
-			key = KeyTab
-		case vkClear:
-			key = KeyClear
-		case vkPause:
-			key = KeyPause
-		case vkPrint, vkPrtScr:
-			key = KeyPrint
-		case vkPrior:
-			key = KeyPgUp
-		case vkNext:
-			key = KeyPgDn
-		case vkReturn:
-			key = KeyEnter
-		case vkEnd:
-			key = KeyEnd
-		case vkHome:
-			key = KeyHome
-		case vkLeft:
-			key = KeyLeft
-		case vkUp:
-			key = KeyUp
-		case vkRight:
-			key = KeyRight
-		case vkDown:
-			key = KeyDown
-		case vkInsert:
-			key = KeyInsert
-		case vkDelete:
-			key = KeyDelete
-		case vkHelp:
-			key = KeyHelp
-		case vkF1:
-			key = KeyF1
-		case vkF2:
-			key = KeyF2
-		case vkF3:
-			key = KeyF3
-		case vkF4:
-			key = KeyF4
-		case vkF5:
-			key = KeyF5
-		case vkF6:
-			key = KeyF6
-		case vkF7:
-			key = KeyF7
-		case vkF8:
-			key = KeyF8
-		case vkF9:
-			key = KeyF9
-		case vkF10:
-			key = KeyF10
-		case vkF11:
-			key = KeyF11
-		case vkF12:
-			key = KeyF12
-		case vkF13:
-			key = KeyF13
-		case vkF14:
-			key = KeyF14
-		case vkF15:
-			key = KeyF15
-		case vkF16:
-			key = KeyF16
-		case vkF17:
-			key = KeyF17
-		case vkF18:
-			key = KeyF18
-		case vkF19:
-			key = KeyF19
-		case vkF20:
-			key = KeyF20
-		case vkF21:
-			key = KeyF21
-		case vkF22:
-			key = KeyF22
-		case vkF23:
-			key = KeyF23
-		case vkF24:
-			key = KeyF24
-		default:
+		ok := false
+		if key, ok = vkKeys[krec.kcode]; !ok {
 			return nil
 		}
 		for krec.repeat > 0 {
@@ -497,49 +549,8 @@ func (s *cScreen) getConsoleInput() error {
 		mrec.y = geti16(rec.data[2:])
 		mrec.btns = getu32(rec.data[4:])
 		mrec.mod = getu32(rec.data[8:])
-		mrec.flags = getu32(rec.data[12:]) // not using yet
-		btns := ButtonNone
-
-		s.mbtns = mrec.btns
-		if mrec.btns&0x1 != 0 {
-			btns |= Button1
-		}
-		if mrec.btns&0x2 != 0 {
-			btns |= Button2
-		}
-		if mrec.btns&0x4 != 0 {
-			btns |= Button3
-		}
-		if mrec.btns&0x8 != 0 {
-			btns |= Button4
-		}
-		if mrec.btns&0x10 != 0 {
-			btns |= Button5
-		}
-		if mrec.btns&0x20 != 0 {
-			btns |= Button6
-		}
-		if mrec.btns&0x40 != 0 {
-			btns |= Button7
-		}
-		if mrec.btns&0x80 != 0 {
-			btns |= Button8
-		}
-
-		if mrec.flags&mouseVWheeled != 0 {
-			if mrec.btns&0x80000000 == 0 {
-				btns |= WheelUp
-			} else {
-				btns |= WheelDown
-			}
-		}
-		if mrec.flags&mouseHWheeled != 0 {
-			if mrec.btns&0x80000000 == 0 {
-				btns |= WheelRight
-			} else {
-				btns |= WheelLeft
-			}
-		}
+		mrec.flags = getu32(rec.data[12:])
+		btns := mrec2btns(mrec.btns, mrec.flags)
 		// we ignore double click, events are delivered normally
 		s.PostEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns,
 			mod2mask(mrec.mod)))
@@ -568,43 +579,40 @@ func (s *cScreen) Colors() int {
 	return 16
 }
 
+var vgaColors = map[Color]uint16{
+	ColorBlack:   0,
+	ColorMaroon:  0x4,
+	ColorGreen:   0x2,
+	ColorNavy:    0x1,
+	ColorOlive:   0x6,
+	ColorPurple:  0x5,
+	ColorTeal:    0x3,
+	ColorSilver:  0x7,
+	ColorGrey:    0x8,
+	ColorRed:     0xc,
+	ColorLime:    0xa,
+	ColorBlue:    0x9,
+	ColorYellow:  0xe,
+	ColorFuchsia: 0xd,
+	ColorAqua:    0xb,
+	ColorWhite:   0xf,
+}
+
 // Windows uses RGB signals
 func mapColor2RGB(c Color) uint16 {
-	switch c {
-	case ColorBlack:
-		return 0
-		// primaries
-	case ColorRed:
-		return 0x4
-	case ColorGreen:
-		return 0x2
-	case ColorBlue:
-		return 0x1
-	case ColorYellow:
-		return 0x6
-	case ColorMagenta:
-		return 0x5
-	case ColorCyan:
-		return 0x3
-	case ColorWhite:
-		return 0x7
-	// bright variants
-	case ColorGrey:
-		return 0x8
-	case ColorBrightRed:
-		return 0xc
-	case ColorBrightGreen:
-		return 0xa
-	case ColorBrightBlue:
-		return 0x9
-	case ColorBrightYellow:
-		return 0xe
-	case ColorBrightMagenta:
-		return 0xd
-	case ColorBrightCyan:
-		return 0xb
-	case ColorBrightWhite:
-		return 0xf
+
+	winLock.Lock()
+	if v, ok := winColors[c]; ok {
+		c = v
+	} else {
+		v = FindColor(c, winPalette)
+		winColors[c] = v
+		c = v
+	}
+	winLock.Unlock()
+
+	if vc, ok := vgaColors[c]; ok {
+		return vc
 	}
 	return 0
 }
@@ -837,9 +845,13 @@ func (s *cScreen) resize() {
 }
 
 func (s *cScreen) Clear() {
+	s.Fill(' ', s.style)
+}
+
+func (s *cScreen) Fill(r rune, style Style) {
 	s.Lock()
 	if !s.fini {
-		s.cells.Fill(' ', s.style)
+		s.cells.Fill(r, style)
 		s.clear = true
 	}
 	s.Unlock()
@@ -924,4 +936,50 @@ func (s *cScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 	// (Sadly this not precisely true.  Combinings are especially
 	// poorly supported under Windows.)
 	return true
+}
+
+func (s *cScreen) HasMouse() bool {
+	return true
+}
+
+func (s *cScreen) Resize(int, int, int, int) {}
+
+func (s *cScreen) HasKey(k Key) bool {
+
+	// Microsoft has codes for some keys, but they are unusual,
+	// so we don't include them.  We include all the typical
+	// 101, 105 key layout keys.
+	valid := map[Key]bool{
+		KeyBackspace: true,
+		KeyTab:       true,
+		KeyEscape:    true,
+		KeyPause:     true,
+		KeyPrint:     true,
+		KeyPgUp:      true,
+		KeyPgDn:      true,
+		KeyEnter:     true,
+		KeyEnd:       true,
+		KeyHome:      true,
+		KeyLeft:      true,
+		KeyUp:        true,
+		KeyRight:     true,
+		KeyDown:      true,
+		KeyInsert:    true,
+		KeyDelete:    true,
+		KeyF1:        true,
+		KeyF2:        true,
+		KeyF3:        true,
+		KeyF4:        true,
+		KeyF5:        true,
+		KeyF6:        true,
+		KeyF7:        true,
+		KeyF8:        true,
+		KeyF9:        true,
+		KeyF10:       true,
+		KeyF11:       true,
+		KeyF12:       true,
+		KeyRune:      true,
+	}
+
+	return valid[k]
 }

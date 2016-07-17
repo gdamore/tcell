@@ -27,10 +27,6 @@ func (t *tScreen) termioInit() error {
 func (t *tScreen) termioFini() {
 }
 
-func (t *tScreen) getCharset() string {
-	return ""
-}
-
 func (t *tScreen) getWinSize() (int, int, error) {
 	return 0, 0, ErrNoScreen
 }

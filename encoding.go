@@ -132,5 +132,8 @@ func init() {
 	// We always support UTF-8 and ASCII.
 	encodings = make(map[string]encoding.Encoding)
 	encodings["utf-8"] = gencoding.UTF8
+	encodings["utf8"] = gencoding.UTF8
 	encodings["us-ascii"] = gencoding.ASCII
+	encodings["ascii"] = gencoding.ASCII
+	encodings["iso646"] = gencoding.ASCII
 }

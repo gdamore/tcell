@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -28,6 +28,9 @@ type Screen interface {
 	// will also be cleared.  This has the logical effect of
 	// filling the screen with spaces, using the global default style.
 	Clear()
+
+	// Fill fills the screen with the given character and style.
+	Fill(rune, Style)
 
 	// SetCell is an older API, and will be removed.  Please use
 	// SetContent instead; SetCell is implemented in terms of SetContent.
@@ -80,14 +83,32 @@ type Screen interface {
 	// Furthermore, this will return nil if the Screen is finalized.
 	PollEvent() Event
 
-	// PostEvent posts an event into the event stream.
-	PostEvent(Event)
+	// PostEvent tries to post an event into the event stream.  This
+	// can fail if the event queue is full.  In that case, the event
+	// is dropped, and ErrEventQFull is returned.
+	PostEvent(ev Event) error
+
+	// PostEventWait is like PostEvent, but if the queue is full, it
+	// blocks until there is space in the queue, making delivery
+	// reliable.  However, it is VERY important that this function
+	// never be called from within whatever event loop is polling
+	// with PollEvent(), otherwise a deadlock may arise.
+	//
+	// For this reason, when using this function, the use of a
+	// Goroutine is recommended to ensure no deadlock can occur.
+	PostEventWait(ev Event)
 
 	// EnableMouse enables the mouse.  (If your terminal supports it.)
 	EnableMouse()
 
 	// DisableMouse disables the mouse.
 	DisableMouse()
+
+	// HasMouse returns true if the terminal (apparently) supports a
+	// mouse.  Note that the a return value of true doesn't guarantee that
+	// a mouse/pointing device is present; a false return definitely
+	// indicates no mouse support is available.
+	HasMouse() bool
 
 	// Colors returns the number of colors.  All colors are assumed to
 	// use the ANSI color map.  If a terminal is monochrome, it will
@@ -157,6 +178,21 @@ type Screen interface {
 	// also return true if the terminal can replace the glyph with
 	// one that is visually indistinguishable from the one requested.
 	CanDisplay(r rune, checkFallbacks bool) bool
+
+	// Resize does nothing, since its generally not possible to
+	// ask a screen to resize, but it allows the Screen to implement
+	// the View interface.
+	Resize(int, int, int, int)
+
+	// HasKey returns true if the keyboard is believed to have the
+	// key.  In some cases a keyboard may have keys with this name
+	// but no support for them, while in others a key may be reported
+	// as supported but not actually be usable (such as some emulators
+	// that hijack certain keys).  Its best not to depend to strictly
+	// on this function, but it can be used for hinting when building
+	// menus, displayed hot-keys, etc.  Note that KeyRune (literal
+	// runes) is always true.
+	HasKey(Key) bool
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal

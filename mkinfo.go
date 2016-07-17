@@ -1,6 +1,6 @@
 // +build ignore
 
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -36,6 +36,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -87,10 +88,32 @@ func tigetstr(s string) string {
 // capabilities encoded in the program.  It should never need to be run by
 // an end user, but developers can use this to add codes for additional
 // terminal types.
+//
+// If a terminal name ending with -truecolor is given, and we cannot find
+// one, we will try to fabricte one from either the -256color (if present)
+// or the unadorned base name, adding the XTerm specific 24-bit color
+// escapes.  We believe that all 24-bit capable terminals use the same
+// escape sequences, and terminfo has yet to evolve to support this.
 func getinfo(name string) (*tcell.Terminfo, error) {
+	addTrueColor := false
 	rsn := C.int(0)
 	C.noenv()
 	rv, _ := C.setupterm(C.CString(name), 1, &rsn)
+	if rv == C.ERR {
+		if strings.HasSuffix(name, "-truecolor") {
+			base := name[:len(name)-len("-truecolor")]
+			// Probably -256color is closest to what we want
+			rv, _ = C.setupterm(C.CString(base+"-256color"), 1,
+				&rsn)
+			// Otherwise try the base
+			if rv == C.ERR {
+				rv, _ = C.setupterm(C.CString(base), 1, &rsn)
+			}
+			if rv != C.ERR {
+				addTrueColor = true
+			}
+		}
+	}
 	if rv == C.ERR {
 		switch rsn {
 		case 1:
@@ -213,6 +236,74 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 	t.ExitAcs = tigetstr("rmacs")
 	t.EnableAcs = tigetstr("enacs")
 	t.Mouse = tigetstr("kmous")
+	t.KeyShfRight = tigetstr("kRIT")
+	t.KeyShfLeft = tigetstr("kLFT")
+	t.KeyShfHome = tigetstr("kHOM")
+	t.KeyShfEnd = tigetstr("kEND")
+
+	// Terminfo lacks descriptions for a bunch of modified keys,
+	// but modern XTerm and emulators often have them.  Let's add them,
+	// if the shifted right and left arrows are defined.
+	if t.KeyShfRight == "\x1b[1;2C" && t.KeyShfLeft == "\x1b[1;2D" {
+		t.KeyShfUp = "\x1b[1;2A"
+		t.KeyShfDown = "\x1b[1;2B"
+		t.KeyMetaUp = "\x1b[1;9A"
+		t.KeyMetaDown = "\x1b[1;9B"
+		t.KeyMetaRight = "\x1b[1;9C"
+		t.KeyMetaLeft = "\x1b[1;9D"
+		t.KeyAltUp = "\x1b[1;3A"
+		t.KeyAltDown = "\x1b[1;3B"
+		t.KeyAltRight = "\x1b[1;3C"
+		t.KeyAltLeft = "\x1b[1;3D"
+		t.KeyCtrlUp = "\x1b[1;5A"
+		t.KeyCtrlDown = "\x1b[1;5B"
+		t.KeyCtrlRight = "\x1b[1;5C"
+		t.KeyCtrlLeft = "\x1b[1;5D"
+		t.KeyAltShfUp = "\x1b[1;4A"
+		t.KeyAltShfDown = "\x1b[1;4B"
+		t.KeyAltShfRight = "\x1b[1;4C"
+		t.KeyAltShfLeft = "\x1b[1;4D"
+
+		t.KeyMetaShfUp = "\x1b[1;10A"
+		t.KeyMetaShfDown = "\x1b[1;10B"
+		t.KeyMetaShfRight = "\x1b[1;10C"
+		t.KeyMetaShfLeft = "\x1b[1;10D"
+
+		t.KeyCtrlShfUp = "\x1b[1;6A"
+		t.KeyCtrlShfDown = "\x1b[1;6B"
+		t.KeyCtrlShfRight = "\x1b[1;6C"
+		t.KeyCtrlShfLeft = "\x1b[1;6D"
+	}
+	// And also for Home and End
+	if t.KeyShfHome == "\x1b[1;2H" && t.KeyShfEnd == "\x1b[1;2F" {
+		t.KeyCtrlHome = "\x1b[1;5H"
+		t.KeyCtrlEnd = "\x1b[1;5F"
+		t.KeyAltHome = "\x1b[1;9H"
+		t.KeyAltEnd = "\x1b[1;9F"
+		t.KeyCtrlShfHome = "\x1b[1;6H"
+		t.KeyCtrlShfEnd = "\x1b[1;6F"
+		t.KeyAltShfHome = "\x1b[1;4H"
+		t.KeyAltShfEnd = "\x1b[1;4F"
+		t.KeyMetaShfHome = "\x1b[1;10H"
+		t.KeyMetaShfEnd = "\x1b[1;10F"
+	}
+
+	// And the same thing for rxvt and workalikes (Eterm, aterm, etc.)
+	// It seems that urxvt at least send ESC as ALT prefix for these,
+	// although some places seem to indicate a separate ALT key sesquence.
+	if t.KeyShfRight == "\x1b[c" && t.KeyShfLeft == "\x1b[d" {
+		t.KeyShfUp = "\x1b[a"
+		t.KeyShfDown = "\x1b[b"
+		t.KeyCtrlUp = "\x1b[Oa"
+		t.KeyCtrlDown = "\x1b[Ob"
+		t.KeyCtrlRight = "\x1b[Oc"
+		t.KeyCtrlLeft = "\x1b[Od"
+	}
+	if t.KeyShfHome == "\x1b[7$" && t.KeyShfEnd == "\x1b[8$" {
+		t.KeyCtrlHome = "\x1b[7^"
+		t.KeyCtrlEnd = "\x1b[8^"
+	}
+
 	// If the kmous entry is present, then we need to record the
 	// the codes to enter and exit mouse mode.  Sadly, this is not
 	// part of the terminfo databases anywhere that I've found, but
@@ -232,6 +323,7 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		t.MouseMode = "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;" +
 			"\x1b[?1000%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c"
 	}
+
 	// We only support colors in ANSI 8 or 256 color mode.
 	if t.Colors < 8 || t.SetFg == "" {
 		t.Colors = 0
@@ -247,6 +339,27 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		if !tigetflag("npc") {
 			t.PadChar = "\u0000"
 		}
+	}
+
+	// For some terminals we fabricate a -truecolor entry, that may
+	// not exist in terminfo.
+	if addTrueColor {
+		t.SetFgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%dm"
+		t.SetBgRGB = "\x1b[48;2;%p1%d;%p2%d;%p3%dm"
+		t.SetFgBgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%d;" +
+			"48;2;%p4%d;%p5%d;%p6%dm"
+	}
+
+	// For terminals that use "standard" SGR sequences, lets combine the
+	// foreground and background together.
+	if strings.HasPrefix(t.SetFg, "\x1b[") &&
+		strings.HasPrefix(t.SetBg, "\x1b[") &&
+		strings.HasSuffix(t.SetFg, "m") &&
+		strings.HasSuffix(t.SetBg, "m") {
+		fg := t.SetFg[:len(t.SetFg)-1]
+		r := regexp.MustCompile("%p1")
+		bg := r.ReplaceAllString(t.SetBg[2:], "%p2")
+		t.SetFgBg = fg + ";" + bg
 	}
 
 	return t, nil
@@ -321,11 +434,15 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "ExitKeypad", t.ExitKeypad)
 	dotGoAddStr(w, "SetFg", t.SetFg)
 	dotGoAddStr(w, "SetBg", t.SetBg)
+	dotGoAddStr(w, "SetFgBg", t.SetFgBg)
 	dotGoAddStr(w, "PadChar", t.PadChar)
 	dotGoAddStr(w, "AltChars", t.AltChars)
 	dotGoAddStr(w, "EnterAcs", t.EnterAcs)
 	dotGoAddStr(w, "ExitAcs", t.ExitAcs)
 	dotGoAddStr(w, "EnableAcs", t.EnableAcs)
+	dotGoAddStr(w, "SetFgRGB", t.SetFgRGB)
+	dotGoAddStr(w, "SetBgRGB", t.SetBgRGB)
+	dotGoAddStr(w, "SetFgBgRGB", t.SetFgBgRGB)
 	dotGoAddStr(w, "Mouse", t.Mouse)
 	dotGoAddStr(w, "MouseMode", t.MouseMode)
 	dotGoAddStr(w, "SetCursor", t.SetCursor)
@@ -412,6 +529,48 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "KeyHelp", t.KeyHelp)
 	dotGoAddStr(w, "KeyClear", t.KeyClear)
 	dotGoAddStr(w, "KeyBacktab", t.KeyBacktab)
+	dotGoAddStr(w, "KeyShfLeft", t.KeyShfLeft)
+	dotGoAddStr(w, "KeyShfRight", t.KeyShfRight)
+	dotGoAddStr(w, "KeyShfUp", t.KeyShfUp)
+	dotGoAddStr(w, "KeyShfDown", t.KeyShfDown)
+	dotGoAddStr(w, "KeyCtrlLeft", t.KeyCtrlLeft)
+	dotGoAddStr(w, "KeyCtrlRight", t.KeyCtrlRight)
+	dotGoAddStr(w, "KeyCtrlUp", t.KeyCtrlUp)
+	dotGoAddStr(w, "KeyCtrlDown", t.KeyCtrlDown)
+	dotGoAddStr(w, "KeyMetaLeft", t.KeyMetaLeft)
+	dotGoAddStr(w, "KeyMetaRight", t.KeyMetaRight)
+	dotGoAddStr(w, "KeyMetaUp", t.KeyMetaUp)
+	dotGoAddStr(w, "KeyMetaDown", t.KeyMetaDown)
+	dotGoAddStr(w, "KeyAltLeft", t.KeyAltLeft)
+	dotGoAddStr(w, "KeyAltRight", t.KeyAltRight)
+	dotGoAddStr(w, "KeyAltUp", t.KeyAltUp)
+	dotGoAddStr(w, "KeyAltDown", t.KeyAltDown)
+	dotGoAddStr(w, "KeyAltShfLeft", t.KeyAltShfLeft)
+	dotGoAddStr(w, "KeyAltShfRight", t.KeyAltShfRight)
+	dotGoAddStr(w, "KeyAltShfUp", t.KeyAltShfUp)
+	dotGoAddStr(w, "KeyAltShfDown", t.KeyAltShfDown)
+	dotGoAddStr(w, "KeyMetaShfLeft", t.KeyMetaShfLeft)
+	dotGoAddStr(w, "KeyMetaShfRight", t.KeyMetaShfRight)
+	dotGoAddStr(w, "KeyMetaShfUp", t.KeyMetaShfUp)
+	dotGoAddStr(w, "KeyMetaShfDown", t.KeyMetaShfDown)
+	dotGoAddStr(w, "KeyCtrlShfLeft", t.KeyCtrlShfLeft)
+	dotGoAddStr(w, "KeyCtrlShfRight", t.KeyCtrlShfRight)
+	dotGoAddStr(w, "KeyCtrlShfUp", t.KeyCtrlShfUp)
+	dotGoAddStr(w, "KeyCtrlShfDown", t.KeyCtrlShfDown)
+	dotGoAddStr(w, "KeyShfHome", t.KeyShfHome)
+	dotGoAddStr(w, "KeyShfEnd", t.KeyShfEnd)
+	dotGoAddStr(w, "KeyCtrlHome", t.KeyCtrlHome)
+	dotGoAddStr(w, "KeyCtrlEnd", t.KeyCtrlEnd)
+	dotGoAddStr(w, "KeyMetaHome", t.KeyMetaHome)
+	dotGoAddStr(w, "KeyMetaEnd", t.KeyMetaEnd)
+	dotGoAddStr(w, "KeyAltHome", t.KeyAltHome)
+	dotGoAddStr(w, "KeyAltEnd", t.KeyAltEnd)
+	dotGoAddStr(w, "KeyCtrlShfHome", t.KeyCtrlShfHome)
+	dotGoAddStr(w, "KeyCtrlShfEnd", t.KeyCtrlShfEnd)
+	dotGoAddStr(w, "KeyMetaShfHome", t.KeyMetaShfHome)
+	dotGoAddStr(w, "KeyMetaShfEnd", t.KeyMetaShfEnd)
+	dotGoAddStr(w, "KeyAltShfHome", t.KeyAltShfHome)
+	dotGoAddStr(w, "KeyAltShfEnd", t.KeyAltShfEnd)
 	fmt.Fprintln(w, "	})")
 }
 

@@ -1,3 +1,5 @@
+// +build windows
+
 // Copyright 2015 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +16,6 @@
 
 package tcell
 
-// AttrMask represents a mask of text attributes, apart from color.
-// Note that support for attributes may vary widely across terminals.
-type AttrMask int
-
-// Attributes are not colors, but affect the display of text.  They can
-// be combined.
-const (
-	AttrBold AttrMask = 1 << (25 + iota)
-	AttrBlink
-	AttrReverse
-	AttrUnderline
-	AttrDim
-	AttrNone AttrMask = 0 // Just normal text.
-)
-
-const attrAll = AttrBold | AttrBlink | AttrReverse | AttrUnderline | AttrDim
+func getCharset() string {
+	return "UTF-16"
+}

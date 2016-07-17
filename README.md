@@ -5,6 +5,7 @@
 [![Apache License](https://img.shields.io/badge/license-APACHE2-blue.svg)](https://github.com/gdamore/tcell/blob/master/LICENSE)
 [![Gitter](https://img.shields.io/badge/gitter-join-brightgreen.svg)](https://gitter.im/gdamore/tcell)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/gdamore/tcell)
+[![Go Report Card](http://goreportcard.com/badge/gdamore/tcell)](http://goreportcard.com/report/gdamore/tcell)
 
 > _Tcell is a work in progress (Gamma).
 > Please use with caution; interfaces may change in before final release.
@@ -15,6 +16,13 @@
 Package tcell provides a cell based view for text terminals, like xterm.
 It was inspired by termbox, but differs from termbox in some important
 ways.  It also adds substantial functionality beyond termbox.
+
+## Examples
+
+* [proxima5](https://github.com/gdamore/proxima5) - space shooter ([video](https://youtu.be/jNxKTCmY_bQ))
+* [govisor](https://github.com/gdamore/govisor) - service management UI ([screenshot](http://2.bp.blogspot.com/--OsvnfzSNow/Vf7aqMw3zXI/AAAAAAAAARo/uOMtOvw4Sbg/s1600/Screen%2BShot%2B2015-09-20%2Bat%2B9.08.41%2BAM.png))
+* mouse demo - [screenshot](http://2.bp.blogspot.com/-fWvW5opT0es/VhIdItdKqJI/AAAAAAAAATE/7Ojc0L1SpB0/s1600/Screen%2BShot%2B2015-10-04%2Bat%2B11.47.13%2BPM.png) - included mouse test
+* [gomatrix](https://github.com/gdamore/gomatrix) - converted from Termbox
 
 ## Pure Go Terminfo Database
 
@@ -129,6 +137,29 @@ terminals which expose ANSI style setaf and setab will support color;
 if you have a color terminal that only has setf and setb, please let me
 know; it wouldn't be hard to add that if there is need.
 
+## 24-bit Color
+
+Tcell _supports true color_!  (That is, if your terminal can support it,
+Tcell can accurately display 24-bit color.)
+
+To use 24-bit color, you need to use a terminal that supports it.  Modern
+xterm and similar teminal emulators can support this.  As terminfo lacks any
+way to describe this capability, we fabricate the capability for
+terminals with names ending in *-truecolor.  The stock distribution ships
+with a database that defines xterm-truecolor.  To try it out, set your
+TERM variable to xterm-truecolor.
+
+When using TrueColor, programs will display the colors that the programmer
+intended, overriding any "themes" you may have set in your terminal
+emulator.  (For some cases, accurate color fidelity is more important
+than respecting themes.  For other cases, such as typical text apps that
+only use a few colors, its more desirable to respect the themes that
+the user has established.)
+
+If you find this undesirable, you can either use a TERM variable
+that lacks the TRUECOLOR setting, or set TCELL_TRUECOLOR=disable in your
+environment.
+
 ## Performance
 
 Reasonable attempts have been made to minimize sending data to terminals,
@@ -144,8 +175,8 @@ that are compiled into the program directly.  This should minimize calling
 out to database file searches.
 
 The second is a JSON file, that contains the same information, which can
-be located either by the $TCELLDB environment file, or is located in the
-Go source directory.
+be located either by the $TCELLDB environment file, $HOME/.tcelldb, or is
+located in the Go source directory as database.json.
 
 These files (both the Go database.go and the database.json) file can be
 generated using the mkinfo.go program.  If you need to regnerate the

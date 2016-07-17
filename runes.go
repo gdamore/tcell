@@ -18,7 +18,6 @@ package tcell
 // modulo case, and changing the prefix from ACS_ to Rune.  These are
 // the runes we provide extra special handling for, with ASCII fallbacks
 // for terminals that lack them.
-
 const (
 	RuneSterling = '£'
 	RuneDArrow   = '↓'

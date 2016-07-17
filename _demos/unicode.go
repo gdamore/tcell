@@ -28,13 +28,13 @@ import (
 var row = 0
 var style = tcell.StyleDefault
 
-func Putln(s tcell.Screen, str string) {
+func putln(s tcell.Screen, str string) {
 
-	Puts(s, style, 1, row, str)
+	puts(s, style, 1, row, str)
 	row++
 }
 
-func Puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
+func puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
 	i := 0
 	var deferred []rune
 	dwidth := 0
@@ -94,52 +94,52 @@ func main() {
 	quit := make(chan struct{})
 
 	style = bold
-	Putln(s, "Press ESC to Exit")
-	Putln(s, "Character set: "+s.CharacterSet())
+	putln(s, "Press ESC to Exit")
+	putln(s, "Character set: "+s.CharacterSet())
 	style = plain
 
-	Putln(s, "English:   October")
-	Putln(s, "Icelandic: október")
-	Putln(s, "Arabic:    أكتوبر")
-	Putln(s, "Russian:   октября")
-	Putln(s, "Greek:     Οκτωβρίου")
-	Putln(s, "Chinese:   十月 (note, two double wide characters)")
-	Putln(s, "Combining: A\u030a (should look like Angstrom)")
-	Putln(s, "Emoticon:  \U0001f618 (blowing a kiss)")
-	Putln(s, "Airplane:  \u2708 (fly away)")
-	Putln(s, "Command:   \u2318 (mac clover key)")
-	Putln(s, "Enclose:   !\u20e3 (should be enclosed exclamation)")
-	Putln(s, "")
-	Putln(s, "Box:")
-	Putln(s, string([]rune{
+	putln(s, "English:   October")
+	putln(s, "Icelandic: október")
+	putln(s, "Arabic:    أكتوبر")
+	putln(s, "Russian:   октября")
+	putln(s, "Greek:     Οκτωβρίου")
+	putln(s, "Chinese:   十月 (note, two double wide characters)")
+	putln(s, "Combining: A\u030a (should look like Angstrom)")
+	putln(s, "Emoticon:  \U0001f618 (blowing a kiss)")
+	putln(s, "Airplane:  \u2708 (fly away)")
+	putln(s, "Command:   \u2318 (mac clover key)")
+	putln(s, "Enclose:   !\u20e3 (should be enclosed exclamation)")
+	putln(s, "")
+	putln(s, "Box:")
+	putln(s, string([]rune{
 		tcell.RuneULCorner,
 		tcell.RuneHLine,
 		tcell.RuneTTee,
 		tcell.RuneHLine,
 		tcell.RuneURCorner,
 	}))
-	Putln(s, string([]rune{
+	putln(s, string([]rune{
 		tcell.RuneVLine,
 		tcell.RuneBullet,
 		tcell.RuneVLine,
 		tcell.RuneLantern,
 		tcell.RuneVLine,
 	})+"  (bullet, lantern/section)")
-	Putln(s, string([]rune{
+	putln(s, string([]rune{
 		tcell.RuneLTee,
 		tcell.RuneHLine,
 		tcell.RunePlus,
 		tcell.RuneHLine,
 		tcell.RuneRTee,
 	}))
-	Putln(s, string([]rune{
+	putln(s, string([]rune{
 		tcell.RuneVLine,
 		tcell.RuneDiamond,
 		tcell.RuneVLine,
 		tcell.RuneUArrow,
 		tcell.RuneVLine,
 	})+"  (diamond, up arrow)")
-	Putln(s, string([]rune{
+	putln(s, string([]rune{
 		tcell.RuneLLCorner,
 		tcell.RuneHLine,
 		tcell.RuneBTee,

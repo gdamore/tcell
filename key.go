@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -78,6 +78,127 @@ func (ev *EventKey) Modifiers() ModMask {
 	return ev.mod
 }
 
+var keyNames = map[Key]string{
+	KeyEnter:          "Enter",
+	KeyBackspace:      "Backspace",
+	KeyTab:            "Tab",
+	KeyBacktab:        "Backtab",
+	KeyEsc:            "Esc",
+	KeyBackspace2:     "Backspace2",
+	KeyDelete:         "Delete",
+	KeyInsert:         "Insert",
+	KeyUp:             "Up",
+	KeyDown:           "Down",
+	KeyLeft:           "Left",
+	KeyRight:          "Right",
+	KeyHome:           "Home",
+	KeyEnd:            "End",
+	KeyUpLeft:         "UpLeft",
+	KeyUpRight:        "UpRight",
+	KeyDownLeft:       "DownLeft",
+	KeyDownRight:      "DownRight",
+	KeyCenter:         "Center",
+	KeyPgDn:           "PgDn",
+	KeyPgUp:           "PgUp",
+	KeyClear:          "Clear",
+	KeyExit:           "Exit",
+	KeyCancel:         "Cancel",
+	KeyPause:          "Pause",
+	KeyPrint:          "Print",
+	KeyF1:             "F1",
+	KeyF2:             "F2",
+	KeyF3:             "F3",
+	KeyF4:             "F4",
+	KeyF5:             "F5",
+	KeyF6:             "F6",
+	KeyF7:             "F7",
+	KeyF8:             "F8",
+	KeyF9:             "F9",
+	KeyF10:            "F10",
+	KeyF11:            "F11",
+	KeyF12:            "F12",
+	KeyF13:            "F13",
+	KeyF14:            "F14",
+	KeyF15:            "F15",
+	KeyF16:            "F16",
+	KeyF17:            "F17",
+	KeyF18:            "F18",
+	KeyF19:            "F19",
+	KeyF20:            "F20",
+	KeyF21:            "F21",
+	KeyF22:            "F22",
+	KeyF23:            "F23",
+	KeyF24:            "F24",
+	KeyF25:            "F25",
+	KeyF26:            "F26",
+	KeyF27:            "F27",
+	KeyF28:            "F28",
+	KeyF29:            "F29",
+	KeyF30:            "F30",
+	KeyF31:            "F31",
+	KeyF32:            "F32",
+	KeyF33:            "F33",
+	KeyF34:            "F34",
+	KeyF35:            "F35",
+	KeyF36:            "F36",
+	KeyF37:            "F37",
+	KeyF38:            "F38",
+	KeyF39:            "F39",
+	KeyF40:            "F40",
+	KeyF41:            "F41",
+	KeyF42:            "F42",
+	KeyF43:            "F43",
+	KeyF44:            "F44",
+	KeyF45:            "F45",
+	KeyF46:            "F46",
+	KeyF47:            "F47",
+	KeyF48:            "F48",
+	KeyF49:            "F49",
+	KeyF50:            "F50",
+	KeyF51:            "F51",
+	KeyF52:            "F52",
+	KeyF53:            "F53",
+	KeyF54:            "F54",
+	KeyF55:            "F55",
+	KeyF56:            "F56",
+	KeyF57:            "F57",
+	KeyF58:            "F58",
+	KeyF59:            "F59",
+	KeyF60:            "F60",
+	KeyF61:            "F61",
+	KeyF62:            "F62",
+	KeyF63:            "F63",
+	KeyF64:            "F64",
+	KeyCtrlA:          "Ctrl-A",
+	KeyCtrlB:          "Ctrl-B",
+	KeyCtrlC:          "Ctrl-C",
+	KeyCtrlD:          "Ctrl-D",
+	KeyCtrlE:          "Ctrl-E",
+	KeyCtrlF:          "Ctrl-F",
+	KeyCtrlG:          "Ctrl-G",
+	KeyCtrlJ:          "Ctrl-J",
+	KeyCtrlK:          "Ctrl-K",
+	KeyCtrlL:          "Ctrl-L",
+	KeyCtrlN:          "Ctrl-N",
+	KeyCtrlO:          "Ctrl-O",
+	KeyCtrlP:          "Ctrl-P",
+	KeyCtrlQ:          "Ctrl-Q",
+	KeyCtrlR:          "Ctrl-R",
+	KeyCtrlS:          "Ctrl-S",
+	KeyCtrlT:          "Ctrl-T",
+	KeyCtrlU:          "Ctrl-U",
+	KeyCtrlV:          "Ctrl-V",
+	KeyCtrlW:          "Ctrl-W",
+	KeyCtrlX:          "Ctrl-X",
+	KeyCtrlY:          "Ctrl-Y",
+	KeyCtrlZ:          "Ctrl-Z",
+	KeyCtrlSpace:      "Ctrl-Space",
+	KeyCtrlUnderscore: "Ctrl-_",
+	KeyCtrlRightSq:    "Ctrl-]",
+	KeyCtrlBackslash:  "Ctrl-\\",
+	KeyCtrlCarat:      "Ctrl-^",
+}
+
 // Name returns a printable value or the key stroke.  This can be used
 // when printing the event, for example.
 func (ev *EventKey) Name() string {
@@ -96,84 +217,14 @@ func (ev *EventKey) Name() string {
 		m = append(m, "Ctrl")
 	}
 
-	switch ev.key {
-	case KeyRune:
-		s = "Rune[" + string(ev.ch) + "]"
-	case KeySpace:
-		s = "Space"
-	case KeyEnter:
-		s = "Enter"
-	case KeyBackspace:
-		s = "Backspace"
-	case KeyTab:
-		s = "Tab"
-	case KeyBacktab:
-		s = "Backtab"
-	case KeyEsc:
-		s = "Esc"
-	case KeyBackspace2:
-		s = "Backspace2"
-	case KeyDelete:
-		s = "Delete"
-	case KeyInsert:
-		s = "Insert"
-	case KeyUp:
-		s = "Up"
-	case KeyDown:
-		s = "Down"
-	case KeyLeft:
-		s = "Left"
-	case KeyRight:
-		s = "Right"
-	case KeyHome:
-		s = "Home"
-	case KeyEnd:
-		s = "End"
-	case KeyUpLeft:
-		s = "UpLeft"
-	case KeyUpRight:
-		s = "UpRight"
-	case KeyDownLeft:
-		s = "DownLeft"
-	case KeyDownRight:
-		s = "DownRight"
-	case KeyCenter:
-		s = "Center"
-	case KeyPgDn:
-		s = "PgDn"
-	case KeyPgUp:
-		s = "PgUp"
-	case KeyClear:
-		s = "Clear"
-	case KeyExit:
-		s = "Exit"
-	case KeyCancel:
-		s = "Cancel"
-	case KeyPause:
-		s = "Pause"
-	case KeyPrint:
-		s = "Print"
-	case KeyCtrlSpace:
-		s = "Ctrl-Space"
-	case KeyCtrlUnderscore:
-		s = "Ctrl-_"
-	case KeyCtrlRightSq:
-		s = "Ctrl-]"
-	case KeyCtrlBackslash:
-		s = "Ctrl-\\"
-	case KeyCtrlCarat:
-		s = "Ctrl-^"
-	default:
-		if ev.key >= KeyF1 && ev.key <= KeyF64 {
-			s = fmt.Sprintf("F%d", int(ev.key-KeyF1)+1)
-		} else if ev.key >= KeyCtrlA && ev.key <= KeyCtrlZ {
-			s = fmt.Sprintf("Ctrl-%c",
-				rune(ev.key-KeyCtrlA)+'A')
+	ok := false
+	if s, ok = keyNames[ev.key]; !ok {
+		if ev.key == KeyRune {
+			s = "Rune[" + string(ev.ch) + "]"
 		} else {
 			s = fmt.Sprintf("Key[%d,%d]", ev.key, int(ev.ch))
 		}
 	}
-
 	if len(m) != 0 {
 		if ev.mod&ModCtrl != 0 && strings.HasPrefix(s, "Ctrl-") {
 			s = s[5:]
@@ -188,7 +239,7 @@ func (ev *EventKey) Name() string {
 // has more precise information it should set that specifically.  Callers
 // that aren't sure about modifier state (most) should just pass ModNone.
 func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
-	if k == KeyRune && (ch <= ' ' || ch == 0x7f) {
+	if k == KeyRune && (ch < ' ' || ch == 0x7f) {
 		// Turn specials into proper key codes.  This is for
 		// control characters and the DEL.
 		k = Key(ch)
@@ -209,13 +260,18 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 // possible to report modifier keys.
 type ModMask int16
 
+// These are the modifiers keys that can be sent either with a key press,
+// or a mouse event.  Note that as of now, due to the confusion associated
+// with Meta, and the lack of support for it on many/most platforms, the
+// current implementations never use it.  Instead, they use ModAlt, even for
+// events that could possibly have been distinguished from ModAlt.
 const (
 	ModShift ModMask = 1 << iota
 	ModCtrl
 	ModAlt
 	ModMeta
+	ModNone ModMask = 0
 )
-const ModNone ModMask = 0
 
 // Key is a generic value for representing keys, and especially special
 // keys (function keys, cursor movement keys, etc.)  For normal keys, like
@@ -223,6 +279,10 @@ const ModNone ModMask = 0
 // inspect the Rune() member of the EventKey.
 type Key int16
 
+// This is the list of named keys.  KeyRune is special however, in that it is
+// a place holder key indicating that a printable character was sent.  The
+// actual value of the rune will be transported in the Rune of the associated
+// EventKey.
 const (
 	KeyRune Key = iota + 256
 	KeyUp
@@ -313,6 +373,8 @@ const (
 	KeyF64
 )
 
+// These are the control keys.  Note that they overlap with other keys,
+// perhaps.  For example, KeyCtrlH is the same as KeyBackspace.
 const (
 	KeyCtrlSpace Key = iota
 	KeyCtrlA
@@ -386,16 +448,15 @@ const (
 	KeyGS
 	KeyRS
 	KeyUS
-	KeySP
 	KeyDEL Key = 0x7F
 )
 
+// These keys are aliases for other names.
 const (
 	KeyBackspace  = KeyBS
 	KeyTab        = KeyTAB
 	KeyEsc        = KeyESC
 	KeyEscape     = KeyESC
 	KeyEnter      = KeyCR
-	KeySpace      = KeySP
 	KeyBackspace2 = KeyDEL
 )

@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -49,16 +49,16 @@ type SimulationScreen interface {
 	// InjectMouse injects a mouse event.
 	InjectMouse(x, y int, buttons ButtonMask, mod ModMask)
 
-	// Resize resizes the underlying physical screen.  It also causes
+	// SetSize resizes the underlying physical screen.  It also causes
 	// a resize event to be injected during the next Show() or Sync().
 	// A new physical contents array will be allocated (with data from
 	// the old copied), so any prior value obtained with GetContents
 	// won't be used anymore
-	Resize(width, height int)
+	SetSize(width, height int)
 
 	// GetContents returns screen contents as an array of
 	// cells, along with the physical width & height.   Note that the
-	// physical contents will be used until the next time Resize()
+	// physical contents will be used until the next time SetSize()
 	// is called.
 	GetContents() (cells []SimCell, width int, height int)
 
@@ -156,9 +156,12 @@ func (s *simscreen) SetStyle(style Style) {
 }
 
 func (s *simscreen) Clear() {
+	s.Fill(' ', s.style)
+}
 
+func (s *simscreen) Fill(r rune, style Style) {
 	s.Lock()
-	s.back.Fill(' ', s.style)
+	s.back.Fill(r, style)
 	s.Unlock()
 }
 
@@ -226,11 +229,7 @@ func (s *simscreen) drawCell(x, y int) int {
 
 		l := utf8.EncodeRune(ubuf, r)
 
-		if enc := s.encoder; enc != nil {
-			nout, _, _ = enc.Transform(lbuf, ubuf[:l], true)
-		} else {
-			nout = 0
-		}
+		nout, _, _ = s.encoder.Transform(lbuf, ubuf[:l], true)
 
 		if nout == 0 || lbuf[0] == '\x1a' {
 
@@ -351,11 +350,16 @@ func (s *simscreen) PollEvent() Event {
 	}
 }
 
-func (s *simscreen) PostEvent(ev Event) {
+func (s *simscreen) PostEventWait(ev Event) {
+	s.evch <- ev
+}
+
+func (s *simscreen) PostEvent(ev Event) error {
 	select {
 	case s.evch <- ev:
+		return nil
 	default:
-		// drop the event on the floor
+		return ErrEventQFull
 	}
 }
 
@@ -393,54 +397,24 @@ outer:
 			continue
 		}
 
-		switch s.charset {
-		case "UTF-8":
-			r, l := utf8.DecodeRune(b)
-			if r == utf8.RuneError && (l == 0 || l == 1) {
-				failed = true
-				// yank off one byte
-				b = b[1:]
-			} else {
-				b = b[l:]
-				ev := NewEventKey(KeyRune, r, ModNone)
-				s.PostEvent(ev)
-				continue
-			}
+		utfb := make([]byte, len(b)*4) // worst case
+		for l := 1; l < len(b); l++ {
+			s.decoder.Reset()
+			nout, nin, _ := s.decoder.Transform(utfb, b[:l], true)
 
-		case "US-ASCII":
-			// ASCII cannot generate this, so most likely it was
-			// entered as an Alt sequence
-			ev := NewEventKey(KeyRune, rune(b[0]-128), ModAlt)
-			s.PostEvent(ev)
-			b = b[1:]
-			continue
-
-		default:
-			utfb := make([]byte, len(b)*4) // worst case
-			dec := s.decoder
-			if dec == nil {
-				failed = true
-				b = b[1:]
-				continue
-			}
-
-			// take care to consume at *most* a single rune
-			for l := 1; l < len(b); l++ {
-				dec.Reset()
-				nout, nin, _ := dec.Transform(utfb, b[:l], true)
-
-				if nout != 0 {
-					r, _ := utf8.DecodeRune(utfb[:nout])
+			if nout != 0 {
+				r, _ := utf8.DecodeRune(utfb[:nout])
+				if r != utf8.RuneError {
 					ev := NewEventKey(KeyRune, r, ModNone)
 					s.PostEvent(ev)
-					b = b[nin:]
-					continue outer
 				}
+				b = b[nin:]
+				continue outer
 			}
-			failed = true
-			b = b[1:]
-			continue
 		}
+		failed = true
+		b = b[1:]
+		continue
 	}
 
 	return failed == false
@@ -459,7 +433,7 @@ func (s *simscreen) CharacterSet() string {
 	return s.charset
 }
 
-func (s *simscreen) Resize(w, h int) {
+func (s *simscreen) SetSize(w, h int) {
 	s.Lock()
 	newc := make([]SimCell, w*h)
 	for row := 0; row < h && row < s.physh; row++ {
@@ -518,4 +492,14 @@ func (s *simscreen) CanDisplay(r rune, checkFallbacks bool) bool {
 		return true
 	}
 	return false
+}
+
+func (s *simscreen) HasMouse() bool {
+	return false
+}
+
+func (s *simscreen) Resize(int, int, int, int) {}
+
+func (s *simscreen) HasKey(Key) bool {
+	return true
 }

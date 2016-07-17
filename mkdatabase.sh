@@ -27,12 +27,12 @@ terms=/tmp/terms.$$
 # worrying about.
 
 # now get the rest
-all=`toe | cut -f1`
+all=`toe -a | cut -f1`
 echo Scanning terminal definitions
 echo > $terms
 for f in $all; do
-	infocmp $f | awk -v FS="|" -v OFS=" " '/^[^#	]/ { print $1; for (i = 2; i < NF; i++) print $i "=" $1; }' >> $terms
-	echo -n .
+	infocmp $f | awk -v FS="|" -v OFS=" " '/^[^#	]/ { print $1; for (i = 2; i < NF; i++) print $i "=" $1; }' |sort >> $terms
+	printf "."
 done
 echo
 

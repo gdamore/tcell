@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 var screen tcell.Screen
 var outMode OutputMode
 
+// Init initializes the screen for use.
 func Init() error {
 	outMode = OutputNormal
 	if s, e := tcell.NewScreen(); e != nil {
@@ -37,29 +38,37 @@ func Init() error {
 	}
 }
 
+// Close cleans up the terminal, restoring terminal modes, etc.
 func Close() {
 	screen.Fini()
 }
 
+// Flush updates the screen.
 func Flush() error {
 	screen.Show()
 	return nil
 }
 
+// SetCursor displays the terminal cursor at the given location.
 func SetCursor(x, y int) {
 	screen.ShowCursor(x, y)
 }
 
+// HideCursor hides the terminal cursor.
 func HideCursor() {
 	SetCursor(-1, -1)
 }
 
+// Size returns the screen size as width, height in character cells.
 func Size() (int, int) {
 	return screen.Size()
 }
 
+// Attribute affects the presentation of characters, such as color, boldness,
+// and so forth.
 type Attribute uint16
 
+// Colors first.  The order here is significant.
 const (
 	ColorDefault Attribute = iota
 	ColorBlack
@@ -71,61 +80,57 @@ const (
 	ColorCyan
 	ColorWhite
 )
+
+// Other attributes.
 const (
 	AttrBold Attribute = 1 << (9 + iota)
 	AttrUnderline
 	AttrReverse
 )
 
+func fixColor(c tcell.Color) tcell.Color {
+	if c == tcell.ColorDefault {
+		return c
+	}
+	switch outMode {
+	case OutputNormal:
+		c %= tcell.Color(16)
+	case Output256:
+		c %= tcell.Color(256)
+	case Output216:
+		c %= tcell.Color(216)
+		c += tcell.Color(16)
+	case OutputGrayscale:
+		c %= tcell.Color(24)
+		c += tcell.Color(232)
+	default:
+		c = tcell.ColorDefault
+	}
+	return c
+}
+
 func mkStyle(fg, bg Attribute) tcell.Style {
 	st := tcell.StyleDefault
 
-	f := int(fg) & 0x1ff
-	b := int(bg) & 0x1ff
+	f := tcell.Color(int(fg)&0x1ff) - 1
+	b := tcell.Color(int(bg)&0x1ff) - 1
 
-	switch outMode {
-	case Output256:
-		break
-	case Output216:
-		if f > 216 {
-			f = int(ColorDefault)
-		} else if f != int(ColorDefault) {
-			f += 16
-		}
-		if b > 216 {
-			b = int(ColorDefault)
-		} else if b != int(ColorDefault) {
-			b += 16
-		}
-	case OutputGrayscale:
-		if f > 24 {
-			f = int(ColorDefault)
-		} else if f != int(ColorDefault) {
-			f += 232
-		}
-		if b > 24 {
-			b = int(ColorDefault)
-		} else if b != int(ColorDefault) {
-			b += 232
-		}
-	case OutputNormal:
-		f &= 0xf
-		b &= 0xf
-	}
-	st = st.Foreground(tcell.Color(f))
-	st = st.Background(tcell.Color(b))
-	if (fg&AttrBold != 0) || (bg&AttrBold != 0) {
+	f = fixColor(f)
+	b = fixColor(b)
+	st = st.Foreground(f).Background(b)
+	if (fg|bg)&AttrBold != 0 {
 		st = st.Bold(true)
 	}
-	if (fg&AttrUnderline != 0) || (bg&AttrUnderline != 0) {
+	if (fg|bg)&AttrUnderline != 0 {
 		st = st.Underline(true)
 	}
-	if (fg&AttrReverse != 0) || (bg&AttrReverse != 0) {
+	if (fg|bg)&AttrReverse != 0 {
 		st = st.Reverse(true)
 	}
 	return st
 }
 
+// Clear clears the screen with the given attributes.
 func Clear(fg, bg Attribute) {
 	st := mkStyle(fg, bg)
 	w, h := screen.Size()
@@ -136,8 +141,10 @@ func Clear(fg, bg Attribute) {
 	}
 }
 
+// InputMode is not used.
 type InputMode int
 
+// Unused input modes; here for compatibility.
 const (
 	InputCurrent InputMode = iota
 	InputEsc
@@ -145,13 +152,17 @@ const (
 	InputMouse
 )
 
+// SetInputMode does not do anything in this version.
 func SetInputMode(mode InputMode) InputMode {
 	// We don't do anything else right now
 	return InputEsc
 }
 
+// OutputMode represents an output mode, which determines how colors
+// are used.  See the termbox documentation for an explanation.
 type OutputMode int
 
+// OutputMode values.
 const (
 	OutputCurrent OutputMode = iota
 	OutputNormal
@@ -160,6 +171,7 @@ const (
 	OutputGrayscale
 )
 
+// SetOutputMode is used to set the color palette used.
 func SetOutputMode(mode OutputMode) OutputMode {
 	if screen.Colors() < 256 {
 		mode = OutputNormal
@@ -175,20 +187,29 @@ func SetOutputMode(mode OutputMode) OutputMode {
 	}
 }
 
+// Sync forces a resync of the screen.
 func Sync() error {
 	screen.Sync()
 	return nil
 }
 
+// SetCell sets the character cell at a given location to the given
+// content (rune) and attributes.
 func SetCell(x, y int, ch rune, fg, bg Attribute) {
 	st := mkStyle(fg, bg)
 	screen.SetContent(x, y, ch, nil, st)
 }
 
+// EventType represents the type of event.
 type EventType uint8
+
+// Modifier represents the possible modifier keys.
 type Modifier tcell.ModMask
+
+// Key is a key press.
 type Key tcell.Key
 
+// Event represents an event like a key press, mouse action, or window resize.
 type Event struct {
 	Type   EventType
 	Mod    Modifier
@@ -202,6 +223,7 @@ type Event struct {
 	N      int
 }
 
+// Event types.
 const (
 	EventNone EventType = iota
 	EventKey
@@ -212,6 +234,7 @@ const (
 	EventRaw
 )
 
+// Keys codes.
 const (
 	KeyF1         = Key(tcell.KeyF1)
 	KeyF2         = Key(tcell.KeyF2)
@@ -263,15 +286,16 @@ const (
 	KeyBackspace2 = Key(tcell.KeyBackspace2)
 	KeyTab        = Key(tcell.KeyTab)
 	KeyEnter      = Key(tcell.KeyEnter)
-	KeySpace      = Key(tcell.KeySpace)
 	KeyEsc        = Key(tcell.KeyEscape)
 	KeyPgdn       = Key(tcell.KeyPgDn)
 	KeyPgup       = Key(tcell.KeyPgUp)
 	MouseLeft     = Key(tcell.KeyF63) // arbitrary assignments
 	MouseRight    = Key(tcell.KeyF62)
 	MouseMiddle   = Key(tcell.KeyF61)
+	KeySpace      = Key(tcell.Key(' '))
 )
 
+// Modifiers.
 const (
 	ModAlt = Modifier(tcell.ModAlt)
 )
@@ -288,6 +312,9 @@ func makeEvent(tev tcell.Event) Event {
 		ch := rune(0)
 		if k == tcell.KeyRune {
 			ch = tev.Rune()
+			if ch == ' ' {
+				k = tcell.Key(' ')
+			}
 		}
 		mod := tev.Modifiers()
 		return Event{
@@ -301,25 +328,30 @@ func makeEvent(tev tcell.Event) Event {
 	}
 }
 
+// ParseEvent is not supported.
 func ParseEvent(data []byte) Event {
 	// Not supported
 	return Event{Type: EventError, Err: errors.New("no raw events")}
 }
 
+// PollRawEvent is not supported.
 func PollRawEvent(data []byte) Event {
 	// Not supported
 	return Event{Type: EventError, Err: errors.New("no raw events")}
 }
 
+// PollEvent blocks until an event is ready, and then returns it.
 func PollEvent() Event {
 	ev := screen.PollEvent()
 	return makeEvent(ev)
 }
 
+// Interrupt posts an interrupt event.
 func Interrupt() {
 	screen.PostEvent(tcell.NewEventInterrupt(nil))
 }
 
+// Cell represents a single character cell on screen.
 type Cell struct {
 	Ch rune
 	Fg Attribute

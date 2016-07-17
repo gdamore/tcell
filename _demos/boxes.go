@@ -40,7 +40,10 @@ func makebox(s tcell.Screen) {
 	lh := rand.Int() % (h - ly)
 	st := tcell.StyleDefault
 	gl := ' '
-	if s.Colors() > 1 {
+	if s.Colors() > 256 {
+		rgb := tcell.NewHexColor(int32(rand.Int() & 0xffffff))
+		st = st.Background(rgb)
+	} else if s.Colors() > 1 {
 		st = st.Background(tcell.Color(rand.Int() % s.Colors()))
 	} else {
 		st = st.Reverse(rand.Int()%2 == 0)
@@ -56,6 +59,8 @@ func makebox(s tcell.Screen) {
 }
 
 func main() {
+
+	tcell.SetEncodingFallback(tcell.EncodingFallbackASCII)
 	s, e := tcell.NewScreen()
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
