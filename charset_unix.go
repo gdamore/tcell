@@ -1,6 +1,6 @@
 // +build !windows,!nacl,!plan9
 
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -39,8 +39,9 @@ func getCharset() string {
 	}
 	if i := strings.IndexRune(locale, '.'); i >= 0 {
 		locale = locale[i+1:]
-	}
-	if locale == "" {
+	} else {
+		// Default assumption, and on Linux we can see LC_ALL
+		// without a character set, which we assume implies UTF-8.
 		return "UTF-8"
 	}
 	// XXX: add support for aliases

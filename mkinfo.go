@@ -608,6 +608,9 @@ func main() {
 			}
 		} else {
 			tdata[t.Name] = t
+			if t2, e := getinfo(term+"-256color"); e == nil {
+				tdata[t2.Name] = t2
+			}
 		}
 	}
 	for alias, canon := range adata {
@@ -638,6 +641,9 @@ func main() {
 		dotGoHeader(w)
 		for _, term := range args {
 			if t := tdata[term]; t != nil {
+				dotGoInfo(w, t)
+			}
+			if t := tdata[term+"-256color"]; t != nil {
 				dotGoInfo(w, t)
 			}
 		}

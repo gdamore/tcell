@@ -9,10 +9,8 @@ d200
 d210
 dtterm
 Eterm
-Eterm-256color
 eterm
 gnome
-gnome-256color
 hpterm
 hz1500
 konsole
@@ -20,9 +18,7 @@ kterm
 linux
 pcansi
 rxvt
-rxvt-16color
-rxvt-256color
-rxvt-unicode-256color
+rxvt-unicode
 screen
 sun
 sun-color
@@ -46,5 +42,5 @@ wy99a-ansi
 xfce
 xnuppc
 xterm
-xterm-256color
+xterm
 xterm-truecolor
