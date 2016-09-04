@@ -16,9 +16,11 @@ package tcell
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -53,6 +55,8 @@ func NewTerminfoScreen() (Screen, error) {
 	for k, v := range RuneFallbacks {
 		t.fallback[k] = v
 	}
+
+	fmt.Printf("\x1b[?2004h")
 
 	return t, nil
 }
@@ -422,6 +426,8 @@ func (t *tScreen) Fini() {
 	t.clear = false
 	t.fini = true
 	t.Unlock()
+
+	fmt.Printf("\x1b[?20041")
 
 	if t.quit != nil {
 		close(t.quit)
@@ -1198,6 +1204,29 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 	return true, false
 }
 
+func (t *tScreen) parseBracketedPaste(buf *bytes.Buffer) (bool, bool) {
+	b := buf.Bytes()
+
+	// Replace all carriage returns with newlines
+	str := strings.Replace(string(b), "\r", "\n", -1)
+	if strings.HasPrefix(str, "\x1b[200~") {
+		// The bracketed paste has started
+		if strings.HasSuffix(str, "\x1b[201~") {
+			// The bracketed paste has ended
+			// Strip out the start and end sequences
+			ev := NewEventPaste(str[6 : len(b)-6])
+			t.PostEvent(ev)
+			for i := 0; i < len(b); i++ {
+				buf.ReadByte()
+			}
+			return true, true
+		}
+		// There is still more coming
+		return true, false
+	}
+	return false, false
+}
+
 func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 
 	t.Lock()
@@ -1219,6 +1248,12 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 		}
 
 		partials := 0
+
+		if part, comp := t.parseBracketedPaste(buf); comp {
+			continue
+		} else if part {
+			partials++
+		}
 
 		if part, comp := t.parseRune(buf); comp {
 			continue
