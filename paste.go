@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -14,22 +14,29 @@
 
 package tcell
 
-import (
-	"time"
-)
+import "time"
 
-// EventPaste is an event which stores the text that is pasted in as input
+// EventPaste represents a bracketed paste event.
 type EventPaste struct {
 	t    time.Time
 	text string
 }
 
 // When returns the time when this Event was created, which should closely
-func (ev *EventPaste) When() time.Time {
-	return ev.t
+// match the time when the paste was made.
+func (e *EventPaste) When() time.Time {
+	return e.t
 }
 
-// Text returns the pasted text
-func (ev *EventPaste) Text() string {
-	return ev.text
+// Text returns the text that was pasted
+func (e *EventPaste) Text() string {
+	return e.text
+}
+
+// NewEventPaste creates a new paste event from the given text
+func NewEventPaste(text string) *EventPaste {
+	return &EventPaste{
+		t:    time.Now(),
+		text: text,
+	}
 }
