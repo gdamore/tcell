@@ -38,7 +38,7 @@ import (
 // otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
 	ti, e := LookupTerminfo(os.Getenv("TERM"))
-	if e != nil {
+	if e != nil || os.Getenv("TERM") == "cygwin" {
 		return nil, e
 	}
 	t := &tScreen{ti: ti}
