@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gdamore/tcell"
-	"github.com/gdamore/tcell/views"
+	"github.com/zyedidia/tcell"
+	"github.com/zyedidia/tcell/views"
 )
 
 var app = &views.Application{}
