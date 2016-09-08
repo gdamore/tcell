@@ -1,3 +1,5 @@
+This is a fork of [tcell](https://github.com/gdamore/tcell) for the [micro editor](https://github.com/zyedidia/micro).
+
 ## tcell
 
 [![Linux Status](https://img.shields.io/travis/gdamore/tcell.svg?label=linux)](https://travis-ci.org/gdamore/tcell)
@@ -103,7 +105,7 @@ far exceeded the capabilities of termbox.
 ## Termbox compatibility 
 
 A compatibility layer for termbox is provided in the compat
-directory.  To use it, try importing "github.com/gdamore/tcell/termbox"
+directory.  To use it, try importing "github.com/zyedidia/tcell/termbox"
 instead.  Most termbox-go programs will probably work without further
 modification.
 
