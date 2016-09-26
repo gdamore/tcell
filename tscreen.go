@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,7 +39,7 @@ import (
 // otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
 	ti, e := LookupTerminfo(os.Getenv("TERM"))
-	if e != nil || os.Getenv("TERM") == "cygwin" {
+	if e != nil || (os.Getenv("TERM") == "cygwin" && runtime.GOOS == "windows") {
 		return nil, e
 	}
 	t := &tScreen{ti: ti}
