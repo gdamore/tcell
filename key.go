@@ -51,8 +51,8 @@ type EventKey struct {
 
 // When returns the time when this Event was created, which should closely
 // match the time when the key was pressed.
-func (*EventKey) When() time.Time {
-	return time.Now()
+func (ev *EventKey) When() time.Time {
+	return ev.t
 }
 
 // Rune returns the rune corresponding to the key press, if it makes sense.
