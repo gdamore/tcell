@@ -16,7 +16,6 @@ package tcell
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -56,8 +55,6 @@ func NewTerminfoScreen() (Screen, error) {
 	for k, v := range RuneFallbacks {
 		t.fallback[k] = v
 	}
-
-	fmt.Printf("\x1b[?2004h")
 
 	return t, nil
 }
@@ -157,6 +154,7 @@ func (t *tScreen) Init() error {
 	t.TPuts(ti.HideCursor)
 	t.TPuts(ti.EnableAcs)
 	t.TPuts(ti.Clear)
+	t.TPuts("\x1b[?2004h")
 
 	t.quit = make(chan struct{})
 
@@ -414,8 +412,6 @@ outer:
 }
 
 func (t *tScreen) Fini() {
-	fmt.Printf("\x1b[?2004l")
-
 	ti := t.ti
 	t.Lock()
 	t.cells.Resize(0, 0)
@@ -424,6 +420,7 @@ func (t *tScreen) Fini() {
 	t.TPuts(ti.Clear)
 	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
+	t.TPuts("\x1b[?2004l")
 	t.TPuts(ti.TParm(ti.MouseMode, 0))
 	t.curstyle = Style(-1)
 	t.clear = false
