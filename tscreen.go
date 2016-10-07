@@ -270,6 +270,8 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKeyMod(KeyLeft, ModShift, ti.KeyShfLeft)
 	t.prepareKeyMod(KeyUp, ModShift, ti.KeyShfUp)
 	t.prepareKeyMod(KeyDown, ModShift, ti.KeyShfDown)
+	t.prepareKeyMod(KeyInsert, ModShift, ti.KeyShfInsert)
+	t.prepareKeyMod(KeyDelete, ModShift, ti.KeyShfDelete)
 	t.prepareKeyMod(KeyHome, ModShift, ti.KeyShfHome)
 	t.prepareKeyMod(KeyEnd, ModShift, ti.KeyShfEnd)
 
@@ -277,6 +279,8 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKeyMod(KeyLeft, ModCtrl, ti.KeyCtrlLeft)
 	t.prepareKeyMod(KeyUp, ModCtrl, ti.KeyCtrlUp)
 	t.prepareKeyMod(KeyDown, ModCtrl, ti.KeyCtrlDown)
+	t.prepareKeyMod(KeyInsert, ModCtrl, ti.KeyCtrlInsert)
+	t.prepareKeyMod(KeyDelete, ModCtrl, ti.KeyCtrlDelete)
 	t.prepareKeyMod(KeyHome, ModCtrl, ti.KeyCtrlHome)
 	t.prepareKeyMod(KeyEnd, ModCtrl, ti.KeyCtrlEnd)
 
@@ -284,6 +288,8 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKeyMod(KeyLeft, ModAlt, ti.KeyAltLeft)
 	t.prepareKeyMod(KeyUp, ModAlt, ti.KeyAltUp)
 	t.prepareKeyMod(KeyDown, ModAlt, ti.KeyAltDown)
+	t.prepareKeyMod(KeyInsert, ModAlt, ti.KeyAltInsert)
+	t.prepareKeyMod(KeyDelete, ModAlt, ti.KeyAltDelete)
 	t.prepareKeyMod(KeyHome, ModAlt, ti.KeyAltHome)
 	t.prepareKeyMod(KeyEnd, ModAlt, ti.KeyAltEnd)
 

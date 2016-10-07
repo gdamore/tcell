@@ -238,6 +238,8 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 	t.Mouse = tigetstr("kmous")
 	t.KeyShfRight = tigetstr("kRIT")
 	t.KeyShfLeft = tigetstr("kLFT")
+	t.KeyShfInsert = tigetstr("kIC")
+	t.KeyShfDelete = tigetstr("kDC")
 	t.KeyShfHome = tigetstr("kHOM")
 	t.KeyShfEnd = tigetstr("kEND")
 
@@ -286,6 +288,15 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		t.KeyAltShfEnd = "\x1b[1;4F"
 		t.KeyMetaShfHome = "\x1b[1;10H"
 		t.KeyMetaShfEnd = "\x1b[1;10F"
+	}
+	// Support for mod + insert/delete, which is needed for cut/copy (shift+del/ctrl+ins)
+	// TODO shift+insert causes bracketed paste on some terminal emulators, which is not handled by tcell (7th Oct, 2016)
+	// based on: http://www.manmrk.net/tutorials/ISPF/XE/xehelp/html/HID00000579.htm
+	if t.KeyShfInsert == "\x1b[2;2~" && t.KeyShfDelete == "\x1b[3;2~" {
+		t.KeyCtrlInsert = "\x1b[2;5~"
+		t.KeyCtrlDelete = "\x1b[3;5~"
+		t.KeyAltInsert = "\x1b[2;3~"
+		t.KeyAltDelete = "\x1b[3;3~"
 	}
 
 	// And the same thing for rxvt and workalikes (Eterm, aterm, etc.)
@@ -557,12 +568,18 @@ func dotGoInfo(w io.Writer, t *tcell.Terminfo) {
 	dotGoAddStr(w, "KeyCtrlShfRight", t.KeyCtrlShfRight)
 	dotGoAddStr(w, "KeyCtrlShfUp", t.KeyCtrlShfUp)
 	dotGoAddStr(w, "KeyCtrlShfDown", t.KeyCtrlShfDown)
+	dotGoAddStr(w, "KeyShfInsert", t.KeyShfInsert)
+	dotGoAddStr(w, "KeyShfDelete", t.KeyShfDelete)
 	dotGoAddStr(w, "KeyShfHome", t.KeyShfHome)
 	dotGoAddStr(w, "KeyShfEnd", t.KeyShfEnd)
+	dotGoAddStr(w, "KeyCtrlInsert", t.KeyCtrlInsert)
+	dotGoAddStr(w, "KeyCtrlDelete", t.KeyCtrlDelete)
 	dotGoAddStr(w, "KeyCtrlHome", t.KeyCtrlHome)
 	dotGoAddStr(w, "KeyCtrlEnd", t.KeyCtrlEnd)
 	dotGoAddStr(w, "KeyMetaHome", t.KeyMetaHome)
 	dotGoAddStr(w, "KeyMetaEnd", t.KeyMetaEnd)
+	dotGoAddStr(w, "KeyAltInsert", t.KeyAltInsert)
+	dotGoAddStr(w, "KeyAltDelete", t.KeyAltDelete)
 	dotGoAddStr(w, "KeyAltHome", t.KeyAltHome)
 	dotGoAddStr(w, "KeyAltEnd", t.KeyAltEnd)
 	dotGoAddStr(w, "KeyCtrlShfHome", t.KeyCtrlShfHome)
@@ -608,7 +625,7 @@ func main() {
 			}
 		} else {
 			tdata[t.Name] = t
-			if t2, e := getinfo(term+"-256color"); e == nil {
+			if t2, e := getinfo(term + "-256color"); e == nil {
 				tdata[t2.Name] = t2
 			}
 		}

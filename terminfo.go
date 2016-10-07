@@ -144,6 +144,8 @@ type Terminfo struct {
 	EnableAcs    string   `json:"enacs,omitempty"`  // enacs
 	KeyShfRight  string   `json:"kRIT,omitempty"`   // kRIT
 	KeyShfLeft   string   `json:"kLFT,omitempty"`   // kLFT
+	KeyShfInsert string   `json:"kIC,omitempty"`    // kIC
+	KeyShfDelete string   `json:"kDC,omitempty"`    // kDC
 	KeyShfHome   string   `json:"kHOM,omitempty"`   // kHOM
 	KeyShfEnd    string   `json:"kEND,omitempty"`   // kEND
 
@@ -171,10 +173,14 @@ type Terminfo struct {
 	KeyAltDown      string `json:"_kacud1,omitempty"`     // alt-left
 	KeyAltRight     string `json:"_kacuf1,omitempty"`     // alt-right
 	KeyAltLeft      string `json:"_kacub1,omitempty"`     // alt-left
+	KeyCtrlInsert   string `json:"_kcich,omitempty"`
+	KeyCtrlDelete   string `json:"_kcdch,omitempty"`
 	KeyCtrlHome     string `json:"_kchome,omitempty"`
 	KeyCtrlEnd      string `json:"_kcend,omitempty"`
 	KeyMetaHome     string `json:"_kmhome,omitempty"`
 	KeyMetaEnd      string `json:"_kmend,omitempty"`
+	KeyAltInsert    string `json:"_kaich,omitempty"`
+	KeyAltDelete    string `json:"_kadch,omitempty"`
 	KeyAltHome      string `json:"_kahome,omitempty"`
 	KeyAltEnd       string `json:"_kaend,omitempty"`
 	KeyAltShfUp     string `json:"_kascu1,omitempty"`
