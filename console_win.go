@@ -188,7 +188,7 @@ func (s *cScreen) Fini() {
 	s.setCursorPos(0, 0)
 	procSetConsoleTextAttribute.Call(
 		uintptr(s.out),
-		uintptr(mapStyle(StyleDefault)))
+		uintptr(s.mapStyle(StyleDefault)))
 
 	close(s.quit)
 	syscall.Close(s.in)
@@ -618,24 +618,26 @@ func mapColor2RGB(c Color) uint16 {
 }
 
 // Map a tcell style to Windows attributes
-func mapStyle(style Style) uint16 {
+func (s *cScreen) mapStyle(style Style) uint16 {
 	f, b, a := style.Decompose()
-	if f == ColorDefault {
-		f = ColorWhite
+	fa := s.oscreen.attrs & 0xf
+	ba := (s.oscreen.attrs) >> 4 & 0xf
+	if f != ColorDefault {
+		fa = mapColor2RGB(f)
 	}
-	if b == ColorDefault {
-		b = ColorBlack
+	if b != ColorDefault {
+		ba = mapColor2RGB(b)
 	}
 	var attr uint16
 	// We simulate reverse by doing the color swap ourselves.
 	// Apparently windows cannot really do this except in DBCS
 	// views.
 	if a&AttrReverse != 0 {
-		attr = mapColor2RGB(b)
-		attr |= (mapColor2RGB(f) << 4)
+		attr = ba
+		attr |= (fa << 4)
 	} else {
-		attr = mapColor2RGB(f)
-		attr |= (mapColor2RGB(b) << 4)
+		attr = fa
+		attr |= (ba << 4)
 	}
 	if a&AttrBold != 0 {
 		attr |= 0x8
@@ -683,7 +685,7 @@ func (s *cScreen) writeString(x, y int, style Style, ch []uint16) {
 	nw := uint32(len(ch))
 	procSetConsoleTextAttribute.Call(
 		uintptr(s.out),
-		uintptr(mapStyle(style)))
+		uintptr(s.mapStyle(style)))
 	s.setCursorPos(x, y)
 	syscall.WriteConsole(s.out, &ch[0], nw, &nw, nil)
 }
@@ -859,7 +861,7 @@ func (s *cScreen) Fill(r rune, style Style) {
 
 func (s *cScreen) clearScreen(style Style) {
 	pos := coord{0, 0}
-	attr := mapStyle(style)
+	attr := s.mapStyle(style)
 	x, y := s.w, s.h
 	scratch := uint32(0)
 	count := uint32(x * y)
