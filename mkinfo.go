@@ -83,6 +83,50 @@ func tigetstr(s string) string {
 	return C.GoString(cs)
 }
 
+// setupterm wraps the Terminfo setupterm, searching for possible options in
+// multiple directories, including the system directory and $HOME/.terminfo
+func setupterm(name string) error {
+	oldpath := os.Getenv("TERMINFO")
+	plist := strings.Split(oldpath, ":")
+	if home := os.Getenv("HOME"); home != "" {
+		plist = append(plist, home+"/.terminfo")
+	}
+	plist = append(plist, "")
+	rsn := C.int(0)
+	
+	for _, p := range(plist) {
+		// Override environment
+		if p == "" {
+			os.Unsetenv("TERMINFO")
+		} else {
+			os.Setenv("TERMINFO", p)
+		}
+		rv, _ := C.setupterm(C.CString(name), 1, &rsn)
+
+		// Restore environment
+		if oldpath == "" {
+			os.Unsetenv("TERMINFO")
+		} else {
+			os.Setenv("TERMINFO", oldpath)
+		}
+
+		if rv != C.ERR {
+			return nil
+		}
+	}
+
+	switch rsn {
+	case 1:
+		return errors.New("hardcopy terminal")
+	case 0:
+		return errors.New("terminal definition not found")
+	case -1:
+		return errors.New("terminfo database missing")
+	default:
+		return errors.New("setupterm failed (other)")
+	}
+}
+
 // This program is used to collect data from the system's terminfo library,
 // and write it into Go source code.  That is, we maintain our terminfo
 // capabilities encoded in the program.  It should never need to be run by
@@ -95,35 +139,21 @@ func tigetstr(s string) string {
 // escapes.  We believe that all 24-bit capable terminals use the same
 // escape sequences, and terminfo has yet to evolve to support this.
 func getinfo(name string) (*tcell.Terminfo, error) {
-	addTrueColor := false
-	rsn := C.int(0)
 	C.noenv()
-	rv, _ := C.setupterm(C.CString(name), 1, &rsn)
-	if rv == C.ERR {
+	addTrueColor := false
+	if err := setupterm(name); err != nil {
 		if strings.HasSuffix(name, "-truecolor") {
 			base := name[:len(name)-len("-truecolor")]
 			// Probably -256color is closest to what we want
-			rv, _ = C.setupterm(C.CString(base+"-256color"), 1,
-				&rsn)
-			// Otherwise try the base
-			if rv == C.ERR {
-				rv, _ = C.setupterm(C.CString(base), 1, &rsn)
+			if err = setupterm(base+"-256color"); err != nil {
+				err = setupterm(base)
 			}
-			if rv != C.ERR {
+			if err == nil {
 				addTrueColor = true
 			}
 		}
-	}
-	if rv == C.ERR {
-		switch rsn {
-		case 1:
-			return nil, errors.New("hardcopy terminal")
-		case 0:
-			return nil, errors.New("terminal definition not found")
-		case -1:
-			return nil, errors.New("terminfo database missing")
-		default:
-			return nil, errors.New("setupterm failed (other)")
+		if err != nil {
+			return nil, err
 		}
 	}
 	t := &tcell.Terminfo{}
@@ -321,7 +351,7 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		// will at least ignore it.  Likewise we hope that terminals
 		// that don't understand SGR reporting (1006) just ignore it.
 		t.MouseMode = "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;" +
-			"\x1b[?1000%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c"
+			"\x1b[?1000%ga%c\x1b[?1002%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c"
 	}
 
 	// We only support colors in ANSI 8 or 256 color mode.
