@@ -77,6 +77,7 @@ type tScreen struct {
 	sigwinch  chan os.Signal
 	quit      chan struct{}
 	indoneq   chan struct{}
+	inputchan chan InputPacket
 	keyexist  map[Key]bool
 	keycodes  map[string]*tKeyCode
 	cx        int
@@ -100,6 +101,12 @@ type tScreen struct {
 	buttondn  bool
 
 	sync.Mutex
+}
+
+type InputPacket struct {
+	n     int
+	e     error
+	chunk []byte
 }
 
 func (t *tScreen) Init() error {
@@ -386,6 +393,7 @@ func (t *tScreen) Fini() {
 	t.curstyle = Style(-1)
 	t.clear = false
 	t.fini = true
+	close(t.inputchan)
 	t.Unlock()
 
 	if t.quit != nil {
@@ -1235,9 +1243,16 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 }
 
 func (t *tScreen) inputLoop() {
+	t.inputchan = make(chan InputPacket)
 	buf := &bytes.Buffer{}
 
-	chunk := make([]byte, 128)
+	go func() {
+		chunk := make([]byte, 128)
+		for {
+			n, e := t.in.Read(chunk)
+			t.inputchan <- InputPacket{n, e, chunk}
+		}
+	}()
 	for {
 		select {
 		case <-t.quit:
@@ -1254,7 +1269,14 @@ func (t *tScreen) inputLoop() {
 			continue
 		default:
 		}
-		n, e := t.in.Read(chunk)
+
+		in, ok := <-t.inputchan
+		if !ok {
+			close(t.indoneq)
+			return
+		}
+		n, e, chunk := in.n, in.e, in.chunk
+
 		switch e {
 		case io.EOF:
 			// If we timeout waiting for more bytes, then it's
