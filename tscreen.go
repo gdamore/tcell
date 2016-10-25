@@ -1261,9 +1261,6 @@ func (t *tScreen) inputLoop() {
 					chunkChan <- chunkInfo{chunk[:0], err} // unexpected error
 					return
 				}
-				//if n != 128 {
-				//	time.Sleep(5 * time.Millisecond)
-				//}
 			}
 		}
 	}()
