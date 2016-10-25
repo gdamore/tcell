@@ -1234,13 +1234,44 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 	}
 }
 
+type chunkInfo struct {
+	data []byte
+	err  error
+}
+
 func (t *tScreen) inputLoop() {
 	buf := &bytes.Buffer{}
+	chunkChan := make(chan chunkInfo, 10)
+	quitChan := make(chan struct{}, 1)
 
-	chunk := make([]byte, 128)
+	go func() {
+		chunk := make([]byte, 128)
+		for {
+			select {
+			case <-quitChan:
+				return
+			default:
+				n, err := t.in.Read(chunk)
+				switch err {
+				case nil, io.EOF:
+					if n > 0 {
+						chunkChan <- chunkInfo{chunk[:n], nil}
+					}
+				default:
+					chunkChan <- chunkInfo{chunk[:0], err} // unexpected error
+					return
+				}
+				//if n != 128 {
+				//	time.Sleep(5 * time.Millisecond)
+				//}
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-t.quit:
+			close(quitChan)
 			close(t.indoneq)
 			return
 		case <-t.sigwinch:
@@ -1251,27 +1282,13 @@ func (t *tScreen) inputLoop() {
 			t.cells.Invalidate()
 			t.draw()
 			t.Unlock()
-			continue
-		default:
-		}
-		n, e := t.in.Read(chunk)
-		switch e {
-		case io.EOF:
-			// If we timeout waiting for more bytes, then it's
-			// time to give up on it.  Even at 300 baud it takes
-			// less than 0.5 ms to transmit a whole byte.
-			if buf.Len() > 0 {
-				t.scanInput(buf, true)
+		case chunkInfo := <-chunkChan:
+			if chunkInfo.err != nil {
+				return // panic ??
 			}
-			continue
-		case nil:
-		default:
-			close(t.indoneq)
-			return
+			buf.Write(chunkInfo.data)
+			t.scanInput(buf, true)
 		}
-		buf.Write(chunk[:n])
-		// Now we need to parse the input buffer for events
-		t.scanInput(buf, false)
 	}
 }
 
