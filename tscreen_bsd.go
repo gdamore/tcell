@@ -107,9 +107,6 @@ func (t *tScreen) termioFini() {
 		syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0)
 		t.out.Close()
 	}
-	if t.in != nil {
-		t.in.Close()
-	}
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {

@@ -193,9 +193,6 @@ func (t *tScreen) termioFini() {
 		C.tcsetattr(fd, C.TCSANOW|C.TCSAFLUSH, &t.tiosp.tios)
 		t.out.Close()
 	}
-	if t.in != nil {
-		t.in.Close()
-	}
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {
