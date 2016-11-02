@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/text/transform"
@@ -1234,15 +1235,13 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 	}
 }
 
-type chunkInfo struct {
-	data []byte
-	err  error
-}
-
 func (t *tScreen) inputLoop() {
 	buf := &bytes.Buffer{}
-	chunkChan := make(chan chunkInfo, 10)
 	quitChan := make(chan struct{}, 1)
+	data := make([]byte, 0, 1000)
+	var lastRead int64
+	var lock sync.Mutex
+	var newData bool
 
 	go func() {
 		chunk := make([]byte, 128)
@@ -1251,15 +1250,21 @@ func (t *tScreen) inputLoop() {
 			case <-quitChan:
 				return
 			default:
-				n, err := t.in.Read(chunk)
-				switch err {
-				case nil, io.EOF:
-					if n > 0 {
-						chunkChan <- chunkInfo{chunk[:n], nil}
-					}
-				default:
-					chunkChan <- chunkInfo{chunk[:0], err} // unexpected error
-					return
+				lock.Lock()
+				lastRead = time.Now().UnixNano() // keep track of last time we started a read
+				lock.Unlock()
+				n, err := t.in.Read(chunk) // blocking read until at least one byte
+				if err != nil && err != io.EOF {
+					return // unexpected error, fail
+				}
+				if n > 0 {
+					lock.Lock()
+					data = append(data, chunk[:n]...) // append read data to buffer
+					lock.Unlock()
+				} else {
+					// if we read nohting, wait a bit until trying again
+					// tries to not use the lock too aggresively
+					time.Sleep(10 * time.Millisecond)
 				}
 			}
 		}
@@ -1279,12 +1284,21 @@ func (t *tScreen) inputLoop() {
 			t.cells.Invalidate()
 			t.draw()
 			t.Unlock()
-		case chunkInfo := <-chunkChan:
-			if chunkInfo.err != nil {
-				return // panic ??
+		default:
+			newData = false
+			lock.Lock()
+			// if we have data to flush and we have a bunch of data OR read has been blocked for > 10ms without data, flush
+			if len(data) > 0 && (len(data) > 500 || lastRead < time.Now().UnixNano()-10000000) {
+				buf.Write(data)
+				data = data[:0]
+				newData = true
 			}
-			buf.Write(chunkInfo.data)
-			t.scanInput(buf, true)
+			lock.Unlock()
+			if newData {
+				t.scanInput(buf, true)
+			}
+			// flush every so often to be less aggressive on the lock
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
