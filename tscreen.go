@@ -487,7 +487,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 					int(r), int(g), int(b)))
 			}
 			if bg != ColorDefault && ti.SetBgRGB != "" {
-				r, g, b := fg.RGB()
+				r, g, b := bg.RGB()
 				t.TPuts(ti.TParm(ti.SetBgRGB,
 					int(r), int(g), int(b)))
 			}
