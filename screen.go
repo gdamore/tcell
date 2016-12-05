@@ -133,7 +133,7 @@ type Screen interface {
 	Sync()
 
 	// CharacterSet returns information about the character set.
-	// This isn't the full locale, but it does give us the input/ouput
+	// This isn't the full locale, but it does give us the input/output
 	// character set.  Note that this is just for diagnostic purposes,
 	// we normally translate input/output to/from UTF-8, regardless of
 	// what the user's environment is.

@@ -725,7 +725,7 @@ func loadFromFile(fname string, term string) (*Terminfo, error) {
 	}
 }
 
-// LookupTerminfo attemps to find a definition for the named $TERM.
+// LookupTerminfo attempts to find a definition for the named $TERM.
 // It first looks in the builtin database, which should cover just about
 // everyone.  If it can't find one there, then it will attempt to read
 // one from the JSON file located in either $TCELLDB, $HOME/.tcelldb

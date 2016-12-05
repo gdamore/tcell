@@ -417,7 +417,7 @@ outer:
 		continue
 	}
 
-	return failed == false
+	return !failed
 }
 
 func (s *simscreen) Sync() {

@@ -46,7 +46,7 @@ var encodingFallback EncodingFallback = EncodingFallbackFail
 // Aliases can be registered as well, for example "8859-15" could be an alias
 // for "ISO8859-15".
 //
-// For POSIX systems, the tcell pacakge will check the environment variables
+// For POSIX systems, the tcell package will check the environment variables
 // LC_ALL, LC_CTYPE,  and LANG (in that order) to determine the character set.
 // These are expected to have the following pattern:
 //

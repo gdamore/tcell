@@ -93,8 +93,8 @@ func setupterm(name string) error {
 	}
 	plist = append(plist, "")
 	rsn := C.int(0)
-	
-	for _, p := range(plist) {
+
+	for _, p := range plist {
 		// Override environment
 		if p == "" {
 			os.Unsetenv("TERMINFO")
@@ -145,7 +145,7 @@ func getinfo(name string) (*tcell.Terminfo, error) {
 		if strings.HasSuffix(name, "-truecolor") {
 			base := name[:len(name)-len("-truecolor")]
 			// Probably -256color is closest to what we want
-			if err = setupterm(base+"-256color"); err != nil {
+			if err = setupterm(base + "-256color"); err != nil {
 				err = setupterm(base)
 			}
 			if err == nil {
@@ -638,7 +638,7 @@ func main() {
 			}
 		} else {
 			tdata[t.Name] = t
-			if t2, e := getinfo(term+"-256color"); e == nil {
+			if t2, e := getinfo(term + "-256color"); e == nil {
 				tdata[t2.Name] = t2
 			}
 		}
