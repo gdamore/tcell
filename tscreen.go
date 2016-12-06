@@ -358,6 +358,9 @@ func (t *tScreen) prepareKeys() {
 		t.prepareKey(KeyHome, "\x1bOH")
 	}
 
+	t.prepareKey(KeyPasteBegin, PasteBegin)
+	t.prepareKey(KeyPasteEnd, PasteEnd)
+
 outer:
 	// Add key mappings for control keys.
 	for i := 0; i < ' '; i++ {
@@ -1130,17 +1133,26 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer, evs *[]Event) (bool, bool)
 			continue
 		}
 		if bytes.HasPrefix(b, esc) {
-			// matched
-			var r rune
-			if len(esc) == 1 {
-				r = rune(b[0])
+			var ev Event
+			switch e {
+			case PasteBegin:
+				ev = NewEventKeyPasteBegin()
+			case PasteEnd:
+				ev = NewEventKeyPasteEnd()
+			default:
+				// matched
+				var r rune
+				if len(esc) == 1 {
+					r = rune(b[0])
+				}
+				mod := k.mod
+				if t.escaped {
+					mod |= ModAlt
+				}
+				ev = NewEventKey(k.key, r, mod)
 			}
-			mod := k.mod
-			if t.escaped {
-				mod |= ModAlt
-				t.escaped = false
-			}
-			*evs = append(*evs, NewEventKey(k.key, r, mod))
+			t.escaped = false
+			*evs = append(*evs, ev)
 			for i := 0; i < len(esc); i++ {
 				buf.ReadByte()
 			}

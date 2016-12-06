@@ -373,6 +373,8 @@ const (
 	KeyF62
 	KeyF63
 	KeyF64
+	KeyPasteBegin
+	KeyPasteEnd
 )
 
 // These are the control keys.  Note that they overlap with other keys,
