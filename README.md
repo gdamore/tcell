@@ -35,7 +35,7 @@ when Go provides standard support for terminal handling via termio ioctls on
 all POSIX platforms.)  The database itself, while built using CGO, as well
 as the parser for it, is implemented in Pure Go.
 
-The database is also flexible & extensibel, and can modified by either running a
+The database is also flexible & extensible, and can modified by either running a
 program to build the database, or hand editing of simple JSON files.
 
 ## More Portable
