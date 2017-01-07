@@ -99,6 +99,7 @@ func (b *BoxLayout) hLayout() {
 		cw += c.pad
 
 		c.view.Resize(x, y, cw, h)
+		c.widget.Resize()
 		x += xinc
 	}
 }
@@ -162,6 +163,7 @@ func (b *BoxLayout) vLayout() {
 		yinc = ch + c.pad
 		ch += c.pad
 		c.view.Resize(x, y, w, ch)
+		c.widget.Resize()
 		y += yinc
 	}
 }
