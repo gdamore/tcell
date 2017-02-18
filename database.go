@@ -1872,7 +1872,7 @@ func init() {
 		ExitAcs:      "\x0f",
 		EnableAcs:    "\x1b(B\x1b)0",
 		Mouse:        "\x1b[M",
-		MouseMode:    "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;\x1b[?1000%ga%c\x1b[?1002%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c",
+		MouseMode:    "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h",
 		SetCursor:    "\x1b[%i%p1%d;%p2%dH",
 		CursorBack1:  "\b",
 		CursorUp1:    "\x1bM",
