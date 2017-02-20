@@ -421,7 +421,8 @@ func (t *tScreen) Fini() {
 	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
 	t.TPuts("\x1b[?2004l")
-	t.TPuts(ti.TParm(ti.MouseMode, 0))
+	// t.TPuts(ti.TParm(ti.MouseMode, 0))
+	t.DisableMouse()
 	t.curstyle = Style(-1)
 	t.clear = false
 	t.fini = true
@@ -744,7 +745,11 @@ func (t *tScreen) EnableMouse() {
 
 func (t *tScreen) DisableMouse() {
 	if len(t.mouse) != 0 {
-		t.TPuts(t.ti.TParm(t.ti.MouseMode, 0))
+		if t.ti.MouseMode == "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h" {
+			t.TPuts("\x1b[?1006l\x1b[?1015l\x1b[?10021l\x1b[?1000l")
+		} else {
+			t.TPuts(t.ti.TParm(t.ti.MouseMode, 0))
+		}
 	}
 }
 
