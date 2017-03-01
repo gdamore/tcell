@@ -421,6 +421,13 @@ func (t *tScreen) Fini() {
 	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
 	t.TPuts("\x1b[?2004l")
+	//Reset terminal title. USERNAME for Windows support. Assumes USER and USERNAME will not both be set.
+	titlestring := "\033]2;" + os.Getenv("USER") + os.Getenv("USERNAME") + "@" + os.Hostname() + ": " + os.Getwd() + "\007"
+	t.TPuts(titlestring)
+	for i, s := range strings.Split(os.Getenv("SHELL"),"/") {
+		titlestring = "\033k" + s + "\033\\"
+	}
+	t.TPuts(titlestring)
 	// t.TPuts(ti.TParm(ti.MouseMode, 0))
 	t.DisableMouse()
 	t.curstyle = Style(-1)
@@ -1430,3 +1437,8 @@ func (t *tScreen) HasKey(k Key) bool {
 }
 
 func (t *tScreen) Resize(int, int, int, int) {}
+
+func (t *tScreen) SetTitle(title string) {
+	t.TPuts("\033k" + title + "\033\\")
+	t.TPuts("\033]2;" + title + "\007")
+}

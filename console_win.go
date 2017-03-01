@@ -985,3 +985,6 @@ func (s *cScreen) HasKey(k Key) bool {
 
 	return valid[k]
 }
+
+//Stub
+func (c *cScreen) SetTitle(title string) {}
