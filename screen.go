@@ -193,6 +193,8 @@ type Screen interface {
 	// menus, displayed hot-keys, etc.  Note that KeyRune (literal
 	// runes) is always true.
 	HasKey(Key) bool
+
+	SetTitle(title string)
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
@@ -209,8 +211,4 @@ func NewScreen() (Screen, error) {
 	} else {
 		return nil, e
 	}
-}
-func (t *tScreen) SetTitle(title string) {
-	t.TPuts("\033k" + title + "\033\\")
-	t.TPuts("\033]2;" + title + "\007")
 }
