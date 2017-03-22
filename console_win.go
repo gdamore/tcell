@@ -28,6 +28,7 @@ type cScreen struct {
 	in         syscall.Handle
 	out        syscall.Handle
 	cancelflag syscall.Handle
+	title      syscall.Handle
 	scandone   chan struct{}
 	evch       chan Event
 	quit       chan struct{}
@@ -114,6 +115,7 @@ var (
 	procSetConsoleWindowInfo       = k32.NewProc("SetConsoleWindowInfo")
 	procSetConsoleScreenBufferSize = k32.NewProc("SetConsoleScreenBufferSize")
 	procSetConsoleTextAttribute    = k32.NewProc("SetConsoleTextAttribute")
+	procSetConsoleTitle            = k32.NewProc("SetConsoleTitleW")
 )
 
 const (
@@ -190,6 +192,10 @@ func (s *cScreen) DisableMouse() {
 	s.setInMode(modeResizeEn)
 }
 
+func (s *cScreen) SetTitle(title string) {
+	procSetConsoleTitle.Call(uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(title))))
+}
+
 func (s *cScreen) Fini() {
 	s.Lock()
 	s.style = StyleDefault
@@ -197,7 +203,6 @@ func (s *cScreen) Fini() {
 	s.cury = -1
 	s.fini = true
 	s.Unlock()
-
 	s.setCursorInfo(&s.ocursor)
 	s.setInMode(s.oimode)
 	s.setOutMode(s.oomode)
