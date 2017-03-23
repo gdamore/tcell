@@ -193,6 +193,8 @@ type Screen interface {
 	// menus, displayed hot-keys, etc.  Note that KeyRune (literal
 	// runes) is always true.
 	HasKey(Key) bool
+
+	SetTitle(string)
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
