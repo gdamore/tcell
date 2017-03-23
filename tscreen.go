@@ -417,32 +417,36 @@ outer:
 	}
 }
 
-func (t *tScreen) Fini() {
-	ti := t.ti
-	t.Lock()
-	t.cells.Resize(0, 0)
-	t.TPuts(ti.ShowCursor)
-	t.TPuts(ti.AttrOff)
-	t.TPuts(ti.ExitCA)
-	t.TPuts(ti.ExitKeypad)
-	t.TPuts("\x1b[?2004l")
+func (t *tScreen) ResetTitle() {
 	//Reset terminal title. USERNAME for Windows support. Assumes USER and USERNAME will not both be set.
 	wd, _ := os.Getwd()
 	host, _ := os.Hostname()
 	var titlestring string
-	if strings.Contains(os.Getenv("TERM"), "xterm"){
-		titlestring = "\033]2;" + os.Getenv("USER") + os.Getenv("USERNAME") + "@" + host + ": " + wd + "\007" 
+	if strings.Contains(os.Getenv("TERM"), "xterm") {
+		titlestring = "\033]2;" + os.Getenv("USER") + os.Getenv("USERNAME") + "@" + host + ": " + wd + "\007"
 		t.TPuts(titlestring)
 	}
-	if strings.Compare(os.Getenv("TERM") , "screen") == 0 {
+	if os.Getenv("TERM") == "screen" {
 		for _, s := range strings.Split(os.Getenv("SHELL"), "/") {
 			titlestring = "\033k" + s + "\033\\"
 			titlestring = "\033]2;" + os.Getenv("USER") + os.Getenv("USERNAME") + "@" + host + ": " + wd + "\007"
 		}
 		t.TPuts(titlestring)
 	}
-	// t.TPuts(ti.TParm(ti.MouseMode, 0))
+}
+
+func (t *tScreen) Fini() {
+	ti := t.ti
+	t.Lock()
+	t.cells.Resize(0, 0)
+	t.TPuts(ti.ShowCursor)
+	t.TPuts(ti.AttrOff)
+	t.ResetTitle()
 	t.TPuts(ti.Clear)
+	t.TPuts(ti.ExitCA)
+	t.TPuts(ti.ExitKeypad)
+	// Close bracketed paste
+	t.TPuts("\x1b[?2004l")
 	t.DisableMouse()
 	t.curstyle = Style(-1)
 	t.clear = false
@@ -1480,10 +1484,10 @@ func (t *tScreen) HasKey(k Key) bool {
 func (t *tScreen) Resize(int, int, int, int) {}
 
 func (t *tScreen) SetTitle(title string) {
-	if strings.Compare(os.Getenv("TERM") , "screen") == 0 {
+	if strings.Compare(os.Getenv("TERM"), "screen") == 0 {
 		t.TPuts("\033k" + title + "\033\\")
 	}
-	if strings.Contains(os.Getenv("TERM") , "xterm") {
+	if strings.Contains(os.Getenv("TERM"), "xterm") {
 		t.TPuts("\033]2;" + title + "\007")
 	}
 }
