@@ -1,4 +1,4 @@
-#!/bin/ksh
+#!/bin/dash
 
 # Copyright 2015 The TCell Authors
 #
