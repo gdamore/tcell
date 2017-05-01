@@ -78,6 +78,8 @@ func (ev *EventKey) Modifiers() ModMask {
 	return ev.mod
 }
 
+// KeyNames holds the written names of special keys. Useful to echo back a key
+// name, or to look up a key from a string value.
 var KeyNames = map[Key]string{
 	KeyEnter:          "Enter",
 	KeyBackspace:      "Backspace",
