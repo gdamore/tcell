@@ -66,8 +66,8 @@ func (t *tScreen) termioInit() error {
 	// close file descriptors on systems like Darwin, where close does
 	// cause a wakeup.  (Probably we could reasonably increase this to
 	// something like 1 sec or 500 msec.)
-	newtios.Cc[syscall.VMIN] = 0
-	newtios.Cc[syscall.VTIME] = 1
+	newtios.Cc[syscall.VMIN] = 1
+	newtios.Cc[syscall.VTIME] = 0
 	tios = uintptr(unsafe.Pointer(&newtios))
 
 	ioc = uintptr(syscall.TIOCSETA)
@@ -106,9 +106,6 @@ func (t *tScreen) termioFini() {
 		tios := uintptr(unsafe.Pointer(t.tiosp))
 		syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0)
 		t.out.Close()
-	}
-	if t.in != nil {
-		t.in.Close()
 	}
 }
 
