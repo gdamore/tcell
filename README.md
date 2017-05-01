@@ -24,6 +24,7 @@ ways.  It also adds substantial functionality beyond termbox.
 * mouse demo - [screenshot](http://2.bp.blogspot.com/-fWvW5opT0es/VhIdItdKqJI/AAAAAAAAATE/7Ojc0L1SpB0/s1600/Screen%2BShot%2B2015-10-04%2Bat%2B11.47.13%2BPM.png) - included mouse test
 * [gomatrix](https://github.com/gdamore/gomatrix) - converted from Termbox
 * [micro](https://github.com/zyedidia/micro/) - lightweight text editor with syntax-highlighting and themes
+* [godu](https://github.com/viktomas/godu) - simple golang utility helping to discover large files/folders.
 
 ## Pure Go Terminfo Database
 
