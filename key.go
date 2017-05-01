@@ -78,7 +78,9 @@ func (ev *EventKey) Modifiers() ModMask {
 	return ev.mod
 }
 
-var keyNames = map[Key]string{
+// KeyNames holds the written names of special keys. Useful to echo back a key
+// name, or to look up a key from a string value.
+var KeyNames = map[Key]string{
 	KeyEnter:          "Enter",
 	KeyBackspace:      "Backspace",
 	KeyTab:            "Tab",
@@ -218,7 +220,7 @@ func (ev *EventKey) Name() string {
 	}
 
 	ok := false
-	if s, ok = keyNames[ev.key]; !ok {
+	if s, ok = KeyNames[ev.key]; !ok {
 		if ev.key == KeyRune {
 			s = "Rune[" + string(ev.ch) + "]"
 		} else {
