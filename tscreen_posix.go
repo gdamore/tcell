@@ -157,8 +157,8 @@ func (t *tScreen) termioInit() error {
 	// close file descriptors on systems like Darwin, where close does
 	// cause a wakeup.  (Probably we could reasonably increase this to
 	// something like 1 sec or 500 msec.)
-	newtios.c_cc[C.VMIN] = 0
-	newtios.c_cc[C.VTIME] = 1
+	newtios.c_cc[C.VMIN] = 1
+	newtios.c_cc[C.VTIME] = 0
 
 	if rv, e = C.tcsetattr(fd, C.TCSANOW|C.TCSAFLUSH, &newtios); rv != 0 {
 		goto failed
