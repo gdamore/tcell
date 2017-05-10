@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/text/transform"
@@ -1236,11 +1237,43 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 
 func (t *tScreen) inputLoop() {
 	buf := &bytes.Buffer{}
+	quitChan := make(chan struct{}, 1)
+	data := make([]byte, 0, 1000)
+	var lastRead int64
+	var lock sync.Mutex
+	var newData bool
 
-	chunk := make([]byte, 128)
+	go func() {
+		chunk := make([]byte, 128)
+		for {
+			select {
+			case <-quitChan:
+				return
+			default:
+				lock.Lock()
+				lastRead = time.Now().UnixNano() // keep track of last time we started a read
+				lock.Unlock()
+				n, err := t.in.Read(chunk) // blocking read until at least one byte
+				if err != nil && err != io.EOF {
+					return // unexpected error, fail
+				}
+				if n > 0 {
+					lock.Lock()
+					data = append(data, chunk[:n]...) // append read data to buffer
+					lock.Unlock()
+				} else {
+					// if we read nohting, wait a bit until trying again
+					// tries to not use the lock too aggresively
+					time.Sleep(10 * time.Millisecond)
+				}
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-t.quit:
+			close(quitChan)
 			close(t.indoneq)
 			return
 		case <-t.sigwinch:
@@ -1251,27 +1284,22 @@ func (t *tScreen) inputLoop() {
 			t.cells.Invalidate()
 			t.draw()
 			t.Unlock()
-			continue
 		default:
-		}
-		n, e := t.in.Read(chunk)
-		switch e {
-		case io.EOF:
-			// If we timeout waiting for more bytes, then it's
-			// time to give up on it.  Even at 300 baud it takes
-			// less than 0.5 ms to transmit a whole byte.
-			if buf.Len() > 0 {
+			newData = false
+			lock.Lock()
+			// if we have data to flush and we have a bunch of data OR read has been blocked for > 10ms without data, flush
+			if len(data) > 0 && (len(data) > 500 || lastRead < time.Now().UnixNano()-10000000) {
+				buf.Write(data)
+				data = data[:0]
+				newData = true
+			}
+			lock.Unlock()
+			if newData {
 				t.scanInput(buf, true)
 			}
-			continue
-		case nil:
-		default:
-			close(t.indoneq)
-			return
+			// flush every so often to be less aggressive on the lock
+			time.Sleep(100 * time.Millisecond)
 		}
-		buf.Write(chunk[:n])
-		// Now we need to parse the input buffer for events
-		t.scanInput(buf, false)
 	}
 }
 
