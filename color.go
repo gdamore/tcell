@@ -976,7 +976,7 @@ func (c Color) Hex() int32 {
 	if c&ColorIsRGB != 0 {
 		return (int32(c) & 0xffffff)
 	}
-	if v, ok := colorValues[c]; ok {
+	if v, ok := ColorValues[c]; ok {
 		return v
 	}
 	return -1
@@ -1007,7 +1007,7 @@ func NewHexColor(v int32) Color {
 // GetColor creates a Color from a color name (W3C name). A hex value may
 // be supplied as a string in the format "#ffffff".
 func GetColor(name string) Color {
-	if c, ok := colorNames[name]; ok {
+	if c, ok := ColorNames[name]; ok {
 		return c
 	}
 	if len(name) == 7 && name[0] == '#' {
