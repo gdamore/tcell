@@ -67,43 +67,44 @@ type tKeyCode struct {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	ti        *Terminfo
-	h         int
-	w         int
-	fini      bool
-	cells     CellBuffer
-	in        *os.File
-	out       *os.File
-	curstyle  Style
-	style     Style
-	evch      chan Event
-	sigwinch  chan os.Signal
-	quit      chan struct{}
-	indoneq   chan struct{}
-	keyexist  map[Key]bool
-	keycodes  map[string]*tKeyCode
-	keychan   chan []byte
-	keytimer  *time.Timer
-	keyexpire time.Time
-	cx        int
-	cy        int
-	mouse     []byte
-	clear     bool
-	cursorx   int
-	cursory   int
-	tiosp     *termiosPrivate
-	baud      int
-	wasbtn    bool
-	acs       map[rune]string
-	charset   string
-	encoder   transform.Transformer
-	decoder   transform.Transformer
-	fallback  map[rune]string
-	colors    map[Color]Color
-	palette   []Color
-	truecolor bool
-	escaped   bool
-	buttondn  bool
+	ti          *Terminfo
+	h           int
+	w           int
+	fini        bool
+	cells       CellBuffer
+	in          *os.File
+	out         *os.File
+	curstyle    Style
+	style       Style
+	evch        chan Event
+	sigwinch    chan os.Signal
+	quit        chan struct{}
+	indoneq     chan struct{}
+	keyexist    map[Key]bool
+	keycodes    map[string]*tKeyCode
+	keychan     chan []byte
+	keytimer    *time.Timer
+	keyexpire   time.Time
+	cx          int
+	cy          int
+	mouse       []byte
+	clear       bool
+	cursorx     int
+	cursory     int
+	tiosp       *termiosPrivate
+	baud        int
+	wasbtn      bool
+	acs         map[rune]string
+	charset     string
+	encoder     transform.Transformer
+	decoder     transform.Transformer
+	fallback    map[rune]string
+	colors      map[Color]Color
+	palette     []Color
+	truecolor   bool
+	escaped     bool
+	buttondn    bool
+	hasSetTitle bool
 
 	sync.Mutex
 }
@@ -418,20 +419,22 @@ outer:
 }
 
 func (t *tScreen) ResetTitle() {
-	//Reset terminal title. USERNAME for Windows support. Assumes USER and USERNAME will not both be set.
-	wd, _ := os.Getwd()
-	host, _ := os.Hostname()
-	var titlestring string
-	if strings.Contains(os.Getenv("TERM"), "xterm") {
-		titlestring = "\033]2;" + os.Getenv("USER") + os.Getenv("USERNAME") + "@" + host + ": " + wd + "\007"
-		t.TPuts(titlestring)
-	}
-	if os.Getenv("TERM") == "screen" {
-		for _, s := range strings.Split(os.Getenv("SHELL"), "/") {
-			titlestring = "\033k" + s + "\033\\"
+	if t.hasSetTitle {
+		//Reset terminal title. USERNAME for Windows support. Assumes USER and USERNAME will not both be set.
+		wd, _ := os.Getwd()
+		host, _ := os.Hostname()
+		var titlestring string
+		if strings.Contains(os.Getenv("TERM"), "xterm") {
 			titlestring = "\033]2;" + os.Getenv("USER") + os.Getenv("USERNAME") + "@" + host + ": " + wd + "\007"
+			t.TPuts(titlestring)
 		}
-		t.TPuts(titlestring)
+		if os.Getenv("TERM") == "screen" {
+			for _, s := range strings.Split(os.Getenv("SHELL"), "/") {
+				titlestring = "\033k" + s + "\033\\"
+				titlestring = "\033]2;" + os.Getenv("USER") + os.Getenv("USERNAME") + "@" + host + ": " + wd + "\007"
+			}
+			t.TPuts(titlestring)
+		}
 	}
 }
 
@@ -1485,9 +1488,11 @@ func (t *tScreen) Resize(int, int, int, int) {}
 
 func (t *tScreen) SetTitle(title string) {
 	if strings.Compare(os.Getenv("TERM"), "screen") == 0 {
+		t.hasSetTitle = true
 		t.TPuts("\033k" + title + "\033\\")
 	}
 	if strings.Contains(os.Getenv("TERM"), "xterm") {
 		t.TPuts("\033]2;" + title + "\007")
+		t.hasSetTitle = true
 	}
 }
