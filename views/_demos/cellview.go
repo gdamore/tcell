@@ -101,7 +101,6 @@ func (m *model) GetCell(x, y int) (rune, tcell.Style, []rune, int) {
 }
 
 type mainWindow struct {
-	view   views.View
 	main   *views.CellView
 	keybar *views.SimpleStyledText
 	status *views.SimpleStyledTextBar
