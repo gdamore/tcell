@@ -184,7 +184,6 @@ func main() {
 	window.keybar.RegisterStyle('A', tcell.StyleDefault.
 		Background(tcell.ColorSilver).
 		Foreground(tcell.ColorRed))
-	window.keybar.SetMarkup("[%AQ%N] Quit")
 
 	window.status = views.NewSimpleStyledTextBar()
 	window.status.SetStyle(tcell.StyleDefault.
