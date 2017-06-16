@@ -76,6 +76,7 @@ func (a *CellView) Draw() {
 		ey = vy
 	}
 
+	cx, cy, en, sh := a.model.GetCursor()
 	for y := 0; y < ey; y++ {
 		for x := 0; x < ex; x++ {
 			ch, style, comb, wid := model.GetCell(x, y)
@@ -83,7 +84,6 @@ func (a *CellView) Draw() {
 				ch = ' '
 				style = a.style
 			}
-			cx, cy, en, sh := a.model.GetCursor()
 			if en && x == cx && y == cy && sh {
 				style = style.Reverse(true)
 			}
