@@ -69,14 +69,13 @@ type tScreen struct {
 	w         int
 	fini      bool
 	cells     CellBuffer
-	in        *os.File
-	out       *os.File
+	in        io.Reader
+	out       io.Writer
 	curstyle  Style
 	style     Style
 	evch      chan Event
 	sigwinch  chan os.Signal
 	quit      chan struct{}
-	indoneq   chan struct{}
 	keyexist  map[Key]bool
 	keycodes  map[string]*tKeyCode
 	cx        int
@@ -104,7 +103,6 @@ type tScreen struct {
 
 func (t *tScreen) Init() error {
 	t.evch = make(chan Event, 10)
-	t.indoneq = make(chan struct{})
 	t.charset = "UTF-8"
 
 	t.charset = getCharset()
@@ -1158,7 +1156,7 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 	return true, false
 }
 
-func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
+func (t *tScreen) scanInput(buf *bytes.Buffer) {
 
 	t.Lock()
 	defer t.Unlock()
@@ -1201,22 +1199,17 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			}
 		}
 
-		if partials == 0 || expire {
-			if b[0] == '\x1b' {
-				if len(b) == 1 {
-					ev := NewEventKey(KeyEsc, 0, ModNone)
-					t.PostEvent(ev)
-					t.escaped = false
-				} else {
-					t.escaped = true
-				}
-				buf.ReadByte()
-				continue
+		// Handle Alt keys
+		if b[0] == '\x1b' {
+			if len(b) == 1 {
+				ev := NewEventKey(KeyEsc, 0, ModNone)
+				t.PostEvent(ev)
+				t.escaped = false
+			} else {
+				t.escaped = true
 			}
-			// Nothing was going to match, or we timed out
-			// waiting for more data -- just deliver the characters
-			// to the app & let them sort it out.  Possibly we
-			// should only do this for control characters like ESC.
+			buf.ReadByte()
+
 			by, _ := buf.ReadByte()
 			mod := ModNone
 			if t.escaped {
@@ -1241,7 +1234,6 @@ func (t *tScreen) inputLoop() {
 	for {
 		select {
 		case <-t.quit:
-			close(t.indoneq)
 			return
 		case <-t.sigwinch:
 			t.Lock()
@@ -1261,17 +1253,16 @@ func (t *tScreen) inputLoop() {
 			// time to give up on it.  Even at 300 baud it takes
 			// less than 0.5 ms to transmit a whole byte.
 			if buf.Len() > 0 {
-				t.scanInput(buf, true)
+				t.scanInput(buf)
 			}
 			continue
 		case nil:
 		default:
-			close(t.indoneq)
 			return
 		}
 		buf.Write(chunk[:n])
 		// Now we need to parse the input buffer for events
-		t.scanInput(buf, false)
+		t.scanInput(buf)
 	}
 }
 

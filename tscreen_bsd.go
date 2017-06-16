@@ -1,4 +1,4 @@
-// +build darwin freebsd netbsd openbsd dragonfly
+// +build freebsd netbsd openbsd dragonfly
 
 // Copyright 2015 The TCell Authors
 //
@@ -42,7 +42,7 @@ func (t *tScreen) termioInit() error {
 
 	tios = uintptr(unsafe.Pointer(t.tiosp))
 	ioc = uintptr(syscall.TIOCGETA)
-	fd = uintptr(t.out.Fd())
+	fd = uintptr(t.out.(*os.File).Fd())
 	if _, _, e1 := syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0); e1 != 0 {
 		e = e1
 		goto failed
@@ -61,13 +61,9 @@ func (t *tScreen) termioInit() error {
 	newtios.Cflag &^= syscall.CSIZE | syscall.PARENB
 	newtios.Cflag |= syscall.CS8
 
-	// We wake up at the earliest of 100 msec or when data is received.
-	// We need to wake up frequently to permit us to exit cleanly and
-	// close file descriptors on systems like Darwin, where close does
-	// cause a wakeup.  (Probably we could reasonably increase this to
-	// something like 1 sec or 500 msec.)
-	newtios.Cc[syscall.VMIN] = 0
-	newtios.Cc[syscall.VTIME] = 1
+	// We wake up only when at least 1 byte has arrived
+	newtios.Cc[syscall.VMIN] = 1
+	newtios.Cc[syscall.VTIME] = 0
 	tios = uintptr(unsafe.Pointer(&newtios))
 
 	ioc = uintptr(syscall.TIOCSETA)
@@ -86,10 +82,10 @@ func (t *tScreen) termioInit() error {
 
 failed:
 	if t.in != nil {
-		t.in.Close()
+		t.in.(*os.File).Close()
 	}
 	if t.out != nil {
-		t.out.Close()
+		t.out.(*os.File).Close()
 	}
 	return e
 }
@@ -98,23 +94,21 @@ func (t *tScreen) termioFini() {
 
 	signal.Stop(t.sigwinch)
 
-	<-t.indoneq
-
 	if t.out != nil {
-		fd := uintptr(t.out.Fd())
+		fd := uintptr(t.out.(*os.File).Fd())
 		ioc := uintptr(syscall.TIOCSETAF)
 		tios := uintptr(unsafe.Pointer(t.tiosp))
 		syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0)
-		t.out.Close()
+		t.out.(*os.File).Close()
 	}
 	if t.in != nil {
-		t.in.Close()
+		t.in.(*os.File).Close()
 	}
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {
 
-	fd := uintptr(t.out.Fd())
+	fd := uintptr(t.out.(*os.File).Fd())
 	dim := [4]uint16{}
 	dimp := uintptr(unsafe.Pointer(&dim))
 	ioc := uintptr(syscall.TIOCGWINSZ)
