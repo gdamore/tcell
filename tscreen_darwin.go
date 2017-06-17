@@ -1,4 +1,4 @@
-// +build linux
+// +build darwin freebsd netbsd openbsd dragonfly
 
 // Copyright 2015 The TCell Authors
 //
@@ -17,10 +17,11 @@
 package tcell
 
 import (
-	"os"
 	"os/signal"
 	"syscall"
 	"unsafe"
+
+	"github.com/npat-efault/poller"
 )
 
 type termiosPrivate syscall.Termios
@@ -33,23 +34,23 @@ func (t *tScreen) termioInit() error {
 	var ioc uintptr
 	t.tiosp = &termiosPrivate{}
 
-	if t.in, e = os.OpenFile("/dev/tty", os.O_RDONLY, 0); e != nil {
+	if t.in, e = poller.Open("/dev/tty", poller.O_RO); e != nil {
 		goto failed
 	}
-	if t.out, e = os.OpenFile("/dev/tty", os.O_WRONLY, 0); e != nil {
+	if t.out, e = poller.Open("/dev/tty", poller.O_WO); e != nil {
 		goto failed
 	}
 
 	tios = uintptr(unsafe.Pointer(t.tiosp))
-	ioc = uintptr(syscall.TCGETS)
-	fd = uintptr(t.out.(*os.File).Fd())
+	ioc = uintptr(syscall.TIOCGETA)
+	fd = uintptr(t.out.(*poller.FD).Sysfd())
 	if _, _, e1 := syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0); e1 != 0 {
 		e = e1
 		goto failed
 	}
 
-	// On this platform, the baud rate is stored
-	// directly as an integer in termios.c_ospeed.
+	// On this platform (FreeBSD and family), the baud rate is stored
+	// directly as an integer in termios.c_ospeed.  No bitmasking required.
 	t.baud = int(t.tiosp.Ospeed)
 	newtios = *t.tiosp
 	newtios.Iflag &^= syscall.IGNBRK | syscall.BRKINT | syscall.PARMRK |
@@ -66,9 +67,7 @@ func (t *tScreen) termioInit() error {
 	newtios.Cc[syscall.VTIME] = 0
 	tios = uintptr(unsafe.Pointer(&newtios))
 
-	// Well this kind of sucks, because we don't have TCSETSF, but only
-	// TCSETS.  This can leave some output unflushed.
-	ioc = uintptr(syscall.TCSETS)
+	ioc = uintptr(syscall.TIOCSETA)
 	if _, _, e1 := syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0); e1 != 0 {
 		e = e1
 		goto failed
@@ -84,10 +83,10 @@ func (t *tScreen) termioInit() error {
 
 failed:
 	if t.in != nil {
-		t.in.(*os.File).Close()
+		t.in.(*poller.FD).Close()
 	}
 	if t.out != nil {
-		t.out.(*os.File).Close()
+		t.out.(*poller.FD).Close()
 	}
 	return e
 }
@@ -97,21 +96,20 @@ func (t *tScreen) termioFini() {
 	signal.Stop(t.sigwinch)
 
 	if t.out != nil {
-		fd := uintptr(t.out.(*os.File).Fd())
-		// XXX: We'd really rather do TCSETSF here!
-		ioc := uintptr(syscall.TCSETS)
+		fd := uintptr(t.out.(*poller.FD).Sysfd())
+		ioc := uintptr(syscall.TIOCSETAF)
 		tios := uintptr(unsafe.Pointer(t.tiosp))
 		syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0)
-		t.out.(*os.File).Close()
+		t.out.(*poller.FD).Close()
 	}
 	if t.in != nil {
-		t.in.(*os.File).Close()
+		t.in.(*poller.FD).Close()
 	}
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {
 
-	fd := uintptr(t.out.(*os.File).Fd())
+	fd := uintptr(t.out.(*poller.FD).Sysfd())
 	dim := [4]uint16{}
 	dimp := uintptr(unsafe.Pointer(&dim))
 	ioc := uintptr(syscall.TIOCGWINSZ)

@@ -72,14 +72,14 @@ type tScreen struct {
 	w           int
 	fini        bool
 	cells       CellBuffer
-	in          *os.File
-	out         *os.File
+	in          io.Reader
+	out         io.Writer
 	curstyle    Style
 	style       Style
 	evch        chan Event
 	sigwinch    chan os.Signal
 	quit        chan struct{}
-	indoneq     chan struct{}
+	inputchan   chan InputPacket
 	keyexist    map[Key]bool
 	keycodes    map[string]*tKeyCode
 	cx          int
@@ -106,9 +106,16 @@ type tScreen struct {
 	sync.Mutex
 }
 
+// An InputPacket represents the data that the terminal sends us when
+// there is an event.
+type InputPacket struct {
+	n     int
+	e     error
+	chunk []byte
+}
+
 func (t *tScreen) Init() error {
 	t.evch = make(chan Event, 10)
-	t.indoneq = make(chan struct{})
 	t.charset = "UTF-8"
 
 	t.charset = getCharset()
@@ -1251,7 +1258,7 @@ func (t *tScreen) parseBracketedPaste(buf *bytes.Buffer) (bool, bool) {
 	return false, false
 }
 
-func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
+func (t *tScreen) scanInput(buf *bytes.Buffer) {
 
 	t.Lock()
 	defer t.Unlock()
@@ -1308,22 +1315,16 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			}
 		}
 
-		if partials == 0 || expire {
-			// Nothing was going to match, or we timed out
-			// waiting for more data -- just deliver the characters
-			// to the app & let them sort it out.  Possibly we
-			// should only do this for control characters like ESC.
-			if b[0] == '\x1b' {
-				if len(b) == 1 {
-					ev := NewEventKey(KeyEsc, 0, ModNone)
-					t.PostEvent(ev)
-					t.escaped = false
-				} else {
-					t.escaped = true
-				}
-				buf.ReadByte()
-				continue
+		// Handle Alt keys
+		if b[0] == '\x1b' {
+			if len(b) == 1 {
+				ev := NewEventKey(KeyEsc, 0, ModNone)
+				t.PostEvent(ev)
+				t.escaped = false
+			} else {
+				t.escaped = true
 			}
+			buf.ReadByte()
 
 			by, _ := buf.ReadByte()
 			mod := ModNone
@@ -1343,13 +1344,25 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 }
 
 func (t *tScreen) inputLoop() {
+	t.inputchan = make(chan InputPacket)
 	buf := &bytes.Buffer{}
 
-	chunk := make([]byte, 128)
+	go func() {
+		chunk := make([]byte, 128)
+		for {
+			n, e := t.in.Read(chunk)
+			t.inputchan <- InputPacket{n, e, chunk}
+
+			if e != nil && e != io.EOF {
+				close(t.inputchan)
+				return
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-t.quit:
-			close(t.indoneq)
 			return
 		case <-t.sigwinch:
 			t.Lock()
@@ -1360,26 +1373,28 @@ func (t *tScreen) inputLoop() {
 			t.draw()
 			t.Unlock()
 			continue
-		default:
-		}
-		n, e := t.in.Read(chunk)
-		switch e {
-		case io.EOF:
-			// If we timeout waiting for more bytes, then it's
-			// time to give up on it.  Even at 300 baud it takes
-			// less than 0.5 ms to transmit a whole byte.
-			if buf.Len() > 0 {
-				t.scanInput(buf, true)
+		case in, ok := <-t.inputchan:
+			if !ok {
+				return
 			}
-			continue
-		case nil:
-		default:
-			close(t.indoneq)
-			return
+			n, e, chunk := in.n, in.e, in.chunk
+			switch e {
+			case io.EOF:
+				// If we timeout waiting for more bytes, then it's
+				// time to give up on it.  Even at 300 baud it takes
+				// less than 0.5 ms to transmit a whole byte.
+				if buf.Len() > 0 {
+					t.scanInput(buf)
+				}
+				continue
+			case nil:
+			default:
+				return
+			}
+			buf.Write(chunk[:n])
+			// Now we need to parse the input buffer for events
+			t.scanInput(buf)
 		}
-		buf.Write(chunk[:n])
-		// Now we need to parse the input buffer for events
-		t.scanInput(buf, false)
 	}
 }
 
