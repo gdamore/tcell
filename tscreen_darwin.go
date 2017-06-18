@@ -21,7 +21,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/npat-efault/poller"
+	"github.com/zyedidia/poller"
 )
 
 type termiosPrivate syscall.Termios
