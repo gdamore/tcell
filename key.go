@@ -336,6 +336,8 @@ const (
 	KeyCenter
 	KeyPgUp
 	KeyPgDn
+	KeyCtrlPgUp
+	KeyCtrlPgDn
 	KeyHome
 	KeyEnd
 	KeyInsert

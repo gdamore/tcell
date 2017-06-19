@@ -391,6 +391,8 @@ func (t *tScreen) prepareKeys() {
 		t.prepareKey(KeyCtrlShiftDown, "\x1b[1;6B")
 		t.prepareKey(KeyCtrlShiftLeft, "\x1b[1;6D")
 		t.prepareKey(KeyCtrlShiftRight, "\x1b[1;6C")
+		t.prepareKeyMod(KeyCtrlPgUp, ModCtrl, "\x1b[5;5~")
+		t.prepareKeyMod(KeyCtrlPgDn, ModCtrl, "\x1b[6;5~")
 	}
 
 outer:
