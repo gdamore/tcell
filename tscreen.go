@@ -737,6 +737,12 @@ func (t *tScreen) hideCursor() {
 }
 
 func (t *tScreen) draw() {
+	// Buffer all output instead of sending it directly to the terminal
+	// We'll send it when the draw is over
+	buf := &bytes.Buffer{}
+	out := t.out
+	t.out = buf
+
 	// clobber cursor position, because we're gonna change it all
 	t.cx = -1
 	t.cy = -1
@@ -765,6 +771,11 @@ func (t *tScreen) draw() {
 
 	// restore the cursor
 	t.showCursor()
+
+	// Send everything to the terminal
+	t.out = out
+	io.WriteString(t.out, buf.String())
+
 }
 
 func (t *tScreen) EnableMouse() {
