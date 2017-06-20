@@ -76,6 +76,7 @@ type tScreen struct {
 	evch      chan Event
 	sigwinch  chan os.Signal
 	quit      chan struct{}
+	inputchan chan InputPacket
 	keyexist  map[Key]bool
 	keycodes  map[string]*tKeyCode
 	cx        int
@@ -99,6 +100,14 @@ type tScreen struct {
 	buttondn  bool
 
 	sync.Mutex
+}
+
+// An InputPacket represents the data that the terminal sends us when
+// there is an event.
+type InputPacket struct {
+	n     int
+	e     error
+	chunk []byte
 }
 
 func (t *tScreen) Init() error {
@@ -1228,9 +1237,22 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 }
 
 func (t *tScreen) inputLoop() {
+	t.inputchan = make(chan InputPacket)
 	buf := &bytes.Buffer{}
 
-	chunk := make([]byte, 128)
+	go func() {
+		chunk := make([]byte, 128)
+		for {
+			n, e := t.in.Read(chunk)
+			t.inputchan <- InputPacket{n, e, chunk}
+
+			if e != nil && e != io.EOF {
+				close(t.inputchan)
+				return
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-t.quit:
@@ -1244,25 +1266,28 @@ func (t *tScreen) inputLoop() {
 			t.draw()
 			t.Unlock()
 			continue
-		default:
-		}
-		n, e := t.in.Read(chunk)
-		switch e {
-		case io.EOF:
-			// If we timeout waiting for more bytes, then it's
-			// time to give up on it.  Even at 300 baud it takes
-			// less than 0.5 ms to transmit a whole byte.
-			if buf.Len() > 0 {
-				t.scanInput(buf)
+		case in, ok := <-t.inputchan:
+			if !ok {
+				return
 			}
-			continue
-		case nil:
-		default:
-			return
+			n, e, chunk := in.n, in.e, in.chunk
+			switch e {
+			case io.EOF:
+				// If we timeout waiting for more bytes, then it's
+				// time to give up on it.  Even at 300 baud it takes
+				// less than 0.5 ms to transmit a whole byte.
+				if buf.Len() > 0 {
+					t.scanInput(buf)
+				}
+				continue
+			case nil:
+			default:
+				return
+			}
+			buf.Write(chunk[:n])
+			// Now we need to parse the input buffer for events
+			t.scanInput(buf)
 		}
-		buf.Write(chunk[:n])
-		// Now we need to parse the input buffer for events
-		t.scanInput(buf)
 	}
 }
 
