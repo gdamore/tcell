@@ -435,7 +435,8 @@ const (
 	ColorSlateGrey      = ColorSlateGray
 )
 
-var colorValues = map[Color]int32{
+// ColorValues maps color constants to their RGB values.
+var ColorValues = map[Color]int32{
 	ColorBlack:                0x000000,
 	ColorMaroon:               0x800000,
 	ColorGreen:                0x008000,
@@ -817,7 +818,9 @@ var colorValues = map[Color]int32{
 	ColorYellowGreen:          0x9ACD32,
 }
 
-var colorNames = map[string]Color{
+// ColorNames holds the written names of colors. Useful to present a list of
+// recognized named colors.
+var ColorNames = map[string]Color{
 	"black":                ColorBlack,
 	"maroon":               ColorMaroon,
 	"green":                ColorGreen,
@@ -973,7 +976,7 @@ func (c Color) Hex() int32 {
 	if c&ColorIsRGB != 0 {
 		return (int32(c) & 0xffffff)
 	}
-	if v, ok := colorValues[c]; ok {
+	if v, ok := ColorValues[c]; ok {
 		return v
 	}
 	return -1
@@ -1004,7 +1007,7 @@ func NewHexColor(v int32) Color {
 // GetColor creates a Color from a color name (W3C name). A hex value may
 // be supplied as a string in the format "#ffffff".
 func GetColor(name string) Color {
-	if c, ok := colorNames[name]; ok {
+	if c, ok := ColorNames[name]; ok {
 		return c
 	}
 	if len(name) == 7 && name[0] == '#' {
