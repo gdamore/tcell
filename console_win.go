@@ -21,11 +21,14 @@ import (
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
+	"errors"
 )
 
 type cScreen struct {
 	in    syscall.Handle
 	out   syscall.Handle
+	cancelflag syscall.Handle
+	scandone chan bool
 	evch  chan Event
 	quit  chan struct{}
 	curx  int
@@ -95,11 +98,11 @@ var k32 = syscall.NewLazyDLL("kernel32.dll")
 // Note that Windows appends some functions with W to indicate that wide
 // characters (Unicode) are in use.  The documentation refers to them
 // without this suffix, as the resolution is made via preprocessor.
-// We have to bring in the kernel32.dll directly, so we can get access to some
-// system calls that the core Go API lacks.
-
 var (
 	procReadConsoleInput           = k32.NewProc("ReadConsoleInputW")
+	procWaitForMultipleObjects     = k32.NewProc("WaitForMultipleObjects")
+	procCreateEvent                = k32.NewProc("CreateEventW")
+	procSetEvent                   = k32.NewProc("SetEvent")
 	procGetConsoleCursorInfo       = k32.NewProc("GetConsoleCursorInfo")
 	procSetConsoleCursorInfo       = k32.NewProc("SetConsoleCursorInfo")
 	procSetConsoleCursorPosition   = k32.NewProc("SetConsoleCursorPosition")
@@ -121,9 +124,9 @@ func NewConsoleScreen() (Screen, error) {
 }
 
 func (s *cScreen) Init() error {
-
 	s.evch = make(chan Event, 10)
 	s.quit = make(chan struct{})
+	s.scandone = make(chan bool)
 
 	in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0)
 	if e != nil {
@@ -136,6 +139,16 @@ func (s *cScreen) Init() error {
 		return e
 	}
 	s.out = out
+
+	cf, _, e := procCreateEvent.Call(
+		uintptr(0),
+		uintptr(1),
+		uintptr(0),
+		uintptr(0))
+	if cf == uintptr(0) {
+		return e
+	}
+	s.cancelflag = syscall.Handle(cf)
 
 	s.Lock()
 
@@ -191,6 +204,10 @@ func (s *cScreen) Fini() {
 		uintptr(s.mapStyle(StyleDefault)))
 
 	close(s.quit)
+	procSetEvent.Call(uintptr(s.cancelflag))
+	// Block until scanInput returns; this prevents a race condition on Win 8+
+	// which causes syscall.Close to block until another keypress is read.
+	<-s.scandone
 	syscall.Close(s.in)
 	syscall.Close(s.out)
 }
@@ -496,79 +513,95 @@ func mrec2btns(mbtns, flags uint32) ButtonMask {
 }
 
 func (s *cScreen) getConsoleInput() error {
-	rec := &inputRecord{}
-	var nrec int32
-	rv, _, er := procReadConsoleInput.Call(
-		uintptr(s.in),
-		uintptr(unsafe.Pointer(rec)),
-		uintptr(1),
-		uintptr(unsafe.Pointer(&nrec)))
-	if rv == 0 {
-		return er
-	}
-	if nrec != 1 {
-		return nil
-	}
-	switch rec.typ {
-	case keyEvent:
-		krec := &keyRecord{}
-		krec.isdown = geti32(rec.data[0:])
-		krec.repeat = getu16(rec.data[4:])
-		krec.kcode = getu16(rec.data[6:])
-		krec.scode = getu16(rec.data[8:])
-		krec.ch = getu16(rec.data[10:])
-		krec.mod = getu32(rec.data[12:])
+	waitObjects := []syscall.Handle{s.in, s.cancelflag}
 
-		if krec.isdown == 0 || krec.repeat < 1 {
-			// its a key release event, ignore it
+	rv, _, er := procWaitForMultipleObjects.Call(
+		uintptr(len(waitObjects)),
+		uintptr(unsafe.Pointer(&waitObjects[0])),
+		uintptr(0),
+		^uintptr(0))
+	switch rv {
+	case 0: // s.in
+		rec := &inputRecord{}
+		var nrec int32
+		rv, _, er := procReadConsoleInput.Call(
+			uintptr(s.in),
+			uintptr(unsafe.Pointer(rec)),
+			uintptr(1),
+			uintptr(unsafe.Pointer(&nrec)))
+		if rv == 0 {
+			return er
+		}
+		if nrec != 1 {
 			return nil
 		}
-		if krec.ch != 0 {
-			// synthesized key code
+		switch rec.typ {
+		case keyEvent:
+			krec := &keyRecord{}
+			krec.isdown = geti32(rec.data[0:])
+			krec.repeat = getu16(rec.data[4:])
+			krec.kcode = getu16(rec.data[6:])
+			krec.scode = getu16(rec.data[8:])
+			krec.ch = getu16(rec.data[10:])
+			krec.mod = getu32(rec.data[12:])
+
+			if krec.isdown == 0 || krec.repeat < 1 {
+				// its a key release event, ignore it
+				return nil
+			}
+			if krec.ch != 0 {
+				// synthesized key code
+				for krec.repeat > 0 {
+					s.PostEvent(NewEventKey(KeyRune, rune(krec.ch),
+						mod2mask(krec.mod)))
+					krec.repeat--
+				}
+				return nil
+			}
+			key := KeyNUL // impossible on Windows
+			ok := false
+			if key, ok = vkKeys[krec.kcode]; !ok {
+				return nil
+			}
 			for krec.repeat > 0 {
-				s.PostEvent(NewEventKey(KeyRune, rune(krec.ch),
+				s.PostEvent(NewEventKey(key, rune(krec.ch),
 					mod2mask(krec.mod)))
 				krec.repeat--
 			}
-			return nil
-		}
-		key := KeyNUL // impossible on Windows
-		ok := false
-		if key, ok = vkKeys[krec.kcode]; !ok {
-			return nil
-		}
-		for krec.repeat > 0 {
-			s.PostEvent(NewEventKey(key, rune(krec.ch),
-				mod2mask(krec.mod)))
-			krec.repeat--
-		}
 
-	case mouseEvent:
-		var mrec mouseRecord
-		mrec.x = geti16(rec.data[0:])
-		mrec.y = geti16(rec.data[2:])
-		mrec.btns = getu32(rec.data[4:])
-		mrec.mod = getu32(rec.data[8:])
-		mrec.flags = getu32(rec.data[12:])
-		btns := mrec2btns(mrec.btns, mrec.flags)
-		// we ignore double click, events are delivered normally
-		s.PostEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns,
-			mod2mask(mrec.mod)))
+		case mouseEvent:
+			var mrec mouseRecord
+			mrec.x = geti16(rec.data[0:])
+			mrec.y = geti16(rec.data[2:])
+			mrec.btns = getu32(rec.data[4:])
+			mrec.mod = getu32(rec.data[8:])
+			mrec.flags = getu32(rec.data[12:])
+			btns := mrec2btns(mrec.btns, mrec.flags)
+			// we ignore double click, events are delivered normally
+			s.PostEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns,
+				mod2mask(mrec.mod)))
 
-	case resizeEvent:
-		var rrec resizeRecord
-		rrec.x = geti16(rec.data[0:])
-		rrec.y = geti16(rec.data[2:])
-		s.PostEvent(NewEventResize(int(rrec.x), int(rrec.y)))
+		case resizeEvent:
+			var rrec resizeRecord
+			rrec.x = geti16(rec.data[0:])
+			rrec.y = geti16(rec.data[2:])
+			s.PostEvent(NewEventResize(int(rrec.x), int(rrec.y)))
 
-	default:
+		default:
+		}
+		case 1: // s.cancelFlag	
+			return errors.New("cancelled")
+		default:
+			return er
 	}
+
 	return nil
 }
 
 func (s *cScreen) scanInput() {
 	for {
 		if e := s.getConsoleInput(); e != nil {
+			s.scandone <- true
 			return
 		}
 	}
