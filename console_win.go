@@ -116,6 +116,11 @@ var (
 	procSetConsoleTextAttribute    = k32.NewProc("SetConsoleTextAttribute")
 )
 
+const (
+	w32Infinite = ^uintptr(0)
+	w32WaitObject0 = uintptr(0)
+)
+
 // NewConsoleScreen returns a Screen for the Windows console associated
 // with the current process.  The Screen makes use of the Windows Console
 // API to display content and read events.
@@ -513,15 +518,23 @@ func mrec2btns(mbtns, flags uint32) ButtonMask {
 }
 
 func (s *cScreen) getConsoleInput() error {
-	waitObjects := []syscall.Handle{s.in, s.cancelflag}
+	// cancelFlag comes first as WaitForMultipleObjects returns the lowest index
+	// in the event that both events are signalled.
+	waitObjects := []syscall.Handle{s.cancelflag, s.in}
+	// As arrays are contiguous in memory, a pointer to the first object is the
+	// same as a pointer to the array itself.
+	pWaitObjects := unsafe.Pointer(&waitObjects[0])
 
 	rv, _, er := procWaitForMultipleObjects.Call(
 		uintptr(len(waitObjects)),
-		uintptr(unsafe.Pointer(&waitObjects[0])),
+		uintptr(pWaitObjects),
 		uintptr(0),
-		^uintptr(0))
+		w32Infinite)
+	// WaitForMultipleObjects returns WAIT_OBJECT_0 + the index. 
 	switch rv {
-	case 0: // s.in
+	case w32WaitObject0: // s.cancelFlag
+		return errors.New("cancelled")
+	case w32WaitObject0 + 1: // s.in
 		rec := &inputRecord{}
 		var nrec int32
 		rv, _, er := procReadConsoleInput.Call(
@@ -589,10 +602,8 @@ func (s *cScreen) getConsoleInput() error {
 
 		default:
 		}
-		case 1: // s.cancelFlag	
-			return errors.New("cancelled")
-		default:
-			return er
+	default:
+		return er
 	}
 
 	return nil
@@ -633,7 +644,6 @@ var vgaColors = map[Color]uint16{
 
 // Windows uses RGB signals
 func mapColor2RGB(c Color) uint16 {
-
 	winLock.Lock()
 	if v, ok := winColors[c]; ok {
 		c = v
@@ -687,7 +697,6 @@ func (s *cScreen) mapStyle(style Style) uint16 {
 }
 
 func (s *cScreen) SetCell(x, y int, style Style, ch ...rune) {
-
 	if len(ch) > 0 {
 		s.SetContent(x, y, ch[0], ch[1:], style)
 	} else {
@@ -740,7 +749,6 @@ func (s *cScreen) draw() {
 
 	for y := 0; y < int(s.h); y++ {
 		for x := 0; x < int(s.w); x++ {
-
 			mainc, combc, style, width := s.cells.GetContent(x, y)
 			dirty := s.cells.Dirty(x, y)
 			if style == StyleDefault {
@@ -844,7 +852,6 @@ func (s *cScreen) setBufferSize(x, y int) {
 }
 
 func (s *cScreen) Size() (int, int) {
-
 	s.Lock()
 	w, h := s.w, s.h
 	s.Unlock()
@@ -853,7 +860,6 @@ func (s *cScreen) Size() (int, int) {
 }
 
 func (s *cScreen) resize() {
-
 	info := consoleInfo{}
 	s.getConsoleInfo(&info)
 
@@ -980,7 +986,6 @@ func (s *cScreen) HasMouse() bool {
 func (s *cScreen) Resize(int, int, int, int) {}
 
 func (s *cScreen) HasKey(k Key) bool {
-
 	// Microsoft has codes for some keys, but they are unusual,
 	// so we don't include them.  We include all the typical
 	// 101, 105 key layout keys.
