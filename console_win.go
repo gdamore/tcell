@@ -28,7 +28,7 @@ type cScreen struct {
 	in    syscall.Handle
 	out   syscall.Handle
 	cancelflag syscall.Handle
-	scandone chan bool
+	scandone chan struct{}
 	evch  chan Event
 	quit  chan struct{}
 	curx  int
@@ -131,7 +131,7 @@ func NewConsoleScreen() (Screen, error) {
 func (s *cScreen) Init() error {
 	s.evch = make(chan Event, 10)
 	s.quit = make(chan struct{})
-	s.scandone = make(chan bool)
+	s.scandone = make(chan struct{})
 
 	in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0)
 	if e != nil {
@@ -612,7 +612,7 @@ func (s *cScreen) getConsoleInput() error {
 func (s *cScreen) scanInput() {
 	for {
 		if e := s.getConsoleInput(); e != nil {
-			s.scandone <- true
+			close(s.scandone)
 			return
 		}
 	}
