@@ -79,6 +79,7 @@ type tScreen struct {
 	evch        chan Event
 	sigwinch    chan os.Signal
 	quit        chan struct{}
+	indoneq     chan struct{}
 	inputchan   chan InputPacket
 	keyexist    map[Key]bool
 	keycodes    map[string]*tKeyCode
@@ -116,6 +117,7 @@ type InputPacket struct {
 
 func (t *tScreen) Init() error {
 	t.evch = make(chan Event, 10)
+	t.indoneq = make(chan struct{})
 	t.charset = "UTF-8"
 
 	t.charset = getCharset()
@@ -1379,6 +1381,7 @@ func (t *tScreen) inputLoop() {
 	for {
 		select {
 		case <-t.quit:
+			close(t.indoneq)
 			return
 		case <-t.sigwinch:
 			t.Lock()
@@ -1405,6 +1408,7 @@ func (t *tScreen) inputLoop() {
 				continue
 			case nil:
 			default:
+				close(t.indoneq)
 				return
 			}
 			buf.Write(chunk[:n])

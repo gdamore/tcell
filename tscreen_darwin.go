@@ -95,6 +95,8 @@ func (t *tScreen) termioFini() {
 
 	signal.Stop(t.sigwinch)
 
+	<-t.indoneq
+
 	if t.out != nil {
 		fd := uintptr(t.out.(*poller.FD).Sysfd())
 		ioc := uintptr(syscall.TIOCSETAF)

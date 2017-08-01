@@ -182,6 +182,8 @@ func (t *tScreen) termioFini() {
 
 	signal.Stop(t.sigwinch)
 
+	<-t.indoneq
+
 	if t.out != nil {
 		fd := C.int(t.out.Fd())
 		C.tcsetattr(fd, C.TCSANOW|C.TCSAFLUSH, &t.tiosp.tios)

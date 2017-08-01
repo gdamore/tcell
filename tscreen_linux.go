@@ -96,6 +96,8 @@ func (t *tScreen) termioFini() {
 
 	signal.Stop(t.sigwinch)
 
+	<-t.indoneq
+
 	if t.out != nil {
 		fd := uintptr(t.out.(*os.File).Fd())
 		// XXX: We'd really rather do TCSETSF here!
