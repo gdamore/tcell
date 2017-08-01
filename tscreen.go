@@ -1365,6 +1365,7 @@ func (t *tScreen) inputLoop() {
 		for {
 			n, e := t.in.Read(chunk)
 			t.inputchan <- InputPacket{n, e, chunk}
+			time.Sleep(10 * time.Millisecond)
 
 			if e != nil && e != io.EOF {
 				close(t.inputchan)
