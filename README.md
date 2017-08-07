@@ -230,8 +230,14 @@ and examine "physical" screen contents.
 ### Systems (Linux, FreeBSD, MacOS, Solaris, etc.)
 
 On POSIX systems, a POSIX termios implementation with /dev/tty is required.
-It also requires functional CGO to run.  As of this writing, CGO is available
-on all POSIX Go 1.5 platforms.
+On a small subset of these platforms (such as Solaris/illumos), we require
+cgo to run, in order to access termios.  (Note that Linux and BSD systems
+do not require CGO for most purposes.)
+
+(Note: CGO support is required if you wish to rebuild the terminal database
+from the system's native terminfo binary files.  This is because we use the
+system's native libterminfo to access that binary data.  We probably could
+eliminate that in the future by using a terminfo decompiler such as infocmp.)
 
 ### Windows
 
@@ -245,7 +251,7 @@ I haven't figured out how to cleanly resolve the dichotomy between cygwin
 style termios and the Windows Console API; it seems that perhaps nobody else
 has either.  If anyone has suggestions, let me know!  Really, if you're
 using a Windows application, you should use the native Windows console or a
-fully compatible consule implementation.  Hopefully the Windows 10 console
+fully compatible console implementation.  Hopefully the Windows 10 console
 is more functional in this regard.
 
 ### Plan9 and Native Client (Nacl)
