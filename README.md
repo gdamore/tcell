@@ -6,6 +6,8 @@
 [![Gitter](https://img.shields.io/badge/gitter-join-brightgreen.svg)](https://gitter.im/gdamore/tcell)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/gdamore/tcell)
 [![Go Report Card](http://goreportcard.com/badge/gdamore/tcell)](http://goreportcard.com/report/gdamore/tcell)
+[![codecov](https://codecov.io/gh/gdamore/tcell/branch/master/graph/badge.svg)](https://codecov.io/gh/gdamore/tcell)
+
 
 > _Tcell is a work in progress (Gamma).
 > Please use with caution; interfaces may change in before final release.
