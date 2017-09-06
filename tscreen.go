@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/text/transform"
@@ -76,6 +77,7 @@ type tScreen struct {
 	evch      chan Event
 	sigwinch  chan os.Signal
 	quit      chan struct{}
+	indoneq   chan struct{}
 	inputchan chan InputPacket
 	keyexist  map[Key]bool
 	keycodes  map[string]*tKeyCode
@@ -112,6 +114,7 @@ type InputPacket struct {
 
 func (t *tScreen) Init() error {
 	t.evch = make(chan Event, 10)
+	t.indoneq = make(chan struct{})
 	t.charset = "UTF-8"
 
 	t.charset = getCharset()
@@ -394,7 +397,6 @@ func (t *tScreen) Fini() {
 	t.clear = false
 	t.fini = true
 	t.Unlock()
-
 	if t.quit != nil {
 		close(t.quit)
 	}
@@ -674,6 +676,12 @@ func (t *tScreen) hideCursor() {
 }
 
 func (t *tScreen) draw() {
+	// Buffer all output instead of sending it directly to the terminal
+	// We'll send it when the draw is over
+	buf := &bytes.Buffer{}
+	out := t.out
+	t.out = buf
+
 	// clobber cursor position, because we're gonna change it all
 	t.cx = -1
 	t.cy = -1
@@ -702,6 +710,11 @@ func (t *tScreen) draw() {
 
 	// restore the cursor
 	t.showCursor()
+
+	// Send everything to the terminal
+	t.out = out
+	io.WriteString(t.out, buf.String())
+
 }
 
 func (t *tScreen) EnableMouse() {
@@ -1245,6 +1258,7 @@ func (t *tScreen) inputLoop() {
 		for {
 			n, e := t.in.Read(chunk)
 			t.inputchan <- InputPacket{n, e, chunk}
+			time.Sleep(10 * time.Millisecond)
 
 			if e != nil && e != io.EOF {
 				close(t.inputchan)
@@ -1256,6 +1270,7 @@ func (t *tScreen) inputLoop() {
 	for {
 		select {
 		case <-t.quit:
+			close(t.indoneq)
 			return
 		case <-t.sigwinch:
 			t.Lock()
@@ -1282,6 +1297,7 @@ func (t *tScreen) inputLoop() {
 				continue
 			case nil:
 			default:
+				close(t.indoneq)
 				return
 			}
 			buf.Write(chunk[:n])
