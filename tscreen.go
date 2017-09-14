@@ -1262,11 +1262,9 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 
 		partials := 0
 
-		brackPastePartial := false
 		if part, comp := t.parseBracketedPaste(buf); comp {
 			continue
 		} else if part {
-			brackPastePartial = true
 			partials++
 		}
 
@@ -1300,7 +1298,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 		}
 
 		// Handle Alt keys
-		if !brackPastePartial && b[0] == '\x1b' {
+		if b[0] == '\x1b' && len(b) == 2 {
 			if len(b) == 1 {
 				ev := NewEventKey(KeyEsc, 0, ModNone)
 				t.PostEvent(ev)
@@ -1336,7 +1334,7 @@ func (t *tScreen) inputLoop() {
 		for {
 			n, e := t.in.Read(chunk)
 			t.inputchan <- InputPacket{n, e, chunk}
-			time.Sleep(10 * time.Millisecond)
+			// time.Sleep(10 * time.Millisecond)
 
 			if e != nil && e != io.EOF {
 				close(t.inputchan)
