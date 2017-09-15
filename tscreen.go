@@ -1319,6 +1319,11 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 			continue
 		}
 
+		if partials == 0 {
+			buf.Reset()
+			return
+		}
+
 		// well we have some partial data, wait until we get
 		// some more
 		break
@@ -1334,7 +1339,7 @@ func (t *tScreen) inputLoop() {
 		for {
 			n, e := t.in.Read(chunk)
 			t.inputchan <- InputPacket{n, e, chunk}
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			if e != nil && e != io.EOF {
 				close(t.inputchan)
