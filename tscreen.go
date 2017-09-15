@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/text/transform"
@@ -69,14 +70,15 @@ type tScreen struct {
 	w         int
 	fini      bool
 	cells     CellBuffer
-	in        *os.File
-	out       *os.File
+	in        io.Reader
+	out       io.Writer
 	curstyle  Style
 	style     Style
 	evch      chan Event
 	sigwinch  chan os.Signal
 	quit      chan struct{}
 	indoneq   chan struct{}
+	inputchan chan InputPacket
 	keyexist  map[Key]bool
 	keycodes  map[string]*tKeyCode
 	cx        int
@@ -100,6 +102,14 @@ type tScreen struct {
 	buttondn  bool
 
 	sync.Mutex
+}
+
+// An InputPacket represents the data that the terminal sends us when
+// there is an event.
+type InputPacket struct {
+	n     int
+	e     error
+	chunk []byte
 }
 
 func (t *tScreen) Init() error {
@@ -387,7 +397,6 @@ func (t *tScreen) Fini() {
 	t.clear = false
 	t.fini = true
 	t.Unlock()
-
 	if t.quit != nil {
 		close(t.quit)
 	}
@@ -667,6 +676,12 @@ func (t *tScreen) hideCursor() {
 }
 
 func (t *tScreen) draw() {
+	// Buffer all output instead of sending it directly to the terminal
+	// We'll send it when the draw is over
+	buf := &bytes.Buffer{}
+	out := t.out
+	t.out = buf
+
 	// clobber cursor position, because we're gonna change it all
 	t.cx = -1
 	t.cy = -1
@@ -695,6 +710,11 @@ func (t *tScreen) draw() {
 
 	// restore the cursor
 	t.showCursor()
+
+	// Send everything to the terminal
+	t.out = out
+	io.WriteString(t.out, buf.String())
+
 }
 
 func (t *tScreen) EnableMouse() {
@@ -1158,7 +1178,7 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 	return true, false
 }
 
-func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
+func (t *tScreen) scanInput(buf *bytes.Buffer) {
 
 	t.Lock()
 	defer t.Unlock()
@@ -1201,22 +1221,17 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 			}
 		}
 
-		if partials == 0 || expire {
-			if b[0] == '\x1b' {
-				if len(b) == 1 {
-					ev := NewEventKey(KeyEsc, 0, ModNone)
-					t.PostEvent(ev)
-					t.escaped = false
-				} else {
-					t.escaped = true
-				}
-				buf.ReadByte()
-				continue
+		// Handle Alt keys
+		if b[0] == '\x1b' {
+			if len(b) == 1 {
+				ev := NewEventKey(KeyEsc, 0, ModNone)
+				t.PostEvent(ev)
+				t.escaped = false
+			} else {
+				t.escaped = true
 			}
-			// Nothing was going to match, or we timed out
-			// waiting for more data -- just deliver the characters
-			// to the app & let them sort it out.  Possibly we
-			// should only do this for control characters like ESC.
+			buf.ReadByte()
+
 			by, _ := buf.ReadByte()
 			mod := ModNone
 			if t.escaped {
@@ -1235,9 +1250,23 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 }
 
 func (t *tScreen) inputLoop() {
+	t.inputchan = make(chan InputPacket)
 	buf := &bytes.Buffer{}
 
-	chunk := make([]byte, 128)
+	go func() {
+		chunk := make([]byte, 128)
+		for {
+			n, e := t.in.Read(chunk)
+			t.inputchan <- InputPacket{n, e, chunk}
+			time.Sleep(10 * time.Millisecond)
+
+			if e != nil && e != io.EOF {
+				close(t.inputchan)
+				return
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-t.quit:
@@ -1252,26 +1281,29 @@ func (t *tScreen) inputLoop() {
 			t.draw()
 			t.Unlock()
 			continue
-		default:
-		}
-		n, e := t.in.Read(chunk)
-		switch e {
-		case io.EOF:
-			// If we timeout waiting for more bytes, then it's
-			// time to give up on it.  Even at 300 baud it takes
-			// less than 0.5 ms to transmit a whole byte.
-			if buf.Len() > 0 {
-				t.scanInput(buf, true)
+		case in, ok := <-t.inputchan:
+			if !ok {
+				return
 			}
-			continue
-		case nil:
-		default:
-			close(t.indoneq)
-			return
+			n, e, chunk := in.n, in.e, in.chunk
+			switch e {
+			case io.EOF:
+				// If we timeout waiting for more bytes, then it's
+				// time to give up on it.  Even at 300 baud it takes
+				// less than 0.5 ms to transmit a whole byte.
+				if buf.Len() > 0 {
+					t.scanInput(buf)
+				}
+				continue
+			case nil:
+			default:
+				close(t.indoneq)
+				return
+			}
+			buf.Write(chunk[:n])
+			// Now we need to parse the input buffer for events
+			t.scanInput(buf)
 		}
-		buf.Write(chunk[:n])
-		// Now we need to parse the input buffer for events
-		t.scanInput(buf, false)
 	}
 }
 
