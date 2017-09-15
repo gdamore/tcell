@@ -1319,7 +1319,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 			continue
 		}
 
-		if partials == 0 {
+		if partials == 0 || len(b) > 64 {
 			buf.Reset()
 			return
 		}
