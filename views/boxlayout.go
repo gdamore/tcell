@@ -291,11 +291,15 @@ func (b *BoxLayout) InsertWidget(index int, widget Widget, fill float64) {
 
 // RemoveWidget removes a Widget from the layout.
 func (b *BoxLayout) RemoveWidget(widget Widget) {
+	changed := false
 	for i := 0; i < len(b.cells); i++ {
 		if b.cells[i].widget == widget {
 			b.cells = append(b.cells[:i], b.cells[i+1:]...)
-			return
+			changed = true
 		}
+	}
+	if !changed {
+		return
 	}
 	b.changed = true
 	widget.Unwatch(b)
