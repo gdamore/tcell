@@ -1251,21 +1251,22 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 			buf.Reset()
 			return
 		}
-		if !bytes.Contains(b, []byte("\x1b")) && bytes.Contains(b, []byte("\r")) && utf8.RuneCount(b) > 1 {
-			ev := &EventPaste{t: time.Now(), text: string(bytes.Replace(b, []byte("\r"), []byte("\n"), -1))}
-			t.PostEvent(ev)
-			for i := 0; i < len(b); i++ {
-				buf.ReadByte()
-			}
-			continue
-		}
 
 		partials := 0
 
+		pastePartial := false
 		if part, comp := t.parseBracketedPaste(buf); comp {
 			continue
 		} else if part {
+			pastePartial = true
 			partials++
+		}
+
+		if !bytes.Contains(b, []byte("\x1b")) && utf8.RuneCount(b) > 1 {
+			ev := &EventPaste{t: time.Now(), text: string(bytes.Replace(b, []byte("\r"), []byte("\n"), -1))}
+			t.PostEvent(ev)
+			buf.Reset()
+			continue
 		}
 
 		if part, comp := t.parseRune(buf); comp {
@@ -1319,7 +1320,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 			continue
 		}
 
-		if partials == 0 || len(b) > 64 {
+		if partials == 0 || (!pastePartial && len(b) > 64) {
 			buf.Reset()
 			return
 		}
