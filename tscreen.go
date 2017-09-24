@@ -1,4 +1,4 @@
-// Copyright 2016 The TCell Authors
+// Copyright 2017 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/text/transform"
@@ -79,6 +80,9 @@ type tScreen struct {
 	indoneq   chan struct{}
 	keyexist  map[Key]bool
 	keycodes  map[string]*tKeyCode
+	keychan   chan []byte
+	keytimer  *time.Timer
+	keyexpire time.Time
 	cx        int
 	cy        int
 	mouse     []byte
@@ -105,6 +109,8 @@ type tScreen struct {
 func (t *tScreen) Init() error {
 	t.evch = make(chan Event, 10)
 	t.indoneq = make(chan struct{})
+	t.keychan = make(chan []byte, 10)
+	t.keytimer = time.NewTimer(time.Millisecond * 50)
 	t.charset = "UTF-8"
 
 	t.charset = getCharset()
@@ -164,6 +170,7 @@ func (t *tScreen) Init() error {
 	t.resize()
 	t.Unlock()
 
+	go t.mainLoop()
 	go t.inputLoop()
 
 	return nil
@@ -1234,10 +1241,8 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 	}
 }
 
-func (t *tScreen) inputLoop() {
+func (t *tScreen) mainLoop() {
 	buf := &bytes.Buffer{}
-
-	chunk := make([]byte, 128)
 	for {
 		select {
 		case <-t.quit:
@@ -1252,26 +1257,56 @@ func (t *tScreen) inputLoop() {
 			t.draw()
 			t.Unlock()
 			continue
-		default:
+		case <-t.keytimer.C:
+			// If the timer fired, and the current time
+			// is after the expiration of the escape sequence,
+			// then we assume the escape sequence reached it's
+			// conclusion, and process the chunk independently.
+			// This lets us detect conflicts such as a lone ESC.
+			if buf.Len() > 0 {
+				if time.Now().After(t.keyexpire) {
+					t.scanInput(buf, true)
+				}
+			}
+			if buf.Len() > 0 {
+				if !t.keytimer.Stop() {
+					select {
+					case <-t.keytimer.C:
+					default:
+					}
+				}
+				t.keytimer.Reset(time.Millisecond * 50)
+			}
+		case chunk := <-t.keychan:
+			buf.Write(chunk)
+			t.keyexpire = time.Now().Add(time.Millisecond * 50)
+			t.scanInput(buf, false)
+			if !t.keytimer.Stop() {
+				select {
+				case <-t.keytimer.C:
+				default:
+				}
+			}
+			if buf.Len() > 0 {
+				t.keytimer.Reset(time.Millisecond * 50)
+			}
 		}
+	}
+}
+
+func (t *tScreen) inputLoop() {
+
+	chunk := make([]byte, 128)
+	for {
 		n, e := t.in.Read(chunk)
 		switch e {
 		case io.EOF:
-			// If we timeout waiting for more bytes, then it's
-			// time to give up on it.  Even at 300 baud it takes
-			// less than 0.5 ms to transmit a whole byte.
-			if buf.Len() > 0 {
-				t.scanInput(buf, true)
-			}
-			continue
 		case nil:
 		default:
 			close(t.indoneq)
 			return
 		}
-		buf.Write(chunk[:n])
-		// Now we need to parse the input buffer for events
-		t.scanInput(buf, false)
+		t.keychan <- chunk[:n]
 	}
 }
 

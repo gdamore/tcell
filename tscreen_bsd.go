@@ -1,6 +1,6 @@
 // +build darwin freebsd netbsd openbsd dragonfly
 
-// Copyright 2015 The TCell Authors
+// Copyright 2017 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -61,13 +61,6 @@ func (t *tScreen) termioInit() error {
 	newtios.Cflag &^= syscall.CSIZE | syscall.PARENB
 	newtios.Cflag |= syscall.CS8
 
-	// We wake up at the earliest of 100 msec or when data is received.
-	// We need to wake up frequently to permit us to exit cleanly and
-	// close file descriptors on systems like Darwin, where close does
-	// cause a wakeup.  (Probably we could reasonably increase this to
-	// something like 1 sec or 500 msec.)
-	newtios.Cc[syscall.VMIN] = 0
-	newtios.Cc[syscall.VTIME] = 1
 	tios = uintptr(unsafe.Pointer(&newtios))
 
 	ioc = uintptr(syscall.TIOCSETA)

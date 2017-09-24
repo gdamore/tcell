@@ -1,6 +1,6 @@
 // +build solaris
 
-// Copyright 2015 The TCell Authors
+// Copyright 2017 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -152,13 +152,12 @@ func (t *tScreen) termioInit() error {
 	newtios.c_cflag &^= C.CSIZE | C.PARENB
 	newtios.c_cflag |= C.CS8
 
-	// We wake up at the earliest of 100 msec or when data is received.
-	// We need to wake up frequently to permit us to exit cleanly and
-	// close file descriptors on systems like Darwin, where close does
-	// cause a wakeup.  (Probably we could reasonably increase this to
-	// something like 1 sec or 500 msec.)
-	newtios.c_cc[C.VMIN] = 0
-	newtios.c_cc[C.VTIME] = 1
+	// This is setup for blocking reads.  In the past we attempted to
+	// use non-blocking reads, but now a separate input loop and timer
+	// copes with the problems we had on some systems (BSD/Darwin)
+	// where close hung forever.
+	newtios.Cc[syscall.VMIN] = 1
+	newtios.Cc[syscall.VTIME] = 0
 
 	if rv, e = C.tcsetattr(fd, C.TCSANOW|C.TCSAFLUSH, &newtios); rv != 0 {
 		goto failed
