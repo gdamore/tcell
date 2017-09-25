@@ -1303,7 +1303,7 @@ func (t *tScreen) inputLoop() {
 		case io.EOF:
 		case nil:
 		default:
-			close(t.indoneq)
+			t.PostEvent(NewEventError(e))
 			return
 		}
 		t.keychan <- chunk[:n]
