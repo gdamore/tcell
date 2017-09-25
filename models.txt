@@ -22,6 +22,7 @@ rxvt-unicode
 screen
 sun
 sun-color
+tmux-256color
 tvi910
 tvi912
 tvi921
@@ -44,3 +45,4 @@ xnuppc
 xterm
 xterm
 xterm-truecolor
+xterm-256color-italic
