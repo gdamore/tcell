@@ -1072,6 +1072,9 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer) (bool, bool) {
 			}
 			t.postMouseEvent(x, y, btn, motion)
 			return true, true
+		default:
+			// Not a character that is in a mouse esc sequence
+			return false, false
 		}
 	}
 
@@ -1299,7 +1302,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 		}
 
 		// Handle Alt keys
-		if b[0] == '\x1b' && len(b) == 2 {
+		if b[0] == '\x1b' && (len(b) == 2 || len(b) == 1) {
 			if len(b) == 1 {
 				ev := NewEventKey(KeyEsc, 0, ModNone)
 				t.PostEvent(ev)
@@ -1309,18 +1312,23 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 			}
 			buf.ReadByte()
 
-			by, _ := buf.ReadByte()
-			mod := ModNone
-			if t.escaped {
-				t.escaped = false
-				mod = ModAlt
+			if len(b) == 2 {
+				by, _ := buf.ReadByte()
+				mod := ModNone
+				if t.escaped {
+					t.escaped = false
+					mod = ModAlt
+				}
+				ev := NewEventKey(KeyRune, rune(by), mod)
+				t.PostEvent(ev)
 			}
-			ev := NewEventKey(KeyRune, rune(by), mod)
-			t.PostEvent(ev)
 			continue
 		}
 
 		if partials == 0 || (!pastePartial && len(b) > 64) {
+			ev := NewEventRaw(buf.String())
+			t.PostEvent(ev)
+
 			buf.Reset()
 			return
 		}
