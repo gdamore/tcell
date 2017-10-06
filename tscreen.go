@@ -73,7 +73,7 @@ type tScreen struct {
 	fini        bool
 	cells       CellBuffer
 	in          *os.File
-	out         *os.File
+	out         io.Writer
 	curstyle    Style
 	style       Style
 	evch        chan Event
@@ -734,6 +734,12 @@ func (t *tScreen) hideCursor() {
 }
 
 func (t *tScreen) draw() {
+	// Buffer all output instead of sending it directly to the terminal
+	// We'll send it when the draw is over
+	buf := &bytes.Buffer{}
+	out := t.out
+	t.out = buf
+
 	// clobber cursor position, because we're gonna change it all
 	t.cx = -1
 	t.cy = -1
@@ -759,6 +765,10 @@ func (t *tScreen) draw() {
 			x += width - 1
 		}
 	}
+
+	// Send everything to the terminal
+	t.out = out
+	io.WriteString(t.out, buf.String())
 
 	// restore the cursor
 	t.showCursor()

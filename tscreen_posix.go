@@ -137,7 +137,7 @@ func (t *tScreen) termioInit() error {
 
 	t.tiosp = &termiosPrivate{}
 
-	fd = C.int(t.out.Fd())
+	fd = C.int(t.out.(*os.File).Fd())
 	if rv, e = C.tcgetattr(fd, &t.tiosp.tios); rv != 0 {
 		goto failed
 	}
@@ -176,7 +176,7 @@ failed:
 		t.in.Close()
 	}
 	if t.out != nil {
-		t.out.Close()
+		t.out.(*os.File).Close()
 	}
 	return e
 }
@@ -188,9 +188,9 @@ func (t *tScreen) termioFini() {
 	<-t.indoneq
 
 	if t.out != nil {
-		fd := C.int(t.out.Fd())
+		fd := C.int(t.out.(*os.File).Fd())
 		C.tcsetattr(fd, C.TCSANOW|C.TCSAFLUSH, &t.tiosp.tios)
-		t.out.Close()
+		t.out.(*os.File).Close()
 	}
 	if t.in != nil {
 		t.in.Close()
@@ -199,7 +199,7 @@ func (t *tScreen) termioFini() {
 
 func (t *tScreen) getWinSize() (int, int, error) {
 	var cx, cy C.int
-	if r, e := C.getwinsize(C.int(t.out.Fd()), &cx, &cy); r != 0 {
+	if r, e := C.getwinsize(C.int(t.out.(*os.File).Fd()), &cx, &cy); r != 0 {
 		return 0, 0, e
 	}
 	return int(cx), int(cy), nil
