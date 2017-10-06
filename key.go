@@ -122,6 +122,8 @@ var KeyNames = map[Key]string{
 	KeyCenter:         "Center",
 	KeyPgDn:           "PgDn",
 	KeyPgUp:           "PgUp",
+	KeyCtrlPgUp:       "CtrlPgUp",
+	KeyCtrlPgDn:       "CtrlPgDn",
 	KeyClear:          "Clear",
 	KeyExit:           "Exit",
 	KeyCancel:         "Cancel",
@@ -338,6 +340,8 @@ const (
 	KeyCenter
 	KeyPgUp
 	KeyPgDn
+	KeyCtrlPgUp
+	KeyCtrlPgDn
 	KeyHome
 	KeyEnd
 	KeyInsert
