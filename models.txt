@@ -20,6 +20,7 @@ pcansi
 rxvt
 rxvt-unicode
 screen
+st
 sun
 sun-color
 tvi910
