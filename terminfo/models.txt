@@ -26,6 +26,12 @@ rxvt-unicode
 rxvt-unicode-256color
 screen
 screen-256color
+st
+st-256color
+st-truecolor
+st-meta
+st-meta-256color
+st-meta-truecolor
 sun
 sun-color
 tvi910
