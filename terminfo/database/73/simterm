@@ -1,0 +1,1 @@
+{"name":"simterm","cols":80,"lines":24,"bell":"\u0007","clear":"\u001bH\u001bJ","smcup":"\u001bVS","rmcup":"\u001bVE","sgr0":"\u001b\u0026d@","cup":"\u001b=%p1%' '%+%c%p2%' '%+%c","cub1":"\u0008","cuu1":"\u001bA","pad":"\u0000"}

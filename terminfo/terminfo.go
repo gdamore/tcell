@@ -763,8 +763,9 @@ func LookupTerminfo(name string) (*Terminfo, error) {
 	if t == nil {
 
 		var files []string
-		gzfile := path.Join(name[:1], name+".gz")
-		jsfile := path.Join(name[:1], name)
+		letter := fmt.Sprintf("%02x", name[0])
+		gzfile := path.Join(letter, name+".gz")
+		jsfile := path.Join(letter, name)
 
 		// Build up the search path.  Old versions of tcell used a
 		// single database file, whereas the new ones locate them

@@ -38,6 +38,9 @@
 # This script also requires bash, although ksh93 should work as well, because
 # we use arrays, which are not specified in POSIX.
 
+export LANG=C
+export LC_CTYPE=C
+
 progress()
 {
 	typeset -i num=$1
@@ -65,6 +68,11 @@ progress()
 	printf "%s${back}" "$s"
 }
 
+ord()
+{
+	printf "%02x" "'$1'"
+}
+
 goterms=( $(cat models.txt) )
 args=( $* )
 if (( ${#args[@]} == 0 ))
@@ -78,12 +86,21 @@ aliases=()
 models=()
 for term in ${args[@]}
 do
-	line=$(infocmp $term | head -2 | tail -1)
-	if [[ -z "$line" ]]
-	then
-		echo "Cannot find terminfo for $term"
-		exit 1
-	fi
+	case "${term}" in
+	*-truecolor)
+		line="${term}|24-bit color"
+		;;
+	*)
+		line=$(infocmp $term | head -2 | tail -1)
+		if [[ -z "$line" ]]
+		then
+			echo "Cannot find terminfo for $term"
+			exit 1
+		fi
+		# take off the trailing comma
+		line=${line%,}
+	esac
+
 	# grab primary name
 	term=${line%%|*}
 	all+=( ${term} )
@@ -97,11 +114,11 @@ do
 		fi
 	done
 
-	# chop off description
-	line=${line%|*}
 	# chop off primary name
 	line=${line#${term}}
 	line=${line#|}
+	# chop off description
+	line=${line%|*}
 	while [[ "$line" != "" ]]
 	do
 		a=${line%%|*}
@@ -110,7 +127,7 @@ do
 		line=${line#|}
 	done
 	i=$(( i + 1 ))
-	progress $i ${#all[@]}
+	progress $i ${#args[@]}
 done
 echo
 # make sure we have mkinfo
@@ -140,7 +157,7 @@ printf "Building JSON database: "
 i=0
 for model in ${all[@]}
 do
-	letter=${model:0:1}
+	letter=$(ord ${model:0:1})
 	dir=database/${letter}
 	file=${dir}/${model}.gz
 	mkdir -p ${dir}
@@ -156,10 +173,11 @@ for model in ${aliases[@]}
 do
 	canon=${model#*=}
 	model=${model%=*}
-	letter=${model:0:1}
+	letter=$(ord ${model:0:1})
+	cletter=$(ord ${canon:0:1})
 	dir=database/${letter}
 	file=${dir}/${model}
-	if [[  -f database/${canon:0:1}/${canon}.gz ]]
+	if [[  -f database/${cletter}/${canon}.gz ]]
 	then
 		[[ -d ${dir} ]] || mkdir -p ${dir}
 		# Generally speaking the aliases are better uncompressed

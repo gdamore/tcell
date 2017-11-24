@@ -1,0 +1,1 @@
+{"name":"atari","cols":80,"lines":25,"clear":"\u001bH\u001bJ","sgr0":"\u001bq","cup":"\u001bY%p1%' '%+%c%p2%' '%+%c","cub1":"\u001bD","cuu1":"\u001bA","pad":"\u0000","kcuu1":"\u001bA","kcud1":"\u001bB","kcub1":"\u001bD","kcuf1":"\u001bC"}

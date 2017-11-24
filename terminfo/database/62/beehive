@@ -1,0 +1,1 @@
+{"name":"beehive","aliases":["bee"],"cols":80,"lines":24,"clear":"\u001bE","sgr0":"\u001bd@","smul":"\u001bd`","cup":"\u001bF%p1%' '%+%c%p2%' '%+%c","cub1":"\u0008","cuu1":"\u001bA","pad":"\u0000","kbs":"\u0008","kich":"\u001bQ","kdch":"\u001bP","khome":"\u001bH","kcuu1":"\u001bA","kcud1":"\u001bB","kcub1":"\u001bD","kcuf1":"\u001bC","kcbt":"\u001b\u003e","kclr":"\u001bE"}

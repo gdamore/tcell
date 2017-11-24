@@ -99,85 +99,88 @@ func TestTerminfo(t *testing.T) {
 }
 
 func TestTerminfoDatabase(t *testing.T) {
-	Convey("Basic lookup works", t, func() {
-		os.Setenv("TCELLDB", "testdata/test1")
-		ti, err := LookupTerminfo("test1")
-		So(err, ShouldBeNil)
-		So(ti, ShouldNotBeNil)
-		So(ti.Columns, ShouldEqual, 80)
 
-		ti, err = LookupTerminfo("alias1")
-		So(err, ShouldBeNil)
-		So(ti, ShouldNotBeNil)
-		So(ti.Columns, ShouldEqual, 80)
+	Convey("Database Lookups work", t, func() {
+		Convey("Basic lookup works", func() {
+			os.Setenv("TCELLDB", "testdata/test1")
+			ti, err := LookupTerminfo("test1")
+			So(err, ShouldBeNil)
+			So(ti, ShouldNotBeNil)
+			So(ti.Columns, ShouldEqual, 80)
 
-		os.Setenv("TCELLDB", "testdata")
-		ti, err = LookupTerminfo("test2")
-		So(err, ShouldBeNil)
-		So(ti, ShouldNotBeNil)
-		So(ti.Columns, ShouldEqual, 80)
-		So(len(ti.Aliases), ShouldEqual, 1)
-		So(ti.Aliases[0], ShouldEqual, "alias2")
-	})
+			ti, err = LookupTerminfo("alias1")
+			So(err, ShouldBeNil)
+			So(ti, ShouldNotBeNil)
+			So(ti.Columns, ShouldEqual, 80)
 
-	Convey("Incorrect primary name works", t, func() {
-		os.Setenv("TCELLDB", "testdata")
-		ti, err := LookupTerminfo("test3")
-		So(err, ShouldNotBeNil)
-		So(ti, ShouldBeNil)
-	})
+			os.Setenv("TCELLDB", "testdata")
+			ti, err = LookupTerminfo("test2")
+			So(err, ShouldBeNil)
+			So(ti, ShouldNotBeNil)
+			So(ti.Columns, ShouldEqual, 80)
+			So(len(ti.Aliases), ShouldEqual, 1)
+			So(ti.Aliases[0], ShouldEqual, "alias2")
+		})
 
-	Convey("Loops fail", t, func() {
-		os.Setenv("TCELLDB", "testdata")
-		ti, err := LookupTerminfo("loop1")
-		So(ti, ShouldBeNil)
-		So(err, ShouldNotBeNil)
-	})
+		Convey("Incorrect primary name works", func() {
+			os.Setenv("TCELLDB", "testdata")
+			ti, err := LookupTerminfo("test3")
+			So(err, ShouldNotBeNil)
+			So(ti, ShouldBeNil)
+		})
 
-	Convey("Gzip database works", t, func() {
-		os.Setenv("TCELLDB", "testdata")
-		ti, err := LookupTerminfo("test-gzip")
-		So(err, ShouldBeNil)
-		So(ti, ShouldNotBeNil)
-		So(ti.Columns, ShouldEqual, 80)
-	})
+		Convey("Loops fail", func() {
+			os.Setenv("TCELLDB", "testdata")
+			ti, err := LookupTerminfo("loop1")
+			So(ti, ShouldBeNil)
+			So(err, ShouldNotBeNil)
+		})
 
-	Convey("Gzip alias lookup works", t, func() {
-		os.Setenv("TCELLDB", "testdata")
-		ti, err := LookupTerminfo("alias-gzip")
-		So(err, ShouldBeNil)
-		So(ti, ShouldNotBeNil)
-		So(ti.Columns, ShouldEqual, 80)
-	})
+		Convey("Gzip database works", func() {
+			os.Setenv("TCELLDB", "testdata")
+			ti, err := LookupTerminfo("test-gzip")
+			So(err, ShouldBeNil)
+			So(ti, ShouldNotBeNil)
+			So(ti.Columns, ShouldEqual, 80)
+		})
 
-	Convey("Broken alias works", t, func() {
-		os.Setenv("TCELLDB", "testdata")
-		ti, err := LookupTerminfo("alias-none")
-		So(err, ShouldNotBeNil)
-		So(ti, ShouldBeNil)
-	})
+		Convey("Gzip alias lookup works", func() {
+			os.Setenv("TCELLDB", "testdata")
+			ti, err := LookupTerminfo("alias-gzip")
+			So(err, ShouldBeNil)
+			So(ti, ShouldNotBeNil)
+			So(ti.Columns, ShouldEqual, 80)
+		})
 
-	Convey("Combined database works", t, func() {
-		os.Setenv("TCELLDB", "testdata/combined")
-		ti, err := LookupTerminfo("combined2")
-		So(err, ShouldBeNil)
-		So(ti, ShouldNotBeNil)
-		So(ti.Lines, ShouldEqual, 102)
+		Convey("Broken alias works", func() {
+			os.Setenv("TCELLDB", "testdata")
+			ti, err := LookupTerminfo("alias-none")
+			So(err, ShouldNotBeNil)
+			So(ti, ShouldBeNil)
+		})
 
-		ti, err = LookupTerminfo("alias-comb1")
-		So(err, ShouldBeNil)
-		So(ti, ShouldNotBeNil)
-		So(ti.Lines, ShouldEqual, 101)
+		Convey("Combined database works", func() {
+			os.Setenv("TCELLDB", "testdata/combined")
+			ti, err := LookupTerminfo("combined2")
+			So(err, ShouldBeNil)
+			So(ti, ShouldNotBeNil)
+			So(ti.Lines, ShouldEqual, 102)
 
-		ti, err = LookupTerminfo("combined3")
-		So(err, ShouldBeNil)
-		So(ti, ShouldNotBeNil)
-		So(ti.Lines, ShouldEqual, 103)
+			ti, err = LookupTerminfo("alias-comb1")
+			So(err, ShouldBeNil)
+			So(ti, ShouldNotBeNil)
+			So(ti.Lines, ShouldEqual, 101)
 
-		ti, err = LookupTerminfo("combined1")
-		So(err, ShouldBeNil)
-		So(ti, ShouldNotBeNil)
-		So(ti.Lines, ShouldEqual, 101)
+			ti, err = LookupTerminfo("combined3")
+			So(err, ShouldBeNil)
+			So(ti, ShouldNotBeNil)
+			So(ti.Lines, ShouldEqual, 103)
+
+			ti, err = LookupTerminfo("combined1")
+			So(err, ShouldBeNil)
+			So(ti, ShouldNotBeNil)
+			So(ti.Lines, ShouldEqual, 101)
+		})
 	})
 }
 

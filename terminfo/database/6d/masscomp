@@ -1,0 +1,1 @@
+{"name":"masscomp","cols":80,"lines":24,"clear":"\u001b[2J","smul":"\u001bGu","cup":"\u001b[%i%p1%d;%p2%dH","cub1":"\u0008","cuu1":"\u001b[A","pad":"\u0000","kbs":"\u0008","kcuu1":"\u001bOA","kcud1":"\u001bOB","kcub1":"\u001bOD","kcuf1":"\u001bOC"}

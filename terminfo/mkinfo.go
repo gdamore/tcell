@@ -214,6 +214,7 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 			if err == nil {
 				addTrueColor = true
 			}
+			tc.name = name
 		}
 		if err != nil {
 			return nil, "", err

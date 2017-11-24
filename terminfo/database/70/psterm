@@ -1,0 +1,1 @@
+{"name":"psterm","aliases":["psterm-basic"],"cols":80,"lines":34,"clear":"\u000c","smcup":"\u001bOt","rmcup":"\u001bNt","sgr0":"\u001bN*","smul":"\u001bOu","bold":"\u001bOd","blink":"\u001bOb","rev":"\u001bOr","cup":"\u001b%p1%d;%p2%d;","cub1":"\u001bT","cuu1":"\u001bY","pad":"\u0000","kcuu1":"\u001b[A","kcud1":"\u001b[B","kcub1":"\u001b[D","kcuf1":"\u001b[C"}

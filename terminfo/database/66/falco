@@ -1,0 +1,1 @@
+{"name":"falco","aliases":["ts1","ts-1"],"cols":80,"lines":24,"bell":"\u0007","clear":"\u001b*","sgr0":"\u001bg0","smul":"\u001bg1","cup":"\u001b=%p1%' '%+%c%p2%' '%+%c","cub1":"\u0008","cuu1":"\u000b","pad":"\u0000","kcuu1":"\u000b","kcud1":"\n","kcub1":"\u0008","kcuf1":"\u000c"}

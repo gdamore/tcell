@@ -1,0 +1,1 @@
+{"name":"lisa","cols":88,"lines":32,"clear":"\u000c","cnorm":"\u001b[5l","civis":"\u001b[5h","sgr0":"\u001b[m","smul":"\u001b[4m","cup":"\u001b[%i%p1%d;%p2%dH","cub1":"\u0008","cuu1":"\u001b[A","pad":"\u0000","kbs":"\u0008","kcuu1":"\u001b[A","kcud1":"\u001b[B","kcub1":"\u001b[D","kcuf1":"\u001b[C","acsc":"jdkclfmenbqattuvvuwsx`","smacs":"\u001b[11m","rmacs":"\u001b[10m"}
