@@ -28,6 +28,8 @@ import (
 	"golang.org/x/text/transform"
 )
 
+var escseq string
+
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
 // and POSIX termios, combined with a terminfo description taken from
 // the $TERM environment variable.  It returns an error if the terminal
@@ -954,6 +956,7 @@ func (t *tScreen) postMouseEvent(x, y, btn int, motion bool) {
 	x, y = t.clip(x, y)
 
 	ev := NewEventMouse(x, y, button, mod, motion)
+	ev.esc = escseq
 	t.PostEvent(ev)
 }
 
@@ -1158,6 +1161,7 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer) (bool, bool) {
 				t.escaped = false
 			}
 			ev := NewEventKey(k.key, r, mod)
+			ev.esc = escseq
 			t.PostEvent(ev)
 			for i := 0; i < len(esc); i++ {
 				buf.ReadByte()
@@ -1181,6 +1185,7 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 			t.escaped = false
 		}
 		ev := NewEventKey(KeyRune, rune(b[0]), mod)
+		ev.esc = escseq
 		t.PostEvent(ev)
 		buf.ReadByte()
 		return true, true
@@ -1207,6 +1212,7 @@ func (t *tScreen) parseRune(buf *bytes.Buffer) (bool, bool) {
 					t.escaped = false
 				}
 				ev := NewEventKey(KeyRune, r, mod)
+				ev.esc = escseq
 				t.PostEvent(ev)
 			}
 			for nin > 0 {
@@ -1231,6 +1237,7 @@ func (t *tScreen) parseBracketedPaste(buf *bytes.Buffer) (bool, bool) {
 			// The bracketed paste has ended
 			// Strip out the start and end sequences
 			ev := NewEventPaste(str[6 : len(b)-6])
+			ev.esc = escseq
 			t.PostEvent(ev)
 			for i := 0; i < len(b); i++ {
 				buf.ReadByte()
@@ -1255,6 +1262,8 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 			return
 		}
 
+		escseq = buf.String()
+
 		partials := 0
 
 		pastePartial := false
@@ -1267,6 +1276,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 
 		if !bytes.Contains(b, []byte("\x1b")) && utf8.RuneCount(b) > 1 {
 			ev := &EventPaste{t: time.Now(), text: string(bytes.Replace(b, []byte("\r"), []byte("\n"), -1))}
+			ev.esc = escseq
 			t.PostEvent(ev)
 			buf.Reset()
 			continue
@@ -1305,6 +1315,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 		if b[0] == '\x1b' && (len(b) == 2 || len(b) == 1) {
 			if len(b) == 1 {
 				ev := NewEventKey(KeyEsc, 0, ModNone)
+				ev.esc = escseq
 				t.PostEvent(ev)
 				t.escaped = false
 			} else {
@@ -1320,6 +1331,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 					mod = ModAlt
 				}
 				ev := NewEventKey(KeyRune, rune(by), mod)
+				ev.esc = escseq
 				t.PostEvent(ev)
 			}
 			continue
@@ -1327,6 +1339,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 
 		if partials == 0 || (!pastePartial && len(b) > 64) {
 			ev := NewEventRaw(buf.String())
+			ev.esc = escseq
 			t.PostEvent(ev)
 
 			buf.Reset()

@@ -20,12 +20,17 @@ import "time"
 type EventPaste struct {
 	t    time.Time
 	text string
+	esc  string
 }
 
 // When returns the time when this Event was created, which should closely
 // match the time when the paste was made.
 func (e *EventPaste) When() time.Time {
 	return e.t
+}
+
+func (e *EventPaste) EscSeq() string {
+	return e.esc
 }
 
 // Text returns the text that was pasted

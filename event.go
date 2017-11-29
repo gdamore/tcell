@@ -23,6 +23,7 @@ import (
 type Event interface {
 	// When reports the time when the event was generated.
 	When() time.Time
+	EscSeq() string
 }
 
 // EventTime is a simple base event class, suitable for easy reuse.
@@ -34,6 +35,10 @@ type EventTime struct {
 // When returns the time stamp when the event occurred.
 func (e *EventTime) When() time.Time {
 	return e.when
+}
+
+func (e *EventTime) EscSeq() string {
+	return ""
 }
 
 // SetEventTime sets the time of occurrence for the event.

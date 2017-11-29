@@ -41,6 +41,7 @@ type EventMouse struct {
 	motion bool
 	x      int
 	y      int
+	esc    string
 }
 
 // When returns the time when this EventMouse was created.
@@ -57,6 +58,10 @@ func (ev *EventMouse) Buttons() ButtonMask {
 // with the mouse button(s).
 func (ev *EventMouse) Modifiers() ModMask {
 	return ev.mod
+}
+
+func (e *EventMouse) EscSeq() string {
+	return e.esc
 }
 
 // Position returns the mouse position in character cells.  The origin

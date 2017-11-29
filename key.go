@@ -47,12 +47,17 @@ type EventKey struct {
 	mod ModMask
 	key Key
 	ch  rune
+	esc string
 }
 
 // When returns the time when this Event was created, which should closely
 // match the time when the key was pressed.
 func (ev *EventKey) When() time.Time {
 	return ev.t
+}
+
+func (ev *EventKey) EscSeq() string {
+	return ev.esc
 }
 
 // Rune returns the rune corresponding to the key press, if it makes sense.
