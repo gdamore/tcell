@@ -101,8 +101,13 @@ func unescape(s string) string {
 			switch c {
 			case 'E', 'e':
 				buf.WriteByte(0x1b)
-			case '0':
-				buf.WriteByte(0)
+			case '0', '1', '2', '3', '4', '5', '6', '7':
+				if i+2 < len(s) && s[i+1] >= '0' && s[i+1] <= '7' && s[i+2] >= '0' && s[i+2] <= '7' {
+					buf.WriteByte(((c - '0') * 64) + ((s[i+1] - '0') * 8) + (s[i+2] - '0'))
+					i = i + 2
+				} else if c == '0' {
+					buf.WriteByte(0)
+				}
 			case 'n':
 				buf.WriteByte('\n')
 			case 'r':
