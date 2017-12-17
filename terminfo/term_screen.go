@@ -15,7 +15,7 @@ func init() {
 		ExitCA:       "\x1b[?1049l",
 		ShowCursor:   "\x1b[34h\x1b[?25h",
 		HideCursor:   "\x1b[?25l",
-		AttrOff:      "\x1b[m\x0017",
+		AttrOff:      "\x1b[m\x0f",
 		Underline:    "\x1b[4m",
 		Bold:         "\x1b[1m",
 		Blink:        "\x1b[5m",
