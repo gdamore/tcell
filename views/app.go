@@ -121,6 +121,7 @@ func (app *Application) run() {
 		}
 		screen = app.screen
 	}
+	defer screen.Fini()
 	screen.Init()
 	screen.Clear()
 	widget.SetView(screen)
@@ -150,7 +151,6 @@ loop:
 			widget.HandleEvent(ev)
 		}
 	}
-	screen.Fini()
 	app.wg.Done()
 }
 
