@@ -756,6 +756,7 @@ func loadFromFile(fname string, term string) (*Terminfo, error) {
 // one from the JSON file located in either $TCELLDB, $HOME/.tcelldb
 // or in this package's source directory as database.json).
 func LookupTerminfo(name string) (*Terminfo, error) {
+	name = strings.ToLower(name)
 	dblock.Lock()
 	t := terminfos[name]
 	dblock.Unlock()
