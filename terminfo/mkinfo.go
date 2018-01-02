@@ -225,6 +225,11 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 			return nil, "", err
 		}
 	}
+
+	if !addTrueColor && tc.getstr("Tc") != "" {
+		addTrueColor = true
+	}
+
 	t := &terminfo.Terminfo{}
 	// If this is an alias record, then just emit the alias
 	t.Name = tc.name
