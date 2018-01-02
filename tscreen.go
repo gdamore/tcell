@@ -139,7 +139,23 @@ func (t *tScreen) Init() error {
 
 	if t.ti.SetFgBgRGB != "" || t.ti.SetFgRGB != "" || t.ti.SetBgRGB != "" {
 		t.truecolor = true
+	} else if terminalSupportsTrueColor() {
+		// TODO: share with the terminfo package?
+		const (
+			addSetFgRGB = "38;2;%p1%d;%p2%d;%p3%d"
+			addSetBgRGB = "48;2;%p1%d;%p2%d;%p3%d"
+		)
+		t.ti.SetFgRGB = "\x1b[" + addSetFgRGB + "m"
+		t.ti.SetBgRGB = "\x1b[" + addSetBgRGB + "m"
+		// NOTE combined fg/bg setting doesn't work in tmux at least TODO
+		// research more context, this may be why (neo)vim documents so
+		// strongly `It uses the "setrgbf" and "setrgbb"` (saying nothing of
+		// combined fg/bg setting).
+		// t.ti.SetFgBgRGB = "\x1b[" + addSetFgRGB + ";" + addSetBgRGB + "m"
+		t.ti.SetFgBgRGB = ""
+		t.truecolor = true
 	}
+
 	// A user who wants to have his themes honored can
 	// set this environment variable.
 	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
@@ -176,6 +192,16 @@ func (t *tScreen) Init() error {
 	go t.inputLoop()
 
 	return nil
+}
+
+func terminalSupportsTrueColor() bool {
+	// TODO mine vim8 / neovim source for ... case of the "rxvt" "linux" "st"
+	// "tmux" "iterm" types, or when Konsole, genuine Xterm, a libvte terminal
+	// emulator version 0.36 or later ... ala `:help true-color`
+	if os.Getenv("COLORTERM") == "truecolor" {
+		return true
+	}
+	return false
 }
 
 func (t *tScreen) prepareKeyMod(key Key, mod ModMask, val string) {
