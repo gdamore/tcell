@@ -27,6 +27,7 @@ ways.  It also adds substantial functionality beyond termbox.
 * [gomatrix](https://github.com/gdamore/gomatrix) - converted from Termbox
 * [micro](https://github.com/zyedidia/micro/) - lightweight text editor with syntax-highlighting and themes
 * [godu](https://github.com/viktomas/godu) - simple golang utility helping to discover large files/folders.
+* [tview](https://github.com/rivo/tview) - rich interactive widgets for terminal UIs
 
 ## Pure Go Terminfo Database
 
