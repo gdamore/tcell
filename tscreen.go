@@ -1250,7 +1250,7 @@ func (t *tScreen) parseBracketedPaste(buf *bytes.Buffer) (bool, bool) {
 	return false, false
 }
 
-func (t *tScreen) scanInput(buf *bytes.Buffer) {
+func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 
 	t.Lock()
 	defer t.Unlock()
@@ -1313,6 +1313,13 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 
 		// Handle Alt keys
 		if b[0] == '\x1b' && (len(b) == 2 || len(b) == 1) {
+			if len(b) > 1 && partials != 0 && !expire {
+				// We need more data
+				// For example, if the sequence is `\x1b[`, this could
+				// be alt-[ or it could be the beginning of a mouse sequence
+				break
+			}
+
 			if len(b) == 1 {
 				ev := NewEventKey(KeyEsc, 0, ModNone)
 				ev.esc = escseq
@@ -1337,7 +1344,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 			continue
 		}
 
-		if partials == 0 || (!pastePartial && len(b) > 64) {
+		if expire || partials == 0 || (!pastePartial && len(b) > 64) {
 			ev := NewEventRaw(buf.String())
 			ev.esc = escseq
 			t.PostEvent(ev)
@@ -1372,6 +1379,13 @@ func (t *tScreen) inputLoop() {
 
 	for {
 		select {
+		case <-time.After(200 * time.Millisecond):
+			if buf.Len() > 0 {
+				// After 200 milliseconds of nothing time out and parse
+				// whatever was last sent by the terminal
+				t.scanInput(buf, true)
+			}
+			continue
 		case <-t.quit:
 			close(t.indoneq)
 			return
@@ -1395,7 +1409,7 @@ func (t *tScreen) inputLoop() {
 				// time to give up on it.  Even at 300 baud it takes
 				// less than 0.5 ms to transmit a whole byte.
 				if buf.Len() > 0 {
-					t.scanInput(buf)
+					t.scanInput(buf, true)
 				}
 				continue
 			case nil:
@@ -1405,7 +1419,7 @@ func (t *tScreen) inputLoop() {
 			}
 			buf.Write(chunk[:n])
 			// Now we need to parse the input buffer for events
-			t.scanInput(buf)
+			t.scanInput(buf, false)
 		}
 	}
 }
