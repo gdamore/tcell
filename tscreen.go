@@ -1313,7 +1313,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 
 		// Handle Alt keys
 		if b[0] == '\x1b' && (len(b) == 2 || len(b) == 1) {
-			if len(b) > 1 && partials != 0 && !expire {
+			if partials != 0 && !expire {
 				// We need more data
 				// For example, if the sequence is `\x1b[`, this could
 				// be alt-[ or it could be the beginning of a mouse sequence
@@ -1379,7 +1379,7 @@ func (t *tScreen) inputLoop() {
 
 	for {
 		select {
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			if buf.Len() > 0 {
 				// After 200 milliseconds of nothing time out and parse
 				// whatever was last sent by the terminal
