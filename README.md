@@ -23,6 +23,7 @@ ways.  It also adds substantial functionality beyond termbox.
 * [godu](https://github.com/viktomas/godu) - simple golang utility helping to discover large files/folders.
 * [tview](https://github.com/rivo/tview) - rich interactive widgets for terminal UIs
 * [tui-go](https://github.com/marcusolsson/tui-go) - UI library for terminal apps
+* [gomandelbrot](https://github.com/rgm3/gomandelbrot) - Mandelbrot!
 
 ## Pure Go Terminfo Database
 
