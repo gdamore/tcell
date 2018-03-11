@@ -25,17 +25,32 @@ import (
 var screen tcell.Screen
 var outMode OutputMode
 
+func GetScreen() tcell.Screen {
+	return screen
+}
+func SetScreen(s tcell.Screen) {
+	screen = s
+}
+
 // Init initializes the screen for use.
 func Init() error {
-	outMode = OutputNormal
-	if s, e := tcell.NewScreen(); e != nil {
-		return e
-	} else if e = s.Init(); e != nil {
-		return e
-	} else {
-		screen = s
+	if screen != nil {
+		// only init once
 		return nil
 	}
+	outMode = OutputNormal
+
+	s, e := tcell.NewScreen()
+	if e != nil {
+		return e
+	}
+	e = s.Init()
+	if e != nil {
+		return e
+	}
+
+	screen = s
+	return nil
 }
 
 // Close cleans up the terminal, restoring terminal modes, etc.
@@ -107,6 +122,10 @@ func fixColor(c tcell.Color) tcell.Color {
 		c = tcell.ColorDefault
 	}
 	return c
+}
+
+func MakeStyle(fg, bg Attribute) tcell.Style {
+	return mkStyle(fg, bg)
 }
 
 func mkStyle(fg, bg Attribute) tcell.Style {
@@ -225,13 +244,13 @@ type Event struct {
 
 // Event types.
 const (
-	EventNone EventType = iota
-	EventKey
+	EventKey EventType = iota
 	EventResize
 	EventMouse
 	EventInterrupt
 	EventError
 	EventRaw
+	EventNone
 )
 
 // Keys codes.
@@ -346,6 +365,11 @@ func PollEvent() Event {
 	return makeEvent(ev)
 }
 
+func PollEventOnScreen(s tcell.Screen) Event {
+	ev := s.PollEvent()
+	return makeEvent(ev)
+}
+
 // Interrupt posts an interrupt event.
 func Interrupt() {
 	screen.PostEvent(tcell.NewEventInterrupt(nil))
@@ -357,3 +381,17 @@ type Cell struct {
 	Fg Attribute
 	Bg Attribute
 }
+
+const (
+	KeyCtrlTilde      Key = 0x00
+	KeyCtrl2          Key = 0x00
+	KeyCtrlSpace      Key = 0x00
+	KeyCtrlLsqBracket Key = 0x1B
+	KeyCtrlBackslash  Key = 0x1C
+	KeyCtrl5          Key = 0x1D
+	KeyCtrlRsqBracket Key = 0x1D
+	KeyCtrl6          Key = 0x1E
+	KeyCtrl7          Key = 0x1F
+	KeyCtrlSlash      Key = 0x1F
+	KeyCtrlUnderscore Key = 0x1F
+)
