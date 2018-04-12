@@ -565,8 +565,14 @@ func (s *cScreen) getConsoleInput() error {
 			if krec.ch != 0 {
 				// synthesized key code
 				for krec.repeat > 0 {
-					s.PostEvent(NewEventKey(KeyRune, rune(krec.ch),
-						mod2mask(krec.mod)))
+					// convert shift+tab to backtab
+					if mod2mask(krec.mod) == ModShift && krec.ch == vkTab {
+						s.PostEvent(NewEventKey(KeyBacktab, 0,
+							ModNone))
+					} else {
+						s.PostEvent(NewEventKey(KeyRune, rune(krec.ch),
+							mod2mask(krec.mod)))
+					}
 					krec.repeat--
 				}
 				return nil
