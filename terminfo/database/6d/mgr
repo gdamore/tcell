@@ -1,1 +1,0 @@
-{"name":"mgr","bell":"\u0007","clear":"\u000c","cnorm":"\u001bh","civis":"\u001b9h","sgr0":"\u001b0n","smul":"\u001b4n","bold":"\u001b2n","rev":"\u001b1n","cup":"\u001b%p2%d;%p1%dM","cub1":"\u0008","cuu1":"\u001bu","pad":"\u0000","kbs":"\u0008","kcuu1":"\u001b[A","kcud1":"\u001b[B","kcub1":"\u001b[D","kcuf1":"\u001b[C"}
