@@ -209,7 +209,7 @@ func (tc *termcap) setupterm(name string) error {
 		if k := strings.SplitN(val, "=", 2); len(k) == 2 {
 			tc.strs[k[0]] = unescape(k[1])
 		} else if k := strings.SplitN(val, "#", 2); len(k) == 2 {
-			if u, err := strconv.ParseUint(k[1], 10, 0); err != nil {
+			if u, err := strconv.ParseUint(k[1], 0, 0); err != nil {
 				return (err)
 			} else {
 				tc.nums[k[0]] = int(u)
