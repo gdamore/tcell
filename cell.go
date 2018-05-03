@@ -48,6 +48,12 @@ func (cb *CellBuffer) SetContent(x int, y int,
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		c := &cb.cells[(y*cb.w)+x]
 
+		if len(combc) > 0 {
+			cpy := make([]rune, len(combc))
+			copy(cpy, combc)
+			combc = cpy
+		}
+
 		i := 0
 		for i < len(combc) {
 			r := combc[i]
