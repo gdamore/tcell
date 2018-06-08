@@ -27,7 +27,7 @@ import (
 
 // Register registers all known encodings.  This is a short-cut to
 // add full character set support to your program.  Note that this can
-// add several megabytes to your program's size, because some of the encoodings
+// add several megabytes to your program's size, because some of the encodings
 // are rather large (particularly those from East Asia.)
 func Register() {
 	// We supply latin1 and latin5, because Go doesn't
