@@ -102,6 +102,9 @@ failed:
 	return e
 }
 
+func (t *tScreen) termioPreFini() {
+}
+
 func (t *tScreen) termioFini() {
 
 	signal.Stop(t.sigwinch)

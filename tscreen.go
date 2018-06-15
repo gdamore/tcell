@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -37,10 +38,20 @@ import (
 // $COLUMNS environment variables can be set to the actual window size,
 // otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
-	ti, e := terminfo.LookupTerminfo(os.Getenv("TERM"))
+	termvar := os.Getenv("TERM")
+
+	// For now, we can't readily fail during tscreen_windows initialization
+	// (init happens long after the tscreen is setup and returned)
+	// So, let's just give up early for cygwin so it can try for a console
+	if termvar == "cygwin" {
+		return nil, fmt.Errorf("Using windows console for $TERM=cygwin ")
+	}
+
+	ti, e := terminfo.LookupTerminfo(termvar)
 	if e != nil {
 		return nil, e
 	}
+
 	t := &tScreen{ti: ti}
 
 	t.keyexist = make(map[Key]bool)
@@ -113,9 +124,8 @@ func (t *tScreen) Init() error {
 	t.indoneq = make(chan struct{})
 	t.keychan = make(chan []byte, 10)
 	t.keytimer = time.NewTimer(time.Millisecond * 50)
-	t.charset = "UTF-8"
 
-	t.charset = getCharset()
+	t.charset = getTerminalCharset()
 	if enc := GetEncoding(t.charset); enc != nil {
 		t.encoder = enc.NewEncoder()
 		t.decoder = enc.NewDecoder()
@@ -383,10 +393,14 @@ outer:
 }
 
 func (t *tScreen) Fini() {
+
+	// Done outside the lock on purpose...
+	t.termioPreFini()
+
 	t.Lock()
 	defer t.Unlock()
-	
-	ti := t.ti	
+
+	ti := t.ti
 	t.cells.Resize(0, 0)
 	t.TPuts(ti.ShowCursor)
 	t.TPuts(ti.AttrOff)
@@ -405,7 +419,7 @@ func (t *tScreen) Fini() {
 	default:
 		close(t.quit)
 	}
-	
+
 	t.termioFini()
 }
 
@@ -1314,6 +1328,14 @@ func (t *tScreen) inputLoop() {
 			t.PostEvent(NewEventError(e))
 			return
 		}
+
+		// if screen is finalized, terminate this loop
+		// we may lose a keystroke, but it's better than the alternative -- the loop greedily eating input forever
+		// (for now, this is a problem in windows in case we close one tscreen and open another )
+		if t.fini {
+			return
+		}
+
 		t.keychan <- chunk[:n]
 	}
 }

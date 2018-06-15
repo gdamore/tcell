@@ -24,6 +24,9 @@ func (t *tScreen) termioInit() error {
 	return ErrNoScreen
 }
 
+func (t *tScreen) termioPreFini() {
+}
+
 func (t *tScreen) termioFini() {
 }
 
