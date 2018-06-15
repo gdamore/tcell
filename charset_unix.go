@@ -1,4 +1,4 @@
-// +build !windows,!nacl,!plan9
+// +build !nacl,!plan9
 
 // Copyright 2016 The TCell Authors
 //
@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-func getCharset() string {
+func getTerminalCharset() string {
 	// Determine the character set.  This can help us later.
 	// Per POSIX, we search for LC_ALL first, then LC_CTYPE, and
 	// finally LANG.  First one set wins.

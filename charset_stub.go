@@ -16,6 +16,6 @@
 
 package tcell
 
-func getCharset() string {
+func getTerminalCharset() string {
 	return ""
 }
