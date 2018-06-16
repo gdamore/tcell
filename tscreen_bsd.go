@@ -25,6 +25,10 @@ import (
 
 type termiosPrivate syscall.Termios
 
+func (t *tScreen) termioPreInit() (termvar string, err error) {
+	return os.Getenv("TERM"), nil
+}
+
 func (t *tScreen) termioInit() error {
 	var e error
 	var newtios termiosPrivate
@@ -42,7 +46,7 @@ func (t *tScreen) termioInit() error {
 
 	tios = uintptr(unsafe.Pointer(t.tiosp))
 	ioc = uintptr(syscall.TIOCGETA)
-	fd = uintptr(t.out.Fd())
+	fd = uintptr(t.out.(*os.File).Fd())
 	if _, _, e1 := syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0); e1 != 0 {
 		e = e1
 		goto failed
@@ -97,7 +101,7 @@ func (t *tScreen) termioFini() {
 	<-t.indoneq
 
 	if t.out != nil {
-		fd := uintptr(t.out.Fd())
+		fd := uintptr(t.out.(*os.File).Fd())
 		ioc := uintptr(syscall.TIOCSETAF)
 		tios := uintptr(unsafe.Pointer(t.tiosp))
 		syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0)
@@ -110,7 +114,7 @@ func (t *tScreen) termioFini() {
 
 func (t *tScreen) getWinSize() (int, int, error) {
 
-	fd := uintptr(t.out.Fd())
+	fd := uintptr(t.out.(*os.File).Fd())
 	dim := [4]uint16{}
 	dimp := uintptr(unsafe.Pointer(&dim))
 	ioc := uintptr(syscall.TIOCGWINSZ)

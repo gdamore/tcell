@@ -17,25 +17,26 @@
 package tcell
 
 import (
+	"errors"
+	"os"
 	"sync"
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
-	"errors"
 )
 
 type cScreen struct {
-	in    syscall.Handle
-	out   syscall.Handle
+	in         syscall.Handle
+	out        syscall.Handle
 	cancelflag syscall.Handle
-	scandone chan struct{}
-	evch  chan Event
-	quit  chan struct{}
-	curx  int
-	cury  int
-	style Style
-	clear bool
-	fini  bool
+	scandone   chan struct{}
+	evch       chan Event
+	quit       chan struct{}
+	curx       int
+	cury       int
+	style      Style
+	clear      bool
+	fini       bool
 
 	w int
 	h int
@@ -100,8 +101,10 @@ var k32 = syscall.NewLazyDLL("kernel32.dll")
 // without this suffix, as the resolution is made via preprocessor.
 var (
 	procReadConsoleInput           = k32.NewProc("ReadConsoleInputW")
+	procReadConsole                = k32.NewProc("ReadConsoleW")
 	procWaitForMultipleObjects     = k32.NewProc("WaitForMultipleObjects")
 	procCreateEvent                = k32.NewProc("CreateEventW")
+	procCloseHandle                = k32.NewProc("CloseHandle")
 	procSetEvent                   = k32.NewProc("SetEvent")
 	procGetConsoleCursorInfo       = k32.NewProc("GetConsoleCursorInfo")
 	procSetConsoleCursorInfo       = k32.NewProc("SetConsoleCursorInfo")
@@ -114,10 +117,13 @@ var (
 	procSetConsoleWindowInfo       = k32.NewProc("SetConsoleWindowInfo")
 	procSetConsoleScreenBufferSize = k32.NewProc("SetConsoleScreenBufferSize")
 	procSetConsoleTextAttribute    = k32.NewProc("SetConsoleTextAttribute")
+	procGetConsoleWindow           = k32.NewProc("GetConsoleWindow")
+	procFreeConsole                = k32.NewProc("FreeConsole")
+	procAllocConsole               = k32.NewProc("AllocConsole")
 )
 
 const (
-	w32Infinite = ^uintptr(0)
+	w32Infinite    = ^uintptr(0)
 	w32WaitObject0 = uintptr(0)
 )
 
@@ -125,25 +131,34 @@ const (
 // with the current process.  The Screen makes use of the Windows Console
 // API to display content and read events.
 func NewConsoleScreen() (Screen, error) {
-	return &cScreen{}, nil
+	var s cScreen
+
+	// If there isn't an open console, this is just going to be broken
+	// Open the console first if that's what you want; then we can attach to it
+	if !Windows_HasOpenConsole() {
+		return nil, errors.New("can't attach to nonexistent console screen")
+	}
+
+	// See if we're going to be able to create the console screen
+	in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0)
+	if e != nil {
+		return nil, e
+	}
+	s.in = in
+	out, e := syscall.Open("CONOUT$", syscall.O_RDWR, 0)
+	if e != nil {
+		syscall.Close(s.in)
+		return nil, e
+	}
+	s.out = out
+
+	return &s, nil
 }
 
 func (s *cScreen) Init() error {
 	s.evch = make(chan Event, 10)
 	s.quit = make(chan struct{})
 	s.scandone = make(chan struct{})
-
-	in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0)
-	if e != nil {
-		return e
-	}
-	s.in = in
-	out, e := syscall.Open("CONOUT$", syscall.O_RDWR, 0)
-	if e != nil {
-		syscall.Close(s.in)
-		return e
-	}
-	s.out = out
 
 	cf, _, e := procCreateEvent.Call(
 		uintptr(0),
@@ -530,7 +545,7 @@ func (s *cScreen) getConsoleInput() error {
 		uintptr(pWaitObjects),
 		uintptr(0),
 		w32Infinite)
-	// WaitForMultipleObjects returns WAIT_OBJECT_0 + the index. 
+	// WaitForMultipleObjects returns WAIT_OBJECT_0 + the index.
 	switch rv {
 	case w32WaitObject0: // s.cancelFlag
 		return errors.New("cancelled")
@@ -899,7 +914,6 @@ func (s *cScreen) Fill(r rune, style Style) {
 	s.Lock()
 	if !s.fini {
 		s.cells.Fill(r, style)
-		s.clear = true
 	}
 	s.Unlock()
 }
@@ -1029,4 +1043,34 @@ func (s *cScreen) HasKey(k Key) bool {
 	}
 
 	return valid[k]
+}
+
+// ConsoleEnsureOpen makes sure we have an open console window,
+// for users who want to be 100% sure they're going to get a console window.
+// Users who might prefer to get no console window (because stdio is redirected)
+// should not call this.
+func Windows_EnsureOpenConsole() {
+	if !Windows_HasOpenConsole() {
+		syscall.Syscall(procFreeConsole.Addr(), 0, 0, 0, 0)
+		syscall.Syscall(procAllocConsole.Addr(), 0, 0, 0, 0)
+	}
+}
+
+// Windows_HasOpenConsole returns whether the process has a console window allocated
+func Windows_HasOpenConsole() bool {
+	hwnd, _, _ := procGetConsoleWindow.Call()
+	return hwnd != 0
+}
+
+// ConsoleIsOnMSYSTTY returns whether stdout is connected to an MSYS/CYGWIN TTY
+func Windows_IsOnMSYSTTY() bool {
+	return GetMSYSTerminal(os.Stdout) != -1
+}
+
+// ConsoleIsOnConsole returns whether stdout is connected to a windows console
+func Windows_IsOnConsole() bool {
+	var st uint32
+	fd := os.Stdout.Fd()
+	r, _, e := syscall.Syscall(procGetConsoleMode.Addr(), 2, fd, uintptr(unsafe.Pointer(&st)), 0)
+	return r != 0 && e == 0
 }

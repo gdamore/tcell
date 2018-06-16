@@ -20,6 +20,10 @@ package tcell
 
 type termiosPrivate struct{}
 
+func (t *tScreen) termioPreInit() (termvar string, err error) {
+	return "", nil
+}
+
 func (t *tScreen) termioInit() error {
 	return ErrNoScreen
 }

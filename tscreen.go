@@ -16,7 +16,6 @@ package tcell
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -38,26 +37,22 @@ import (
 // $COLUMNS environment variables can be set to the actual window size,
 // otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
-	termvar := os.Getenv("TERM")
 
-	// For now, we can't readily fail during tscreen_windows initialization
-	// (init happens long after the tscreen is setup and returned)
-	// So, let's just give up early for cygwin so it can try for a console
-	if termvar == "cygwin" {
-		return nil, fmt.Errorf("Using windows console for $TERM=cygwin ")
-	}
-
-	ti, e := terminfo.LookupTerminfo(termvar)
+	t := &tScreen{}
+	termvar, e := t.termioPreInit()
 	if e != nil {
 		return nil, e
 	}
 
-	t := &tScreen{ti: ti}
+	t.ti, e = terminfo.LookupTerminfo(termvar)
+	if e != nil {
+		return nil, e
+	}
 
 	t.keyexist = make(map[Key]bool)
 	t.keycodes = make(map[string]*tKeyCode)
-	if len(ti.Mouse) > 0 {
-		t.mouse = []byte(ti.Mouse)
+	if len(t.ti.Mouse) > 0 {
+		t.mouse = []byte(t.ti.Mouse)
 	}
 	t.prepareKeys()
 	t.buildAcsMap()
@@ -83,8 +78,8 @@ type tScreen struct {
 	w         int
 	fini      bool
 	cells     CellBuffer
-	in        *os.File
-	out       *os.File
+	in        io.Reader
+	out       io.Writer
 	curstyle  Style
 	style     Style
 	evch      chan Event
