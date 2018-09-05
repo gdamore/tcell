@@ -52,6 +52,10 @@ func (cb *CellBuffer) SetContent(x int, y int,
 		i := 0
 		for i < len(c.currComb) {
 			r := c.currComb[i]
+			if r == '\u200d' {
+				i += 2
+				continue
+			}
 			if runewidth.RuneWidth(r) != 0 {
 				// not a combining character, yank it
 				c.currComb = append(c.currComb[:i-1], c.currComb[i+1:]...)
