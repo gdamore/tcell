@@ -32,8 +32,6 @@ package tcell
 // a long time (probably forever) so holding one's breath is contraindicated.
 
 import (
-	"os"
-	"os/signal"
 	"syscall"
 	"unsafe"
 )
@@ -48,10 +46,7 @@ func (t *tScreen) termioInit() error {
 	var ioc uintptr
 	t.tiosp = &termiosPrivate{}
 
-	if t.in, e = os.OpenFile("/dev/tty", os.O_RDONLY, 0); e != nil {
-		goto failed
-	}
-	if t.out, e = os.OpenFile("/dev/tty", os.O_WRONLY, 0); e != nil {
+	if t.in, t.out, e = t.driver.Init(t.sigwinch); e != nil {
 		goto failed
 	}
 
@@ -84,8 +79,6 @@ func (t *tScreen) termioInit() error {
 		goto failed
 	}
 
-	signal.Notify(t.sigwinch, syscall.SIGWINCH)
-
 	if w, h, e := t.getWinSize(); e == nil && w != 0 && h != 0 {
 		t.cells.Resize(w, h)
 	}
@@ -104,7 +97,7 @@ failed:
 
 func (t *tScreen) termioFini() {
 
-	signal.Stop(t.sigwinch)
+	t.driver.Fini()
 
 	<-t.indoneq
 
@@ -127,7 +120,9 @@ func (t *tScreen) termioFini() {
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {
-
+	if w, h, err := t.driver.WinSize(); err != ErrWinSizeUnused {
+		return w, h, err
+	}
 	fd := uintptr(t.out.Fd())
 	dim := [4]uint16{}
 	dimp := uintptr(unsafe.Pointer(&dim))

@@ -17,7 +17,6 @@
 package tcell
 
 import (
-	"os"
 	"os/signal"
 	"syscall"
 )
@@ -128,10 +127,7 @@ func (t *tScreen) termioInit() error {
 	var newtios C.struct_termios
 	var fd C.int
 
-	if t.in, e = os.OpenFile("/dev/tty", os.O_RDONLY, 0); e != nil {
-		goto failed
-	}
-	if t.out, e = os.OpenFile("/dev/tty", os.O_WRONLY, 0); e != nil {
+	if t.in, t.out, e = t.driver.Init(t.sigwinch); e != nil {
 		goto failed
 	}
 
@@ -183,7 +179,7 @@ failed:
 
 func (t *tScreen) termioFini() {
 
-	signal.Stop(t.sigwinch)
+	t.driver.Fini()
 
 	<-t.indoneq
 
@@ -198,6 +194,9 @@ func (t *tScreen) termioFini() {
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {
+	if w, h, err := t.driver.WinSize(); err != ErrWinSizeUnused {
+		return w, h, err
+	}
 	var cx, cy C.int
 	if r, e := C.getwinsize(C.int(t.out.Fd()), &cx, &cy); r != 0 {
 		return 0, 0, e
