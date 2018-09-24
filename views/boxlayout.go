@@ -204,13 +204,7 @@ func (b *BoxLayout) Draw() {
 	if b.changed {
 		b.layout()
 	}
-	b.view.Fill('*', b.style)
-	w, h := b.view.Size()
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			b.view.SetContent(x, y, ' ', nil, b.style)
-		}
-	}
+	b.view.Fill(' ', b.style)
 	for i := range b.cells {
 		b.cells[i].widget.Draw()
 	}
