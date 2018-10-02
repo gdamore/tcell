@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 // The Darwin system is *almost* a real BSD system, but it suffers from
 // a brain damaged TTY driver.  This TTY driver does not actually

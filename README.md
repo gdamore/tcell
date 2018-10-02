@@ -9,7 +9,7 @@
 [![codecov](https://codecov.io/gh/gdamore/tcell/branch/master/graph/badge.svg)](https://codecov.io/gh/gdamore/tcell)
 
 
-Package tcell provides a cell based view for text terminals, like xterm.
+package bcell provides a cell based view for text terminals, like xterm.
 It was inspired by termbox, but differs from termbox in some important
 ways.  It also adds substantial functionality beyond termbox.
 

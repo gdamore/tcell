@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 import (
 	"bytes"
@@ -23,9 +23,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"golang.org/x/text/transform"
+	"github.com/yanzay/log"
 
-	"github.com/gdamore/tcell/terminfo"
+	"github.com/windmilleng/bcell/terminfo"
+	"golang.org/x/text/transform"
 )
 
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
@@ -175,6 +176,22 @@ func (t *tScreen) Init() error {
 	go t.mainLoop()
 	go t.inputLoop()
 
+	return nil
+}
+
+func (t *tScreen) Close() error {
+	if t.in != nil {
+		err := t.in.Close()
+		if err != nil {
+			log.Printf("Closing tScreen.in: %v", err)
+		}
+	}
+	if t.out != nil {
+		err := t.out.Close()
+		if err != nil {
+			log.Printf("Closing tScreen.out: %v", err)
+		}
+	}
 	return nil
 }
 

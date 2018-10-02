@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 // The names of these constants are chosen to match Terminfo names,
 // modulo case, and changing the prefix from ACS_ to Rune.  These are

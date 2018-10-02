@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 // On Windows we don't have support for termios.  We probably could, and
 // may should, in a cygwin type environment.  Its not clear how to make

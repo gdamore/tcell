@@ -22,10 +22,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/gdamore/tcell"
+	"github.com/windmilleng/bcell"
 )
 
-func makebox(s tcell.Screen) {
+func makebox(s bcell.Screen) {
 	w, h := s.Size()
 
 	if w == 0 || h == 0 {
@@ -38,13 +38,13 @@ func makebox(s tcell.Screen) {
 	ly := rand.Int() % h
 	lw := rand.Int() % (w - lx)
 	lh := rand.Int() % (h - ly)
-	st := tcell.StyleDefault
+	st := bcell.StyleDefault
 	gl := ' '
 	if s.Colors() > 256 {
-		rgb := tcell.NewHexColor(int32(rand.Int() & 0xffffff))
+		rgb := bcell.NewHexColor(int32(rand.Int() & 0xffffff))
 		st = st.Background(rgb)
 	} else if s.Colors() > 1 {
-		st = st.Background(tcell.Color(rand.Int() % s.Colors()))
+		st = st.Background(bcell.Color(rand.Int() % s.Colors()))
 	} else {
 		st = st.Reverse(rand.Int()%2 == 0)
 		gl = glyphs[rand.Int()%len(glyphs)]
@@ -52,7 +52,7 @@ func makebox(s tcell.Screen) {
 
 	for row := 0; row < lh; row++ {
 		for col := 0; col < lw; col++ {
-			s.SetCell(lx+col, ly+row, st, gl)
+			s.Setcell(lx+col, ly+row, st, gl)
 		}
 	}
 	s.Show()
@@ -60,8 +60,8 @@ func makebox(s tcell.Screen) {
 
 func main() {
 
-	tcell.SetEncodingFallback(tcell.EncodingFallbackASCII)
-	s, e := tcell.NewScreen()
+	bcell.SetEncodingFallback(bcell.EncodingFallbackASCII)
+	s, e := bcell.NewScreen()
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
 		os.Exit(1)
@@ -71,9 +71,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	s.SetStyle(tcell.StyleDefault.
-		Foreground(tcell.ColorBlack).
-		Background(tcell.ColorWhite))
+	s.SetStyle(bcell.StyleDefault.
+		Foreground(bcell.ColorBlack).
+		Background(bcell.ColorWhite))
 	s.Clear()
 
 	quit := make(chan struct{})
@@ -81,15 +81,15 @@ func main() {
 		for {
 			ev := s.PollEvent()
 			switch ev := ev.(type) {
-			case *tcell.EventKey:
+			case *bcell.EventKey:
 				switch ev.Key() {
-				case tcell.KeyEscape, tcell.KeyEnter:
+				case bcell.KeyEscape, bcell.KeyEnter:
 					close(quit)
 					return
-				case tcell.KeyCtrlL:
+				case bcell.KeyCtrlL:
 					s.Sync()
 				}
-			case *tcell.EventResize:
+			case *bcell.EventResize:
 				s.Sync()
 			}
 		}

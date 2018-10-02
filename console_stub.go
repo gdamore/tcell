@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 // NewConsoleScreen returns a console based screen.  This platform
 // doesn't have support for any, so it returns nil and a suitable error.

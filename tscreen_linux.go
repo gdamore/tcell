@@ -14,13 +14,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 import (
-	"os"
+	"fmt"
 	"os/signal"
 	"syscall"
 	"unsafe"
+
+	"log"
 )
 
 type termiosPrivate syscall.Termios
