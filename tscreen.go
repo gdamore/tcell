@@ -143,7 +143,7 @@ func (t *tScreen) Init() error {
 	}
 	// A user who wants to have his themes honored can
 	// set this environment variable.
-	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
+	if os.Getenv("BCELL_TRUECOLOR") == "disable" {
 		t.truecolor = false
 	}
 	if !t.truecolor {
