@@ -29,6 +29,8 @@ import (
 	"golang.org/x/text/transform"
 )
 
+const defaultTtyPath = "/dev/tty"
+
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
 // and POSIX termios, combined with a terminfo description taken from
 // the $TERM environment variable.  It returns an error if the terminal
@@ -38,6 +40,19 @@ import (
 // $COLUMNS environment variables can be set to the actual window size,
 // otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
+	ch := make(chan os.Signal, 1)
+	go func() {
+		for {
+			_ = <-ch
+			log.Debugf("got SIGWINCH")
+		}
+	}()
+
+	return NewTerminfoScreenFromTty(defaultTtyPath, ch)
+}
+
+func NewTerminfoScreenFromTty(ttyPath string, sigwinch chan os.Signal) (Screen, error) {
+	// TODO(dbentley): pass in term environment variable, too
 	ti, e := terminfo.LookupTerminfo(os.Getenv("TERM"))
 	if e != nil {
 		return nil, e
@@ -56,6 +71,16 @@ func NewTerminfoScreen() (Screen, error) {
 	for k, v := range RuneFallbacks {
 		t.fallback[k] = v
 	}
+
+	if t.in, e = os.OpenFile(ttyPath, os.O_RDONLY, 0); e != nil {
+		t.Close()
+		return nil, e
+	}
+	if t.out, e = os.OpenFile(ttyPath, os.O_WRONLY, 0); e != nil {
+		t.Close()
+		return nil, e
+	}
+	t.sigwinch = sigwinch
 
 	return t, nil
 }

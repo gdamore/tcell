@@ -35,10 +35,12 @@ func (t *tScreen) termioInit() error {
 	var ioc uintptr
 	t.tiosp = &termiosPrivate{}
 
-	if t.in, e = os.OpenFile("/dev/tty", os.O_RDONLY, 0); e != nil {
+	if t.in == nil {
+		e = fmt.Errorf("t.in unexpectedly nil (should be populated)")
 		goto failed
 	}
-	if t.out, e = os.OpenFile("/dev/tty", os.O_WRONLY, 0); e != nil {
+	if t.out == nil {
+		e = fmt.Errorf("t.out unexpectedly nil (should be populated)")
 		goto failed
 	}
 
@@ -76,11 +78,10 @@ func (t *tScreen) termioInit() error {
 	// TCSETS.  This can leave some output unflushed.
 	ioc = uintptr(syscall.TCSETS)
 	if _, _, e1 := syscall.Syscall6(syscall.SYS_IOCTL, fd, ioc, tios, 0, 0, 0); e1 != 0 {
+		log.Printf("HUH %v", e1)
 		e = e1
 		goto failed
 	}
-
-	signal.Notify(t.sigwinch, syscall.SIGWINCH)
 
 	if w, h, e := t.getWinSize(); e == nil && w != 0 && h != 0 {
 		t.cells.Resize(w, h)

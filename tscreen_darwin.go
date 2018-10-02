@@ -32,7 +32,7 @@ package bcell
 // a long time (probably forever) so holding one's breath is contraindicated.
 
 import (
-	"os"
+	"fmt"
 	"os/signal"
 	"syscall"
 	"unsafe"
@@ -48,10 +48,12 @@ func (t *tScreen) termioInit() error {
 	var ioc uintptr
 	t.tiosp = &termiosPrivate{}
 
-	if t.in, e = os.OpenFile("/dev/tty", os.O_RDONLY, 0); e != nil {
+	if t.in == nil {
+		e = fmt.Errorf("t.in unexpectedly nil (should be populated)")
 		goto failed
 	}
-	if t.out, e = os.OpenFile("/dev/tty", os.O_WRONLY, 0); e != nil {
+	if t.out == nil {
+		e = fmt.Errorf("t.out unexpectedly nil (should be populated)")
 		goto failed
 	}
 

@@ -14,6 +14,8 @@
 
 package bcell
 
+import "os"
+
 // Screen represents the physical (or emulated) screen.
 // This can be a terminal window or a physical console.  Platforms implement
 // this differerently.
@@ -201,6 +203,22 @@ func NewScreen() (Screen, error) {
 	// First we attempt to obtain a terminfo screen.  This should work
 	// in most places if $TERM is set.
 	if s, e := NewTerminfoScreen(); s != nil {
+		return s, nil
+
+	} else if s, _ := NewConsoleScreen(); s != nil {
+		return s, nil
+
+	} else {
+		return nil, e
+	}
+}
+
+// NewScreenFromTty returns a Screen for the given tty (and listening for
+// SIGWINCH's on the given channel)
+func NewScreenFromTty(ttyPath string, sigwinch chan os.Signal) (Screen, error) {
+	// First we attempt to obtain a terminfo screen.  This should work
+	// in most places if $TERM is set.
+	if s, e := NewTerminfoScreenFromTty(ttyPath, sigwinch); s != nil {
 		return s, nil
 
 	} else if s, _ := NewConsoleScreen(); s != nil {
