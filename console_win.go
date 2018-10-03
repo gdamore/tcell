@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 import (
 	"errors"
@@ -666,7 +666,7 @@ func mapColor2RGB(c Color) uint16 {
 	return 0
 }
 
-// Map a tcell style to Windows attributes
+// Map a bcell style to Windows attributes
 func (s *cScreen) mapStyle(style Style) uint16 {
 	f, b, a := style.Decompose()
 	fa := s.oscreen.attrs & 0xf

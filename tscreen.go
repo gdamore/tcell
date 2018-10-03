@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 import (
 	"bytes"
@@ -23,10 +23,13 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"golang.org/x/text/transform"
+	"github.com/yanzay/log"
 
-	"github.com/gdamore/tcell/terminfo"
+	"github.com/windmilleng/bcell/terminfo"
+	"golang.org/x/text/transform"
 )
+
+const defaultTtyPath = "/dev/tty"
 
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
 // and POSIX termios, combined with a terminfo description taken from
@@ -37,6 +40,19 @@ import (
 // $COLUMNS environment variables can be set to the actual window size,
 // otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
+	ch := make(chan os.Signal, 1)
+	go func() {
+		for {
+			_ = <-ch
+			log.Debugf("got SIGWINCH")
+		}
+	}()
+
+	return NewTerminfoScreenFromTty(defaultTtyPath, ch)
+}
+
+func NewTerminfoScreenFromTty(ttyPath string, sigwinch chan os.Signal) (Screen, error) {
+	// TODO(dbentley): pass in term environment variable, too
 	ti, e := terminfo.LookupTerminfo(os.Getenv("TERM"))
 	if e != nil {
 		return nil, e
@@ -55,6 +71,16 @@ func NewTerminfoScreen() (Screen, error) {
 	for k, v := range RuneFallbacks {
 		t.fallback[k] = v
 	}
+
+	if t.in, e = os.OpenFile(ttyPath, os.O_RDONLY, 0); e != nil {
+		t.Close()
+		return nil, e
+	}
+	if t.out, e = os.OpenFile(ttyPath, os.O_WRONLY, 0); e != nil {
+		t.Close()
+		return nil, e
+	}
+	t.sigwinch = sigwinch
 
 	return t, nil
 }
@@ -142,7 +168,7 @@ func (t *tScreen) Init() error {
 	}
 	// A user who wants to have his themes honored can
 	// set this environment variable.
-	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
+	if os.Getenv("BCELL_TRUECOLOR") == "disable" {
 		t.truecolor = false
 	}
 	if !t.truecolor {
@@ -175,6 +201,22 @@ func (t *tScreen) Init() error {
 	go t.mainLoop()
 	go t.inputLoop()
 
+	return nil
+}
+
+func (t *tScreen) Close() error {
+	if t.in != nil {
+		err := t.in.Close()
+		if err != nil {
+			log.Printf("Closing tScreen.in: %v", err)
+		}
+	}
+	if t.out != nil {
+		err := t.out.Close()
+		if err != nil {
+			log.Printf("Closing tScreen.out: %v", err)
+		}
+	}
 	return nil
 }
 

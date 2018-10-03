@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 // Style represents a complete text style, including both foreground
 // and background color.  We encode it in a 64-bit int for efficiency.

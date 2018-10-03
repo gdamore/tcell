@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package bcell
 
 // AttrMask represents a mask of text attributes, apart from color.
 // Note that support for attributes may vary widely across terminals.
