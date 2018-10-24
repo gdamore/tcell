@@ -26,6 +26,7 @@ ways.  It also adds substantial functionality beyond termbox.
 * [gomandelbrot](https://github.com/rgm3/gomandelbrot) - Mandelbrot!
 * [WTF](https://github.com/senorprogrammer/wtf)- Personal information dashboard for your terminal
 * [browsh](https://github.com/browsh-org/browsh) - A fully-modern text-based browser, rendering to TTY and browsers ([video](https://www.youtube.com/watch?v=HZq86XfBoRo))
+* [go-life](https://github.com/sachaos/go-life) - Conway's Game of Life.
 
 ## Pure Go Terminfo Database
 
