@@ -252,7 +252,7 @@ please let me know.  PRs are especially welcome.
 
 _Tcell_ is absolutely free, but if you want to obtain commercial, professional support, there are options.
 
-[cols="2",align="center"]
+[cols="2",align="center",frame="none", grid="none"]
 |===
 ^.^|
 image:logos/tidelift.png[100,100]
