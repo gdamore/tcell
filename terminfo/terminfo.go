@@ -616,27 +616,28 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 	return pb.End()
 }
 
-// TPuts emits the string to the writer, but expands inline padding
-// indications (of the form $<[delay]> where [delay] is msec) to
-// a suitable number of padding characters (usually null bytes) based
-// upon the supplied baud.  At high baud rates, more padding characters
-// will be inserted.  All Terminfo based strings should be emitted using
-// this function.
-func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
+// InterpretDelays translates the input string by expanding inline padding
+// indications (of the form $<[delay]> where [delay] is msec) to a suitable
+// number of padding characters (usually null bytes) based upon the supplied
+// baud.  At high baud rates, more padding characters will be inserted. This
+// function is used by TPuts() to make strings suitable for sending to the
+// terminal.
+func (t *Terminfo) InterpretDelays(s string, baud int) string {
+	var res bytes.Buffer
 	for {
 		beg := strings.Index(s, "$<")
 		if beg < 0 {
 			// Most strings don't need padding, which is good news!
-			io.WriteString(w, s)
-			return
+			res.WriteString(s)
+			return res.String()
 		}
-		io.WriteString(w, s[:beg])
+		res.WriteString(s[:beg])
 		s = s[beg+2:]
 		end := strings.Index(s, ">")
 		if end < 0 {
 			// unterminated.. just emit bytes unadulterated
-			io.WriteString(w, "$<"+s)
-			return
+			res.WriteString("$<" + s)
+			return res.String()
 		}
 		val := s[:end]
 		s = s[end+1:]
@@ -664,10 +665,18 @@ func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
 		}
 		cnt := int(((baud / 8) * padus) / unit)
 		for cnt > 0 {
-			io.WriteString(w, t.PadChar)
+			res.WriteString(t.PadChar)
 			cnt--
 		}
 	}
+}
+
+// TPuts emits the string to the writer, but expands inline padding
+// indications using InterpretDelays().  All Terminfo based strings should be
+// emitted using this function.
+func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
+	output := t.InterpretDelays(s, baud)
+	io.WriteString(w, output)
 }
 
 // TGoto returns a string suitable for addressing the cursor at the given
