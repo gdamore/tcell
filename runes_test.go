@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2018 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -16,51 +16,80 @@ package tcell
 
 import (
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestCanDisplay(t *testing.T) {
-	Convey("With a UTF-8 screen", t,
-		WithScreen(t, "UTF-8", func(s SimulationScreen) {
-			So(s.CharacterSet(), ShouldEqual, "UTF-8")
-			So(s.CanDisplay('a', true), ShouldBeTrue)
-			So(s.CanDisplay(RuneHLine, true), ShouldBeTrue)
-			So(s.CanDisplay(RuneHLine, false), ShouldBeTrue)
-			So(s.CanDisplay('⌀', false), ShouldBeTrue)
-		}))
+func TestCanDisplayUTF8(t *testing.T) {
+	s := mkTestScreen(t, "UTF-8")
+	defer s.Fini()
 
-	Convey("With an ASCII screen", t,
-		WithScreen(t, "US-ASCII", func(s SimulationScreen) {
-			So(s.CharacterSet(), ShouldEqual, "US-ASCII")
-			So(s.CanDisplay('a', true), ShouldBeTrue)
-			So(s.CanDisplay(RuneHLine, true), ShouldBeTrue)
-			So(s.CanDisplay(RunePi, false), ShouldBeFalse)
-			So(s.CanDisplay('⌀', false), ShouldBeFalse)
-		}))
+	if s.CharacterSet() != "UTF-8" {
+		t.Errorf("Bad charset: %v", s.CharacterSet())
+	}
+	if !s.CanDisplay('a', true) {
+		t.Errorf("Should be able to display 'a'")
+	}
+	if !s.CanDisplay(RuneHLine, true) {
+		t.Errorf("Should be able to display hline (with fallback)")
+	}
+	if !s.CanDisplay(RuneHLine, false) {
+		t.Errorf("Should be able to display hline (no fallback)")
+	}
+	if !s.CanDisplay('⌀', false) {
+		t.Errorf("Should be able to display null")
+	}
+}
+func TestCanDisplayASCII(t *testing.T) {
+	s := mkTestScreen(t, "US-ASCII")
+	defer s.Fini()
 
+	if s.CharacterSet() != "US-ASCII" {
+		t.Errorf("Wrong character set: %v", s.CharacterSet())
+	}
+	if !s.CanDisplay('a', true) {
+		t.Errorf("Should be able to display 'a'")
+	}
+	if !s.CanDisplay(RuneHLine, true) {
+		t.Errorf("Should be able to display hline (with fallback)")
+	}
+	if s.CanDisplay(RunePi, false) {
+		t.Errorf("Should not be able to display Pi (no fallback)")
+	}
+	if s.CanDisplay('⌀', false) {
+		t.Errorf("Should not be able to display null")
+	}
 }
 
-func TestRegisterFallback(t *testing.T) {
-	Convey("With an ASCII screen", t,
-		WithScreen(t, "US-ASCII", func(s SimulationScreen) {
-			So(s.CharacterSet(), ShouldEqual, "US-ASCII")
-			s.RegisterRuneFallback('⌀', "o")
-			So(s.CanDisplay('⌀', false), ShouldBeFalse)
-			So(s.CanDisplay('⌀', true), ShouldBeTrue)
-			s.UnregisterRuneFallback('⌀')
-			So(s.CanDisplay('⌀', false), ShouldBeFalse)
-			So(s.CanDisplay('⌀', true), ShouldBeFalse)
-		}))
+func TestRuneFallbacks(t *testing.T) {
+	s := mkTestScreen(t, "US-ASCII")
+	defer s.Fini()
+	if s.CharacterSet() != "US-ASCII" {
+		t.Errorf("Wrong character set: %v", s.CharacterSet())
+	}
 
-}
+	// Test registering a fallback
+	s.RegisterRuneFallback('⌀', "o")
+	if s.CanDisplay('⌀', false) {
+		t.Errorf("Should not be able to display null (no fallback)")
+	}
+	if !s.CanDisplay('⌀', true) {
+		t.Errorf("Should be able to display null (with fallback)")
+	}
 
-func TestUnregisterFallback(t *testing.T) {
-	Convey("With an ASCII screen (HLine)", t,
-		WithScreen(t, "US-ASCII", func(s SimulationScreen) {
-			So(s.CharacterSet(), ShouldEqual, "US-ASCII")
-			So(s.CanDisplay(RuneHLine, true), ShouldBeTrue)
-			s.UnregisterRuneFallback(RuneHLine)
-			So(s.CanDisplay(RuneHLine, true), ShouldBeFalse)
-		}))
+	// Test unregistering custom fallback
+	s.UnregisterRuneFallback('⌀')
+	if s.CanDisplay('⌀', false) {
+		t.Errorf("Should not be able to display null (no fallback)")
+	}
+	if s.CanDisplay('⌀', true) {
+		t.Errorf("Should not be able to display null (with fallback)")
+	}
+
+	// Test unregistering builtin fallback
+	if !s.CanDisplay(RuneHLine, true) {
+		t.Errorf("Should be able to display hline")
+	}
+	s.UnregisterRuneFallback(RuneHLine)
+	if s.CanDisplay(RuneHLine, true) {
+		t.Errorf("Should not be able to display hline")
+	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2018 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -17,8 +17,6 @@ package tcell
 import (
 	"testing"
 	"time"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func eventLoop(s SimulationScreen, evch chan Event) {
@@ -37,41 +35,36 @@ func eventLoop(s SimulationScreen, evch chan Event) {
 
 func TestMouseEvents(t *testing.T) {
 
-	Convey("Mouse events", t, WithScreen(t, "", func(s SimulationScreen) {
+	s := mkTestScreen(t, "")
+	defer s.Fini()
 
-		Convey("Size should be valid", func() {
-			x, y := s.Size()
-			So(x, ShouldEqual, 80)
-			So(y, ShouldEqual, 25)
-		})
+	s.EnableMouse()
+	s.InjectMouse(4, 9, Button1, ModCtrl)
+	evch := make(chan Event)
+	em := &EventMouse{}
+	done := false
+	go eventLoop(s, evch)
 
-		s.EnableMouse()
-		s.InjectMouse(4, 9, Button1, ModCtrl)
-		evch := make(chan Event)
-		em := &EventMouse{}
-		done := false
-		go eventLoop(s, evch)
-
-		for !done {
-			select {
-			case ev := <-evch:
-				if evm, ok := ev.(*EventMouse); ok {
-					em = evm
-					done = true
-				}
-				continue
-			case <-time.After(time.Second):
+	for !done {
+		select {
+		case ev := <-evch:
+			if evm, ok := ev.(*EventMouse); ok {
+				em = evm
 				done = true
 			}
+			continue
+		case <-time.After(time.Second):
+			done = true
 		}
-		Convey("We got our mouse event", func() {
-			So(em, ShouldNotBeNil)
-			x, y := em.Position()
-			So(x, ShouldEqual, 4)
-			So(y, ShouldEqual, 9)
-			So(em.Buttons(), ShouldEqual, Button1)
-			So(em.Modifiers(), ShouldEqual, ModCtrl)
-		})
-	}))
+	}
 
+	if x, y := em.Position(); x != 4 || y != 9 {
+		t.Errorf("Mouse position wrong (%v, %v)", x, y)
+	}
+	if em.Buttons() != Button1 {
+		t.Errorf("Should be Button1")
+	}
+	if em.Modifiers() != ModCtrl {
+		t.Errorf("Modifiers should be control")
+	}
 }

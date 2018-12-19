@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2018 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -16,56 +16,82 @@ package tcell
 
 import (
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestColor(t *testing.T) {
+func TestColorValues(t *testing.T) {
+	var values = []struct {
+		color Color
+		hex   int32
+	}{
+		{ColorRed, 0x00FF0000},
+		{ColorGreen, 0x00008000},
+		{ColorLime, 0x0000FF00},
+		{ColorBlue, 0x000000FF},
+		{ColorBlack, 0x00000000},
+		{ColorWhite, 0x00FFFFFF},
+		{ColorSilver, 0x00C0C0C0},
+	}
+
+	for _, tc := range values {
+		if tc.color.Hex() != tc.hex {
+			t.Errorf("Color: %x != %x", tc.color.Hex(), tc.hex)
+		}
+	}
+}
+
+func TestColorFitting(t *testing.T) {
 	pal := []Color{}
 	for i := 0; i < 255; i++ {
 		pal = append(pal, Color(i))
 	}
-	Convey("Color values are correct", t, func() {
-		So(ColorRed.Hex(), ShouldEqual, 0x00FF0000)
-		So(ColorGreen.Hex(), ShouldEqual, 0x00008000)
-		So(ColorLime.Hex(), ShouldEqual, 0x0000FF00)
-		So(ColorBlue.Hex(), ShouldEqual, 0x000000FF)
-		So(ColorBlack.Hex(), ShouldEqual, 0x00000000)
-		So(ColorWhite.Hex(), ShouldEqual, 0x00FFFFFF)
-		So(ColorSilver.Hex(), ShouldEqual, 0x00C0C0C0)
-	})
 
-	Convey("Color fitting from 16 colors to 8 colors works", t, func() {
-		for i := 0; i < 7; i++ {
-			So(FindColor(Color(i), pal[:8]), ShouldEqual, Color(i))
+	// Exact color fitting on ANSI colors
+	for i := 0; i < 7; i++ {
+		if FindColor(Color(i), pal[:8]) != Color(i) {
+			t.Errorf("Color ANSI fit fail at %d", i)
 		}
-		// Grey is closest to Silver
-		So(FindColor(Color(8), pal[:8]), ShouldEqual, Color(7))
-
-		for i := 9; i < 16; i++ {
-			So(FindColor(Color(i), pal[:8]), ShouldEqual, Color(i%8))
+	}
+	// Grey is closest to Silver
+	if FindColor(Color(8), pal[:8]) != Color(7) {
+		t.Errorf("Grey does not fit to silver")
+	}
+	// Color fitting of upper 8 colors.
+	for i := 9; i < 16; i++ {
+		if FindColor(Color(i), pal[:8]) != Color(i%8) {
+			t.Errorf("Color fit fail at %d", i)
 		}
-	})
+	}
+	// Imperfect fit
+	if FindColor(ColorOrangeRed, pal[:16]) != ColorRed ||
+		FindColor(ColorAliceBlue, pal[:16]) != ColorWhite ||
+		FindColor(ColorPink, pal) != Color217 ||
+		FindColor(ColorSienna, pal) != Color173 ||
+		FindColor(GetColor("#00FD00"), pal) != ColorLime {
+		t.Errorf("Imperfect color fit")
+	}
 
-	Convey("Color lookups by name work", t, func() {
-		So(GetColor("red"), ShouldEqual, ColorRed)
-		So(GetColor("#FF0000").Hex(), ShouldEqual, ColorRed.Hex())
-		So(GetColor("black"), ShouldEqual, ColorBlack)
-		So(GetColor("orange"), ShouldEqual, ColorOrange)
-	})
+}
 
-	Convey("Color imperfect fit works", t, func() {
-		So(FindColor(ColorOrangeRed, pal[:16]), ShouldEqual, ColorRed)
-		So(FindColor(ColorAliceBlue, pal[:16]), ShouldEqual, ColorWhite)
-		So(FindColor(ColorPink, pal), ShouldEqual, Color217)
-		So(FindColor(ColorSienna, pal), ShouldEqual, Color173)
-		So(FindColor(GetColor("#00FD00"), pal), ShouldEqual, ColorLime)
-	})
+func TestColorNameLookup(t *testing.T) {
+	var values = []struct {
+		name  string
+		color Color
+	}{
+		{"#FF0000", ColorRed},
+		{"black", ColorBlack},
+		{"orange", ColorOrange},
+	}
+	for _, v := range values {
+		c := GetColor(v.name)
+		if c.Hex() != v.color.Hex() {
+			t.Errorf("Wrong color for %v: %v", v.name, c.Hex())
+		}
+	}
+}
 
-	Convey("Color RGB breakdown works", t, func() {
-		r, g, b := GetColor("#112233").RGB()
-		So(r, ShouldEqual, 0x11)
-		So(g, ShouldEqual, 0x22)
-		So(b, ShouldEqual, 0x33)
-	})
+func TestColorRGB(t *testing.T) {
+	r, g, b := GetColor("#112233").RGB()
+	if r != 0x11 || g != 0x22 || b != 0x33 {
+		t.Errorf("RGB wrong (%x, %x, %x)", r, g, b)
+	}
 }

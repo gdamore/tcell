@@ -1,4 +1,4 @@
-// Copyright 2016 The TCell Authors
+// Copyright 2018 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"os"
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 // This terminfo entry is a stripped down version from
@@ -41,147 +39,137 @@ var testTerminfo = &Terminfo{
 	PadChar:   "\x00",
 }
 
-func TestTerminfo(t *testing.T) {
+func TestTerminfoExpansion(t *testing.T) {
 
 	ti := testTerminfo
 
-	Convey("Terminfo parameter processing", t, func() {
-		// This tests %i, and basic parameter strings too
-		Convey("TGoto works", func() {
-			s := ti.TGoto(7, 9)
-			So(s, ShouldEqual, "\x1b[10;8H")
-		})
+	// Tests %i and basic parameter strings too
+	if ti.TGoto(7, 9) != "\x1b[10;8H" {
+		t.Error("TGoto expansion failed")
+	}
 
-		// This tests some conditionals
-		Convey("TParm extended formats work", func() {
-			s := ti.TParm("A[%p1%2.2X]B", 47)
-			So(s, ShouldEqual, "A[2F]B")
-		})
+	// This tests some conditionals
+	if ti.TParm("A[%p1%2.2X]B", 47) != "A[2F]B" {
+		t.Error("TParm conditionals failed")
+	}
 
-		// This tests some conditionals
-		Convey("TParm colors work", func() {
-			s := ti.TParm(ti.SetFg, 7)
-			So(s, ShouldEqual, "\x1b[37m")
+	// Color tests.
+	if ti.TParm(ti.SetFg, 7) != "\x1b[37m" {
+		t.Error("SetFg(7) failed")
+	}
+	if ti.TParm(ti.SetFg, 15) != "\x1b[97m" {
+		t.Error("SetFg(15) failed")
+	}
+	if ti.TParm(ti.SetFg, 200) != "\x1b[38;5;200m" {
+		t.Error("SetFg(200) failed")
+	}
 
-			s = ti.TParm(ti.SetFg, 15)
-			So(s, ShouldEqual, "\x1b[97m")
-
-			s = ti.TParm(ti.SetFg, 200)
-			So(s, ShouldEqual, "\x1b[38;5;200m")
-		})
-
-		// This tests variables
-		Convey("TParm mouse mode works", func() {
-			s := ti.TParm(ti.MouseMode, 1)
-			So(s, ShouldEqual, "\x1b[?1000h\x1b[?1003h\x1b[?1006h")
-			s = ti.TParm(ti.MouseMode, 0)
-			So(s, ShouldEqual, "\x1b[?1000l\x1b[?1003l\x1b[?1006l")
-		})
-
-	})
-
-	Convey("Terminfo delay handling", t, func() {
-
-		Convey("19200 baud", func() {
-			buf := bytes.NewBuffer(nil)
-			ti.TPuts(buf, ti.Blink, 19200)
-			s := string(buf.Bytes())
-			So(s, ShouldEqual, "\x1b2ms\x00\x00\x00\x00")
-		})
-
-		Convey("50 baud", func() {
-			buf := bytes.NewBuffer(nil)
-			ti.TPuts(buf, ti.Blink, 50)
-			s := string(buf.Bytes())
-			So(s, ShouldEqual, "\x1b2ms")
-		})
-	})
+	if ti.TParm(ti.MouseMode, 1) != "\x1b[?1000h\x1b[?1003h\x1b[?1006h" {
+		t.Error("Enable mouse mode failed")
+	}
+	if ti.TParm(ti.MouseMode, 0) != "\x1b[?1000l\x1b[?1003l\x1b[?1006l" {
+		t.Error("Disable mouse mode failed")
+	}
 }
 
-func TestTerminfoDatabase(t *testing.T) {
+func TestTerminfoBaud19200(t *testing.T) {
+	ti := testTerminfo
+	buf := bytes.NewBuffer(nil)
+	ti.TPuts(buf, ti.Blink, 19200)
+	s := string(buf.Bytes())
+	if s != "\x1b2ms\x00\x00\x00\x00" {
+		t.Error("1920 baud failed")
+	}
+}
+func TestTerminfoBaud50(t *testing.T) {
+	ti := testTerminfo
+	buf := bytes.NewBuffer(nil)
+	ti.TPuts(buf, ti.Blink, 50)
+	s := string(buf.Bytes())
+	if s != "\x1b2ms" {
+		t.Error("50 baud failed")
+	}
+}
 
-	Convey("Database Lookups work", t, func() {
-		Convey("Basic lookup works", func() {
-			os.Setenv("TCELLDB", "testdata/test1")
-			ti, err := LookupTerminfo("test1")
-			So(err, ShouldBeNil)
-			So(ti, ShouldNotBeNil)
-			So(ti.Columns, ShouldEqual, 80)
+func TestTerminfoBasic(t *testing.T) {
 
-			ti, err = LookupTerminfo("alias1")
-			So(err, ShouldBeNil)
-			So(ti, ShouldNotBeNil)
-			So(ti.Columns, ShouldEqual, 80)
+	os.Setenv("TCELLDB", "testdata/test1")
+	ti, err := LookupTerminfo("test1")
+	if ti == nil || err != nil || ti.Columns != 80 {
+		t.Errorf("Failed test1 lookup: %v", err)
+	}
 
-			os.Setenv("TCELLDB", "testdata")
-			ti, err = LookupTerminfo("test2")
-			So(err, ShouldBeNil)
-			So(ti, ShouldNotBeNil)
-			So(ti.Columns, ShouldEqual, 80)
-			So(len(ti.Aliases), ShouldEqual, 1)
-			So(ti.Aliases[0], ShouldEqual, "alias2")
-		})
+	ti, err = LookupTerminfo("alias1")
+	if ti == nil || err != nil || ti.Columns != 80 {
+		t.Errorf("Failed alias1 lookup: %v", err)
+	}
 
-		Convey("Incorrect primary name works", func() {
-			os.Setenv("TCELLDB", "testdata")
-			ti, err := LookupTerminfo("test3")
-			So(err, ShouldNotBeNil)
-			So(ti, ShouldBeNil)
-		})
+	os.Setenv("TCELLDB", "testdata")
+	ti, err = LookupTerminfo("test2")
+	if ti == nil || err != nil || ti.Columns != 80 {
+		t.Errorf("Failed test2 lookup: %v", err)
+	}
+	if len(ti.Aliases) != 1 || ti.Aliases[0] != "alias2" {
+		t.Errorf("Alias for test2 wrong")
+	}
+}
 
-		Convey("Loops fail", func() {
-			os.Setenv("TCELLDB", "testdata")
-			ti, err := LookupTerminfo("loop1")
-			So(ti, ShouldBeNil)
-			So(err, ShouldNotBeNil)
-		})
+func TestTerminfoBadName(t *testing.T) {
 
-		Convey("Gzip database works", func() {
-			os.Setenv("TCELLDB", "testdata")
-			ti, err := LookupTerminfo("test-gzip")
-			So(err, ShouldBeNil)
-			So(ti, ShouldNotBeNil)
-			So(ti.Columns, ShouldEqual, 80)
-		})
+	os.Setenv("TCELLDB", "testdata")
+	if ti, err := LookupTerminfo("test3"); err == nil || ti != nil {
+		t.Error("Bad name should not have resolved")
+	}
+}
 
-		Convey("Gzip alias lookup works", func() {
-			os.Setenv("TCELLDB", "testdata")
-			ti, err := LookupTerminfo("alias-gzip")
-			So(err, ShouldBeNil)
-			So(ti, ShouldNotBeNil)
-			So(ti.Columns, ShouldEqual, 80)
-		})
+func TestTerminfoLoop(t *testing.T) {
+	os.Setenv("TCELLDB", "testdata")
+	if ti, err := LookupTerminfo("loop1"); ti != nil || err == nil {
+		t.Error("Loop loop1 should not have resolved")
+	}
+}
 
-		Convey("Broken alias works", func() {
-			os.Setenv("TCELLDB", "testdata")
-			ti, err := LookupTerminfo("alias-none")
-			So(err, ShouldNotBeNil)
-			So(ti, ShouldBeNil)
-		})
+func TestTerminfoGzip(t *testing.T) {
 
-		Convey("Combined database works", func() {
-			os.Setenv("TCELLDB", "testdata/combined")
-			ti, err := LookupTerminfo("combined2")
-			So(err, ShouldBeNil)
-			So(ti, ShouldNotBeNil)
-			So(ti.Lines, ShouldEqual, 102)
+	os.Setenv("TCELLDB", "testdata")
+	if ti, err := LookupTerminfo("test-gzip"); ti == nil || err != nil ||
+		ti.Columns != 80 {
+		t.Error("test-gzip filed")
+	}
 
-			ti, err = LookupTerminfo("alias-comb1")
-			So(err, ShouldBeNil)
-			So(ti, ShouldNotBeNil)
-			So(ti.Lines, ShouldEqual, 101)
+	if ti, err := LookupTerminfo("alias-gzip"); ti == nil || err != nil ||
+		ti.Columns != 80 {
+		t.Error("alias-gzip failed")
+	}
+}
 
-			ti, err = LookupTerminfo("combined3")
-			So(err, ShouldBeNil)
-			So(ti, ShouldNotBeNil)
-			So(ti.Lines, ShouldEqual, 103)
+func TestTerminfoBadAlias(t *testing.T) {
 
-			ti, err = LookupTerminfo("combined1")
-			So(err, ShouldBeNil)
-			So(ti, ShouldNotBeNil)
-			So(ti.Lines, ShouldEqual, 101)
-		})
-	})
+	os.Setenv("TCELLDB", "testdata")
+	if ti, err := LookupTerminfo("alias-none"); err == nil || ti != nil {
+		t.Errorf("Bad alias should not have worked")
+	}
+}
+
+func TestTerminfoCombined(t *testing.T) {
+
+	os.Setenv("TCELLDB", "testdata/combined")
+
+	var values = []struct {
+		name  string
+		lines int
+	}{
+		{"combined2", 102},
+		{"alias-comb1", 101},
+		{"combined3", 103},
+		{"combined1", 101},
+	}
+	for _, v := range values {
+		if ti, e := LookupTerminfo(v.name); e != nil || ti == nil ||
+			ti.Lines != v.lines {
+			t.Errorf("Combined terminal for %s wrong", v.name)
+		}
+	}
 }
 
 func BenchmarkSetFgBg(b *testing.B) {

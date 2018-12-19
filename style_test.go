@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2018 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -16,28 +16,26 @@ package tcell
 
 import (
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestStyle(t *testing.T) {
-	Convey("Style checks", t, WithScreen(t, "", func(s SimulationScreen) {
+	s := mkTestScreen(t, "")
+	defer s.Fini()
 
-		style := StyleDefault
-		fg, bg, attr := style.Decompose()
+	style := StyleDefault
+	fg, bg, attr := style.Decompose()
 
-		So(fg, ShouldEqual, ColorDefault)
-		So(bg, ShouldEqual, ColorDefault)
-		So(attr, ShouldEqual, AttrNone)
+	if fg != ColorDefault || bg != ColorDefault || attr != AttrNone {
+		t.Errorf("Bad default style (%v, %v, %v)", fg, bg, attr)
+	}
 
-		s2 := style.
-			Background(ColorRed).
-			Foreground(ColorBlue).
-			Blink(true)
+	s2 := style.
+		Background(ColorRed).
+		Foreground(ColorBlue).
+		Blink(true)
 
-		fg, bg, attr = s2.Decompose()
-		So(fg, ShouldEqual, ColorBlue)
-		So(bg, ShouldEqual, ColorRed)
-		So(attr, ShouldEqual, AttrBlink)
-	}))
+	fg, bg, attr = s2.Decompose()
+	if fg != ColorBlue || bg != ColorRed || attr != AttrBlink {
+		t.Errorf("Bad custom style (%v, %v, %v)", fg, bg, attr)
+	}
 }
