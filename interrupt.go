@@ -23,11 +23,16 @@ import (
 type EventInterrupt struct {
 	t time.Time
 	v interface{}
+        esc string
 }
 
 // When returns the time when this event was created.
 func (ev *EventInterrupt) When() time.Time {
 	return ev.t
+}
+
+func (ev *EventInterrupt) EscSeq() string {
+	return ev.esc
 }
 
 // Data is used to obtain the opaque event payload.
