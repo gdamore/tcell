@@ -16,7 +16,6 @@
 
 package tcell
 
-import "C"
 import (
 	"fmt"
 	"github.com/pkg/term/termios"
