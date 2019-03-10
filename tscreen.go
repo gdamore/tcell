@@ -483,37 +483,31 @@ func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 }
 
 func (t *tScreen) sendFgBg(fg Color, bg Color) {
-	t.TPuts(t.makeFgBgStr(fg, bg))
-}
-
-func (t *tScreen) makeFgBgStr(fg Color, bg Color) string {
-	var res bytes.Buffer
-
 	ti := t.ti
 	if ti.Colors == 0 {
-		return res.String()
+		return
 	}
 	if t.truecolor {
 		if ti.SetFgBgRGB != "" &&
 			fg != ColorDefault && bg != ColorDefault {
 			r1, g1, b1 := fg.RGB()
 			r2, g2, b2 := bg.RGB()
-			res.WriteString(ti.TParm(ti.SetFgBgRGB,
+			t.TPuts(ti.TParm(ti.SetFgBgRGB,
 				int(r1), int(g1), int(b1),
 				int(r2), int(g2), int(b2)))
 		} else {
 			if fg != ColorDefault && ti.SetFgRGB != "" {
 				r, g, b := fg.RGB()
-				res.WriteString(ti.TParm(ti.SetFgRGB,
+				t.TPuts(ti.TParm(ti.SetFgRGB,
 					int(r), int(g), int(b)))
 			}
 			if bg != ColorDefault && ti.SetBgRGB != "" {
 				r, g, b := bg.RGB()
-				res.WriteString(ti.TParm(ti.SetBgRGB,
+				t.TPuts(ti.TParm(ti.SetBgRGB,
 					int(r), int(g), int(b)))
 			}
 		}
-		return res.String()
+		return
 	}
 
 	if fg != ColorDefault {
@@ -537,33 +531,28 @@ func (t *tScreen) makeFgBgStr(fg Color, bg Color) string {
 	}
 
 	if ti.SetFgBg != "" && fg != ColorDefault && bg != ColorDefault {
-		res.WriteString(ti.TParm(ti.SetFgBg, int(fg), int(bg)))
+		t.TPuts(ti.TParm(ti.SetFgBg, int(fg), int(bg)))
 	} else {
 		if fg != ColorDefault && ti.SetFg != "" {
-			res.WriteString(ti.TParm(ti.SetFg, int(fg)))
+			t.TPuts(ti.TParm(ti.SetFg, int(fg)))
 		}
 		if bg != ColorDefault && ti.SetBg != "" {
-			res.WriteString(ti.TParm(ti.SetBg, int(bg)))
+			t.TPuts(ti.TParm(ti.SetBg, int(bg)))
 		}
 	}
-
-	return res.String()
 }
 
-func (t *tScreen) renderCell(x, y int) (string, string, int) {
+func (t *tScreen) drawCell(x, y int) int {
 
 	ti := t.ti
 
 	mainc, combc, style, width := t.cells.GetContent(x, y)
 	if !t.cells.Dirty(x, y) {
-		return "", "", width
+		return width
 	}
 
-	var codes bytes.Buffer
-	var noCodes bytes.Buffer
-
 	if t.cy != y || t.cx != x {
-		codes.WriteString(ti.TGoto(x, y))
+		t.TPuts(ti.TGoto(x, y))
 		t.cx = x
 		t.cy = y
 	}
@@ -574,23 +563,23 @@ func (t *tScreen) renderCell(x, y int) (string, string, int) {
 	if style != t.curstyle {
 		fg, bg, attrs := style.Decompose()
 
-		codes.WriteString(ti.AttrOff)
+		t.TPuts(ti.AttrOff)
 
-		codes.WriteString(t.makeFgBgStr(fg, bg))
+		t.sendFgBg(fg, bg)
 		if attrs&AttrBold != 0 {
-			codes.WriteString(ti.Bold)
+			t.TPuts(ti.Bold)
 		}
 		if attrs&AttrUnderline != 0 {
-			codes.WriteString(ti.Underline)
+			t.TPuts(ti.Underline)
 		}
 		if attrs&AttrReverse != 0 {
-			codes.WriteString(ti.Reverse)
+			t.TPuts(ti.Reverse)
 		}
 		if attrs&AttrBlink != 0 {
-			codes.WriteString(ti.Blink)
+			t.TPuts(ti.Blink)
 		}
 		if attrs&AttrDim != 0 {
-			codes.WriteString(ti.Dim)
+			t.TPuts(ti.Dim)
 		}
 		t.curstyle = style
 	}
@@ -625,14 +614,14 @@ func (t *tScreen) renderCell(x, y int) (string, string, int) {
 		width = 1
 		str = " "
 	}
-	noCodes.WriteString(str)
+	io.WriteString(t.out, str)
 	t.cx += width
 	t.cells.SetDirty(x, y, false)
 	if width > 1 {
 		t.cx = -1
 	}
 
-	return codes.String(), noCodes.String(), width
+	return width
 }
 
 func (t *tScreen) ShowCursor(x, y int) {
@@ -662,10 +651,6 @@ func (t *tScreen) showCursor() {
 
 func (t *tScreen) TPuts(s string) {
 	t.ti.TPuts(t.out, s, t.baud)
-}
-
-func (t *tScreen) TPutsRaw(s string) {
-	io.WriteString(t.out, s)
 }
 
 func (t *tScreen) Show() {
@@ -708,13 +693,9 @@ func (t *tScreen) draw() {
 		t.clearScreen()
 	}
 
-	var res bytes.Buffer
-
 	for y := 0; y < t.h; y++ {
 		for x := 0; x < t.w; x++ {
-			codes, nocodes, width := t.renderCell(x, y)
-			res.WriteString(t.ti.InterpretDelays(codes, t.baud))
-			res.WriteString(nocodes)
+			width := t.drawCell(x, y)
 			if width > 1 {
 				if x+1 < t.w {
 					// this is necessary so that if we ever
@@ -726,8 +707,6 @@ func (t *tScreen) draw() {
 			x += width - 1
 		}
 	}
-
-	t.TPutsRaw(res.String())
 
 	// restore the cursor
 	t.showCursor()
