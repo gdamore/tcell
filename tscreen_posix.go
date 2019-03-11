@@ -56,7 +56,7 @@ func (t *tScreen) termioInit() (err error) {
 		return fmt.Errorf("cannot get attributes: %s", err)
 	}
 
-	t.baud = int(termios.Cfgetispeed(&private))
+	t.baud = int(termios.Cfgetospeed(&private))
 
 	private.Iflag &^= unix.IGNBRK | unix.BRKINT | unix.PARMRK |
 		unix.ISTRIP | unix.INLCR | unix.IGNCR |
