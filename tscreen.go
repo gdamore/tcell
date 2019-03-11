@@ -936,7 +936,7 @@ func (t *tScreen) postMouseEvent(x, y, btn int, motion bool) {
 		if !t.wasbtn {
 			button = WheelDown
 		} else {
-			button = Button2
+			button = Button1
 		}
 	}
 
