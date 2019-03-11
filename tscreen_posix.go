@@ -58,14 +58,14 @@ func (t *tScreen) termioInit() (err error) {
 
 	t.baud = int(termios.Cfgetospeed(&private))
 
-	private.Iflag &^= unix.IGNBRK | unix.BRKINT | unix.PARMRK |
-		unix.ISTRIP | unix.INLCR | unix.IGNCR |
-		unix.ICRNL | unix.IXON
-	private.Oflag &^= unix.OPOST
-	private.Lflag &^= unix.ECHO | unix.ECHONL | unix.ICANON |
-		unix.ISIG | unix.IEXTEN
-	private.Cflag &^= unix.CSIZE | unix.PARENB
-	private.Cflag |= unix.CS8
+	private.Iflag &^= syscall.IGNBRK | syscall.BRKINT | syscall.PARMRK |
+		syscall.ISTRIP | syscall.INLCR | syscall.IGNCR |
+		syscall.ICRNL | syscall.IXON
+	private.Oflag &^= syscall.OPOST
+	private.Lflag &^= syscall.ECHO | syscall.ECHONL | syscall.ICANON |
+		syscall.ISIG | syscall.IEXTEN
+	private.Cflag &^= syscall.CSIZE | syscall.PARENB
+	private.Cflag |= syscall.CS8
 
 	// This is setup for blocking reads.  In the past we attempted to
 	// use non-blocking reads, but now a separate input loop and timer
@@ -74,7 +74,7 @@ func (t *tScreen) termioInit() (err error) {
 	private.Cc[syscall.VMIN] = 1
 	private.Cc[syscall.VTIME] = 0
 
-	if err = termios.Tcsetattr(fd, unix.TCSETS, &private); err != nil {
+	if err = termios.Tcsetattr(fd, termios.TCSAFLUSH|termios.TCSANOW, &private); err != nil {
 		return fmt.Errorf("cannot set attributes: %s", err)
 	}
 
@@ -99,7 +99,7 @@ func (t *tScreen) termioFini() {
 	private := syscall.Termios(tiosp)
 
 	if t.out != nil {
-		termios.Tcsetattr(t.out.Fd(), unix.TCSETS|unix.TCSETSF, &private)
+		termios.Tcsetattr(t.out.Fd(), termios.TCSETS|termios.TCSETSF, &private)
 		t.out.Close()
 	}
 	if t.in != nil {
