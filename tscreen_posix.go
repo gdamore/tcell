@@ -108,9 +108,9 @@ func (t *tScreen) termioFini() {
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {
-	if winsize, err := unix.IoctlGetWinsize(int(t.out.Fd()), syscall.TIOCGWINSZ); err != nil {
+	winsize, err := unix.IoctlGetWinsize(int(t.out.Fd()), syscall.TIOCGWINSZ)
+	if err != nil {
 		return 0, 0, err
-	} else {
-		return int(winsize.Col), int(winsize.Row), nil
 	}
+	return int(winsize.Col), int(winsize.Row), nil
 }
