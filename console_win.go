@@ -787,7 +787,9 @@ func (s *cScreen) draw() {
 			if len(combc) != 0 {
 				wcs = append(wcs, utf16.Encode(combc)...)
 			}
-			s.cells.SetDirty(x, y, false)
+			for dx := 0; dx < width; dx++ {
+				s.cells.SetDirty(x + dx, y, false)
+			}
 			x += width - 1
 		}
 		s.writeString(lx, ly, lstyle, wcs)
