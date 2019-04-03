@@ -67,45 +67,47 @@ type tKeyCode struct {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	ti        *terminfo.Terminfo
-	h         int
-	w         int
-	fini      bool
-	cells     CellBuffer
-	in        *os.File
-	out       *os.File
-	buffering bool // true if we are collecting writes to buf instead of sending directly to out
-	buf       bytes.Buffer
-	curstyle  Style
-	style     Style
-	evch      chan Event
-	sigwinch  chan os.Signal
-	quit      chan struct{}
-	indoneq   chan struct{}
-	keyexist  map[Key]bool
-	keycodes  map[string]*tKeyCode
-	keychan   chan []byte
-	keytimer  *time.Timer
-	keyexpire time.Time
-	cx        int
-	cy        int
-	mouse     []byte
-	clear     bool
-	cursorx   int
-	cursory   int
-	tiosp     *termiosPrivate
-	baud      int
-	wasbtn    bool
-	acs       map[rune]string
-	charset   string
-	encoder   transform.Transformer
-	decoder   transform.Transformer
-	fallback  map[rune]string
-	colors    map[Color]Color
-	palette   []Color
-	truecolor bool
-	escaped   bool
-	buttondn  bool
+	ti         *terminfo.Terminfo
+	h          int
+	w          int
+	fini       bool
+	cells      CellBuffer
+	in         *os.File
+	out        *os.File
+	buffering  bool // true if we are collecting writes to buf instead of sending directly to out
+	buf        bytes.Buffer
+	curstyle   Style
+	style      Style
+	evch       chan Event
+	sigwinch   chan os.Signal
+	quit       chan struct{}
+	indoneq    chan struct{}
+	keyexist   map[Key]bool
+	keycodes   map[string]*tKeyCode
+	keychan    chan []byte
+	keytimer   *time.Timer
+	keyexpire  time.Time
+	cx         int
+	cy         int
+	mouse      []byte
+	clear      bool
+	cursorx    int
+	cursory    int
+	tiosp      *termiosPrivate
+	baud       int
+	wasbtn     bool
+	acs        map[rune]string
+	charset    string
+	encoder    transform.Transformer
+	decoder    transform.Transformer
+	fallback   map[rune]string
+	fgcolors   map[Color]Color
+	bgcolors   map[Color]Color
+	palette    []Color
+	truecolor  bool
+	supports16 bool
+	escaped    bool
+	buttondn   bool
 
 	sync.Mutex
 }
@@ -142,18 +144,40 @@ func (t *tScreen) Init() error {
 	if t.ti.SetFgBgRGB != "" || t.ti.SetFgRGB != "" || t.ti.SetBgRGB != "" {
 		t.truecolor = true
 	}
+
+	// Most terminals support "bright" or "bold" colors. The effect is
+	// accomplished with codes that mirror the typical color codes, but
+	// instead of ending with "m", they end with ";1m". Note that this color
+	// range extension from 8 to 16 is for foreground colors only. A nice
+	// explanation is provided at
+	// https://www.linuxjournal.com/content/about-ncurses-colors-0. Since
+	// this information isn't available in terminfo, we assume the terminal
+	// can display 16 foreground colors if it advertises 8, but provide this
+	// environment variable as a way to disable that assumption.
+	t.supports16 = (os.Getenv("TCELL_16COLORS") != "disable")
+
 	// A user who wants to have his themes honored can
 	// set this environment variable.
 	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
 		t.truecolor = false
 	}
 	if !t.truecolor {
-		t.colors = make(map[Color]Color)
-		t.palette = make([]Color, t.Colors())
-		for i := 0; i < t.Colors(); i++ {
+		t.fgcolors = make(map[Color]Color)
+		t.bgcolors = make(map[Color]Color)
+		numFgColors := t.Colors()
+		if numFgColors == 8 && t.supports16 {
+			numFgColors = 8 * 2
+		}
+		numBgColors := t.Colors()
+		t.palette = make([]Color, numBgColors)
+		for i := 0; i < numBgColors; i++ {
 			t.palette[i] = Color(i)
 			// identity map for our builtin colors
-			t.colors[Color(i)] = Color(i)
+			t.bgcolors[Color(i)] = Color(i)
+		}
+		for i := 0; i < numFgColors; i++ {
+			// identity map for our builtin colors
+			t.fgcolors[Color(i)] = Color(i)
 		}
 	}
 
@@ -513,30 +537,38 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 	}
 
 	if fg != ColorDefault {
-		if v, ok := t.colors[fg]; ok {
+		if v, ok := t.fgcolors[fg]; ok {
 			fg = v
 		} else {
 			v = FindColor(fg, t.palette)
-			t.colors[fg] = v
+			t.fgcolors[fg] = v
 			fg = v
 		}
 	}
 
 	if bg != ColorDefault {
-		if v, ok := t.colors[bg]; ok {
+		if v, ok := t.bgcolors[bg]; ok {
 			bg = v
 		} else {
 			v = FindColor(bg, t.palette)
-			t.colors[bg] = v
+			t.bgcolors[bg] = v
 			bg = v
 		}
 	}
 
 	if ti.SetFgBg != "" && fg != ColorDefault && bg != ColorDefault {
-		t.TPuts(ti.TParm(ti.SetFgBg, int(fg), int(bg)))
+		if t.Colors() == 8 && fg >= 8 {
+			t.TPuts(ti.TParm(ti.SetFgBgBright, int(fg)-8, int(bg)))
+		} else {
+			t.TPuts(ti.TParm(ti.SetFgBg, int(fg), int(bg)))
+		}
 	} else {
 		if fg != ColorDefault && ti.SetFg != "" {
-			t.TPuts(ti.TParm(ti.SetFg, int(fg)))
+			if t.Colors() == 8 && fg >= 8 {
+				t.TPuts(ti.TParm(ti.SetFgBright, int(fg)-8))
+			} else {
+				t.TPuts(ti.TParm(ti.SetFg, int(fg)))
+			}
 		}
 		if bg != ColorDefault && ti.SetBg != "" {
 			t.TPuts(ti.TParm(ti.SetBg, int(bg)))

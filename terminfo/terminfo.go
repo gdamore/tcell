@@ -168,24 +168,26 @@ type Terminfo struct {
 	// Terminal support for these are going to vary amongst XTerm
 	// emulations, so don't depend too much on them in your application.
 
-	SetFgBg         string `json:"_setfgbg,omitempty"`    // setfgbg
-	SetFgBgRGB      string `json:"_setfgbgrgb,omitempty"` // setfgbgrgb
-	SetFgRGB        string `json:"_setfrgb,omitempty"`    // setfrgb
-	SetBgRGB        string `json:"_setbrgb,omitempty"`    // setbrgb
-	KeyShfUp        string `json:"_kscu1,omitempty"`      // shift-up
-	KeyShfDown      string `json:"_kscud1,omitempty"`     // shift-down
-	KeyCtrlUp       string `json:"_kccu1,omitempty"`      // ctrl-up
-	KeyCtrlDown     string `json:"_kccud1,omitempty"`     // ctrl-left
-	KeyCtrlRight    string `json:"_kccuf1,omitempty"`     // ctrl-right
-	KeyCtrlLeft     string `json:"_kccub1,omitempty"`     // ctrl-left
-	KeyMetaUp       string `json:"_kmcu1,omitempty"`      // meta-up
-	KeyMetaDown     string `json:"_kmcud1,omitempty"`     // meta-left
-	KeyMetaRight    string `json:"_kmcuf1,omitempty"`     // meta-right
-	KeyMetaLeft     string `json:"_kmcub1,omitempty"`     // meta-left
-	KeyAltUp        string `json:"_kacu1,omitempty"`      // alt-up
-	KeyAltDown      string `json:"_kacud1,omitempty"`     // alt-left
-	KeyAltRight     string `json:"_kacuf1,omitempty"`     // alt-right
-	KeyAltLeft      string `json:"_kacub1,omitempty"`     // alt-left
+	SetFgBright     string `json:"_setfgbright,omitempty"`   // setfgbright
+	SetFgBg         string `json:"_setfgbg,omitempty"`       // setfgbg
+	SetFgBgBright   string `json:"_setfgbgbright,omitempty"` // setfgbgbright
+	SetFgBgRGB      string `json:"_setfgbgrgb,omitempty"`    // setfgbgrgb
+	SetFgRGB        string `json:"_setfrgb,omitempty"`       // setfrgb
+	SetBgRGB        string `json:"_setbrgb,omitempty"`       // setbrgb
+	KeyShfUp        string `json:"_kscu1,omitempty"`         // shift-up
+	KeyShfDown      string `json:"_kscud1,omitempty"`        // shift-down
+	KeyCtrlUp       string `json:"_kccu1,omitempty"`         // ctrl-up
+	KeyCtrlDown     string `json:"_kccud1,omitempty"`        // ctrl-left
+	KeyCtrlRight    string `json:"_kccuf1,omitempty"`        // ctrl-right
+	KeyCtrlLeft     string `json:"_kccub1,omitempty"`        // ctrl-left
+	KeyMetaUp       string `json:"_kmcu1,omitempty"`         // meta-up
+	KeyMetaDown     string `json:"_kmcud1,omitempty"`        // meta-left
+	KeyMetaRight    string `json:"_kmcuf1,omitempty"`        // meta-right
+	KeyMetaLeft     string `json:"_kmcub1,omitempty"`        // meta-left
+	KeyAltUp        string `json:"_kacu1,omitempty"`         // alt-up
+	KeyAltDown      string `json:"_kacud1,omitempty"`        // alt-left
+	KeyAltRight     string `json:"_kacuf1,omitempty"`        // alt-right
+	KeyAltLeft      string `json:"_kacub1,omitempty"`        // alt-left
 	KeyCtrlHome     string `json:"_kchome,omitempty"`
 	KeyCtrlEnd      string `json:"_kcend,omitempty"`
 	KeyMetaHome     string `json:"_kmhome,omitempty"`

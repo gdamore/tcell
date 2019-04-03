@@ -463,6 +463,12 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		r := regexp.MustCompile("%p1")
 		bg := r.ReplaceAllString(t.SetBg[2:], "%p2")
 		t.SetFgBg = fg + ";" + bg
+		t.SetFgBgBright = fg + ";" + bg[:len(bg)-1] + ";1m" // safe since we know bg ends with "m"
+	}
+
+	if strings.HasPrefix(t.SetFg, "\x1b[") &&
+		strings.HasSuffix(t.SetFg, "m") {
+		t.SetFgBright = t.SetFg[:len(t.SetFg)-1] + ";1m" // safe since we know t.SetFg ends with "m"
 	}
 
 	return t, tc.desc, nil
@@ -534,8 +540,10 @@ func dotGoInfo(w io.Writer, t *terminfo.Terminfo, desc string) {
 	dotGoAddStr(w, "EnterKeypad", t.EnterKeypad)
 	dotGoAddStr(w, "ExitKeypad", t.ExitKeypad)
 	dotGoAddStr(w, "SetFg", t.SetFg)
+	dotGoAddStr(w, "SetFgBright", t.SetFgBright)
 	dotGoAddStr(w, "SetBg", t.SetBg)
 	dotGoAddStr(w, "SetFgBg", t.SetFgBg)
+	dotGoAddStr(w, "SetFgBgBright", t.SetFgBgBright)
 	dotGoAddStr(w, "PadChar", t.PadChar)
 	dotGoAddStr(w, "AltChars", t.AltChars)
 	dotGoAddStr(w, "EnterAcs", t.EnterAcs)
