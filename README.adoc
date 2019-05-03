@@ -32,6 +32,8 @@ image::logos/tcell.png[float="right"]
 * https://github.com/senorprogrammer/wtf[WTF]- Personal information dashboard for your terminal
 * https://github.com/browsh-org/browsh[browsh] - A fully-modern text-based browser, rendering to TTY and browsers (https://www.youtube.com/watch?v=HZq86XfBoRo[video])
 * https://github.com/sachaos/go-life[go-life] - Conway's Game of Life.
+* https://github.com/gcla/gowid[gowid] - compositional widgets for terminal UIs, inspired by urwid
+* https://termshark.io[termshark] - a terminal UI for tshark, inspired by Wireshark, built on gowid
 
 ## Pure Go Terminfo Database
 
