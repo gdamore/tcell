@@ -37,6 +37,25 @@ import (
 // $COLUMNS environment variables can be set to the actual window size,
 // otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
+	return newTerminfoScreen()
+}
+
+// NewTerminfoScreenExt returns a Screen that is identical to that returned by
+// NewTerminfoScreen except that it is capable of sending events back to the
+// controlling application in bundles, rather than just one at a time, using
+// the *tcell.EventBundle type. This API should be used if your application
+// understands and processes *tcell.EventBundle. If it does not handle
+// *tcell.EventBundle, then use NewTerminfoScreen() instead.
+func NewTerminfoScreenExt() (Screen, error) {
+	t, err := newTerminfoScreen()
+	if err != nil {
+		return t, err
+	}
+	t.bundleevents = true
+	return t, nil
+}
+
+func newTerminfoScreen() (*tScreen, error) {
 	ti, e := terminfo.LookupTerminfo(os.Getenv("TERM"))
 	if e != nil {
 		return nil, e
@@ -67,45 +86,46 @@ type tKeyCode struct {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	ti        *terminfo.Terminfo
-	h         int
-	w         int
-	fini      bool
-	cells     CellBuffer
-	in        *os.File
-	out       *os.File
-	buffering bool // true if we are collecting writes to buf instead of sending directly to out
-	buf       bytes.Buffer
-	curstyle  Style
-	style     Style
-	evch      chan Event
-	sigwinch  chan os.Signal
-	quit      chan struct{}
-	indoneq   chan struct{}
-	keyexist  map[Key]bool
-	keycodes  map[string]*tKeyCode
-	keychan   chan []byte
-	keytimer  *time.Timer
-	keyexpire time.Time
-	cx        int
-	cy        int
-	mouse     []byte
-	clear     bool
-	cursorx   int
-	cursory   int
-	tiosp     *termiosPrivate
-	baud      int
-	wasbtn    bool
-	acs       map[rune]string
-	charset   string
-	encoder   transform.Transformer
-	decoder   transform.Transformer
-	fallback  map[rune]string
-	colors    map[Color]Color
-	palette   []Color
-	truecolor bool
-	escaped   bool
-	buttondn  bool
+	ti           *terminfo.Terminfo
+	h            int
+	w            int
+	fini         bool
+	cells        CellBuffer
+	in           *os.File
+	out          *os.File
+	buffering    bool // true if we are collecting writes to buf instead of sending directly to out
+	buf          bytes.Buffer
+	curstyle     Style
+	style        Style
+	evch         chan Event
+	sigwinch     chan os.Signal
+	quit         chan struct{}
+	indoneq      chan struct{}
+	keyexist     map[Key]bool
+	keycodes     map[string]*tKeyCode
+	keychan      chan []byte
+	keytimer     *time.Timer
+	keyexpire    time.Time
+	cx           int
+	cy           int
+	mouse        []byte
+	clear        bool
+	cursorx      int
+	cursory      int
+	tiosp        *termiosPrivate
+	baud         int
+	wasbtn       bool
+	acs          map[rune]string
+	charset      string
+	encoder      transform.Transformer
+	decoder      transform.Transformer
+	fallback     map[rune]string
+	colors       map[Color]Color
+	palette      []Color
+	truecolor    bool
+	escaped      bool
+	buttondn     bool
+	bundleevents bool
 
 	sync.Mutex
 }
@@ -1203,8 +1223,17 @@ func (t *tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 	evs := t.collectEventsFromInput(buf, expire)
 
-	for _, ev := range evs {
-		t.PostEventWait(ev)
+	switch {
+	case len(evs) == 1:
+		t.PostEventWait(evs[0])
+	case len(evs) > 1:
+		if t.bundleevents {
+			t.PostEventWait(NewEventBundle(evs))
+		} else {
+			for _, ev := range evs {
+				t.PostEventWait(ev)
+			}
+		}
 	}
 }
 

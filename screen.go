@@ -207,3 +207,19 @@ func NewScreen() (Screen, error) {
 		return nil, e
 	}
 }
+
+// NewScreen returns a Screen suitable for the user's terminal
+// environment. The screen supports sending events back to the
+// controlling application in bundles, rather than just one at a time,
+// so this API should be used if your application understands
+// and processes *tcell.EventBundle. If it does not handle
+// *tcell.EventBundle, then use NewScreen() instead.
+func NewScreenExt() (Screen, error) {
+	if s, _ := NewConsoleScreen(); s != nil {
+		return s, nil
+	} else if s, e := NewTerminfoScreenExt(); s != nil {
+		return s, nil
+	} else {
+		return nil, e
+	}
+}
