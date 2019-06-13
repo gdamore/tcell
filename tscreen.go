@@ -26,6 +26,7 @@ import (
 	"golang.org/x/text/transform"
 
 	"github.com/gdamore/tcell/terminfo"
+	"github.com/gdamore/tcell/terminfo/dynamic"
 )
 
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
@@ -39,7 +40,11 @@ import (
 func NewTerminfoScreen() (Screen, error) {
 	ti, e := terminfo.LookupTerminfo(os.Getenv("TERM"))
 	if e != nil {
-		return nil, e
+		ti, _, e = dynamic.LoadTerminfo(os.Getenv("TERM"))
+		if e != nil {
+			return nil, e
+		}
+		terminfo.AddTerminfo(ti)
 	}
 	t := &tScreen{ti: ti}
 
