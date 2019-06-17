@@ -27,6 +27,7 @@ import (
 type cScreen struct {
 	in         syscall.Handle
 	out        syscall.Handle
+	orig       syscall.Handle
 	cancelflag syscall.Handle
 	scandone   chan struct{}
 	evch       chan Event
@@ -99,26 +100,32 @@ var k32 = syscall.NewLazyDLL("kernel32.dll")
 // characters (Unicode) are in use.  The documentation refers to them
 // without this suffix, as the resolution is made via preprocessor.
 var (
-	procReadConsoleInput           = k32.NewProc("ReadConsoleInputW")
-	procWaitForMultipleObjects     = k32.NewProc("WaitForMultipleObjects")
-	procCreateEvent                = k32.NewProc("CreateEventW")
-	procSetEvent                   = k32.NewProc("SetEvent")
-	procGetConsoleCursorInfo       = k32.NewProc("GetConsoleCursorInfo")
-	procSetConsoleCursorInfo       = k32.NewProc("SetConsoleCursorInfo")
-	procSetConsoleCursorPosition   = k32.NewProc("SetConsoleCursorPosition")
-	procSetConsoleMode             = k32.NewProc("SetConsoleMode")
-	procGetConsoleMode             = k32.NewProc("GetConsoleMode")
-	procGetConsoleScreenBufferInfo = k32.NewProc("GetConsoleScreenBufferInfo")
-	procFillConsoleOutputAttribute = k32.NewProc("FillConsoleOutputAttribute")
-	procFillConsoleOutputCharacter = k32.NewProc("FillConsoleOutputCharacterW")
-	procSetConsoleWindowInfo       = k32.NewProc("SetConsoleWindowInfo")
-	procSetConsoleScreenBufferSize = k32.NewProc("SetConsoleScreenBufferSize")
-	procSetConsoleTextAttribute    = k32.NewProc("SetConsoleTextAttribute")
+	procReadConsoleInput             = k32.NewProc("ReadConsoleInputW")
+	procWaitForMultipleObjects       = k32.NewProc("WaitForMultipleObjects")
+	procCreateEvent                  = k32.NewProc("CreateEventW")
+	procSetEvent                     = k32.NewProc("SetEvent")
+	procGetConsoleCursorInfo         = k32.NewProc("GetConsoleCursorInfo")
+	procSetConsoleCursorInfo         = k32.NewProc("SetConsoleCursorInfo")
+	procSetConsoleCursorPosition     = k32.NewProc("SetConsoleCursorPosition")
+	procSetConsoleMode               = k32.NewProc("SetConsoleMode")
+	procGetConsoleMode               = k32.NewProc("GetConsoleMode")
+	procGetConsoleScreenBufferInfo   = k32.NewProc("GetConsoleScreenBufferInfo")
+	procFillConsoleOutputAttribute   = k32.NewProc("FillConsoleOutputAttribute")
+	procFillConsoleOutputCharacter   = k32.NewProc("FillConsoleOutputCharacterW")
+	procSetConsoleWindowInfo         = k32.NewProc("SetConsoleWindowInfo")
+	procSetConsoleScreenBufferSize   = k32.NewProc("SetConsoleScreenBufferSize")
+	procSetConsoleTextAttribute      = k32.NewProc("SetConsoleTextAttribute")
+	procCreateConsoleScreenBuffer    = k32.NewProc("CreateConsoleScreenBuffer")
+	procSetConsoleActiveScreenBuffer = k32.NewProc("SetConsoleActiveScreenBuffer")
 )
 
 const (
 	w32Infinite    = ^uintptr(0)
 	w32WaitObject0 = uintptr(0)
+
+	genericRead           = 0x80000000
+	genericWrite          = 0x40000000
+	consoleTextmodeBuffer = 0x1
 )
 
 // NewConsoleScreen returns a Screen for the Windows console associated
@@ -129,6 +136,17 @@ func NewConsoleScreen() (Screen, error) {
 }
 
 func (s *cScreen) Init() error {
+	initializedSuccessfully := false
+	defer func() {
+		if !initializedSuccessfully {
+			for _, h := range []syscall.Handle{s.out, s.orig, s.in, s.cancelflag} {
+				if h != 0 {
+					syscall.Close(h)
+				}
+			}
+		}
+	}()
+
 	s.evch = make(chan Event, 10)
 	s.quit = make(chan struct{})
 	s.scandone = make(chan struct{})
@@ -138,12 +156,22 @@ func (s *cScreen) Init() error {
 		return e
 	}
 	s.in = in
-	out, e := syscall.Open("CONOUT$", syscall.O_RDWR, 0)
+	orig, e := syscall.Open("CONOUT$", syscall.O_RDWR, 0)
 	if e != nil {
-		syscall.Close(s.in)
+		return e
+	}
+	s.orig = orig
+
+	out, e := createConsoleScreenBuffer()
+	if e != nil {
 		return e
 	}
 	s.out = out
+
+	e = setConsoleActiveScreenBuffer(s.out)
+	if e != nil {
+		return e
+	}
 
 	cf, _, e := procCreateEvent.Call(
 		uintptr(0),
@@ -154,6 +182,9 @@ func (s *cScreen) Init() error {
 		return e
 	}
 	s.cancelflag = syscall.Handle(cf)
+
+	// Everything opened successfully, "cancel" the deferred cleanup above.
+	initializedSuccessfully = true
 
 	s.Lock()
 
@@ -169,7 +200,6 @@ func (s *cScreen) Init() error {
 	s.fini = false
 	s.setInMode(modeResizeEn)
 	s.setOutMode(0)
-	s.clearScreen(s.style)
 	s.hideCursor()
 	s.Unlock()
 	go s.scanInput()
@@ -198,23 +228,18 @@ func (s *cScreen) Fini() {
 	s.fini = true
 	s.Unlock()
 
-	s.setCursorInfo(&s.ocursor)
-	s.setInMode(s.oimode)
-	s.setOutMode(s.oomode)
-	s.setBufferSize(int(s.oscreen.size.x), int(s.oscreen.size.y))
-	s.clearScreen(StyleDefault)
-	s.setCursorPos(0, 0)
-	procSetConsoleTextAttribute.Call(
-		uintptr(s.out),
-		uintptr(s.mapStyle(StyleDefault)))
+	// Restore the original console contents.
+	setConsoleActiveScreenBuffer(s.orig)
 
 	close(s.quit)
 	procSetEvent.Call(uintptr(s.cancelflag))
 	// Block until scanInput returns; this prevents a race condition on Win 8+
 	// which causes syscall.Close to block until another keypress is read.
 	<-s.scandone
-	syscall.Close(s.in)
+	syscall.Close(s.cancelflag)
 	syscall.Close(s.out)
+	syscall.Close(s.orig)
+	syscall.Close(s.in)
 }
 
 func (s *cScreen) PostEventWait(ev Event) {
@@ -514,6 +539,32 @@ func mrec2btns(mbtns, flags uint32) ButtonMask {
 		}
 	}
 	return btns
+}
+
+// createConsoleScreenBuffer returns a handle to a new windows console screen buffer. If
+// the API call fails, the second value returned will be a non-nil error. This is based on
+// an implementation from termbox-go.
+func createConsoleScreenBuffer() (syscall.Handle, error) {
+	hdl, _, e := syscall.Syscall6(procCreateConsoleScreenBuffer.Addr(),
+		5, uintptr(genericRead|genericWrite), 0, 0, consoleTextmodeBuffer, 0, 0)
+	if hdl == uintptr(0) {
+		if e != 0 {
+			return syscall.Handle(0), error(e)
+		} else {
+			return syscall.Handle(0), syscall.EINVAL
+		}
+	}
+	return syscall.Handle(hdl), nil
+}
+
+// setConsoleActiveScreenBuffer sets the windows active screen console to that represented
+// by the supplied handle. If the API call fails, a non-nil error is returned.
+func setConsoleActiveScreenBuffer(h syscall.Handle) error {
+	res, _, e := procSetConsoleActiveScreenBuffer.Call(uintptr(h))
+	if res == uintptr(0) {
+		return error(e)
+	}
+	return nil
 }
 
 func (s *cScreen) getConsoleInput() error {
