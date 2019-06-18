@@ -113,7 +113,6 @@ var (
 	procFillConsoleOutputAttribute   = k32.NewProc("FillConsoleOutputAttribute")
 	procFillConsoleOutputCharacter   = k32.NewProc("FillConsoleOutputCharacterW")
 	procSetConsoleWindowInfo         = k32.NewProc("SetConsoleWindowInfo")
-	procSetConsoleScreenBufferSize   = k32.NewProc("SetConsoleScreenBufferSize")
 	procSetConsoleTextAttribute      = k32.NewProc("SetConsoleTextAttribute")
 	procCreateConsoleScreenBuffer    = k32.NewProc("CreateConsoleScreenBuffer")
 	procSetConsoleActiveScreenBuffer = k32.NewProc("SetConsoleActiveScreenBuffer")
@@ -903,12 +902,6 @@ func (s *cScreen) setCursorPos(x, y int) {
 		coord{int16(x), int16(y)}.uintptr())
 }
 
-func (s *cScreen) setBufferSize(x, y int) {
-	procSetConsoleScreenBufferSize.Call(
-		uintptr(s.out),
-		coord{int16(x), int16(y)}.uintptr())
-}
-
 func (s *cScreen) Size() (int, int) {
 	s.Lock()
 	w, h := s.w, s.h
@@ -931,8 +924,6 @@ func (s *cScreen) resize() {
 	s.cells.Resize(w, h)
 	s.w = w
 	s.h = h
-
-	s.setBufferSize(w, h)
 
 	r := rect{0, 0, int16(w - 1), int16(h - 1)}
 	procSetConsoleWindowInfo.Call(
