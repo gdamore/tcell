@@ -20,113 +20,88 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
-// #include <termios.h>
-// #include <sys/ioctl.h>
-//
-// int getwinsize(int fd, int *cols, int *rows) {
-// #if defined TIOCGWINSZ
-//	struct winsize w;
-//	if (ioctl(fd, TIOCGWINSZ, &w) < 0) {
-//		return (-1);
-//	}
-//	*cols = w.ws_col;
-//	*rows = w.ws_row;
-//	return (0);
-// #else
-//	return (-1);
-// #endif
-// }
-//
-// int getbaud(struct termios *tios) {
-//     switch (cfgetospeed(tios)) {
-// #ifdef B0
-//     case B0: return (0);
-// #endif
-// #ifdef B50
-//     case B50: return (50);
-// #endif
-// #ifdef B75
-//     case B75: return (75);
-// #endif
-// #ifdef B110
-//	case B110: return (110);
-// #endif
-// #ifdef B134
-//	case B134: return (134);
-// #endif
-// #ifdef B150
-//	case B150: return (150);
-// #endif
-// #ifdef B200
-//	case B200: return (200);
-// #endif
-// #ifdef B300
-//	case B300: return (300);
-// #endif
-// #ifdef B600
-//	case B600: return (600);
-// #endif
-// #ifdef B1200
-//	case B1200: return (1200);
-// #endif
-// #ifdef B1800
-//	case B1800: return (1800);
-// #endif
-// #ifdef B2400
-//	case B2400: return (2400);
-// #endif
-// #ifdef B4800
-//	case B4800: return (4800);
-// #endif
-// #ifdef B9600
-//	case B9600: return (9600);
-// #endif
-// #ifdef B19200
-//	case B19200: return (19200);
-// #endif
-// #ifdef B38400
-//	case B38400: return (38400);
-// #endif
-// #ifdef B57600
-//	case B57600: return (57600);
-// #endif
-// #ifdef B76800
-//	case B76800: return (76800);
-// #endif
-// #ifdef B115200
-//	case B115200: return (115200);
-// #endif
-// #ifdef B153600
-//	case B153600: return (153600);
-// #endif
-// #ifdef B230400
-//	case B230400: return (230400);
-// #endif
-// #ifdef B307200
-//	case B307200: return (307200);
-// #endif
-// #ifdef B460800
-//	case B460800: return (460800);
-// #endif
-// #ifdef B921600
-//	case B921600: return (921600);
-// #endif
-//	}
-//	return (0);
-// }
-import "C"
-
 type termiosPrivate struct {
-	tios C.struct_termios
+	tio *unix.Termios
+}
+
+const (
+	// These are for missing CBAUDEXT and CIBAUDEXT.
+	// The values are fixed for Solaris and illumos, and cannot ever
+	// change without breaking applications.
+	cBaudExt  = 0x200000
+	ciBaudExt = 0x400000
+)
+
+// getbaud is sort of cfgetospeed, but in Go.
+func getbaud(tios *unix.Termios) int {
+	// First we mask off the rate by looking at the Cflag.
+	bval := tios.Cflag & unix.CBAUD
+	if (tios.Cflag & cBaudExt) != 0 {
+		bval += unix.CBAUD + 1
+	}
+
+	// This gives us the appropriate BXXX value, so convert
+	switch bval {
+	case unix.B0:
+		return 0
+	case unix.B50:
+		return 50
+	case unix.B75:
+		return 75
+	case unix.B110:
+		return 110
+	case unix.B134:
+		return 134
+	case unix.B150:
+		return 150
+	case unix.B200:
+		return 200
+	case unix.B300:
+		return 300
+	case unix.B600:
+		return 600
+	case unix.B1200:
+		return 1200
+	case unix.B1800:
+		return 1800
+	case unix.B2400:
+		return 2400
+	case unix.B4800:
+		return 4800
+	case unix.B9600:
+		return 9600
+	case unix.B19200:
+		return 19200
+	case unix.B38400:
+		return 38400
+	case unix.B57600:
+		return 57600
+	case unix.B76800:
+		return 76800
+	case unix.B115200:
+		return 115200
+	case unix.B153600:
+		return 153600
+	case unix.B230400:
+		return 230400
+	case unix.B307200:
+		return 307200
+	case unix.B460800:
+		return 460800
+	case unix.B921600:
+		return 921600
+	}
+	return 0
 }
 
 func (t *tScreen) termioInit() error {
 	var e error
-	var rv C.int
-	var newtios C.struct_termios
-	var fd C.int
+	var raw *unix.Termios
+	var tio *unix.Termios
 
 	if t.in, e = os.OpenFile("/dev/tty", os.O_RDONLY, 0); e != nil {
 		goto failed
@@ -137,29 +112,39 @@ func (t *tScreen) termioInit() error {
 
 	t.tiosp = &termiosPrivate{}
 
-	fd = C.int(t.out.Fd())
-	if rv, e = C.tcgetattr(fd, &t.tiosp.tios); rv != 0 {
+	tio, e = unix.IoctlGetTermios(int(t.out.Fd()), unix.TCGETS)
+	if e != nil {
 		goto failed
 	}
-	t.baud = int(C.getbaud(&t.tiosp.tios))
-	newtios = t.tiosp.tios
-	newtios.c_iflag &^= C.IGNBRK | C.BRKINT | C.PARMRK |
-		C.ISTRIP | C.INLCR | C.IGNCR |
-		C.ICRNL | C.IXON
-	newtios.c_oflag &^= C.OPOST
-	newtios.c_lflag &^= C.ECHO | C.ECHONL | C.ICANON |
-		C.ISIG | C.IEXTEN
-	newtios.c_cflag &^= C.CSIZE | C.PARENB
-	newtios.c_cflag |= C.CS8
+
+	t.tiosp.tio = tio
+	t.baud = getbaud(tio)
+
+	// make a local copy, to make it raw
+	raw = &unix.Termios{
+		Cflag: tio.Cflag,
+		Oflag: tio.Oflag,
+		Iflag: tio.Iflag,
+		Lflag: tio.Lflag,
+		Cc:    tio.Cc,
+	}
+
+	raw.Iflag &^= (unix.IGNBRK | unix.BRKINT | unix.PARMRK | unix.INLCR |
+		unix.IGNCR | unix.ICRNL | unix.IXON)
+	raw.Oflag &^= unix.OPOST
+	raw.Lflag &^= (unix.ECHO | unix.ECHONL | unix.ICANON | unix.ISIG | unix.IEXTEN)
+	raw.Cflag &^= (unix.CSIZE | unix.PARENB)
+	raw.Cflag |= unix.CS8
 
 	// This is setup for blocking reads.  In the past we attempted to
 	// use non-blocking reads, but now a separate input loop and timer
 	// copes with the problems we had on some systems (BSD/Darwin)
 	// where close hung forever.
-	newtios.Cc[syscall.VMIN] = 1
-	newtios.Cc[syscall.VTIME] = 0
+	raw.Cc[unix.VMIN] = 1
+	raw.Cc[unix.VTIME] = 0
 
-	if rv, e = C.tcsetattr(fd, C.TCSANOW|C.TCSAFLUSH, &newtios); rv != 0 {
+	e = unix.IoctlSetTermios(int(t.out.Fd()), unix.TCSETS, raw)
+	if e != nil {
 		goto failed
 	}
 
@@ -187,9 +172,8 @@ func (t *tScreen) termioFini() {
 
 	<-t.indoneq
 
-	if t.out != nil {
-		fd := C.int(t.out.Fd())
-		C.tcsetattr(fd, C.TCSANOW|C.TCSAFLUSH, &t.tiosp.tios)
+	if t.out != nil && t.tiosp != nil {
+		unix.IoctlSetTermios(int(t.out.Fd()), unix.TCSETSF, t.tiosp.tio)
 		t.out.Close()
 	}
 	if t.in != nil {
@@ -198,9 +182,9 @@ func (t *tScreen) termioFini() {
 }
 
 func (t *tScreen) getWinSize() (int, int, error) {
-	var cx, cy C.int
-	if r, e := C.getwinsize(C.int(t.out.Fd()), &cx, &cy); r != 0 {
-		return 0, 0, e
+	wsz, err := unix.IoctlGetWinsize(int(t.out.Fd()), unix.TIOCGWINSZ)
+	if err != nil {
+		return -1, -1, err
 	}
-	return int(cx), int(cy), nil
+	return int(wsz.Col), int(wsz.Row), nil
 }

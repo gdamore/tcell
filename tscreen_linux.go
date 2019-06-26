@@ -1,6 +1,6 @@
 // +build linux
 
-// Copyright 2017 The TCell Authors
+// Copyright 2019 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -21,6 +21,8 @@ import (
 	"os/signal"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 type termiosPrivate syscall.Termios
@@ -117,13 +119,9 @@ func (t *tScreen) termioFini() {
 
 func (t *tScreen) getWinSize() (int, int, error) {
 
-	fd := uintptr(t.out.Fd())
-	dim := [4]uint16{}
-	dimp := uintptr(unsafe.Pointer(&dim))
-	ioc := uintptr(syscall.TIOCGWINSZ)
-	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL,
-		fd, ioc, dimp, 0, 0, 0); err != 0 {
+	wsz, err := unix.IoctlGetWinsize(int(t.out.Fd()), unix.TIOCGWINSZ)
+	if err != nil {
 		return -1, -1, err
 	}
-	return int(dim[1]), int(dim[0]), nil
+	return int(wsz.Col), int(wsz.Row), nil
 }
