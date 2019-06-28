@@ -110,14 +110,12 @@ func (t *tScreen) termioInit() error {
 		goto failed
 	}
 
-	t.tiosp = &termiosPrivate{}
-
 	tio, e = unix.IoctlGetTermios(int(t.out.Fd()), unix.TCGETS)
 	if e != nil {
 		goto failed
 	}
 
-	t.tiosp.tio = tio
+	t.tiosp = &termiosPrivate{tio: tio}
 	t.baud = getbaud(tio)
 
 	// make a local copy, to make it raw
