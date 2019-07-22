@@ -99,7 +99,6 @@ type tScreen struct {
 	cursorx   int
 	cursory   int
 	tiosp     *termiosPrivate
-	baud      int
 	wasbtn    bool
 	acs       map[rune]string
 	charset   string
@@ -672,9 +671,9 @@ func (t *tScreen) writeString(s string) {
 
 func (t *tScreen) TPuts(s string) {
 	if t.buffering {
-		t.ti.TPuts(&t.buf, s, t.baud)
+		t.ti.TPuts(&t.buf, s, 0)
 	} else {
-		t.ti.TPuts(t.out, s, t.baud)
+		t.ti.TPuts(t.out, s, 0)
 	}
 }
 

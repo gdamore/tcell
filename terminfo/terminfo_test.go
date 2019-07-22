@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"os"
 	"testing"
+	"time"
 )
 
 // This terminfo entry is a stripped down version from
@@ -28,7 +29,7 @@ var testTerminfo = &Terminfo{
 	Lines:     24,
 	Colors:    256,
 	Bell:      "\a",
-	Blink:     "\x1b2ms$<2>",
+	Blink:     "\x1b2ms$<20>something",
 	Reverse:   "\x1b[7m",
 	SetFg:     "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
 	SetBg:     "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
@@ -72,22 +73,21 @@ func TestTerminfoExpansion(t *testing.T) {
 	}
 }
 
-func TestTerminfoBaud19200(t *testing.T) {
+func TestTerminfoDelay(t *testing.T) {
 	ti := testTerminfo
 	buf := bytes.NewBuffer(nil)
+	now := time.Now()
 	ti.TPuts(buf, ti.Blink, 19200)
+	then := time.Now()
 	s := string(buf.Bytes())
-	if s != "\x1b2ms\x00\x00\x00\x00" {
-		t.Error("1920 baud failed")
+	if s != "\x1b2mssomething" {
+		t.Errorf("Terminfo delay failed: %s", s)
 	}
-}
-func TestTerminfoBaud50(t *testing.T) {
-	ti := testTerminfo
-	buf := bytes.NewBuffer(nil)
-	ti.TPuts(buf, ti.Blink, 50)
-	s := string(buf.Bytes())
-	if s != "\x1b2ms" {
-		t.Error("50 baud failed")
+	if then.Sub(now) < time.Millisecond*20 {
+		t.Error("Too short delay")
+	}
+	if then.Sub(now) > time.Millisecond*50 {
+		t.Error("Too late delay")
 	}
 }
 

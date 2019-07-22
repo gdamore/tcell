@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -618,10 +619,10 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 
 // TPuts emits the string to the writer, but expands inline padding
 // indications (of the form $<[delay]> where [delay] is msec) to
-// a suitable number of padding characters (usually null bytes) based
-// upon the supplied baud.  At high baud rates, more padding characters
-// will be inserted.  All Terminfo based strings should be emitted using
-// this function.
+// a suitable time (unless the terminfo string indicates this isn't needed
+// by specifying npc - no padding).  All Terminfo based strings should be
+// emitted using this function.  The baud rate was formerly used to inject
+// padding characters, but we no longer do that, so it is ignored.
 func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
 	for {
 		beg := strings.Index(s, "$<")
@@ -641,7 +642,7 @@ func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
 		val := s[:end]
 		s = s[end+1:]
 		padus := 0
-		unit := 1000
+		unit := time.Millisecond
 		dot := false
 	loop:
 		for i := range val {
@@ -650,7 +651,7 @@ func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
 				padus *= 10
 				padus += int(val[i] - '0')
 				if dot {
-					unit *= 10
+					unit /= 10
 				}
 			case '.':
 				if !dot {
@@ -662,10 +663,12 @@ func (t *Terminfo) TPuts(w io.Writer, s string, baud int) {
 				break loop
 			}
 		}
-		cnt := int(((baud / 8) * padus) / unit)
-		for cnt > 0 {
-			io.WriteString(w, t.PadChar)
-			cnt--
+
+		// Curses historically uses padding to achieve "fine grained"
+		// delays. We have much better clocks these days, and so we
+		// do not rely on padding but simply sleep a bit.
+		if len(t.PadChar) > 0 {
+			time.Sleep(unit * time.Duration(padus))
 		}
 	}
 }
