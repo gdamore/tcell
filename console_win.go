@@ -90,10 +90,13 @@ var winColors = map[Color]Color{
 	ColorWhite:   ColorWhite,
 }
 
-var k32 = syscall.NewLazyDLL("kernel32.dll")
+var (
+	k32 = syscall.NewLazyDLL("kernel32.dll")
+	u32 = syscall.NewLazyDLL("user32.dll")
+)
 
-// We have to bring in the kernel32.dll directly, so we can get access to some
-// system calls that the core Go API lacks.
+// We have to bring in the kernel32 and user32 DLLs directly, so we can get
+// access to some system calls that the core Go API lacks.
 //
 // Note that Windows appends some functions with W to indicate that wide
 // characters (Unicode) are in use.  The documentation refers to them
@@ -114,6 +117,7 @@ var (
 	procSetConsoleWindowInfo       = k32.NewProc("SetConsoleWindowInfo")
 	procSetConsoleScreenBufferSize = k32.NewProc("SetConsoleScreenBufferSize")
 	procSetConsoleTextAttribute    = k32.NewProc("SetConsoleTextAttribute")
+	procMessageBeep                = u32.NewProc("MessageBeep")
 )
 
 const (
@@ -1030,4 +1034,17 @@ func (s *cScreen) HasKey(k Key) bool {
 	}
 
 	return valid[k]
+}
+
+func (s *cScreen) Beep() error {
+	// A simple beep. If the sound card is not available, the sound is generated
+	// using the speaker.
+	//
+	// Reference:
+	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messagebeep
+	const simpleBeep = 0xffffffff
+	if rv, _, err := procMessageBeep.Call(simpleBeep); rv == 0 {
+		return err
+	}
+	return nil
 }
