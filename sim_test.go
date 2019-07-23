@@ -109,3 +109,44 @@ func TestResize(t *testing.T) {
 		t.Errorf("Incorrect cell content after resize: %v", cell2)
 	}
 }
+
+func TestBeep(t *testing.T) {
+	s := mkTestScreen(t, "")
+	defer s.Fini()
+
+	b0, x0, y0 := s.GetContents()
+
+	if err := s.Beep(); err != nil {
+		t.Errorf("could not beep: %v", err)
+	}
+	s.Show()
+
+	b1, x1, y1 := s.GetContents()
+	if x0 != x1 {
+		t.Fatalf("screen width changed unexpectedly from %d to %d", x0, x1)
+	}
+	if y0 != y1 {
+		t.Fatalf("screen height changed unexpectedly from %d to %d", y0, y1)
+	}
+	if len(b0) != len(b1) {
+		t.Fatalf("screen size changed unexpectedly (had %d cells, has %d cells)",
+			len(b0), len(b1))
+	}
+	for i := 0; i < len(b0); i++ {
+		cell0 := b0[i]
+		cell1 := b1[i]
+		if len(cell0.Runes) != len(cell1.Runes) {
+			t.Errorf("incorrect cell content: had %d runes, has %d runes",
+				len(cell0.Runes), len(cell1.Runes))
+			continue
+		}
+		for j := 0; j < len(cell0.Runes); j++ {
+			r0 := cell0.Runes[j]
+			r1 := cell1.Runes[j]
+			if r0 != r1 {
+				t.Errorf("incorrect content: cell %d rune %d changed from %v to %v",
+					i, j, r0, r1)
+			}
+		}
+	}
+}

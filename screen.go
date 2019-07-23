@@ -193,6 +193,10 @@ type Screen interface {
 	// menus, displayed hot-keys, etc.  Note that KeyRune (literal
 	// runes) is always true.
 	HasKey(Key) bool
+
+	// Beep attempts to sound an OS-dependent audible alert and returns an error
+	// when unsuccessful.
+	Beep() error
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal

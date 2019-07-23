@@ -30,3 +30,7 @@ func (t *tScreen) termioFini() {
 func (t *tScreen) getWinSize() (int, int, error) {
 	return 0, 0, ErrNoScreen
 }
+
+func (t *tScreen) Beep() error {
+	return ErrNoScreen
+}

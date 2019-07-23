@@ -37,4 +37,8 @@ func (t *tScreen) getCharset() string {
 	return "UTF-16LE"
 }
 
+func (t *tScreen) Beep() error {
+	return ErrNoScreen
+}
+
 type termiosPrivate struct{}
