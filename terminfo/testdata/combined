@@ -1,3 +1,0 @@
-{"name":"combined1","aliases":["alias-comb1"],"cols":80,"lines":101,"clear":"\u001b1","cup":"\u001b[%i%p1%d;%p2%d]"}
-{"name":"combined2","aliases":["alias-comb2"],"cols":80,"lines":102,"clear":"\u001b1","cup":"\u001b[%i%p1%d;%p2%d]"}
-{"name":"combined3","aliases":["alias-comb3"],"cols":80,"lines":103,"clear":"\u001b1","cup":"\u001b[%i%p1%d;%p2%d]"}

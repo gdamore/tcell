@@ -1,4 +1,4 @@
-// Copyright 2018 The TCell Authors
+// Copyright 2019 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -16,7 +16,6 @@ package terminfo
 
 import (
 	"bytes"
-	"os"
 	"testing"
 	"time"
 )
@@ -77,7 +76,7 @@ func TestTerminfoDelay(t *testing.T) {
 	ti := testTerminfo
 	buf := bytes.NewBuffer(nil)
 	now := time.Now()
-	ti.TPuts(buf, ti.Blink, 19200)
+	ti.TPuts(buf, ti.Blink)
 	then := time.Now()
 	s := string(buf.Bytes())
 	if s != "\x1b2mssomething" {
@@ -88,87 +87,6 @@ func TestTerminfoDelay(t *testing.T) {
 	}
 	if then.Sub(now) > time.Millisecond*50 {
 		t.Error("Too late delay")
-	}
-}
-
-func TestTerminfoBasic(t *testing.T) {
-
-	os.Setenv("TCELLDB", "testdata/test1")
-	ti, err := LookupTerminfo("test1")
-	if ti == nil || err != nil || ti.Columns != 80 {
-		t.Errorf("Failed test1 lookup: %v", err)
-	}
-
-	ti, err = LookupTerminfo("alias1")
-	if ti == nil || err != nil || ti.Columns != 80 {
-		t.Errorf("Failed alias1 lookup: %v", err)
-	}
-
-	os.Setenv("TCELLDB", "testdata")
-	ti, err = LookupTerminfo("test2")
-	if ti == nil || err != nil || ti.Columns != 80 {
-		t.Errorf("Failed test2 lookup: %v", err)
-	}
-	if len(ti.Aliases) != 1 || ti.Aliases[0] != "alias2" {
-		t.Errorf("Alias for test2 wrong")
-	}
-}
-
-func TestTerminfoBadName(t *testing.T) {
-
-	os.Setenv("TCELLDB", "testdata")
-	if ti, err := LookupTerminfo("test3"); err == nil || ti != nil {
-		t.Error("Bad name should not have resolved")
-	}
-}
-
-func TestTerminfoLoop(t *testing.T) {
-	os.Setenv("TCELLDB", "testdata")
-	if ti, err := LookupTerminfo("loop1"); ti != nil || err == nil {
-		t.Error("Loop loop1 should not have resolved")
-	}
-}
-
-func TestTerminfoGzip(t *testing.T) {
-
-	os.Setenv("TCELLDB", "testdata")
-	if ti, err := LookupTerminfo("test-gzip"); ti == nil || err != nil ||
-		ti.Columns != 80 {
-		t.Error("test-gzip filed")
-	}
-
-	if ti, err := LookupTerminfo("alias-gzip"); ti == nil || err != nil ||
-		ti.Columns != 80 {
-		t.Error("alias-gzip failed")
-	}
-}
-
-func TestTerminfoBadAlias(t *testing.T) {
-
-	os.Setenv("TCELLDB", "testdata")
-	if ti, err := LookupTerminfo("alias-none"); err == nil || ti != nil {
-		t.Errorf("Bad alias should not have worked")
-	}
-}
-
-func TestTerminfoCombined(t *testing.T) {
-
-	os.Setenv("TCELLDB", "testdata/combined")
-
-	var values = []struct {
-		name  string
-		lines int
-	}{
-		{"combined2", 102},
-		{"alias-comb1", 101},
-		{"combined3", 103},
-		{"combined1", 101},
-	}
-	for _, v := range values {
-		if ti, e := LookupTerminfo(v.name); e != nil || ti == nil ||
-			ti.Lines != v.lines {
-			t.Errorf("Combined terminal for %s wrong", v.name)
-		}
 	}
 }
 

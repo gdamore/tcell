@@ -27,6 +27,9 @@ import (
 
 	"github.com/gdamore/tcell/terminfo"
 	"github.com/gdamore/tcell/terminfo/dynamic"
+
+	// import the stock terminals
+	_ "github.com/gdamore/tcell/terminfo/base"
 )
 
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
@@ -671,9 +674,9 @@ func (t *tScreen) writeString(s string) {
 
 func (t *tScreen) TPuts(s string) {
 	if t.buffering {
-		t.ti.TPuts(&t.buf, s, 0)
+		t.ti.TPuts(&t.buf, s)
 	} else {
-		t.ti.TPuts(t.out, s, 0)
+		t.ti.TPuts(t.out, s)
 	}
 }
 
