@@ -64,4 +64,5 @@ import (
 	_ "github.com/gdamore/tcell/terminfo/x/xfce"
 	_ "github.com/gdamore/tcell/terminfo/x/xnuppc"
 	_ "github.com/gdamore/tcell/terminfo/x/xterm"
+	_ "github.com/gdamore/tcell/terminfo/x/xterm_kitty"
 )
