@@ -18,6 +18,9 @@ package tcell
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"syscall"
 	"unicode/utf16"
@@ -36,6 +39,8 @@ type cScreen struct {
 	style      Style
 	clear      bool
 	fini       bool
+	vten       bool
+	truecolor  bool
 
 	w int
 	h int
@@ -45,7 +50,6 @@ type cScreen struct {
 	oimode  uint32
 	oomode  uint32
 	cells   CellBuffer
-	colors  map[Color]Color
 
 	sync.Mutex
 }
@@ -125,6 +129,20 @@ const (
 	w32WaitObject0 = uintptr(0)
 )
 
+const (
+	// VT100/XTerm escapes understood by the console
+	vtShowCursor = "\x1b[?25h"
+	vtHideCursor = "\x1b[?25l"
+	vtCursorPos  = "\x1b[%d;%dH" // Note that it is Y then X
+	vtSgr0       = "\x1b[0m"
+	vtBold       = "\x1b[1m"
+	vtUnderline  = "\x1b[4m"
+	vtBlink      = "\x1b[5m" // Not sure this is processed
+	vtReverse    = "\x1b[7m"
+	vtSetFg      = "\x1b[38;2;%d;%d;%dm" // RGB
+	vtSetBg      = "\x1b[48;2;%d;%d;%dm" // RGB
+)
+
 // NewConsoleScreen returns a Screen for the Windows console associated
 // with the current process.  The Screen makes use of the Windows Console
 // API to display content and read events.
@@ -149,6 +167,24 @@ func (s *cScreen) Init() error {
 	}
 	s.out = out
 
+	s.truecolor = true
+
+	// ConEmu handling of colors and scrolling when in terminal
+	// mode is extremely problematic at the best.  The color
+	// palette will scroll even though characters do not, when
+	// emiting stuff for the last character.  In the future we
+	// might change this to look at specific versions of ConEmu
+	// if they fix the bug.
+	if os.Getenv("ConEmuPID") != "" {
+		s.truecolor = false
+	}
+	switch os.Getenv("TCELL_TRUECOLOR") {
+	case "disable":
+		s.truecolor = false
+	case "enable":
+		s.truecolor = true
+	}
+
 	cf, _, e := procCreateEvent.Call(
 		uintptr(0),
 		uintptr(1),
@@ -171,8 +207,23 @@ func (s *cScreen) Init() error {
 	s.resize()
 
 	s.fini = false
-	s.setInMode(modeResizeEn)
-	s.setOutMode(0)
+	s.setInMode(modeResizeEn | modeExtndFlg)
+
+	// 24-bit color is opt-in for now, because we can't figure out
+	// to make it work consistently.
+	if s.truecolor {
+		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut)
+		var omode uint32
+		s.getOutMode(&omode)
+		if omode&modeVtOutput == modeVtOutput {
+			s.vten = true
+		} else {
+			s.truecolor = false
+		}
+	} else {
+		s.setOutMode(0)
+	}
+
 	s.clearScreen(s.style)
 	s.hideCursor()
 	s.Unlock()
@@ -191,7 +242,7 @@ func (s *cScreen) EnableMouse() {
 }
 
 func (s *cScreen) DisableMouse() {
-	s.setInMode(modeResizeEn)
+	s.setInMode(modeResizeEn | modeExtndFlg)
 }
 
 func (s *cScreen) Fini() {
@@ -200,6 +251,7 @@ func (s *cScreen) Fini() {
 	s.curx = -1
 	s.cury = -1
 	s.fini = true
+	s.vten = false
 	s.Unlock()
 
 	s.setCursorInfo(&s.ocursor)
@@ -265,12 +317,25 @@ type rect struct {
 	bottom int16
 }
 
+func (s *cScreen) emitVtString(vs string) {
+	esc := utf16.Encode([]rune(vs))
+	syscall.WriteConsole(s.out, &esc[0], uint32(len(esc)), nil, nil)
+}
+
 func (s *cScreen) showCursor() {
-	s.setCursorInfo(&cursorInfo{size: 100, visible: 1})
+	if s.vten {
+		s.emitVtString(vtShowCursor)
+	} else {
+		s.setCursorInfo(&cursorInfo{size: 100, visible: 1})
+	}
 }
 
 func (s *cScreen) hideCursor() {
-	s.setCursorInfo(&cursorInfo{size: 1, visible: 0})
+	if s.vten {
+		s.emitVtString(vtHideCursor)
+	} else {
+		s.setCursorInfo(&cursorInfo{size: 1, visible: 0})
+	}
 }
 
 func (s *cScreen) ShowCursor(x, y int) {
@@ -296,11 +361,6 @@ func (s *cScreen) doCursor() {
 
 func (s *cScreen) HideCursor() {
 	s.ShowCursor(-1, -1)
-}
-
-type charInfo struct {
-	ch   uint16
-	attr uint16
 }
 
 type inputRecord struct {
@@ -629,6 +689,9 @@ func (s *cScreen) scanInput() {
 
 // Windows console can display 8 characters, in either low or high intensity
 func (s *cScreen) Colors() int {
+	if s.vten {
+		return 1 << 24
+	}
 	return 16
 }
 
@@ -728,17 +791,51 @@ func (s *cScreen) GetContent(x, y int) (rune, []rune, Style, int) {
 	return mainc, combc, style, width
 }
 
+func (s *cScreen) sendVtStyle(style Style) {
+	esc := &strings.Builder{}
+
+	fg, bg, attrs := style.Decompose()
+
+	esc.WriteString(vtSgr0)
+
+	if attrs&(AttrBold|AttrDim) == AttrBold {
+		esc.WriteString(vtBold)
+	}
+	if attrs&AttrBlink != 0 {
+		esc.WriteString(vtBlink)
+	}
+	if attrs&AttrUnderline != 0 {
+		esc.WriteString(vtUnderline)
+	}
+	if attrs&AttrReverse != 0 {
+		esc.WriteString(vtReverse)
+	}
+	if fg != ColorDefault {
+		r, g, b := fg.RGB()
+		fmt.Fprintf(esc, vtSetFg, r, g, b)
+	}
+	if bg != ColorDefault {
+		r, g, b := bg.RGB()
+		fmt.Fprintf(esc, vtSetBg, r, g, b)
+	}
+	s.emitVtString(esc.String())
+}
+
 func (s *cScreen) writeString(x, y int, style Style, ch []uint16) {
 	// we assume the caller has hidden the cursor
 	if len(ch) == 0 {
 		return
 	}
-	nw := uint32(len(ch))
-	procSetConsoleTextAttribute.Call(
-		uintptr(s.out),
-		uintptr(s.mapStyle(style)))
 	s.setCursorPos(x, y)
-	syscall.WriteConsole(s.out, &ch[0], nw, &nw, nil)
+
+	if s.vten {
+		s.sendVtStyle(style)
+	} else {
+		procSetConsoleTextAttribute.Call(
+			uintptr(s.out),
+			uintptr(s.mapStyle(style)))
+	}
+	syscall.WriteConsole(s.out, &ch[0], uint32(len(ch)), nil, nil)
 }
 
 func (s *cScreen) draw() {
@@ -848,12 +945,18 @@ func (s *cScreen) setCursorInfo(info *cursorInfo) {
 	procSetConsoleCursorInfo.Call(
 		uintptr(s.out),
 		uintptr(unsafe.Pointer(info)))
+
 }
 
 func (s *cScreen) setCursorPos(x, y int) {
-	procSetConsoleCursorPosition.Call(
-		uintptr(s.out),
-		coord{int16(x), int16(y)}.uintptr())
+	if s.vten {
+		// Note that the string is Y first.  Origin is 1,1.
+		s.emitVtString(fmt.Sprintf(vtCursorPos, y+1, x+1))
+	} else {
+		procSetConsoleCursorPosition.Call(
+			uintptr(s.out),
+			coord{int16(x), int16(y)}.uintptr())
+	}
 }
 
 func (s *cScreen) setBufferSize(x, y int) {
@@ -892,7 +995,6 @@ func (s *cScreen) resize() {
 		uintptr(s.out),
 		uintptr(1),
 		uintptr(unsafe.Pointer(&r)))
-
 	s.PostEvent(NewEventResize(w, h))
 }
 
@@ -910,32 +1012,50 @@ func (s *cScreen) Fill(r rune, style Style) {
 }
 
 func (s *cScreen) clearScreen(style Style) {
-	pos := coord{0, 0}
-	attr := s.mapStyle(style)
-	x, y := s.w, s.h
-	scratch := uint32(0)
-	count := uint32(x * y)
+	if s.vten {
+		s.sendVtStyle(style)
+		row := strings.Repeat(" ", s.w)
+		for y := 0; y < s.h; y++ {
+			s.setCursorPos(0, y)
+			s.emitVtString(row)
+		}
+		s.setCursorPos(0, 0)
 
-	procFillConsoleOutputAttribute.Call(
-		uintptr(s.out),
-		uintptr(attr),
-		uintptr(count),
-		pos.uintptr(),
-		uintptr(unsafe.Pointer(&scratch)))
-	procFillConsoleOutputCharacter.Call(
-		uintptr(s.out),
-		uintptr(' '),
-		uintptr(count),
-		pos.uintptr(),
-		uintptr(unsafe.Pointer(&scratch)))
+	} else {
+		pos := coord{0, 0}
+		attr := s.mapStyle(style)
+		x, y := s.w, s.h
+		scratch := uint32(0)
+		count := uint32(x * y)
+
+		procFillConsoleOutputAttribute.Call(
+			uintptr(s.out),
+			uintptr(attr),
+			uintptr(count),
+			pos.uintptr(),
+			uintptr(unsafe.Pointer(&scratch)))
+		procFillConsoleOutputCharacter.Call(
+			uintptr(s.out),
+			uintptr(' '),
+			uintptr(count),
+			pos.uintptr(),
+			uintptr(unsafe.Pointer(&scratch)))
+	}
 }
 
 const (
+	// Input modes
 	modeExtndFlg uint32 = 0x0080
-	modeMouseEn  uint32 = 0x0010
-	modeResizeEn uint32 = 0x0008
-	modeWrapEOL  uint32 = 0x0002
-	modeCooked   uint32 = 0x0001
+	modeMouseEn         = 0x0010
+	modeResizeEn        = 0x0008
+	modeCooked          = 0x0001
+	modeVtInput         = 0x0200
+
+	// Output modes
+	modeCookedOut uint32 = 0x0001
+	modeWrapEOL          = 0x0002
+	modeVtOutput         = 0x0004
+	modeNoAutoNL         = 0x0008
 )
 
 func (s *cScreen) setInMode(mode uint32) error {
