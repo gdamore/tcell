@@ -2,6 +2,7 @@ adm3a
 aixterm
 ansi
 aterm
+beos-ansi
 beterm
 bsdos-pc
 cygwin
@@ -19,6 +20,7 @@ linux
 pcansi
 rxvt,rxvt-256color,rxvt-88color,rxvt-unicode,rxvt-unicode-256color
 screen,screen-256color
+screen.xterm,screen.xterm-88color,screen.xterm-256color|screen
 st,st-256color|simpleterm
 sun,sun-color
 termite
