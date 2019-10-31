@@ -7,7 +7,7 @@ image:https://img.shields.io/badge/license-APACHE2-blue.svg[Apache License,link=
 image:https://img.shields.io/badge/gitter-join-brightgreen.svg[Gitter,link="https://gitter.im/gdamore/tcell"]
 image:https://img.shields.io/badge/godoc-reference-blue.svg[GoDoc,link="https://godoc.org/github.com/gdamore/tcell"]
 image:http://goreportcard.com/badge/gdamore/tcell[Go Report Card,link="http://goreportcard.com/report/gdamore/tcell"]
-image:http://img.shields.io/badge/urTTxDN[Discord,link="https://discord.gg/urTTxDN"]
+image:https://img.shields.io/discord/639503822733180969?label=discord[Discord,link="https://discord.gg/urTTxDN"]
 image:https://codecov.io/gh/gdamore/tcell/branch/master/graph/badge.svg[codecov,link="https://codecov.io/gh/gdamore/tcell"]
 image:https://tidelift.com/badges/github/gdamore/tcell?style=flat[Dependencies]
 
