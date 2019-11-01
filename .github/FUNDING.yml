@@ -1,5 +1,4 @@
 # These are supported funding model platforms
 
-github: gdamore
+github: [ gdamore ]
 patreon: gedamore
-tidelift: go/github.com/gdamore/tcell
