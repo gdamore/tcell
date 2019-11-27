@@ -341,6 +341,9 @@ func LoadTerminfo(name string) (*terminfo.Terminfo, string, error) {
 		t.KeyCtrlShfDown = "\x1b[1;6B"
 		t.KeyCtrlShfRight = "\x1b[1;6C"
 		t.KeyCtrlShfLeft = "\x1b[1;6D"
+
+		t.KeyShfPgUp = "\x1b[5;2~"
+		t.KeyShfPgDn = "\x1b[6;2~"
 	}
 	// And also for Home and End
 	if t.KeyShfHome == "\x1b[1;2H" && t.KeyShfEnd == "\x1b[1;2F" {

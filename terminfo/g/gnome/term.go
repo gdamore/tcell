@@ -153,6 +153,8 @@ func init() {
 		KeyMetaShfEnd:   "\x1b[1;10F",
 		KeyAltShfHome:   "\x1b[1;4H",
 		KeyAltShfEnd:    "\x1b[1;4F",
+		KeyShfPgUp:      "\x1b[5;2~",
+		KeyShfPgDn:      "\x1b[6;2~",
 	})
 
 	// GNOME Terminal with xterm 256-colors
@@ -302,5 +304,7 @@ func init() {
 		KeyMetaShfEnd:   "\x1b[1;10F",
 		KeyAltShfHome:   "\x1b[1;4H",
 		KeyAltShfEnd:    "\x1b[1;4F",
+		KeyShfPgUp:      "\x1b[5;2~",
+		KeyShfPgDn:      "\x1b[6;2~",
 	})
 }
