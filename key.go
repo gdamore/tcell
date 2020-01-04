@@ -171,6 +171,8 @@ var KeyNames = map[Key]string{
 	KeyF62:            "F62",
 	KeyF63:            "F63",
 	KeyF64:            "F64",
+	KeyPasteBegin:     "PasteBegin",
+	KeyPasteEnd:       "PasteEnd",
 	KeyCtrlA:          "Ctrl-A",
 	KeyCtrlB:          "Ctrl-B",
 	KeyCtrlC:          "Ctrl-C",
@@ -373,6 +375,8 @@ const (
 	KeyF62
 	KeyF63
 	KeyF64
+	KeyPasteBegin
+	KeyPasteEnd
 )
 
 // These are the control keys.  Note that they overlap with other keys,

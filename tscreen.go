@@ -364,6 +364,9 @@ func (t *tScreen) prepareKeys() {
 		t.prepareKey(KeyHome, "\x1bOH")
 	}
 
+	t.prepareKey(KeyPasteBegin, ti.KeyPasteBegin)
+	t.prepareKey(KeyPasteEnd, ti.KeyPasteEnd)
+
 outer:
 	// Add key mappings for control keys.
 	for i := 0; i < ' '; i++ {

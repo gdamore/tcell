@@ -206,6 +206,8 @@ type Terminfo struct {
 	KeyAltShfEnd    string
 	KeyMetaShfHome  string
 	KeyMetaShfEnd   string
+	KeyPasteBegin   string
+	KeyPasteEnd     string
 }
 
 type stackElem struct {
