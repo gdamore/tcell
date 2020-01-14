@@ -82,7 +82,7 @@ func unescape(s string) string {
 				buf.WriteByte(c)
 			}
 		case control:
-			buf.WriteByte(c - 0x40)
+			buf.WriteByte(c ^ 1<<6)
 			esc = none
 		case escaped:
 			switch c {
