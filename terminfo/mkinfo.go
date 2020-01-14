@@ -95,7 +95,7 @@ func unescape(s string) string {
 				buf.WriteByte(c)
 			}
 		case CTRL:
-			buf.WriteByte(c - 0x40)
+			buf.WriteByte(c ^ 1<<6)
 			esc = NONE
 		case ESC:
 			switch c {
