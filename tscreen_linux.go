@@ -19,6 +19,7 @@ package tcell
 import (
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -115,5 +116,27 @@ func (t *tScreen) getWinSize() (int, int, error) {
 	if err != nil {
 		return -1, -1, err
 	}
-	return int(wsz.Col), int(wsz.Row), nil
+	cols := int(wsz.Col)
+	rows := int(wsz.Row)
+	if cols == 0 {
+		colsEnv := os.Getenv("COLUMNS")
+		if colsEnv != "" {
+			if cols, err = strconv.Atoi(colsEnv); err != nil {
+				return -1, -1, err
+			}
+		} else {
+			cols = t.ti.Columns
+		}
+	}
+	if rows == 0 {
+		rowsEnv := os.Getenv("LINES")
+		if rowsEnv != "" {
+			if rows, err = strconv.Atoi(rowsEnv); err != nil {
+				return -1, -1, err
+			}
+		} else {
+			rows = t.ti.Lines
+		}
+	}
+	return cols, rows, nil
 }
