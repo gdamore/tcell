@@ -193,6 +193,10 @@ type Screen interface {
 	// menus, displayed hot-keys, etc.  Note that KeyRune (literal
 	// runes) is always true.
 	HasKey(Key) bool
+
+	// RingBell sends a bell control code (ASCII #7) to the screen.
+	// This may trigger audible and/or visual feedback.
+	RingBell()
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal

@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -1432,3 +1433,9 @@ func (t *tScreen) HasKey(k Key) bool {
 }
 
 func (t *tScreen) Resize(int, int, int, int) {}
+
+func (t *tScreen) RingBell() {
+	t.Lock()
+	fmt.Print(string(byte(7)))
+	t.Unlock()
+}

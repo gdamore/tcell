@@ -18,6 +18,7 @@ package tcell
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"syscall"
 	"unicode/utf16"
@@ -1030,4 +1031,10 @@ func (s *cScreen) HasKey(k Key) bool {
 	}
 
 	return valid[k]
+}
+
+func (s *cScreen) RingBell() {
+	s.Lock()
+	fmt.Print(string(byte(7)))
+	s.Unlock()
 }

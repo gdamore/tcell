@@ -506,3 +506,5 @@ func (s *simscreen) Resize(int, int, int, int) {}
 func (s *simscreen) HasKey(Key) bool {
 	return true
 }
+
+func (s *simscreen) RingBell() {}
