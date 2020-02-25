@@ -37,8 +37,6 @@ type CellView struct {
 	view     View
 	content  Widget
 	contentV *ViewPort
-	cursorX  int
-	cursorY  int
 	style    tcell.Style
 	lines    []string
 	model    CellModel
@@ -274,19 +272,19 @@ func (a *CellView) Resize() {
 
 // SetCursor sets the the cursor position.
 func (a *CellView) SetCursor(x, y int) {
-	a.cursorX = x
-	a.cursorY = y
 	a.model.SetCursor(x, y)
 }
 
 // SetCursorX sets the the cursor column.
 func (a *CellView) SetCursorX(x int) {
-	a.SetCursor(x, a.cursorY)
+	_, y, _, _ := a.model.GetCursor()
+	a.SetCursor(x, y)
 }
 
 // SetCursorY sets the the cursor row.
 func (a *CellView) SetCursorY(y int) {
-	a.SetCursor(a.cursorX, y)
+	x, _, _, _ := a.model.GetCursor()
+	a.SetCursor(x, y)
 }
 
 // MakeVisible makes the given coordinates visible, if they are not already.
