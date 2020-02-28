@@ -233,6 +233,11 @@ func (a *CellView) Size() (int, int) {
 	return w, h
 }
 
+// GetModel gets the model for this CellView
+func (a *CellView) GetModel() CellModel {
+	return a.model
+}
+
 // SetModel sets the model for this CellView.
 func (a *CellView) SetModel(model CellModel) {
 	w, h := model.GetBounds()
