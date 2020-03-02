@@ -190,9 +190,8 @@ func (t *Text) SetText(s string) {
 			t.lengths = append(t.lengths, length)
 			if length > t.width {
 				t.width = length
-				length = 0
 			}
-
+			length = 0
 		} else if t.widths[i] == 0 && length == 0 {
 			// If first character on line is combining, inject
 			// a leading space.  (Shame on the caller!)
