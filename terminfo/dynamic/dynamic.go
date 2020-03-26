@@ -210,6 +210,7 @@ func LoadTerminfo(name string) (*terminfo.Terminfo, string, error) {
 	t.Bold = tc.getstr("bold")
 	t.Blink = tc.getstr("blink")
 	t.Dim = tc.getstr("dim")
+	t.Italic = tc.getstr("sitm")
 	t.Reverse = tc.getstr("rev")
 	t.EnterKeypad = tc.getstr("smkx")
 	t.ExitKeypad = tc.getstr("rmkx")

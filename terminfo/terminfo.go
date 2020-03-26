@@ -58,6 +58,7 @@ type Terminfo struct {
 	Blink        string // blink
 	Reverse      string // rev
 	Dim          string // dim
+	Italic       string // sitm
 	EnterKeypad  string // smkx
 	ExitKeypad   string // rmkx
 	SetFg        string // setaf

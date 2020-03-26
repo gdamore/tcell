@@ -112,6 +112,12 @@ func (s Style) Dim(on bool) Style {
 	return s.setAttrs(Style(AttrDim), on)
 }
 
+// Italic returns a new style based on s, with the italic attribute set
+// as requested.
+func (s Style) Italic(on bool) Style {
+	return s.setAttrs(Style(AttrItalic), on)
+}
+
 // Reverse returns a new style based on s, with the reverse attribute set
 // as requested.  (Reverse usually changes the foreground and background
 // colors.)
