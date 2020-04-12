@@ -33,7 +33,7 @@ type TextArea struct {
 }
 
 type linesModel struct {
-	lines  []string
+	runes  [][]rune
 	width  int
 	height int
 	x      int
@@ -44,12 +44,11 @@ type linesModel struct {
 }
 
 func (m *linesModel) GetCell(x, y int) (rune, tcell.Style, []rune, int) {
-	var ch rune
-	if x < 0 || y < 0 || y >= len(m.lines) || x >= len(m.lines[y]) {
-		return ch, m.style, nil, 1
+	if x < 0 || y < 0 || y >= m.height || x >= len(m.runes[y]) {
+		return 0, m.style, nil, 1
 	}
 	// XXX: extend this to support combining and full width chars
-	return rune(m.lines[y][x]), m.style, nil, 1
+	return m.runes[y][x], m.style, nil, 1
 }
 
 func (m *linesModel) GetBounds() (int, int) {
@@ -91,14 +90,22 @@ func (m *linesModel) GetCursor() (int, int, bool, bool) {
 func (ta *TextArea) SetLines(lines []string) {
 	ta.Init()
 	m := ta.model
-	m.width = 0
-	m.height = len(lines)
-	m.lines = append([]string{}, lines...)
-	for _, l := range lines {
-		if len(l) > m.width {
-			m.width = len(l)
+
+	// extend slice before using m.runes[row] to avoid panic
+	slice := make([][]rune, len(lines))
+	m.runes = append(m.runes, slice...)
+
+	for row, line := range lines {
+		for _, ch := range line {
+			m.runes[row] = append(m.runes[row], ch)
+		}
+		if len(m.runes[row]) > m.width {
+			m.width = len(m.runes[row])
 		}
 	}
+
+	m.height = len(m.runes)
+
 	ta.CellView.SetModel(m)
 }
 
@@ -132,7 +139,7 @@ func (ta *TextArea) SetContent(text string) {
 // Init initializes the TextArea.
 func (ta *TextArea) Init() {
 	ta.once.Do(func() {
-		lm := &linesModel{lines: []string{}, width: 0}
+		lm := &linesModel{runes: [][]rune{}, width: 0}
 		ta.model = lm
 		ta.CellView.Init()
 		ta.CellView.SetModel(lm)
