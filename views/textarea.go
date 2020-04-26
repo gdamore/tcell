@@ -90,10 +90,11 @@ func (m *linesModel) GetCursor() (int, int, bool, bool) {
 func (ta *TextArea) SetLines(lines []string) {
 	ta.Init()
 	m := ta.model
+	m.width =0
 
 	// extend slice before using m.runes[row] to avoid panic
 	slice := make([][]rune, len(lines))
-	m.runes = append(m.runes, slice...)
+	m.runes = slice
 
 	for row, line := range lines {
 		for _, ch := range line {
