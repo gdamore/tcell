@@ -241,7 +241,6 @@ func (a *CellView) GetModel() CellModel {
 // SetModel sets the model for this CellView.
 func (a *CellView) SetModel(model CellModel) {
 	w, h := model.GetBounds()
-	model.SetCursor(0, 0)
 	a.model = model
 	a.port.SetContentSize(w, h, true)
 	a.port.ValidateView()
