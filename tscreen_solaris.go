@@ -1,6 +1,6 @@
-// +build solaris
+// +build solaris illumos
 
-// Copyright 2019 The TCell Authors
+// Copyright 2020 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -114,4 +114,9 @@ func (t *tScreen) getWinSize() (int, int, error) {
 		return -1, -1, err
 	}
 	return int(wsz.Col), int(wsz.Row), nil
+}
+
+func (t *tScreen) Beep() error {
+	t.writeString(string(byte(7)))
+	return nil
 }
