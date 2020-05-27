@@ -34,6 +34,7 @@ image::logos/tcell.png[float="right"]
 * https://github.com/gcla/gowid[gowid] - compositional widgets for terminal UIs, inspired by urwid
 * https://termshark.io[termshark] - a terminal UI for tshark, inspired by Wireshark, built on gowid
 * https://github.com/MichaelS11/go-tetris[go-tetris] - Go Tetris with AI option
+* https://github.com/junegunn/fzf[fzf] - A command-line fuzzy finder
 
 
 ## Pure Go Terminfo Database
