@@ -175,6 +175,7 @@ func init() {
 		Bold:            "\x1b[1m",
 		Dim:             "\x1b[2m",
 		Italic:          "\x1b[3m",
+		Strikeout:       "\x1b[9m",
 		Reverse:         "\x1b[7m",
 		EnterKeypad:     "\x1b[?1h\x1b=",
 		ExitKeypad:      "\x1b[?1l\x1b>",

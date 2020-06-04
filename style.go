@@ -130,3 +130,9 @@ func (s Style) Reverse(on bool) Style {
 func (s Style) Underline(on bool) Style {
 	return s.setAttrs(Style(AttrUnderline), on)
 }
+
+// Strikeout returns a new style based on s, with the strikeout attribute set
+// as requested.
+func (s Style) Strikeout(on bool) Style {
+	return s.setAttrs(Style(AttrStrikeout), on)
+}

@@ -59,6 +59,7 @@ type Terminfo struct {
 	Reverse      string // rev
 	Dim          string // dim
 	Italic       string // sitm
+	Strikeout    string // smxx
 	EnterKeypad  string // smkx
 	ExitKeypad   string // rmkx
 	SetFg        string // setaf

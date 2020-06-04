@@ -27,7 +27,8 @@ const (
 	AttrUnderline
 	AttrDim
 	AttrItalic
+	AttrStrikeout
 	AttrNone AttrMask = 0 // Just normal text.
 )
 
-const attrAll = AttrBold | AttrBlink | AttrReverse | AttrUnderline | AttrDim | AttrItalic
+const attrAll = AttrBold | AttrBlink | AttrReverse | AttrUnderline | AttrDim | AttrItalic | AttrStrikeout
