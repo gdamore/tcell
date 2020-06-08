@@ -35,7 +35,7 @@ image::logos/tcell.png[float="right"]
 * https://termshark.io[termshark] - a terminal UI for tshark, inspired by Wireshark, built on gowid
 * https://github.com/MichaelS11/go-tetris[go-tetris] - Go Tetris with AI option
 * https://github.com/junegunn/fzf[fzf] - A command-line fuzzy finder
-
+* https://github.com/esimov/ascii-fluid[ascii-fluid] - A terminal based ASCII fluid simulation controlled by webcam
 
 ## Pure Go Terminfo Database
 
