@@ -36,6 +36,7 @@ image::logos/tcell.png[float="right"]
 * https://github.com/MichaelS11/go-tetris[go-tetris] - Go Tetris with AI option
 * https://github.com/junegunn/fzf[fzf] - A command-line fuzzy finder
 * https://github.com/esimov/ascii-fluid[ascii-fluid] - A terminal based ASCII fluid simulation controlled by webcam
+* https://gitlab.com/tslocum/cbind[cbind] - Provides key event encoding, decoding and handling
 
 ## Pure Go Terminfo Database
 
