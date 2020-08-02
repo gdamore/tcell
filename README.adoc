@@ -37,6 +37,7 @@ image::logos/tcell.png[float="right"]
 * https://github.com/junegunn/fzf[fzf] - A command-line fuzzy finder
 * https://github.com/esimov/ascii-fluid[ascii-fluid] - A terminal based ASCII fluid simulation controlled by webcam
 * https://gitlab.com/tslocum/cbind[cbind] - Provides key event encoding, decoding and handling
+* https://github.com/spinzed/tpong[tpong] - The old-school Pong remade in terminal
 
 ## Pure Go Terminfo Database
 
