@@ -15,8 +15,9 @@
 package views
 
 import (
-	"github.com/gdamore/tcell"
 	"unicode"
+
+	"github.com/gdamore/tcell/v2"
 )
 
 // SimpleStyledText is a form of Text that offers highlighting of the text

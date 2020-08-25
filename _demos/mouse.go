@@ -1,4 +1,4 @@
-//+build ignore
+// +build ignore
 
 // Copyright 2015 The TCell Authors
 //
@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gdamore/tcell"
-	"github.com/gdamore/tcell/encoding"
+	"github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2/encoding"
 
 	"github.com/mattn/go-runewidth"
 )

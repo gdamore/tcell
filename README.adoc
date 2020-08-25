@@ -17,7 +17,11 @@ a|[.right]
 image::logos/tcell.png[float="right"]
 |===
 
-## Examples
+NOTE: Work has begun on version 2.0 of mangos.  There are breaking changes (and more coming.)
+Version 1.x is available using the import `github.com/gdamore/tcell`.
+The new work in progress is available using master and `github.com/gdamore/tcell/v2`.
+
+== Examples
 
 * https://github.com/gdamore/proxima5[proxima5] - space shooter (https://youtu.be/jNxKTCmY_bQ[video])
 * https://github.com/gdamore/govisor[govisor] - service management UI (http://2.bp.blogspot.com/--OsvnfzSNow/Vf7aqMw3zXI/AAAAAAAAARo/uOMtOvw4Sbg/s1600/Screen%2BShot%2B2015-09-20%2Bat%2B9.08.41%2BAM.png[screenshot])
@@ -39,7 +43,7 @@ image::logos/tcell.png[float="right"]
 * https://gitlab.com/tslocum/cbind[cbind] - Provides key event encoding, decoding and handling
 * https://github.com/spinzed/tpong[tpong] - The old-school Pong remade in terminal
 
-## Pure Go Terminfo Database
+== Pure Go Terminfo Database
 
 _Tcell_ includes a full parser and expander for terminfo capability strings,
 so that it can avoid hard coding escape strings for formatting.  It also favors
@@ -48,7 +52,7 @@ portability, and includes support for all POSIX systems.
 The database is also flexible & extensible, and can modified by either running
 a program to build the entire database, or an entry for just a single terminal.
 
-## More Portable
+== More Portable
 
 _Tcell_ is portable to a wide variety of systems.
 _Tcell_ is believed
@@ -57,7 +61,7 @@ the exception of nacl (which lacks any kind of a terminal interface).
 (Plan9 is not supported by _Tcell_, but it is experimental status only
 in golang.)  _Tcell_ is pure Go, without any need for CGO.
 
-## No Async IO
+== No Async IO
 
 _Tcell_ is able to operate without requiring `SIGIO` signals (unlike _termbox_),
 or asynchronous I/O, and can instead use standard Go file
@@ -68,7 +72,7 @@ tty streams.
 This model is also much closer to idiomatic Go, leading
 to fewer surprises.
 
-## Rich Unicode & non-Unicode support
+== Rich Unicode & non-Unicode support
 
 _Tcell_ includes enhanced support for Unicode, including wide characters and
 combining characters, provided your terminal can support them.
@@ -81,11 +85,11 @@ _Tcell_ tries hard to convert to native characters on both input and output, and
 on output _Tcell_ even makes use of the alternate character set to facilitate
 drawing certain characters.
 
-## More Function Keys
+== More Function Keys
 
 _Tcell_ also has richer support for a larger number of special keys that some terminals can send.
 
-## Better Color Handling
+== Better Color Handling
 
 _Tcell_ will respect your terminal's color space as specified within your terminfo
 entries, so that for example attempts to emit color sequences on VT100 terminals
@@ -99,7 +103,7 @@ Modern Windows 10 can benefit from much richer colors however.
 _Tcell_ maps 16 colors down to 8, for terminals that need it.
 (The upper 8 colors are just brighter versions of the lower 8.)
 
-## Better Mouse Support
+== Better Mouse Support
 
 _Tcell_ supports enhanced mouse tracking mode, so your application can receive
 regular mouse motion events, and wheel events, if your terminal supports it.
@@ -108,13 +112,13 @@ regular mouse motion events, and wheel events, if your terminal supports it.
 and does not support mouse interaction.  The stock Windows 10 console host
 fired up with cmd.exe or PowerShell works fine however.)
 
-## _Termbox_ Compatibility
+== _Termbox_ Compatibility
 
 A compatibility layer for _termbox_ is provided in the `compat` directory.
 To use it, try importing `github.com/gdamore/tcell/termbox` instead.
 Most _termbox-go_ programs will probably work without further modification.
 
-## Working With Unicode
+== Working With Unicode
 
 Internally Tcell uses UTF-8, just like Go.
 However, Tcell understands how to
@@ -124,7 +128,7 @@ Your application must supply
 them, as the full set of the most common ones bloats the program by about 2MB.
 If you're lazy, and want them all anyway, see the `encoding` sub-directory.
 
-## Wide & Combining Characters
+== Wide & Combining Characters
 
 The `SetContent()` API takes a primary rune, and an optional list of combining runes.
 If any of the runes is a wide (East Asian) rune occupying two cells,
@@ -137,7 +141,7 @@ Experience has shown that the vanilla Windows 8 console application does not
 support any of these characters properly, but at least some options like
 _ConEmu_ do support Wide characters.
 
-## Colors
+== Colors
 
 _Tcell_ assumes the ANSI/XTerm color model, including the 256 color map that
 XTerm uses when it supports 256 colors.  The terminfo guidance will be
@@ -146,7 +150,7 @@ terminals which expose ANSI style `setaf` and `setab` will support color;
 if you have a color terminal that only has `setf` and `setb`, please let me
 know; it wouldn't be hard to add that if there is need.
 
-## 24-bit Color
+== 24-bit Color
 
 _Tcell_ _supports true color_!  (That is, if your terminal can support it,
 _Tcell_ can accurately display 24-bit color.)
@@ -170,14 +174,14 @@ If you find this undesirable, you can either use a `TERM` variable
 that lacks the `TRUECOLOR` setting, or set `TCELL_TRUECOLOR=disable` in your
 environment.
 
-## Performance
+== Performance
 
 Reasonable attempts have been made to minimize sending data to terminals,
 avoiding repeated sequences or drawing the same cell on refresh updates.
 
-## Terminfo
+== Terminfo
 
-(Not relevent for Windows users.)
+(Not relevant for Windows users.)
 
 The Terminfo implementation operates with two forms of database.  The first
 is the built-in go database, which contains a number of real database entries
@@ -202,7 +206,7 @@ Terminals without absolute cursor addressability are not supported.
 This is unlikely to be a problem; such terminals have not been mass produced
 since the early 1970s.
 
-## Mouse Support
+== Mouse Support
 
 Mouse support is detected via the `kmous` terminfo variable, however,
 enablement/disablement and decoding mouse events is done using hard coded
@@ -216,16 +220,16 @@ Mouse wheel buttons on various terminals are known to work, but the support
 in terminal emulators, as well as support for various buttons and
 live mouse tracking, varies widely.  Modern _xterm_, macOS _Terminal_, and _iTerm_ all work well.
 
-## Testablity
+== Testablity
 
 There is a `SimulationScreen`, that can be used to simulate a real screen
 for automated testing.  The supplied tests do this.  The simulation contains
 event delivery, screen resizing support, and capabilities to inject events
 and examine "`physical`" screen contents.
 
-## Platforms
+== Platforms
 
-### POSIX (Linux, FreeBSD, macOS, Solaris, etc.)
+=== POSIX (Linux, FreeBSD, macOS, Solaris, etc.)
 
 For mainstream systems with a suitably well defined system call interface
 to tty settings, everything works using pure Go.
@@ -233,7 +237,7 @@ to tty settings, everything works using pure Go.
 For the remainder (right now means only Solaris/illumos) we use POSIX function
 calls to manage termios, which implies that CGO is required on those platforms.
 
-### Windows
+=== Windows
 
 Windows console mode applications are supported.  Unfortunately _mintty_
 and other _cygwin_ style applications are not supported.
@@ -247,7 +251,7 @@ has either.  If anyone has suggestions, let me know!  Really, if you're
 using a Windows application, you should use the native Windows console or a
 fully compatible console implementation.
 
-### Plan9 and Native Client (Nacl)
+=== Plan9 and Native Client (Nacl)
 
 The nacl and plan9 platforms won't work, but compilation stubs are supplied
 for folks that want to include parts of this in software targetting those
@@ -257,7 +261,7 @@ allocate a real screen object on those platforms, `NewScreen()` will fail.
 If anyone has wisdom about how to improve support for either of these,
 please let me know.  PRs are especially welcome.
 
-### Commercial Support
+=== Commercial Support
 
 _Tcell_ is absolutely free, but if you want to obtain commercial, professional support, there are options.
 

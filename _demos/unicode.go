@@ -1,3 +1,5 @@
+// +build ignore
+
 // Copyright 2019 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +22,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gdamore/tcell"
-	"github.com/gdamore/tcell/encoding"
+	"github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2/encoding"
 	runewidth "github.com/mattn/go-runewidth"
 )
 
