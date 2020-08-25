@@ -919,10 +919,10 @@ func (t *tScreen) buildMouseEvent(x, y, btn int) *EventMouse {
 		button = Button1
 		t.wasbtn = true
 	case 1:
-		button = Button2
+		button = Button3 // Note we prefer to treat right as button 2
 		t.wasbtn = true
 	case 2:
-		button = Button3
+		button = Button2 // And the middle button as button 3
 		t.wasbtn = true
 	case 3:
 		button = ButtonNone
