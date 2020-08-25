@@ -55,8 +55,7 @@ _Tcell_ is believed
 to work with all of the systems officially supported by golang with
 the exception of nacl (which lacks any kind of a terminal interface).
 (Plan9 is not supported by _Tcell_, but it is experimental status only
-in golang.)  For all of these systems *except Solaris/illumos*, _Tcell_
-is pure Go, with no need for CGO.
+in golang.)  _Tcell_ is pure Go, without any need for CGO.
 
 ## No Async IO
 
@@ -92,9 +91,10 @@ _Tcell_ will respect your terminal's color space as specified within your termin
 entries, so that for example attempts to emit color sequences on VT100 terminals
 won't result in unintended consequences.
 
-In Windows mode, _Tcell_ supports 16 colors, bold, dim, and reverse,
+In legacy Windows mode, _Tcell_ supports 16 colors, bold, dim, and reverse,
 instead of just termbox's 8 colors with reverse.  (Note that there is some
 conflation with bold/dim and colors.)
+Modern Windows 10 can benefit from much richer colors however.
 
 _Tcell_ maps 16 colors down to 8, for terminals that need it.
 (The upper 8 colors are just brighter versions of the lower 8.)
@@ -104,12 +104,15 @@ _Tcell_ maps 16 colors down to 8, for terminals that need it.
 _Tcell_ supports enhanced mouse tracking mode, so your application can receive
 regular mouse motion events, and wheel events, if your terminal supports it.
 
+(Note: The Windows 10 Terminal application suffers from a flaw in this regard,
+and does not support mouse interaction.  The stock Windows 10 console host
+fired up with cmd.exe or PowerShell works fine however.)
+
 ## _Termbox_ Compatibility
 
 A compatibility layer for _termbox_ is provided in the `compat` directory.
-To use it, try importing `github.com/gdamore/tcell/termbox`
-instead.  Most _termbox-go_ programs will probably work without further
-modification.
+To use it, try importing `github.com/gdamore/tcell/termbox` instead.
+Most _termbox-go_ programs will probably work without further modification.
 
 ## Working With Unicode
 
