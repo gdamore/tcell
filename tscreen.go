@@ -153,14 +153,12 @@ func (t *tScreen) Init() error {
 	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
 		t.truecolor = false
 	}
-	if !t.truecolor {
-		t.colors = make(map[Color]Color)
-		t.palette = make([]Color, t.Colors())
-		for i := 0; i < t.Colors(); i++ {
-			t.palette[i] = Color(i)
-			// identity map for our builtin colors
-			t.colors[Color(i)] = Color(i)
-		}
+	t.colors = make(map[Color]Color)
+	t.palette = make([]Color, t.nColors())
+	for i := 0; i < t.nColors(); i++ {
+		t.palette[i] = Color(i) | ColorValid
+		// identity map for our builtin colors
+		t.colors[Color(i)|ColorValid] = Color(i) | ColorValid
 	}
 
 	t.TPuts(ti.EnterCA)
@@ -404,7 +402,7 @@ func (t *tScreen) Fini() {
 	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
 	t.TPuts(ti.TParm(ti.MouseMode, 0))
-	t.curstyle = Style(-1)
+	t.curstyle = styleInvalid
 	t.clear = false
 	t.fini = true
 
@@ -498,29 +496,30 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 		return
 	}
 	if t.truecolor {
-		if ti.SetFgBgRGB != "" &&
-			fg != ColorDefault && bg != ColorDefault {
+		if ti.SetFgBgRGB != "" && fg.IsRGB() && bg.IsRGB() {
 			r1, g1, b1 := fg.RGB()
 			r2, g2, b2 := bg.RGB()
 			t.TPuts(ti.TParm(ti.SetFgBgRGB,
 				int(r1), int(g1), int(b1),
 				int(r2), int(g2), int(b2)))
-		} else {
-			if fg != ColorDefault && ti.SetFgRGB != "" {
-				r, g, b := fg.RGB()
-				t.TPuts(ti.TParm(ti.SetFgRGB,
-					int(r), int(g), int(b)))
-			}
-			if bg != ColorDefault && ti.SetBgRGB != "" {
-				r, g, b := bg.RGB()
-				t.TPuts(ti.TParm(ti.SetBgRGB,
-					int(r), int(g), int(b)))
-			}
+			return
 		}
-		return
+
+		if fg.IsRGB() && ti.SetFgRGB != "" {
+			r, g, b := fg.RGB()
+			t.TPuts(ti.TParm(ti.SetFgRGB, int(r), int(g), int(b)))
+			fg = ColorDefault
+		}
+
+		if bg.IsRGB() && ti.SetBgRGB != "" {
+			r, g, b := bg.RGB()
+			t.TPuts(ti.TParm(ti.SetBgRGB,
+				int(r), int(g), int(b)))
+			bg = ColorDefault
+		}
 	}
 
-	if fg != ColorDefault {
+	if fg.Valid() {
 		if v, ok := t.colors[fg]; ok {
 			fg = v
 		} else {
@@ -530,7 +529,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 		}
 	}
 
-	if bg != ColorDefault {
+	if bg.Valid() {
 		if v, ok := t.colors[bg]; ok {
 			bg = v
 		} else {
@@ -540,14 +539,14 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 		}
 	}
 
-	if ti.SetFgBg != "" && fg != ColorDefault && bg != ColorDefault {
-		t.TPuts(ti.TParm(ti.SetFgBg, int(fg), int(bg)))
+	if fg.Valid() && bg.Valid() && ti.SetFgBg != "" {
+		t.TPuts(ti.TParm(ti.SetFgBg, int(fg&0xff), int(bg&0xff)))
 	} else {
-		if fg != ColorDefault && ti.SetFg != "" {
-			t.TPuts(ti.TParm(ti.SetFg, int(fg)))
+		if fg.Valid() && ti.SetFg != "" {
+			t.TPuts(ti.TParm(ti.SetFg, int(fg&0xff)))
 		}
-		if bg != ColorDefault && ti.SetBg != "" {
-			t.TPuts(ti.TParm(ti.SetBg, int(bg)))
+		if bg.Valid() && ti.SetBg != "" {
+			t.TPuts(ti.TParm(ti.SetBg, int(bg&0xff)))
 		}
 	}
 }
@@ -791,6 +790,13 @@ func (t *tScreen) Colors() int {
 	if t.truecolor {
 		return 1 << 24
 	}
+	return t.ti.Colors
+}
+
+// nColors returns the size of the built-in palette.
+// This is distinct from Colors(), as it will generally
+// always be a small number. (<= 256)
+func (t *tScreen) nColors() int {
 	return t.ti.Colors
 }
 

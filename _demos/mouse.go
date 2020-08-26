@@ -206,7 +206,7 @@ func main() {
 			switch ev.Buttons() {
 			case tcell.ButtonNone:
 				if ox >= 0 {
-					bg := tcell.Color((lchar - '0') * 2)
+					bg := tcell.Color((lchar - '0') * 2) | tcell.ColorValid
 					drawBox(s, ox, oy, x, y,
 						up.Background(bg),
 						lchar)

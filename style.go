@@ -32,101 +32,101 @@ package tcell
 // would be replaced with a palette number and palette index.
 //
 // To use Style, just declare a variable of its type.
-type Style int64
+type Style struct {
+	fg       Color
+	bg       Color
+	attrs    AttrMask
+}
 
 // StyleDefault represents a default style, based upon the context.
 // It is the zero value.
-const StyleDefault Style = 0
+var StyleDefault Style
 
-// styleFlags -- used internally for now.
-const (
-	styleBgSet = 1 << (iota + 57)
-	styleFgSet
-	stylePalette
-)
+// styleInvalid is just an arbitrary invalid style used internally.
+var styleInvalid = Style{attrs: AttrInvalid}
 
 // Foreground returns a new style based on s, with the foreground color set
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Foreground(c Color) Style {
-	if c == ColorDefault {
-		return (s &^ (0x1ffffff00000000 | styleFgSet))
+	return Style{
+		fg:    c,
+		bg:    s.bg,
+		attrs: s.attrs,
 	}
-	return (s &^ Style(0x1ffffff00000000)) |
-		((Style(c) & 0x1ffffff) << 32) | styleFgSet
 }
 
 // Background returns a new style based on s, with the background color set
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Background(c Color) Style {
-	if c == ColorDefault {
-		return (s &^ (0x1ffffff | styleBgSet))
+	return Style{
+		fg:    s.fg,
+		bg:    c,
+		attrs: s.attrs,
 	}
-	return (s &^ (0x1ffffff)) | (Style(c) & 0x1ffffff) | styleBgSet
 }
 
 // Decompose breaks a style up, returning the foreground, background,
 // and other attributes.
 func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
-	if s&styleFgSet != 0 {
-		fg = Color(s>>32) & 0x1ffffff
-	} else {
-		fg = ColorDefault
-	}
-	if s&styleBgSet != 0 {
-		bg = Color(s & 0x1ffffff)
-	} else {
-		bg = ColorDefault
-	}
-	attr = AttrMask(s) & attrAll
-
-	return fg, bg, attr
+	return s.fg, s.bg, s.attrs
 }
 
-func (s Style) setAttrs(attrs Style, on bool) Style {
+func (s Style) setAttrs(attrs AttrMask, on bool) Style {
 	if on {
-		return s | attrs
+		return Style{
+			fg:    s.fg,
+			bg:    s.bg,
+			attrs: s.attrs | attrs,
+		}
 	}
-	return s &^ attrs
+	return Style{
+		fg:    s.fg,
+		bg:    s.bg,
+		attrs: s.attrs &^ attrs,
+	}
 }
 
 // Normal returns the style with all attributes disabled.
 func (s Style) Normal() Style {
-	return s &^ Style(attrAll)
+	return Style{
+		fg: s.fg,
+		bg: s.bg,
+	}
 }
 
 // Bold returns a new style based on s, with the bold attribute set
 // as requested.
 func (s Style) Bold(on bool) Style {
-	return s.setAttrs(Style(AttrBold), on)
+	return s.setAttrs(AttrBold, on)
 }
 
 // Blink returns a new style based on s, with the blink attribute set
 // as requested.
 func (s Style) Blink(on bool) Style {
-	return s.setAttrs(Style(AttrBlink), on)
+	return s.setAttrs(AttrBlink, on)
 }
 
 // Dim returns a new style based on s, with the dim attribute set
 // as requested.
 func (s Style) Dim(on bool) Style {
-	return s.setAttrs(Style(AttrDim), on)
+	return s.setAttrs(AttrDim, on)
 }
 
 // Italic returns a new style based on s, with the italic attribute set
 // as requested.
 func (s Style) Italic(on bool) Style {
-	return s.setAttrs(Style(AttrItalic), on)
+	return s.setAttrs(AttrItalic, on)
 }
 
 // Reverse returns a new style based on s, with the reverse attribute set
 // as requested.  (Reverse usually changes the foreground and background
 // colors.)
 func (s Style) Reverse(on bool) Style {
-	return s.setAttrs(Style(AttrReverse), on)
+	return s.setAttrs(AttrReverse, on)
 }
 
 // Underline returns a new style based on s, with the underline attribute set
 // as requested.
 func (s Style) Underline(on bool) Style {
-	return s.setAttrs(Style(AttrUnderline), on)
+	return s.setAttrs(AttrUnderline, on)
 }

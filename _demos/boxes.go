@@ -46,7 +46,7 @@ func makebox(s tcell.Screen) {
 		rgb := tcell.NewHexColor(int32(rand.Int() & 0xffffff))
 		st = st.Background(rgb)
 	} else if s.Colors() > 1 {
-		st = st.Background(tcell.Color(rand.Int() % s.Colors()))
+		st = st.Background(tcell.Color(rand.Int() % s.Colors()) | tcell.ColorValid)
 	} else {
 		st = st.Reverse(rand.Int()%2 == 0)
 		gl = glyphs[rand.Int()%len(glyphs)]

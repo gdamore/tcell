@@ -1,6 +1,6 @@
 // +build windows
 
-// Copyright 2019 The TCell Authors
+// Copyright 2020 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -139,8 +139,10 @@ const (
 	vtUnderline  = "\x1b[4m"
 	vtBlink      = "\x1b[5m" // Not sure this is processed
 	vtReverse    = "\x1b[7m"
-	vtSetFg      = "\x1b[38;2;%d;%d;%dm" // RGB
-	vtSetBg      = "\x1b[48;2;%d;%d;%dm" // RGB
+	vtSetFg      = "\x1b[38;5;%dm"
+	vtSetBg      = "\x1b[48;5;%dm"
+	vtSetFgRGB   = "\x1b[38;2;%d;%d;%dm" // RGB
+	vtSetBgRGB   = "\x1b[48;2;%d;%d;%dm" // RGB
 )
 
 // NewConsoleScreen returns a Screen for the Windows console associated
@@ -810,13 +812,17 @@ func (s *cScreen) sendVtStyle(style Style) {
 	if attrs&AttrReverse != 0 {
 		esc.WriteString(vtReverse)
 	}
-	if fg != ColorDefault {
+	if fg.IsRGB() {
 		r, g, b := fg.RGB()
-		fmt.Fprintf(esc, vtSetFg, r, g, b)
+		fmt.Fprintf(esc, vtSetFgRGB, r, g, b)
+	} else if fg.Valid() {
+		fmt.Fprintf(esc, vtSetFg, fg & 0xff)
 	}
-	if bg != ColorDefault {
+	if bg.IsRGB() {
 		r, g, b := bg.RGB()
-		fmt.Fprintf(esc, vtSetBg, r, g, b)
+		fmt.Fprintf(esc, vtSetBgRGB, r, g, b)
+	} else if bg.Valid() {
+		fmt.Fprintf(esc, vtSetBg, bg & 0xff)
 	}
 	s.emitVtString(esc.String())
 }
@@ -848,13 +854,13 @@ func (s *cScreen) draw() {
 	}
 	buf := make([]uint16, 0, s.w)
 	wcs := buf[:]
-	lstyle := Style(-1) // invalid attribute
+	lstyle := styleInvalid
 
 	lx, ly := -1, -1
 	ra := make([]rune, 1)
 
-	for y := 0; y < int(s.h); y++ {
-		for x := 0; x < int(s.w); x++ {
+	for y := 0; y < s.h; y++ {
+		for x := 0; x < s.w; x++ {
 			mainc, combc, style, width := s.cells.GetContent(x, y)
 			dirty := s.cells.Dirty(x, y)
 			if style == StyleDefault {
@@ -867,7 +873,7 @@ func (s *cScreen) draw() {
 				// cells, or because we need to change styles
 				s.writeString(lx, ly, lstyle, wcs)
 				wcs = buf[0:0]
-				lstyle = Style(-1)
+				lstyle = StyleDefault
 				if !dirty {
 					continue
 				}
@@ -894,7 +900,7 @@ func (s *cScreen) draw() {
 		}
 		s.writeString(lx, ly, lstyle, wcs)
 		wcs = buf[0:0]
-		lstyle = Style(-1)
+		lstyle = styleInvalid
 	}
 }
 

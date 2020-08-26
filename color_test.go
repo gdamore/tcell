@@ -42,22 +42,22 @@ func TestColorValues(t *testing.T) {
 func TestColorFitting(t *testing.T) {
 	pal := []Color{}
 	for i := 0; i < 255; i++ {
-		pal = append(pal, Color(i))
+		pal = append(pal, PaletteColor(i))
 	}
 
 	// Exact color fitting on ANSI colors
 	for i := 0; i < 7; i++ {
-		if FindColor(Color(i), pal[:8]) != Color(i) {
+		if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i) {
 			t.Errorf("Color ANSI fit fail at %d", i)
 		}
 	}
 	// Grey is closest to Silver
-	if FindColor(Color(8), pal[:8]) != Color(7) {
+	if FindColor(PaletteColor(8), pal[:8]) != PaletteColor(7) {
 		t.Errorf("Grey does not fit to silver")
 	}
 	// Color fitting of upper 8 colors.
 	for i := 9; i < 16; i++ {
-		if FindColor(Color(i), pal[:8]) != Color(i%8) {
+		if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i%8) {
 			t.Errorf("Color fit fail at %d", i)
 		}
 	}
@@ -76,15 +76,30 @@ func TestColorNameLookup(t *testing.T) {
 	var values = []struct {
 		name  string
 		color Color
+		rgb   bool
 	}{
-		{"#FF0000", ColorRed},
-		{"black", ColorBlack},
-		{"orange", ColorOrange},
+		{"#FF0000", ColorRed, true},
+		{"black", ColorBlack, false},
+		{"orange", ColorOrange, false},
+		{"door", ColorDefault, false},
 	}
 	for _, v := range values {
 		c := GetColor(v.name)
 		if c.Hex() != v.color.Hex() {
 			t.Errorf("Wrong color for %v: %v", v.name, c.Hex())
+		}
+		if v.rgb {
+			if c & ColorIsRGB == 0 {
+				t.Errorf("Color should have RGB")
+			}
+		} else {
+			if c & ColorIsRGB != 0 {
+				t.Errorf("Named color should not be RGB")
+			}
+		}
+
+		if c.TrueColor().Hex() != v.color.Hex() {
+			t.Errorf("TrueColor did not match")
 		}
 	}
 }

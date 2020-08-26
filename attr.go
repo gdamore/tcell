@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2020 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -21,13 +21,12 @@ type AttrMask int
 // Attributes are not colors, but affect the display of text.  They can
 // be combined.
 const (
-	AttrBold AttrMask = 1 << (25 + iota)
+	AttrBold AttrMask = 1 << iota
 	AttrBlink
 	AttrReverse
 	AttrUnderline
 	AttrDim
 	AttrItalic
-	AttrNone AttrMask = 0 // Just normal text.
+	AttrInvalid              // Mark the style or attributes invalid
+	AttrNone    AttrMask = 0 // Just normal text.
 )
-
-const attrAll = AttrBold | AttrBlink | AttrReverse | AttrUnderline | AttrDim | AttrItalic
