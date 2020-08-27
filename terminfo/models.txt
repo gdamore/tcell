@@ -1,5 +1,6 @@
 adm3a
 aixterm
+alacritty
 ansi
 aterm
 beterm
@@ -41,3 +42,4 @@ wy99-ansi,wy99a-ansi
 xfce
 xnuppc
 xterm,xterm-88color,xterm-256color
+xterm-kitty
