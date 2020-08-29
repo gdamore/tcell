@@ -1,6 +1,6 @@
 // +build ignore
 
-// Copyright 2019 The TCell Authors
+// Copyright 2020 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -249,58 +249,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.KeyF10 = tc.getstr("kf10")
 	t.KeyF11 = tc.getstr("kf11")
 	t.KeyF12 = tc.getstr("kf12")
-	t.KeyF13 = tc.getstr("kf13")
-	t.KeyF14 = tc.getstr("kf14")
-	t.KeyF15 = tc.getstr("kf15")
-	t.KeyF16 = tc.getstr("kf16")
-	t.KeyF17 = tc.getstr("kf17")
-	t.KeyF18 = tc.getstr("kf18")
-	t.KeyF19 = tc.getstr("kf19")
-	t.KeyF20 = tc.getstr("kf20")
-	t.KeyF21 = tc.getstr("kf21")
-	t.KeyF22 = tc.getstr("kf22")
-	t.KeyF23 = tc.getstr("kf23")
-	t.KeyF24 = tc.getstr("kf24")
-	t.KeyF25 = tc.getstr("kf25")
-	t.KeyF26 = tc.getstr("kf26")
-	t.KeyF27 = tc.getstr("kf27")
-	t.KeyF28 = tc.getstr("kf28")
-	t.KeyF29 = tc.getstr("kf29")
-	t.KeyF30 = tc.getstr("kf30")
-	t.KeyF31 = tc.getstr("kf31")
-	t.KeyF32 = tc.getstr("kf32")
-	t.KeyF33 = tc.getstr("kf33")
-	t.KeyF34 = tc.getstr("kf34")
-	t.KeyF35 = tc.getstr("kf35")
-	t.KeyF36 = tc.getstr("kf36")
-	t.KeyF37 = tc.getstr("kf37")
-	t.KeyF38 = tc.getstr("kf38")
-	t.KeyF39 = tc.getstr("kf39")
-	t.KeyF40 = tc.getstr("kf40")
-	t.KeyF41 = tc.getstr("kf41")
-	t.KeyF42 = tc.getstr("kf42")
-	t.KeyF43 = tc.getstr("kf43")
-	t.KeyF44 = tc.getstr("kf44")
-	t.KeyF45 = tc.getstr("kf45")
-	t.KeyF46 = tc.getstr("kf46")
-	t.KeyF47 = tc.getstr("kf47")
-	t.KeyF48 = tc.getstr("kf48")
-	t.KeyF49 = tc.getstr("kf49")
-	t.KeyF50 = tc.getstr("kf50")
-	t.KeyF51 = tc.getstr("kf51")
-	t.KeyF52 = tc.getstr("kf52")
-	t.KeyF53 = tc.getstr("kf53")
-	t.KeyF54 = tc.getstr("kf54")
-	t.KeyF55 = tc.getstr("kf55")
-	t.KeyF56 = tc.getstr("kf56")
-	t.KeyF57 = tc.getstr("kf57")
-	t.KeyF58 = tc.getstr("kf58")
-	t.KeyF59 = tc.getstr("kf59")
-	t.KeyF60 = tc.getstr("kf60")
-	t.KeyF61 = tc.getstr("kf61")
-	t.KeyF62 = tc.getstr("kf62")
-	t.KeyF63 = tc.getstr("kf63")
-	t.KeyF64 = tc.getstr("kf64")
 	t.KeyInsert = tc.getstr("kich1")
 	t.KeyDelete = tc.getstr("kdch1")
 	t.KeyBackspace = tc.getstr("kbs")
@@ -323,64 +271,84 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.ExitAcs = tc.getstr("rmacs")
 	t.EnableAcs = tc.getstr("enacs")
 	t.Mouse = tc.getstr("kmous")
-	t.KeyShfRight = tc.getstr("kRIT")
-	t.KeyShfLeft = tc.getstr("kLFT")
-	t.KeyShfHome = tc.getstr("kHOM")
-	t.KeyShfEnd = tc.getstr("kEND")
+
+	t.Modifiers = terminfo.ModifiersNone
 
 	// Terminfo lacks descriptions for a bunch of modified keys,
-	// but modern XTerm and emulators often have them.  Let's add them,
-	// if the shifted right and left arrows are defined.
-	if t.KeyShfRight == "\x1b[1;2C" && t.KeyShfLeft == "\x1b[1;2D" {
-		t.KeyShfUp = "\x1b[1;2A"
-		t.KeyShfDown = "\x1b[1;2B"
-		t.KeyMetaUp = "\x1b[1;9A"
-		t.KeyMetaDown = "\x1b[1;9B"
-		t.KeyMetaRight = "\x1b[1;9C"
-		t.KeyMetaLeft = "\x1b[1;9D"
-		t.KeyAltUp = "\x1b[1;3A"
-		t.KeyAltDown = "\x1b[1;3B"
-		t.KeyAltRight = "\x1b[1;3C"
-		t.KeyAltLeft = "\x1b[1;3D"
-		t.KeyCtrlUp = "\x1b[1;5A"
-		t.KeyCtrlDown = "\x1b[1;5B"
-		t.KeyCtrlRight = "\x1b[1;5C"
-		t.KeyCtrlLeft = "\x1b[1;5D"
-		t.KeyAltShfUp = "\x1b[1;4A"
-		t.KeyAltShfDown = "\x1b[1;4B"
-		t.KeyAltShfRight = "\x1b[1;4C"
-		t.KeyAltShfLeft = "\x1b[1;4D"
-
-		t.KeyMetaShfUp = "\x1b[1;10A"
-		t.KeyMetaShfDown = "\x1b[1;10B"
-		t.KeyMetaShfRight = "\x1b[1;10C"
-		t.KeyMetaShfLeft = "\x1b[1;10D"
-
-		t.KeyCtrlShfUp = "\x1b[1;6A"
-		t.KeyCtrlShfDown = "\x1b[1;6B"
-		t.KeyCtrlShfRight = "\x1b[1;6C"
-		t.KeyCtrlShfLeft = "\x1b[1;6D"
-
-		t.KeyShfPgUp = "\x1b[5;2~"
-		t.KeyShfPgDn = "\x1b[6;2~"
+	// but modern XTerm and emulators often have them. We detect
+	// this based on compatible definitions for shifted right.
+	// We also choose to use our modifiers for function keys --
+	// the terminfo entries list these all as higher coded escape
+	// keys, but it's nicer to match them to modifiers.
+	if tc.getstr("kRIT") == "\x1b[1;2C" {
+		t.Modifiers = terminfo.ModifiersXTerm
+	} else {
+		// Lookup high level function keys.
+		t.KeyShfInsert = tc.getstr("kIC")
+		t.KeyShfDelete = tc.getstr("kDC")
+		t.KeyShfRight = tc.getstr("kRIT")
+		t.KeyShfLeft = tc.getstr("kLFT")
+		t.KeyShfHome = tc.getstr("kHOM")
+		t.KeyShfEnd = tc.getstr("kEND")
+		t.KeyF13 = tc.getstr("kf13")
+		t.KeyF14 = tc.getstr("kf14")
+		t.KeyF15 = tc.getstr("kf15")
+		t.KeyF16 = tc.getstr("kf16")
+		t.KeyF17 = tc.getstr("kf17")
+		t.KeyF18 = tc.getstr("kf18")
+		t.KeyF19 = tc.getstr("kf19")
+		t.KeyF20 = tc.getstr("kf20")
+		t.KeyF21 = tc.getstr("kf21")
+		t.KeyF22 = tc.getstr("kf22")
+		t.KeyF23 = tc.getstr("kf23")
+		t.KeyF24 = tc.getstr("kf24")
+		t.KeyF25 = tc.getstr("kf25")
+		t.KeyF26 = tc.getstr("kf26")
+		t.KeyF27 = tc.getstr("kf27")
+		t.KeyF28 = tc.getstr("kf28")
+		t.KeyF29 = tc.getstr("kf29")
+		t.KeyF30 = tc.getstr("kf30")
+		t.KeyF31 = tc.getstr("kf31")
+		t.KeyF32 = tc.getstr("kf32")
+		t.KeyF33 = tc.getstr("kf33")
+		t.KeyF34 = tc.getstr("kf34")
+		t.KeyF35 = tc.getstr("kf35")
+		t.KeyF36 = tc.getstr("kf36")
+		t.KeyF37 = tc.getstr("kf37")
+		t.KeyF38 = tc.getstr("kf38")
+		t.KeyF39 = tc.getstr("kf39")
+		t.KeyF40 = tc.getstr("kf40")
+		t.KeyF41 = tc.getstr("kf41")
+		t.KeyF42 = tc.getstr("kf42")
+		t.KeyF43 = tc.getstr("kf43")
+		t.KeyF44 = tc.getstr("kf44")
+		t.KeyF45 = tc.getstr("kf45")
+		t.KeyF46 = tc.getstr("kf46")
+		t.KeyF47 = tc.getstr("kf47")
+		t.KeyF48 = tc.getstr("kf48")
+		t.KeyF49 = tc.getstr("kf49")
+		t.KeyF50 = tc.getstr("kf50")
+		t.KeyF51 = tc.getstr("kf51")
+		t.KeyF52 = tc.getstr("kf52")
+		t.KeyF53 = tc.getstr("kf53")
+		t.KeyF54 = tc.getstr("kf54")
+		t.KeyF55 = tc.getstr("kf55")
+		t.KeyF56 = tc.getstr("kf56")
+		t.KeyF57 = tc.getstr("kf57")
+		t.KeyF58 = tc.getstr("kf58")
+		t.KeyF59 = tc.getstr("kf59")
+		t.KeyF60 = tc.getstr("kf60")
+		t.KeyF61 = tc.getstr("kf61")
+		t.KeyF62 = tc.getstr("kf62")
+		t.KeyF63 = tc.getstr("kf63")
+		t.KeyF64 = tc.getstr("kf64")
 	}
-	// And also for Home and End
-	if t.KeyShfHome == "\x1b[1;2H" && t.KeyShfEnd == "\x1b[1;2F" {
-		t.KeyCtrlHome = "\x1b[1;5H"
-		t.KeyCtrlEnd = "\x1b[1;5F"
-		t.KeyAltHome = "\x1b[1;9H"
-		t.KeyAltEnd = "\x1b[1;9F"
-		t.KeyCtrlShfHome = "\x1b[1;6H"
-		t.KeyCtrlShfEnd = "\x1b[1;6F"
-		t.KeyAltShfHome = "\x1b[1;4H"
-		t.KeyAltShfEnd = "\x1b[1;4F"
-		t.KeyMetaShfHome = "\x1b[1;10H"
-		t.KeyMetaShfEnd = "\x1b[1;10F"
-	}
 
-	// And the same thing for rxvt and workalikes (Eterm, aterm, etc.)
+	// And the same thing for rxvt.
 	// It seems that urxvt at least send ESC as ALT prefix for these,
-	// although some places seem to indicate a separate ALT key sesquence.
+	// although some places seem to indicate a separate ALT key sequence.
+	// Users are encouraged to update to an emulator that more closely
+	// matches xterm for better functionality.
 	if t.KeyShfRight == "\x1b[c" && t.KeyShfLeft == "\x1b[d" {
 		t.KeyShfUp = "\x1b[a"
 		t.KeyShfDown = "\x1b[b"
@@ -553,6 +521,8 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "KeyF10", t.KeyF10)
 		dotGoAddStr(w, "KeyF11", t.KeyF11)
 		dotGoAddStr(w, "KeyF12", t.KeyF12)
+		// Extended keys.  We don't report these if they are going to be
+		// handled as if they were XTerm sequences.
 		dotGoAddStr(w, "KeyF13", t.KeyF13)
 		dotGoAddStr(w, "KeyF14", t.KeyF14)
 		dotGoAddStr(w, "KeyF15", t.KeyF15)
@@ -615,46 +585,17 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "KeyShfRight", t.KeyShfRight)
 		dotGoAddStr(w, "KeyShfUp", t.KeyShfUp)
 		dotGoAddStr(w, "KeyShfDown", t.KeyShfDown)
-		dotGoAddStr(w, "KeyCtrlLeft", t.KeyCtrlLeft)
-		dotGoAddStr(w, "KeyCtrlRight", t.KeyCtrlRight)
-		dotGoAddStr(w, "KeyCtrlUp", t.KeyCtrlUp)
-		dotGoAddStr(w, "KeyCtrlDown", t.KeyCtrlDown)
-		dotGoAddStr(w, "KeyMetaLeft", t.KeyMetaLeft)
-		dotGoAddStr(w, "KeyMetaRight", t.KeyMetaRight)
-		dotGoAddStr(w, "KeyMetaUp", t.KeyMetaUp)
-		dotGoAddStr(w, "KeyMetaDown", t.KeyMetaDown)
-		dotGoAddStr(w, "KeyAltLeft", t.KeyAltLeft)
-		dotGoAddStr(w, "KeyAltRight", t.KeyAltRight)
-		dotGoAddStr(w, "KeyAltUp", t.KeyAltUp)
-		dotGoAddStr(w, "KeyAltDown", t.KeyAltDown)
-		dotGoAddStr(w, "KeyAltShfLeft", t.KeyAltShfLeft)
-		dotGoAddStr(w, "KeyAltShfRight", t.KeyAltShfRight)
-		dotGoAddStr(w, "KeyAltShfUp", t.KeyAltShfUp)
-		dotGoAddStr(w, "KeyAltShfDown", t.KeyAltShfDown)
-		dotGoAddStr(w, "KeyMetaShfLeft", t.KeyMetaShfLeft)
-		dotGoAddStr(w, "KeyMetaShfRight", t.KeyMetaShfRight)
-		dotGoAddStr(w, "KeyMetaShfUp", t.KeyMetaShfUp)
-		dotGoAddStr(w, "KeyMetaShfDown", t.KeyMetaShfDown)
-		dotGoAddStr(w, "KeyCtrlShfLeft", t.KeyCtrlShfLeft)
-		dotGoAddStr(w, "KeyCtrlShfRight", t.KeyCtrlShfRight)
-		dotGoAddStr(w, "KeyCtrlShfUp", t.KeyCtrlShfUp)
-		dotGoAddStr(w, "KeyCtrlShfDown", t.KeyCtrlShfDown)
 		dotGoAddStr(w, "KeyShfHome", t.KeyShfHome)
 		dotGoAddStr(w, "KeyShfEnd", t.KeyShfEnd)
+		dotGoAddStr(w, "KeyShfInsert", t.KeyShfInsert)
+		dotGoAddStr(w, "KeyShfDelete", t.KeyShfDelete)
+		dotGoAddStr(w, "KeyCtrlUp", t.KeyCtrlUp)
+		dotGoAddStr(w, "KeyCtrlDown", t.KeyCtrlDown)
+		dotGoAddStr(w, "KeyCtrlRight", t.KeyCtrlRight)
+		dotGoAddStr(w, "KeyCtrlLeft", t.KeyCtrlLeft)
 		dotGoAddStr(w, "KeyCtrlHome", t.KeyCtrlHome)
 		dotGoAddStr(w, "KeyCtrlEnd", t.KeyCtrlEnd)
-		dotGoAddStr(w, "KeyMetaHome", t.KeyMetaHome)
-		dotGoAddStr(w, "KeyMetaEnd", t.KeyMetaEnd)
-		dotGoAddStr(w, "KeyAltHome", t.KeyAltHome)
-		dotGoAddStr(w, "KeyAltEnd", t.KeyAltEnd)
-		dotGoAddStr(w, "KeyCtrlShfHome", t.KeyCtrlShfHome)
-		dotGoAddStr(w, "KeyCtrlShfEnd", t.KeyCtrlShfEnd)
-		dotGoAddStr(w, "KeyMetaShfHome", t.KeyMetaShfHome)
-		dotGoAddStr(w, "KeyMetaShfEnd", t.KeyMetaShfEnd)
-		dotGoAddStr(w, "KeyAltShfHome", t.KeyAltShfHome)
-		dotGoAddStr(w, "KeyAltShfEnd", t.KeyAltShfEnd)
-		dotGoAddStr(w, "KeyShfPgUp", t.KeyShfPgUp)
-		dotGoAddStr(w, "KeyShfPgDn", t.KeyShfPgDn)
+		dotGoAddInt(w, "Modifiers", t.Modifiers)
 		fmt.Fprintln(w, "\t})")
 	}
 	fmt.Fprintln(w, "}")

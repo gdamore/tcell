@@ -19,6 +19,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -186,12 +187,96 @@ func (t *tScreen) Init() error {
 
 func (t *tScreen) prepareKeyMod(key Key, mod ModMask, val string) {
 	if val != "" {
-		// Do not overrride codes that already exist
+		// Do not override codes that already exist
 		if _, exist := t.keycodes[val]; !exist {
 			t.keyexist[key] = true
 			t.keycodes[val] = &tKeyCode{key: key, mod: mod}
 		}
 	}
+}
+
+func (t *tScreen) prepareKeyModReplace(key Key, replace Key, mod ModMask, val string) {
+	if val != "" {
+		// Do not override codes that already exist
+		if old, exist := t.keycodes[val]; !exist || old.key == replace {
+			t.keyexist[key] = true
+			t.keycodes[val] = &tKeyCode{key: key, mod: mod}
+		}
+	}
+}
+
+func (t *tScreen) prepareKeyModXTerm(key Key, val string) {
+
+	if strings.HasPrefix(val, "\x1b[") && strings.HasSuffix(val, "~") {
+
+		// Drop the trailing ~
+		val = val[:len(val)-1]
+
+		// These suffixes are calculated assuming Xterm style modifier suffixes.
+		// Please see https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf for
+		// more information (specifically "PC-Style Function Keys").
+		t.prepareKeyModReplace(key, key+12, ModShift, val+";2~")
+		t.prepareKeyModReplace(key, key+48, ModAlt, val+";3~")
+		t.prepareKeyModReplace(key, key+60, ModAlt|ModShift, val+";4~")
+		t.prepareKeyModReplace(key, key+24, ModCtrl, val+";5~")
+		t.prepareKeyModReplace(key, key+36, ModCtrl|ModShift, val+";6~")
+		t.prepareKeyMod(key, ModAlt|ModCtrl, val+";7~")
+		t.prepareKeyMod(key, ModShift|ModAlt|ModCtrl, val+";8~")
+		t.prepareKeyMod(key, ModMeta, val+";9~")
+		t.prepareKeyMod(key, ModMeta|ModShift, val+";10~")
+		t.prepareKeyMod(key, ModMeta|ModAlt, val+";11~")
+		t.prepareKeyMod(key, ModMeta|ModAlt|ModShift, val+";12~")
+		t.prepareKeyMod(key, ModMeta|ModCtrl, val+";13~")
+		t.prepareKeyMod(key, ModMeta|ModCtrl|ModShift, val+";14~")
+		t.prepareKeyMod(key, ModMeta|ModCtrl|ModAlt, val+";15~")
+		t.prepareKeyMod(key, ModMeta|ModCtrl|ModAlt|ModShift, val+";16~")
+	} else if strings.HasPrefix(val, "\x1bO") && len(val) == 3 {
+		val = val[2:]
+		t.prepareKeyModReplace(key, key+12, ModShift, "\x1b[1;2"+val)
+		t.prepareKeyModReplace(key, key+48, ModAlt, "\x1b[1;3"+val)
+		t.prepareKeyModReplace(key, key+24, ModCtrl, "\x1b[1;5"+val)
+		t.prepareKeyModReplace(key, key+36, ModCtrl|ModShift, "\x1b[1;6"+val)
+		t.prepareKeyModReplace(key, key+60, ModAlt|ModShift, "\x1b[1;4"+val)
+		t.prepareKeyMod(key, ModAlt|ModCtrl, "\x1b[1;7"+val)
+		t.prepareKeyMod(key, ModShift|ModAlt|ModCtrl, "\x1b[1;8"+val)
+		t.prepareKeyMod(key, ModMeta, "\x1b[1;9"+val)
+		t.prepareKeyMod(key, ModMeta|ModShift, "\x1b[1;10"+val)
+		t.prepareKeyMod(key, ModMeta|ModAlt, "\x1b[1;11"+val)
+		t.prepareKeyMod(key, ModMeta|ModAlt|ModShift, "\x1b[1;12"+val)
+		t.prepareKeyMod(key, ModMeta|ModCtrl, "\x1b[1;13"+val)
+		t.prepareKeyMod(key, ModMeta|ModCtrl|ModShift, "\x1b[1;14"+val)
+		t.prepareKeyMod(key, ModMeta|ModCtrl|ModAlt, "\x1b[1;15"+val)
+		t.prepareKeyMod(key, ModMeta|ModCtrl|ModAlt|ModShift, "\x1b[1;16"+val)
+	}
+}
+
+func (t *tScreen) prepareXtermModifiers() {
+	if t.ti.Modifiers != terminfo.ModifiersXTerm {
+		return
+	}
+	time.Sleep(2 * time.Second)
+	t.prepareKeyModXTerm(KeyRight, t.ti.KeyRight)
+	t.prepareKeyModXTerm(KeyLeft, t.ti.KeyLeft)
+	t.prepareKeyModXTerm(KeyUp, t.ti.KeyUp)
+	t.prepareKeyModXTerm(KeyDown, t.ti.KeyDown)
+	t.prepareKeyModXTerm(KeyInsert, t.ti.KeyInsert)
+	t.prepareKeyModXTerm(KeyDelete, t.ti.KeyDelete)
+	t.prepareKeyModXTerm(KeyPgUp, t.ti.KeyPgUp)
+	t.prepareKeyModXTerm(KeyPgDn, t.ti.KeyPgDn)
+	t.prepareKeyModXTerm(KeyHome, t.ti.KeyHome)
+	t.prepareKeyModXTerm(KeyEnd, t.ti.KeyEnd)
+	t.prepareKeyModXTerm(KeyF1, t.ti.KeyF1)
+	t.prepareKeyModXTerm(KeyF2, t.ti.KeyF2)
+	t.prepareKeyModXTerm(KeyF3, t.ti.KeyF3)
+	t.prepareKeyModXTerm(KeyF4, t.ti.KeyF4)
+	t.prepareKeyModXTerm(KeyF5, t.ti.KeyF5)
+	t.prepareKeyModXTerm(KeyF6, t.ti.KeyF6)
+	t.prepareKeyModXTerm(KeyF7, t.ti.KeyF7)
+	t.prepareKeyModXTerm(KeyF8, t.ti.KeyF8)
+	t.prepareKeyModXTerm(KeyF9, t.ti.KeyF9)
+	t.prepareKeyModXTerm(KeyF10, t.ti.KeyF10)
+	t.prepareKeyModXTerm(KeyF11, t.ti.KeyF11)
+	t.prepareKeyModXTerm(KeyF12, t.ti.KeyF12)
 }
 
 func (t *tScreen) prepareKey(key Key, val string) {
@@ -297,41 +382,6 @@ func (t *tScreen) prepareKeys() {
 	t.prepareKeyMod(KeyHome, ModCtrl, ti.KeyCtrlHome)
 	t.prepareKeyMod(KeyEnd, ModCtrl, ti.KeyCtrlEnd)
 
-	t.prepareKeyMod(KeyRight, ModAlt, ti.KeyAltRight)
-	t.prepareKeyMod(KeyLeft, ModAlt, ti.KeyAltLeft)
-	t.prepareKeyMod(KeyUp, ModAlt, ti.KeyAltUp)
-	t.prepareKeyMod(KeyDown, ModAlt, ti.KeyAltDown)
-	t.prepareKeyMod(KeyHome, ModAlt, ti.KeyAltHome)
-	t.prepareKeyMod(KeyEnd, ModAlt, ti.KeyAltEnd)
-
-	t.prepareKeyMod(KeyRight, ModAlt, ti.KeyMetaRight)
-	t.prepareKeyMod(KeyLeft, ModAlt, ti.KeyMetaLeft)
-	t.prepareKeyMod(KeyUp, ModAlt, ti.KeyMetaUp)
-	t.prepareKeyMod(KeyDown, ModAlt, ti.KeyMetaDown)
-	t.prepareKeyMod(KeyHome, ModAlt, ti.KeyMetaHome)
-	t.prepareKeyMod(KeyEnd, ModAlt, ti.KeyMetaEnd)
-
-	t.prepareKeyMod(KeyRight, ModAlt|ModShift, ti.KeyAltShfRight)
-	t.prepareKeyMod(KeyLeft, ModAlt|ModShift, ti.KeyAltShfLeft)
-	t.prepareKeyMod(KeyUp, ModAlt|ModShift, ti.KeyAltShfUp)
-	t.prepareKeyMod(KeyDown, ModAlt|ModShift, ti.KeyAltShfDown)
-	t.prepareKeyMod(KeyHome, ModAlt|ModShift, ti.KeyAltShfHome)
-	t.prepareKeyMod(KeyEnd, ModAlt|ModShift, ti.KeyAltShfEnd)
-
-	t.prepareKeyMod(KeyRight, ModAlt|ModShift, ti.KeyMetaShfRight)
-	t.prepareKeyMod(KeyLeft, ModAlt|ModShift, ti.KeyMetaShfLeft)
-	t.prepareKeyMod(KeyUp, ModAlt|ModShift, ti.KeyMetaShfUp)
-	t.prepareKeyMod(KeyDown, ModAlt|ModShift, ti.KeyMetaShfDown)
-	t.prepareKeyMod(KeyHome, ModAlt|ModShift, ti.KeyMetaShfHome)
-	t.prepareKeyMod(KeyEnd, ModAlt|ModShift, ti.KeyMetaShfEnd)
-
-	t.prepareKeyMod(KeyRight, ModCtrl|ModShift, ti.KeyCtrlShfRight)
-	t.prepareKeyMod(KeyLeft, ModCtrl|ModShift, ti.KeyCtrlShfLeft)
-	t.prepareKeyMod(KeyUp, ModCtrl|ModShift, ti.KeyCtrlShfUp)
-	t.prepareKeyMod(KeyDown, ModCtrl|ModShift, ti.KeyCtrlShfDown)
-	t.prepareKeyMod(KeyHome, ModCtrl|ModShift, ti.KeyCtrlShfHome)
-	t.prepareKeyMod(KeyEnd, ModCtrl|ModShift, ti.KeyCtrlShfEnd)
-
 	// Sadly, xterm handling of keycodes is somewhat erratic.  In
 	// particular, different codes are sent depending on application
 	// mode is in use or not, and the entries for many of these are
@@ -363,6 +413,8 @@ func (t *tScreen) prepareKeys() {
 		t.prepareKey(KeyLeft, "\x1bOD")
 		t.prepareKey(KeyHome, "\x1bOH")
 	}
+
+	t.prepareXtermModifiers()
 
 outer:
 	// Add key mappings for control keys.

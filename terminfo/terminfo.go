@@ -1,4 +1,4 @@
-// Copyright 2019 The TCell Authors
+// Copyright 2020 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -158,6 +158,8 @@ type Terminfo struct {
 	KeyShfLeft   string // kLFT
 	KeyShfHome   string // kHOM
 	KeyShfEnd    string // kEND
+	KeyShfInsert string // kIC
+	KeyShfDelete string // kDC
 
 	// These are non-standard extensions to terminfo.  This includes
 	// true color support, and some additional keys.  Its kind of bizarre
@@ -209,7 +211,13 @@ type Terminfo struct {
 	KeyAltShfEnd    string
 	KeyMetaShfHome  string
 	KeyMetaShfEnd   string
+	Modifiers       int
 }
+
+const (
+	ModifiersNone  = 0
+	ModifiersXTerm = 1
+)
 
 type stackElem struct {
 	s     string
@@ -287,13 +295,6 @@ func (st stack) PushBool(i bool) stack {
 		return st.PushInt(1)
 	}
 	return st.PushInt(0)
-}
-
-func nextch(s string, index int) (byte, int) {
-	if index < len(s) {
-		return s[index], index + 1
-	}
-	return 0, index
 }
 
 // static vars
