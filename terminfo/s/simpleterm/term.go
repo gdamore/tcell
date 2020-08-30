@@ -9,7 +9,6 @@ func init() {
 	//  simpleterm
 	terminfo.AddTerminfo(&terminfo.Terminfo{
 		Name:         "st",
-		Aliases:      []string{"stterm"},
 		Columns:      80,
 		Lines:        24,
 		Colors:       8,
@@ -64,13 +63,13 @@ func init() {
 		KeyF11:       "\x1b[23~",
 		KeyF12:       "\x1b[24~",
 		KeyClear:     "\x1b[3;5~",
+		KeyBacktab:   "\x1b[Z",
 		Modifiers:    1,
 	})
 
-	// simpleterm with 256 colors
+	//  simpleterm with 256 colors
 	terminfo.AddTerminfo(&terminfo.Terminfo{
 		Name:         "st-256color",
-		Aliases:      []string{"stterm-256color"},
 		Columns:      80,
 		Lines:        24,
 		Colors:       256,
@@ -125,6 +124,7 @@ func init() {
 		KeyF11:       "\x1b[23~",
 		KeyF12:       "\x1b[24~",
 		KeyClear:     "\x1b[3;5~",
+		KeyBacktab:   "\x1b[Z",
 		Modifiers:    1,
 	})
 }
