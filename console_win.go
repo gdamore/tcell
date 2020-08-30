@@ -632,10 +632,10 @@ func (s *cScreen) getConsoleInput() error {
 				for krec.repeat > 0 {
 					// convert shift+tab to backtab
 					if mod2mask(krec.mod) == ModShift && krec.ch == vkTab {
-						s.PostEvent(NewEventKey(KeyBacktab, 0,
+						s.PostEventWait(NewEventKey(KeyBacktab, 0,
 							ModNone))
 					} else {
-						s.PostEvent(NewEventKey(KeyRune, rune(krec.ch),
+						s.PostEventWait(NewEventKey(KeyRune, rune(krec.ch),
 							mod2mask(krec.mod)))
 					}
 					krec.repeat--
@@ -648,7 +648,7 @@ func (s *cScreen) getConsoleInput() error {
 				return nil
 			}
 			for krec.repeat > 0 {
-				s.PostEvent(NewEventKey(key, rune(krec.ch),
+				s.PostEventWait(NewEventKey(key, rune(krec.ch),
 					mod2mask(krec.mod)))
 				krec.repeat--
 			}
@@ -662,14 +662,14 @@ func (s *cScreen) getConsoleInput() error {
 			mrec.flags = getu32(rec.data[12:])
 			btns := mrec2btns(mrec.btns, mrec.flags)
 			// we ignore double click, events are delivered normally
-			s.PostEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns,
+			s.PostEventWait(NewEventMouse(int(mrec.x), int(mrec.y), btns,
 				mod2mask(mrec.mod)))
 
 		case resizeEvent:
 			var rrec resizeRecord
 			rrec.x = geti16(rec.data[0:])
 			rrec.y = geti16(rec.data[2:])
-			s.PostEvent(NewEventResize(int(rrec.x), int(rrec.y)))
+			s.PostEventWait(NewEventResize(int(rrec.x), int(rrec.y)))
 
 		default:
 		}
