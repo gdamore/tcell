@@ -16,6 +16,7 @@ screen,screen-256color
 st,st-256color|simpleterm
 sun,sun-color
 termite
+tmux
 vt52
 vt100
 vt102

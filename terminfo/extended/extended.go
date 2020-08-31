@@ -39,6 +39,7 @@ import (
 	_ "github.com/gdamore/tcell/v2/terminfo/s/simpleterm"
 	_ "github.com/gdamore/tcell/v2/terminfo/s/sun"
 	_ "github.com/gdamore/tcell/v2/terminfo/t/termite"
+	_ "github.com/gdamore/tcell/v2/terminfo/t/tmux"
 	_ "github.com/gdamore/tcell/v2/terminfo/v/vt100"
 	_ "github.com/gdamore/tcell/v2/terminfo/v/vt102"
 	_ "github.com/gdamore/tcell/v2/terminfo/v/vt220"
