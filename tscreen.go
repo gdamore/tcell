@@ -652,8 +652,8 @@ func (t *tScreen) drawCell(x, y int) int {
 		if attrs&AttrItalic != 0 {
 			t.TPuts(ti.Italic)
 		}
-		if attrs&AttrStrikeOut != 0 {
-			t.TPuts(ti.StrikeOut)
+		if attrs&AttrStrikeThrough != 0 {
+			t.TPuts(ti.StrikeThrough)
 		}
 		t.curstyle = style
 	}
