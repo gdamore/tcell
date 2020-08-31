@@ -113,6 +113,7 @@ type tScreen struct {
 	truecolor bool
 	escaped   bool
 	buttondn  bool
+	finiOnce  sync.Once
 
 	sync.Mutex
 }
@@ -443,6 +444,10 @@ outer:
 }
 
 func (t *tScreen) Fini() {
+	t.finiOnce.Do(t.finish)
+}
+
+func (t *tScreen) finish() {
 	t.Lock()
 	defer t.Unlock()
 

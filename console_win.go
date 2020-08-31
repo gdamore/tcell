@@ -51,6 +51,8 @@ type cScreen struct {
 	oomode  uint32
 	cells   CellBuffer
 
+	finiOnce sync.Once
+
 	sync.Mutex
 }
 
@@ -248,6 +250,10 @@ func (s *cScreen) DisableMouse() {
 }
 
 func (s *cScreen) Fini() {
+	s.finiOnce.Do(s.finish)
+}
+
+func (s *cScreen) finish() {
 	s.Lock()
 	s.style = StyleDefault
 	s.curx = -1
@@ -816,13 +822,13 @@ func (s *cScreen) sendVtStyle(style Style) {
 		r, g, b := fg.RGB()
 		fmt.Fprintf(esc, vtSetFgRGB, r, g, b)
 	} else if fg.Valid() {
-		fmt.Fprintf(esc, vtSetFg, fg & 0xff)
+		fmt.Fprintf(esc, vtSetFg, fg&0xff)
 	}
 	if bg.IsRGB() {
 		r, g, b := bg.RGB()
 		fmt.Fprintf(esc, vtSetBgRGB, r, g, b)
 	} else if bg.Valid() {
-		fmt.Fprintf(esc, vtSetBg, bg & 0xff)
+		fmt.Fprintf(esc, vtSetBg, bg&0xff)
 	}
 	s.emitVtString(esc.String())
 }
