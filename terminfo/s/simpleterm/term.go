@@ -65,6 +65,7 @@ func init() {
 		KeyClear:     "\x1b[3;5~",
 		KeyBacktab:   "\x1b[Z",
 		Modifiers:    1,
+		TrueColor:    true,
 	})
 
 	//  simpleterm with 256 colors
@@ -126,5 +127,6 @@ func init() {
 		KeyClear:     "\x1b[3;5~",
 		KeyBacktab:   "\x1b[Z",
 		Modifiers:    1,
+		TrueColor:    true,
 	})
 }

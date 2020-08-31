@@ -132,7 +132,7 @@ func unescape(s string) string {
 }
 
 func (tc *termcap) setupterm(name string) error {
-	cmd := exec.Command("infocmp", "-1", name)
+	cmd := exec.Command("infocmp", "-x", "-1", name)
 	output := &bytes.Buffer{}
 	cmd.Stdout = output
 
@@ -362,6 +362,24 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		t.KeyCtrlEnd = "\x1b[8^"
 	}
 
+	// Technically the RGB flag that is provided for xterm-direct is not
+	// quite right.  The problem is that the -direct flag that was introduced
+	// with ncurses 6.1 requires a parsing for the parameters that we lack.
+	// For this case we'll just assume it's XTerm compatible.  Someday this
+	// may be incorrect, but right now it is correct, and nobody uses it
+	// anyway.
+	if tc.getflag("Tc") {
+		// This presumes XTerm 24-bit true color.
+		t.TrueColor = true
+	} else if tc.getflag("RGB") {
+		// This is for xterm-direct, which uses a different scheme entirely.
+		// (ncurses went a very different direction from everyone else, and
+		// so it's unlikely anything is using this definition.)
+		t.TrueColor = true
+		t.SetBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m"
+		t.SetFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"
+	}
+
 	// If the kmous entry is present, then we need to record the
 	// the codes to enter and exit mouse mode.  Sadly, this is not
 	// part of the terminfo databases anywhere that I've found, but
@@ -426,6 +444,13 @@ func dotGoAddStr(w io.Writer, n string, s string) {
 		return
 	}
 	fmt.Fprintf(w, "\t\t%-13s %q,\n", n+":", s)
+}
+func dotGoAddFlag(w io.Writer, n string, b bool) {
+	if !b {
+		// initialized to 0, ignore
+		return
+	}
+	fmt.Fprintf(w, "\t\t%-13s true,\n", n+":")
 }
 
 func dotGoAddArr(w io.Writer, n string, a []string) {
@@ -596,6 +621,7 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "KeyCtrlHome", t.KeyCtrlHome)
 		dotGoAddStr(w, "KeyCtrlEnd", t.KeyCtrlEnd)
 		dotGoAddInt(w, "Modifiers", t.Modifiers)
+		dotGoAddFlag(w, "TrueColor", t.TrueColor)
 		fmt.Fprintln(w, "\t})")
 	}
 	fmt.Fprintln(w, "}")

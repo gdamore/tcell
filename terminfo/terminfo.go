@@ -212,6 +212,7 @@ type Terminfo struct {
 	KeyMetaShfHome  string
 	KeyMetaShfEnd   string
 	Modifiers       int
+	TrueColor       bool // true if the terminal supports direct color
 }
 
 const (
@@ -737,7 +738,9 @@ func LookupTerminfo(name string) (*Terminfo, error) {
 
 	// If the name ends in -truecolor, then fabricate an entry
 	// from the corresponding -256color, -color, or bare terminal.
-	if t == nil && strings.HasSuffix(name, "-truecolor") {
+	if t.TrueColor {
+		addtruecolor = true
+	} else if t == nil && strings.HasSuffix(name, "-truecolor") {
 
 		suffixes := []string{
 			"-256color",
