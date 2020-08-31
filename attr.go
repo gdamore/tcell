@@ -27,6 +27,7 @@ const (
 	AttrUnderline
 	AttrDim
 	AttrItalic
+	AttrStrikeOut
 	AttrInvalid              // Mark the style or attributes invalid
 	AttrNone    AttrMask = 0 // Just normal text.
 )

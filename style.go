@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2020 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -129,4 +129,9 @@ func (s Style) Reverse(on bool) Style {
 // as requested.
 func (s Style) Underline(on bool) Style {
 	return s.setAttrs(AttrUnderline, on)
+}
+
+// StrikeOut sets strikeout mode.
+func (s Style) StrikeOut(on bool) Style {
+	return s.setAttrs(AttrStrikeOut, on)
 }

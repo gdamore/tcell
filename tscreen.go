@@ -649,6 +649,9 @@ func (t *tScreen) drawCell(x, y int) int {
 		if attrs&AttrItalic != 0 {
 			t.TPuts(ti.Italic)
 		}
+		if attrs&AttrStrikeOut != 0 {
+			t.TPuts(ti.StrikeOut)
+		}
 		t.curstyle = style
 	}
 	// now emit runes - taking care to not overrun width with a
