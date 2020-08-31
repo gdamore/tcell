@@ -255,7 +255,6 @@ func (t *tScreen) prepareXtermModifiers() {
 	if t.ti.Modifiers != terminfo.ModifiersXTerm {
 		return
 	}
-	time.Sleep(2 * time.Second)
 	t.prepareKeyModXTerm(KeyRight, t.ti.KeyRight)
 	t.prepareKeyModXTerm(KeyLeft, t.ti.KeyLeft)
 	t.prepareKeyModXTerm(KeyUp, t.ti.KeyUp)
