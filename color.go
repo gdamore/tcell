@@ -977,6 +977,10 @@ var ColorNames = map[string]Color{
 	"slategrey":            ColorSlateGray,
 }
 
+// ForceTrueColor controls whether TrueColor values are returned by default.
+// When unset, color values may correspond to the user's terminal palette.
+var ForceTrueColor bool
+
 // Valid indicates the color is a valid value (has been set).
 func (c Color) Valid() bool {
 	return c&ColorValid != 0
@@ -1042,6 +1046,9 @@ func NewHexColor(v int32) Color {
 // be supplied as a string in the format "#ffffff".
 func GetColor(name string) Color {
 	if c, ok := ColorNames[name]; ok {
+		if ForceTrueColor {
+			return c.TrueColor()
+		}
 		return c
 	}
 	if len(name) == 7 && name[0] == '#' {
@@ -1049,10 +1056,17 @@ func GetColor(name string) Color {
 			return NewHexColor(int32(v))
 		}
 	}
+	if ForceTrueColor {
+		return ColorDefault.TrueColor()
+	}
 	return ColorDefault
 }
 
 // PaletteColor creates a color based on the palette index.
 func PaletteColor(index int) Color {
-	return Color(index) | ColorValid
+	c := Color(index) | ColorValid
+	if ForceTrueColor {
+		return c.TrueColor()
+	}
+	return c
 }
