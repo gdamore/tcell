@@ -63,6 +63,7 @@ type Terminfo struct {
 	ExitKeypad   string // rmkx
 	SetFg        string // setaf
 	SetBg        string // setab
+	ResetFgBg    string // op
 	SetCursor    string // cup
 	CursorBack1  string // cub1
 	CursorUp1    string // cuu1

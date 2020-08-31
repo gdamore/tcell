@@ -112,8 +112,8 @@ func main() {
 		os.Exit(1)
 	}
 	defStyle = tcell.StyleDefault.
-		Background(tcell.ColorBlack).
-		Foreground(tcell.ColorWhite)
+		Background(tcell.ColorReset).
+		Foreground(tcell.ColorReset)
 	s.SetStyle(defStyle)
 	s.EnableMouse()
 	s.Clear()

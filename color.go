@@ -44,6 +44,10 @@ const (
 	// a known color constant, but rather an RGB value.  The lower
 	// order 3 bytes are RGB.
 	ColorIsRGB Color = 1 << 33
+
+	// ColorSpecial is a flag used to indicate that the values have
+	// special meaning, and live outside of the color space(s).
+	ColorSpecial Color = 1 << 34
 )
 
 // Note that the order of these options is important -- it follows the
@@ -825,6 +829,13 @@ var ColorValues = map[Color]int32{
 	ColorWhiteSmoke:           0xF5F5F5,
 	ColorYellowGreen:          0x9ACD32,
 }
+
+// Special colors.
+const (
+	// ColorReset is used to indicate that the color should use the
+	// vanilla terminal colors.  (Basically go back to the defaults.)
+	ColorReset = ColorSpecial | iota
+)
 
 // ColorNames holds the written names of colors. Useful to present a list of
 // recognized named colors.

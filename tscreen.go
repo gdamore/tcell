@@ -551,6 +551,9 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 	if ti.Colors == 0 {
 		return
 	}
+	if fg == ColorReset || bg == ColorReset {
+		t.TPuts(ti.ResetFgBg)
+	}
 	if t.truecolor {
 		if ti.SetFgBgRGB != "" && fg.IsRGB() && bg.IsRGB() {
 			r1, g1, b1 := fg.RGB()

@@ -745,10 +745,10 @@ func (s *cScreen) mapStyle(style Style) uint16 {
 	f, b, a := style.Decompose()
 	fa := s.oscreen.attrs & 0xf
 	ba := (s.oscreen.attrs) >> 4 & 0xf
-	if f != ColorDefault {
+	if f != ColorDefault && f != ColorReset {
 		fa = mapColor2RGB(f)
 	}
-	if b != ColorDefault {
+	if b != ColorDefault && b != ColorReset {
 		ba = mapColor2RGB(b)
 	}
 	var attr uint16

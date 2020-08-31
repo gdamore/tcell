@@ -41,6 +41,7 @@ func init() {
 		SetFg:        "\x1b[%p1%{30}%+%dm",
 		SetBg:        "\x1b[%p1%'('%+%dm",
 		SetFgBg:      "\x1b[%p1%{30}%+%d;%p2%'('%+%dm",
+		ResetFgBg:    "\x1b[39;49m",
 		PadChar:      "\x00",
 		SetCursor:    "\x1b[%i%p1%d;%p2%dH",
 		CursorBack1:  "\b",
