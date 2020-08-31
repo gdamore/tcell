@@ -131,7 +131,7 @@ func (s Style) Underline(on bool) Style {
 	return s.setAttrs(AttrUnderline, on)
 }
 
-// StrikeOut sets strikeout mode.
-func (s Style) StrikeOut(on bool) Style {
-	return s.setAttrs(AttrStrikeOut, on)
+// StrikeThrough sets strikethrough mode.
+func (s Style) StrikeThrough(on bool) Style {
+	return s.setAttrs(AttrStrikeThrough, on)
 }

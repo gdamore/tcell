@@ -66,6 +66,6 @@ to reset the color the default used by the terminal.
 
 _Tcell_ now has improved support for tmux, when the `$TERM` variable is set to "tmux".
 
-=== Strikeout Support
+=== Strikethrough Support
 
-_Tcell_ has support strikeout when the terminal supports it, using the new `StrikeOut()` API.
+_Tcell_ has support for strikethrough when the terminal supports it, using the new `StrikeThrough()` API.

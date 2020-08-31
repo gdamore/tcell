@@ -34,7 +34,7 @@ func init() {
 		AltChars:     "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
 		EnterAcs:     "\x1b(0",
 		ExitAcs:      "\x1b(B",
-		StrikeOut:    "\x1b[9m",
+		StrikeThrough:"\x1b[9m",
 		Mouse:        "\x1b[<",
 		MouseMode:    "\x1b[?1006;1000%?%p1%{1}%=%th%el%;",
 		SetCursor:    "\x1b[%i%p1%d;%p2%dH",
