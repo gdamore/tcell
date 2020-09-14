@@ -454,7 +454,7 @@ func (t *Terminfo) TParm(s string, p ...int) string {
 		case '\'': // push(char)
 			ch, _ = pb.NextCh()
 			pb.NextCh() // must be ' but we don't check
-			stk = stk.Push(string(ch))
+			stk = stk.PushInt(int(ch))
 
 		case '{': // push(int)
 			ai = 0
