@@ -44,6 +44,8 @@ The new work in progress is available using master and `github.com/gdamore/tcell
 * https://github.com/spinzed/tpong[tpong] - The old-school Pong remade in terminal
 * https://git.sr.ht/~sircmpwn/aerc[aerc] - An email client for your terminal.
 * https://github.com/ezeoleaf/tblogs[tblogs] - A terminal based development blogs reader
+* https://github.com/lallassu/spinc[spinc] - An irssi inspired terminal chat application for Cisco Spark/WebEx
+* https://github.com/lallassu/gorss[gorss] - A RSS/Atom feed reader for your terminal
 
 == Pure Go Terminfo Database
 
