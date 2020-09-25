@@ -47,6 +47,7 @@ The new work in progress is available using master and `github.com/gdamore/tcell
 * https://github.com/lallassu/spinc[spinc] - An irssi inspired terminal chat application for Cisco Spark/WebEx
 * https://github.com/lallassu/gorss[gorss] - A RSS/Atom feed reader for your terminal
 * https://github.com/Bios-Marcel/memoryalike[memoryalike] - A game where you have to memorize runes and hit their respective keys
+* https://github.com/gokcehan/lf[lf] - Terminal file manager
 
 == Pure Go Terminfo Database
 
