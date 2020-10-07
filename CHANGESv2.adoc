@@ -4,7 +4,7 @@ A number of changes were made to _Tcell_ for version two, and some of these
 are breaking.
 
 === Import Path
-The import path for tcell has changed to github.com/gdamore/v2 to reflect a new major version.
+The import path for tcell has changed to `github.com/gdamore/tcell/v2` to reflect a new major version.
 
 === Style Is Not Numeric
 The type `Style` has changed to a structure, to allow us to add additional data such as flags for color setting, more attribute bits, and so forth.
