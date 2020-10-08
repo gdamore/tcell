@@ -106,6 +106,12 @@ func (s Style) Blink(on bool) Style {
 	return s.setAttrs(AttrBlink, on)
 }
 
+// Conceal returns a new style based on s, with the conceal attribute
+// set as requested.
+func (s Style) Conceal(on bool) Style {
+	return s.setAttrs(AttrConceal, on)
+}
+
 // Dim returns a new style based on s, with the dim attribute set
 // as requested.
 func (s Style) Dim(on bool) Style {

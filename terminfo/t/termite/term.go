@@ -21,6 +21,7 @@ func init() {
 		AttrOff:      "\x1b(B\x1b[m",
 		Underline:    "\x1b[4m",
 		Bold:         "\x1b[1m",
+		Conceal:      "\x1b[8m",
 		Italic:       "\x1b[3m",
 		Reverse:      "\x1b[7m",
 		EnterKeypad:  "\x1b[?1h\x1b=",

@@ -19,6 +19,7 @@ func init() {
 		AttrOff:      "\x1b[m\x0f",
 		Underline:    "\x1b[4m",
 		Bold:         "\x1b[1m",
+		Conceal:      "\x1b[8m",
 		Dim:          "\x1b[2m",
 		Blink:        "\x1b[5m",
 		Reverse:      "\x1b[7m",

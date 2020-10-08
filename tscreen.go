@@ -646,6 +646,9 @@ func (t *tScreen) drawCell(x, y int) int {
 		if attrs&AttrBlink != 0 {
 			t.TPuts(ti.Blink)
 		}
+		if attrs&AttrConceal != 0 {
+			t.TPuts(ti.Conceal)
+		}
 		if attrs&AttrDim != 0 {
 			t.TPuts(ti.Dim)
 		}

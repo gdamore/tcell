@@ -69,3 +69,7 @@ _Tcell_ now has improved support for tmux, when the `$TERM` variable is set to "
 === Strikethrough Support
 
 _Tcell_ has support for strikethrough when the terminal supports it, using the new `StrikeThrough()` API.
+
+=== Conceal Support
+
+_Tcell_ has support for conceal when the terminal supports it, using the new `Conceal()` API.

@@ -168,6 +168,7 @@ type Terminfo struct {
 	// Terminal support for these are going to vary amongst XTerm
 	// emulations, so don't depend too much on them in your application.
 
+	Conceal         string // invis
 	StrikeThrough   string // smxx
 	SetFgBg         string // setfgbg
 	SetFgBgRGB      string // setfgbgrgb

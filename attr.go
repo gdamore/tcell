@@ -23,6 +23,7 @@ type AttrMask int
 const (
 	AttrBold AttrMask = 1 << iota
 	AttrBlink
+	AttrConceal
 	AttrReverse
 	AttrUnderline
 	AttrDim
