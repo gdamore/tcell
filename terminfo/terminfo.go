@@ -749,7 +749,7 @@ func LookupTerminfo(name string) (*Terminfo, error) {
 
 	// If the name ends in -truecolor, then fabricate an entry
 	// from the corresponding -256color, -color, or bare terminal.
-	if t.TrueColor {
+	if t != nil && t.TrueColor {
 		addtruecolor = true
 	} else if t == nil && strings.HasSuffix(name, "-truecolor") {
 

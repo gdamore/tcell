@@ -53,4 +53,5 @@ import (
 	_ "github.com/gdamore/tcell/v2/terminfo/x/xfce"
 	_ "github.com/gdamore/tcell/v2/terminfo/x/xterm"
 	_ "github.com/gdamore/tcell/v2/terminfo/x/xterm_kitty"
+	_ "github.com/gdamore/tcell/v2/terminfo/x/xterm_termite"
 )
