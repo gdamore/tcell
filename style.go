@@ -14,28 +14,18 @@
 
 package tcell
 
-// Style represents a complete text style, including both foreground
-// and background color.  We encode it in a 64-bit int for efficiency.
-// The coding is (MSB): <7b flags><1b><24b fgcolor><7b attr><1b><24b bgcolor>.
-// The <1b> is set true to indicate that the color is an RGB color, rather
-// than a named index.
-//
-// This gives 24bit color options, if it ever becomes truly necessary.
-// However, applications must not rely on this encoding.
+// Style represents a complete text style, including both foreground color,
+// background color, and additional attributes such as "bold" or "underline".
 //
 // Note that not all terminals can display all colors or attributes, and
 // many might have specific incompatibilities between specific attributes
 // and color combinations.
 //
-// The intention is to extend styles to support paletting, in which case
-// some flag bit(s) would be set, and the foreground and background colors
-// would be replaced with a palette number and palette index.
-//
 // To use Style, just declare a variable of its type.
 type Style struct {
-	fg       Color
-	bg       Color
-	attrs    AttrMask
+	fg    Color
+	bg    Color
+	attrs AttrMask
 }
 
 // StyleDefault represents a default style, based upon the context.
@@ -134,4 +124,11 @@ func (s Style) Underline(on bool) Style {
 // StrikeThrough sets strikethrough mode.
 func (s Style) StrikeThrough(on bool) Style {
 	return s.setAttrs(AttrStrikeThrough, on)
+}
+
+// Attributes returns a new style based on s, with its attributes set as
+// specified.
+func (s Style) Attributes(attrs AttrMask) Style {
+	s.attrs = attrs
+	return s
 }
