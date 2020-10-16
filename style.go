@@ -129,6 +129,9 @@ func (s Style) StrikeThrough(on bool) Style {
 // Attributes returns a new style based on s, with its attributes set as
 // specified.
 func (s Style) Attributes(attrs AttrMask) Style {
-	s.attrs = attrs
-	return s
+	return Style{
+		fg:    s.fg,
+		bg:    s.fg,
+		attrs: attrs,
+	}
 }
