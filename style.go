@@ -131,7 +131,7 @@ func (s Style) StrikeThrough(on bool) Style {
 func (s Style) Attributes(attrs AttrMask) Style {
 	return Style{
 		fg:    s.fg,
-		bg:    s.fg,
+		bg:    s.bg,
 		attrs: attrs,
 	}
 }
