@@ -11,15 +11,14 @@ image:https://codecov.io/gh/gdamore/tcell/branch/master/graph/badge.svg[codecov,
 
 [cols="2",grid="none"]
 |===
-|_Tcell_ is a _Go_ package that provides a cell based view for text terminals, like _xterm_.
+|_Tcell_ is a _Go_ package that provides a cell based view for text terminals, like _XTerm_.
 It was inspired by _termbox_, but includes many additional improvements.
 a|[.right]
 image::logos/tcell.png[float="right"]
 |===
 
-NOTE: Work has begun on version 2.0 of _Tcell_.  There are breaking changes (and more coming.)
-Version 1.x is available using the import `github.com/gdamore/tcell`.
-The new work in progress is available using master and `github.com/gdamore/tcell/v2`.
+NOTE: This is version 2 of _Tcell_.  There are breaking changes relative to version 1.
+Version 1.x remains available using the import `github.com/gdamore/tcell`.
 
 == Examples
 
@@ -60,12 +59,9 @@ a program to build the entire database, or an entry for just a single terminal.
 
 == More Portable
 
-_Tcell_ is portable to a wide variety of systems.
-_Tcell_ is believed
-to work with all of the systems officially supported by golang with
-the exception of nacl (which lacks any kind of a terminal interface).
-(Plan9 is not supported by _Tcell_, but it is experimental status only
-in golang.)  _Tcell_ is pure Go, without any need for CGO.
+_Tcell_ is portable to a wide variety of systems, and is pure Go, without
+any need for CGO.
+_Tcell_ is believed to work with mainstream systems officially supported by golang.
 
 == No Async IO
 
@@ -143,9 +139,8 @@ taken in the application to avoid explicitly attempting to set content in the
 next cell, otherwise the results are undefined.  (Normally wide character
 is displayed, and the other character is not; do not depend on that behavior.)
 
-Experience has shown that the vanilla Windows 8 console application does not
-support any of these characters properly, but at least some options like
-_ConEmu_ do support Wide characters.
+Older terminal applications (especially on systems like Windows 8) lack support
+for advanced Unicode, and thus may not fare well.
 
 == Colors
 
@@ -153,16 +148,16 @@ _Tcell_ assumes the ANSI/XTerm color model, including the 256 color map that
 XTerm uses when it supports 256 colors.  The terminfo guidance will be
 honored, with respect to the number of colors supported.  Also, only
 terminals which expose ANSI style `setaf` and `setab` will support color;
-if you have a color terminal that only has `setf` and `setb`, please let me
-know; it wouldn't be hard to add that if there is need.
+if you have a color terminal that only has `setf` and `setb`, please submit
+a ticket; it wouldn't be hard to add that if there is need.
 
 == 24-bit Color
 
 _Tcell_ _supports true color_!  (That is, if your terminal can support it,
 _Tcell_ can accurately display 24-bit color.)
 
-To use 24-bit color, you need to use a terminal that supports it.  Modern
-xterm and similar teminal emulators can support this.  As terminfo lacks any
+To use 24-bit color, you need to use a terminal with support.  Modern
+XTerm and similar terminal emulators can support this.  As terminfo lacks any
 way to describe this capability, we fabricate the capability for
 terminals with names ending in `*-truecolor`.  The stock distribution ships
 with a database that defines `xterm-truecolor`.
@@ -189,27 +184,18 @@ avoiding repeated sequences or drawing the same cell on refresh updates.
 
 (Not relevant for Windows users.)
 
-The Terminfo implementation operates with two forms of database.  The first
-is the built-in go database, which contains a number of real database entries
-that are compiled into the program directly.  This should minimize calling
-out to database file searches.
+The Terminfo implementation operates with a built-in database.
+This should satisfy most users.  However, it can also (on systems
+with ncurses installed), dynamically parse the output from `infocmp`
+for terminals it does not already know about.
 
-The second is in the form of JSON files, that contain the same information,
-which can be located either by the `$TCELLDB` environment file, `$HOME/.tcelldb`,
-or is located in the Go source directory as `database.json`.
-
-These files (both the Go and the JSON files) can be generated using the
-mkinfo.go program.  If you need to regnerate the entire set for some reason,
-run the mkdatabase.sh file.  The generation uses the infocmp(1) program on
-the system to collect the necessary information.
-
-The `mkinfo.go` program can also be used to generate specific database entries
-for named terminals, in case your favorite terminal is missing.  (If you
-find that this is the case, please let me know and I'll try to add it!)
+See the `terminfo/` directory for more information about generating
+new entries for the built-in database.
 
 _Tcell_ requires that the terminal support the `cup` mode of cursor addressing.
-Terminals without absolute cursor addressability are not supported.
-This is unlikely to be a problem; such terminals have not been mass produced
+Ancient terminals without the ability to position the cursor directly
+are not supported.
+This is unlikely to be a problem; such terminals have not been mass-produced
 since the early 1970s.
 
 == Mouse Support
@@ -226,7 +212,12 @@ Mouse wheel buttons on various terminals are known to work, but the support
 in terminal emulators, as well as support for various buttons and
 live mouse tracking, varies widely.  Modern _xterm_, macOS _Terminal_, and _iTerm_ all work well.
 
-== Testablity
+== Bracketed Paste
+
+Terminals that appear to support the XTerm mouse model also can support
+bracketed paste, for applications that opt-in.  See `EnablePaste()` for details.
+
+== Testability
 
 There is a `SimulationScreen`, that can be used to simulate a real screen
 for automated testing.  The supplied tests do this.  The simulation contains
@@ -237,34 +228,26 @@ and examine "`physical`" screen contents.
 
 === POSIX (Linux, FreeBSD, macOS, Solaris, etc.)
 
-For mainstream systems with a suitably well defined system call interface
-to tty settings, everything works using pure Go.
-
-For the remainder (right now means only Solaris/illumos) we use POSIX function
-calls to manage termios, which implies that CGO is required on those platforms.
+Everything works using pure Go on mainstream platforms.  Some more esoteric
+platforms (e.g. AIX) may need to be added.  Pull requests are welcome!
 
 === Windows
 
 Windows console mode applications are supported.  Unfortunately _mintty_
-and other _cygwin_ style applications are not supported.
+and other _cygwin_ style applications are not supported, and are
+unlikely to be supportable due to limitations in their design.
 
-Modern console applications like ConEmu, as well as the Windows 10
-console itself, support all the good features (resize, mouse tracking, etc.)
+Modern console applications like ConEmu and the Windows 10 terminal,
+support all the good features (resize, mouse tracking, etc.)
 
-I haven't figured out how to cleanly resolve the dichotomy between cygwin
-style termios and the Windows Console API; it seems that perhaps nobody else
-has either.  If anyone has suggestions, let me know!  Really, if you're
-using a Windows application, you should use the native Windows console or a
-fully compatible console implementation.
+=== Plan9, WASM, and others
 
-=== Plan9 and Native Client (Nacl)
-
-The nacl and plan9 platforms won't work, but compilation stubs are supplied
-for folks that want to include parts of this in software targetting those
-platforms.  The Simulation screen works, but as Tcell doesn't know how to
+These platforms won't work, but compilation stubs are supplied
+for folks that want to include parts of this in software for those
+platforms.  The Simulation screen works, but as _Tcell_ doesn't know how to
 allocate a real screen object on those platforms, `NewScreen()` will fail.
 
-If anyone has wisdom about how to improve support for either of these,
+If anyone has wisdom about how to improve support for these,
 please let me know.  PRs are especially welcome.
 
 === Commercial Support
@@ -282,8 +265,3 @@ https://tidelift.com/[Tidelift] subscriptions include support for _Tcell_, as we
 image:logos/staysail.png[100,100]
 a|
 mailto:info@staysail.tech[Staysail Systems, Inc.] offers direct support, and custom development around _Tcell_ on an hourly basis.
-
-^.^|
-image:logos/patreon.png[100,100]
-a|I also welcome donations at https://www.patreon.com/gedamore/[Patreon], if you just want to make a contribution.
-|===
