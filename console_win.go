@@ -249,6 +249,10 @@ func (s *cScreen) DisableMouse() {
 	s.setInMode(modeResizeEn | modeExtndFlg)
 }
 
+func (s *cScreen) EnablePaste() {}
+
+func (s *cScreen) DisablePaste() {}
+
 func (s *cScreen) Fini() {
 	s.finiOnce.Do(s.finish)
 }

@@ -1,4 +1,4 @@
-// Copyright 2019 The TCell Authors
+// Copyright 2020 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -33,7 +33,7 @@ import (
 )
 
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
-// and POSIX termios, combined with a terminfo description taken from
+// and POSIX terminal control, combined with a terminfo description taken from
 // the $TERM environment variable.  It returns an error if the terminal
 // is not supported for any reason.
 //
@@ -75,45 +75,47 @@ type tKeyCode struct {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	ti        *terminfo.Terminfo
-	h         int
-	w         int
-	fini      bool
-	cells     CellBuffer
-	in        *os.File
-	out       *os.File
-	buffering bool // true if we are collecting writes to buf instead of sending directly to out
-	buf       bytes.Buffer
-	curstyle  Style
-	style     Style
-	evch      chan Event
-	sigwinch  chan os.Signal
-	quit      chan struct{}
-	indoneq   chan struct{}
-	keyexist  map[Key]bool
-	keycodes  map[string]*tKeyCode
-	keychan   chan []byte
-	keytimer  *time.Timer
-	keyexpire time.Time
-	cx        int
-	cy        int
-	mouse     []byte
-	clear     bool
-	cursorx   int
-	cursory   int
-	tiosp     *termiosPrivate
-	wasbtn    bool
-	acs       map[rune]string
-	charset   string
-	encoder   transform.Transformer
-	decoder   transform.Transformer
-	fallback  map[rune]string
-	colors    map[Color]Color
-	palette   []Color
-	truecolor bool
-	escaped   bool
-	buttondn  bool
-	finiOnce  sync.Once
+	ti           *terminfo.Terminfo
+	h            int
+	w            int
+	fini         bool
+	cells        CellBuffer
+	in           *os.File
+	out          *os.File
+	buffering    bool // true if we are collecting writes to buf instead of sending directly to out
+	buf          bytes.Buffer
+	curstyle     Style
+	style        Style
+	evch         chan Event
+	sigwinch     chan os.Signal
+	quit         chan struct{}
+	indoneq      chan struct{}
+	keyexist     map[Key]bool
+	keycodes     map[string]*tKeyCode
+	keychan      chan []byte
+	keytimer     *time.Timer
+	keyexpire    time.Time
+	cx           int
+	cy           int
+	mouse        []byte
+	clear        bool
+	cursorx      int
+	cursory      int
+	tiosp        *termiosPrivate
+	wasbtn       bool
+	acs          map[rune]string
+	charset      string
+	encoder      transform.Transformer
+	decoder      transform.Transformer
+	fallback     map[rune]string
+	colors       map[Color]Color
+	palette      []Color
+	truecolor    bool
+	escaped      bool
+	buttondn     bool
+	finiOnce     sync.Once
+	enablePaste  string
+	disablePaste string
 
 	sync.Mutex
 }
@@ -279,6 +281,24 @@ func (t *tScreen) prepareXtermModifiers() {
 	t.prepareKeyModXTerm(KeyF12, t.ti.KeyF12)
 }
 
+func (t *tScreen) prepareBracketedPaste() {
+	// Another workaround for lack of reporting in terminfo.
+	// We assume if the terminal has a mouse entry, that it
+	// offers bracketed paste.  But we allow specific overrides
+	// via our terminal database.
+	if t.ti.EnablePaste != "" {
+		t.enablePaste = t.ti.EnablePaste
+		t.disablePaste = t.ti.DisablePaste
+		t.prepareKey(keyPasteStart, t.ti.PasteStart)
+		t.prepareKey(keyPasteEnd, t.ti.PasteEnd)
+	} else if t.ti.MouseMode != "" {
+		t.enablePaste = "\x1b[?2004h"
+		t.disablePaste = "\x1b[?2004l"
+		t.prepareKey(keyPasteStart, "\x1b[200~")
+		t.prepareKey(keyPasteEnd, "\x1b[201~")
+	}
+}
+
 func (t *tScreen) prepareKey(key Key, val string) {
 	t.prepareKeyMod(key, ModNone, val)
 }
@@ -414,7 +434,10 @@ func (t *tScreen) prepareKeys() {
 		t.prepareKey(KeyHome, "\x1bOH")
 	}
 
+	t.prepareKey(keyPasteStart, ti.PasteStart)
+	t.prepareKey(keyPasteEnd, ti.PasteEnd)
 	t.prepareXtermModifiers()
+	t.prepareBracketedPaste()
 
 outer:
 	// Add key mappings for control keys.
@@ -435,7 +458,7 @@ outer:
 		mod := ModCtrl
 		switch Key(i) {
 		case KeyBS, KeyTAB, KeyESC, KeyCR:
-			// directly typeable- no control sequence
+			// directly type-able- no control sequence
 			mod = ModNone
 		}
 		t.keycodes[string(rune(i))] = &tKeyCode{key: Key(i), mod: mod}
@@ -458,6 +481,7 @@ func (t *tScreen) finish() {
 	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
 	t.TPuts(ti.TParm(ti.MouseMode, 0))
+	t.TPuts(t.disablePaste)
 	t.curstyle = styleInvalid
 	t.clear = false
 	t.fini = true
@@ -681,8 +705,6 @@ func (t *tScreen) drawCell(x, y int) int {
 		t.cx = -1
 	}
 
-	// XXX: check for hazeltine not being able to display ~
-
 	if x > t.w-width {
 		// too wide to fit; emit a single space instead
 		width = 1
@@ -731,9 +753,9 @@ func (t *tScreen) showCursor() {
 // write operation at some point later.
 func (t *tScreen) writeString(s string) {
 	if t.buffering {
-		io.WriteString(&t.buf, s)
+		_, _ = io.WriteString(&t.buf, s)
 	} else {
-		io.WriteString(t.out, s)
+		_, _ = io.WriteString(t.out, s)
 	}
 }
 
@@ -809,7 +831,7 @@ func (t *tScreen) draw() {
 	// restore the cursor
 	t.showCursor()
 
-	t.buf.WriteTo(t.out)
+	_, _ = t.buf.WriteTo(t.out)
 }
 
 func (t *tScreen) EnableMouse() {
@@ -822,6 +844,14 @@ func (t *tScreen) DisableMouse() {
 	if len(t.mouse) != 0 {
 		t.TPuts(t.ti.TParm(t.ti.MouseMode, 0))
 	}
+}
+
+func (t *tScreen) EnablePaste() {
+	t.TPuts(t.enablePaste)
+}
+
+func (t *tScreen) DisablePaste() {
+	t.TPuts(t.disablePaste)
 }
 
 func (t *tScreen) Size() (int, int) {
@@ -842,7 +872,7 @@ func (t *tScreen) resize() {
 			t.h = h
 			t.w = w
 			ev := NewEventResize(w, h)
-			t.PostEvent(ev)
+			_ = t.PostEvent(ev)
 		}
 	}
 }
@@ -1137,7 +1167,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 			}
 			// consume the event bytes
 			for i >= 0 {
-				buf.ReadByte()
+				_, _ = buf.ReadByte()
 				i--
 			}
 			*evs = append(*evs, t.buildMouseEvent(x, y, btn))
@@ -1145,7 +1175,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 		}
 	}
 
-	// incomplete & inconclusve at this point
+	// incomplete & inconclusive at this point
 	return true, false
 }
 
@@ -1190,7 +1220,7 @@ func (t *tScreen) parseXtermMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) 
 		case 5:
 			y = int(b[i]) - 32 - 1
 			for i >= 0 {
-				buf.ReadByte()
+				_, _ = buf.ReadByte()
 				i--
 			}
 			*evs = append(*evs, t.buildMouseEvent(x, y, btn))
@@ -1219,9 +1249,16 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer, evs *[]Event) (bool, bool)
 				mod |= ModAlt
 				t.escaped = false
 			}
-			*evs = append(*evs, NewEventKey(k.key, r, mod))
+			switch k.key {
+			case keyPasteStart:
+				*evs = append(*evs, NewEventPaste(true))
+			case keyPasteEnd:
+				*evs = append(*evs, NewEventPaste(false))
+			default:
+				*evs = append(*evs, NewEventKey(k.key, r, mod))
+			}
 			for i := 0; i < len(esc); i++ {
-				buf.ReadByte()
+				_, _ = buf.ReadByte()
 			}
 			return true, true
 		}
@@ -1242,7 +1279,7 @@ func (t *tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 			t.escaped = false
 		}
 		*evs = append(*evs, NewEventKey(KeyRune, rune(b[0]), mod))
-		buf.ReadByte()
+		_, _ = buf.ReadByte()
 		return true, true
 	}
 
@@ -1251,15 +1288,15 @@ func (t *tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 		return false, false
 	}
 
-	utfb := make([]byte, 12)
+	utf := make([]byte, 12)
 	for l := 1; l <= len(b); l++ {
 		t.decoder.Reset()
-		nout, nin, e := t.decoder.Transform(utfb, b[:l], true)
+		nOut, nIn, e := t.decoder.Transform(utf, b[:l], true)
 		if e == transform.ErrShortSrc {
 			continue
 		}
-		if nout != 0 {
-			r, _ := utf8.DecodeRune(utfb[:nout])
+		if nOut != 0 {
+			r, _ := utf8.DecodeRune(utf[:nOut])
 			if r != utf8.RuneError {
 				mod := ModNone
 				if t.escaped {
@@ -1268,9 +1305,9 @@ func (t *tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 				}
 				*evs = append(*evs, NewEventKey(KeyRune, r, mod))
 			}
-			for nin > 0 {
-				buf.ReadByte()
-				nin--
+			for nIn > 0 {
+				_, _ = buf.ReadByte()
+				nIn--
 			}
 			return true, true
 		}
@@ -1343,7 +1380,7 @@ func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event
 				} else {
 					t.escaped = true
 				}
-				buf.ReadByte()
+				_, _ = buf.ReadByte()
 				continue
 			}
 			// Nothing was going to match, or we timed out
@@ -1430,7 +1467,7 @@ func (t *tScreen) inputLoop() {
 		case io.EOF:
 		case nil:
 		default:
-			t.PostEvent(NewEventError(e))
+			_ = t.PostEvent(NewEventError(e))
 			return
 		}
 		t.keychan <- chunk[:n]

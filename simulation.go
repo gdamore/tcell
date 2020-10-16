@@ -1,4 +1,4 @@
-// Copyright 2016 The TCell Authors
+// Copyright 2020 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -97,6 +97,7 @@ type simscreen struct {
 	cursory   int
 	cursorvis bool
 	mouse     bool
+	paste     bool
 	charset   string
 	encoder   transform.Transformer
 	decoder   transform.Transformer
@@ -319,6 +320,14 @@ func (s *simscreen) EnableMouse() {
 
 func (s *simscreen) DisableMouse() {
 	s.mouse = false
+}
+
+func (s *simscreen) EnablePaste() {
+	s.paste = true
+}
+
+func (s *simscreen) DisablePaste() {
+	s.paste = false
 }
 
 func (s *simscreen) Size() (int, int) {

@@ -375,6 +375,12 @@ const (
 	KeyF64
 )
 
+const (
+	// These key codes are used internally, and will never appear to applications.
+	keyPasteStart Key = iota + 16384
+	keyPasteEnd
+)
+
 // These are the control keys.  Note that they overlap with other keys,
 // perhaps.  For example, KeyCtrlH is the same as KeyBackspace.
 const (

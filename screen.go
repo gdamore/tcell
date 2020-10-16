@@ -104,6 +104,12 @@ type Screen interface {
 	// DisableMouse disables the mouse.
 	DisableMouse()
 
+	// EnablePaste enables bracketed paste mode, if supported.
+	EnablePaste()
+
+	// DisablePaste() disables bracketed paste mode.
+	DisablePaste()
+
 	// HasMouse returns true if the terminal (apparently) supports a
 	// mouse.  Note that the a return value of true doesn't guarantee that
 	// a mouse/pointing device is present; a false return definitely

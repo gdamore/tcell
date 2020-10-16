@@ -116,11 +116,13 @@ func main() {
 		Foreground(tcell.ColorReset)
 	s.SetStyle(defStyle)
 	s.EnableMouse()
+	s.EnablePaste()
 	s.Clear()
 
 	posfmt := "Mouse: %d, %d  "
 	btnfmt := "Buttons: %s"
 	keyfmt := "Keys: %s"
+	pastefmt := "Paste: [%d] %s"
 	white := tcell.StyleDefault.
 		Foreground(tcell.ColorWhite).Background(tcell.ColorRed)
 
@@ -131,14 +133,22 @@ func main() {
 	lchar := '*'
 	bstr := ""
 	lks := ""
+	pstr := ""
 	ecnt := 0
+	pasting := false
 
 	for {
-		drawBox(s, 1, 1, 42, 6, white, ' ')
+		drawBox(s, 1, 1, 42, 7, white, ' ')
 		emitStr(s, 2, 2, white, "Press ESC twice to exit, C to clear.")
 		emitStr(s, 2, 3, white, fmt.Sprintf(posfmt, mx, my))
 		emitStr(s, 2, 4, white, fmt.Sprintf(btnfmt, bstr))
 		emitStr(s, 2, 5, white, fmt.Sprintf(keyfmt, lks))
+
+		ps := pstr
+		if len(ps) > 26 {
+			ps = "..." + ps[len(ps)-24:]
+		}
+		emitStr(s, 2, 6, white, fmt.Sprintf(pastefmt, len(pstr), ps))
 
 		s.Show()
 		bstr = ""
@@ -160,6 +170,17 @@ func main() {
 			s.SetContent(w-1, h-1, 'R', nil, st)
 		case *tcell.EventKey:
 			s.SetContent(w-2, h-2, ev.Rune(), nil, st)
+			if pasting {
+				s.SetContent(w-1, h-1, 'P', nil, st)
+				if ev.Key() == tcell.KeyRune {
+					pstr = pstr + string(ev.Rune())
+				} else {
+					pstr = pstr + "\ufffd" // replacement for now
+				}
+				lks = ""
+				continue
+			}
+			pstr = ""
 			s.SetContent(w-1, h-1, 'K', nil, st)
 			if ev.Key() == tcell.KeyEscape {
 				ecnt++
@@ -176,6 +197,11 @@ func main() {
 				}
 			}
 			lks = ev.Name()
+		case *tcell.EventPaste:
+			pasting = ev.Start()
+			if pasting {
+				pstr = ""
+			}
 		case *tcell.EventMouse:
 			x, y := ev.Position()
 			button := ev.Buttons()
@@ -206,7 +232,7 @@ func main() {
 			switch ev.Buttons() {
 			case tcell.ButtonNone:
 				if ox >= 0 {
-					bg := tcell.Color((lchar - '0') * 2) | tcell.ColorValid
+					bg := tcell.Color((lchar-'0')*2) | tcell.ColorValid
 					drawBox(s, ox, oy, x, y,
 						up.Background(bg),
 						lchar)

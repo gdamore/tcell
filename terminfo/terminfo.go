@@ -213,6 +213,10 @@ type Terminfo struct {
 	KeyAltShfEnd    string
 	KeyMetaShfHome  string
 	KeyMetaShfEnd   string
+	EnablePaste     string // bracketed paste mode
+	DisablePaste    string
+	PasteStart      string
+	PasteEnd        string
 	Modifiers       int
 	TrueColor       bool // true if the terminal supports direct color
 }
