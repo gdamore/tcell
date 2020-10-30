@@ -157,13 +157,29 @@ a ticket; it wouldn't be hard to add that if there is need.
 _Tcell_ _supports true color_!  (That is, if your terminal can support it,
 _Tcell_ can accurately display 24-bit color.)
 
-To use 24-bit color, you need to use a terminal with support.  Modern
-XTerm and similar terminal emulators can support this.  As terminfo lacks any
-way to describe this capability, we fabricate the capability for
-terminals with names ending in `*-truecolor`.  The stock distribution ships
-with a database that defines `xterm-truecolor`.
-To try it out, set your
-`TERM` variable to `xterm-truecolor`.
+NOTE: Technically the approach of using 24-bit RGB values for color is more
+accurately described as "direct color", but most people use the term "true color",
+and so we follow the (inaccurate) common convention.
+
+There are a few ways you can enable (or disable) true color.
+
+* For many terminals, we can detect it automatically if your terminal
+includes the `RGB` or `Tc` capabilities (or rather it did when the database
+was updated.)
+
+* You can force this one by setting the `COLORTERM` environment variable to
+"24-bit", "truecolor" or "24bit".  This is the same method used
+by most other terminal applications that support 24-bit color.
+
+* If you set your `TERM` environment variable to a value with the suffix `-truecolor`
+then 24-bit color compatible with XTerm will be assumed (and the terminal will
+otherwise use the same escape sequences as the base terminal definition.)
+
+NOTE: This feature is for compatibility with older _Tcell_ versions.
+It is recommended to use one of other methods instead.
+
+* You can disable 24-bit color by setting `TCELL_TRUECOLOR=disable` in your
+environment.
 
 When using TrueColor, programs will display the colors that the programmer
 intended, overriding any "`themes`" you may have set in your terminal
@@ -171,10 +187,6 @@ emulator.  (For some cases, accurate color fidelity is more important
 than respecting themes.  For other cases, such as typical text apps that
 only use a few colors, its more desirable to respect the themes that
 the user has established.)
-
-If you find this undesirable, you can either use a `TERM` variable
-that lacks the `TRUECOLOR` setting, or set `TCELL_TRUECOLOR=disable` in your
-environment.
 
 == Performance
 
