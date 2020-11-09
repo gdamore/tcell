@@ -223,6 +223,7 @@ func (s *cScreen) Init() error {
 			s.vten = true
 		} else {
 			s.truecolor = false
+			s.setOutMode(0)
 		}
 	} else {
 		s.setOutMode(0)
