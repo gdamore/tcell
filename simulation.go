@@ -404,6 +404,7 @@ outer:
 			}
 			ev := NewEventKey(Key(b[0]), 0, mod)
 			s.PostEvent(ev)
+			b = b[1:]
 			continue
 		}
 
