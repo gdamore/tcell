@@ -48,6 +48,7 @@ Version 1.x remains available using the import `github.com/gdamore/tcell`.
 * https://github.com/Bios-Marcel/memoryalike[memoryalike] - A game where you have to memorize runes and hit their respective keys
 * https://github.com/gokcehan/lf[lf] - Terminal file manager
 * https://github.com/bunyk/gokeybr[gokeybr] - program that helps to deliberately practice your typing.
+* https://github.com/jbaramidze/gonano[gonano] - CLI test editor
 
 == Pure Go Terminfo Database
 
