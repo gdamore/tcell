@@ -28,7 +28,7 @@ Version 1.x remains available using the import `github.com/gdamore/tcell`.
 * https://github.com/gdamore/gomatrix[gomatrix] - converted from Termbox
 * https://github.com/zyedidia/micro/[micro] - lightweight text editor with syntax-highlighting and themes
 * https://github.com/viktomas/godu[godu] - simple golang utility helping to discover large files/folders.
-* https://github.com/tslocum/cview/[cview] - rich interactive widgets for terminal UIs
+* https://github.com/rivo/tview/[tview] - rich interactive widgets for terminal UIs
 * https://github.com/awesome-gocui/gocui[awesome gocui] - Go Console User Interface
 * https://github.com/rgm3/gomandelbrot[gomandelbrot] - Mandelbrot!
 * https://github.com/senorprogrammer/wtf[WTF]- Personal information dashboard for your terminal
