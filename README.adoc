@@ -49,6 +49,7 @@ Version 1.x remains available using the import `github.com/gdamore/tcell`.
 * https://github.com/gokcehan/lf[lf] - Terminal file manager
 * https://github.com/bunyk/gokeybr[gokeybr] - program that helps to deliberately practice your typing.
 * https://github.com/jbaramidze/gonano[gonano] - CLI test editor
+* https://github.com/tmountain/uchess[uchess] - A UCI chess client for your terminal
 
 == Pure Go Terminfo Database
 
