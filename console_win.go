@@ -1,6 +1,6 @@
 // +build windows
 
-// Copyright 2020 The TCell Authors
+// Copyright 2021 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -242,7 +242,7 @@ func (s *cScreen) CharacterSet() string {
 	return "UTF-16LE"
 }
 
-func (s *cScreen) EnableMouse() {
+func (s *cScreen) EnableMouse(...MouseFlags) {
 	s.setInMode(modeResizeEn | modeMouseEn | modeExtndFlg)
 }
 

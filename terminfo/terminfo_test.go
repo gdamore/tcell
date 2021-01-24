@@ -1,4 +1,4 @@
-// Copyright 2019 The TCell Authors
+// Copyright 2021 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -34,7 +34,6 @@ var testTerminfo = &Terminfo{
 	SetBg:     "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
 	AltChars:  "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
 	Mouse:     "\x1b[M",
-	MouseMode: "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;\x1b[?1000%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c",
 	SetCursor: "\x1b[%i%p1%d;%p2%dH",
 	PadChar:   "\x00",
 }
@@ -62,13 +61,6 @@ func TestTerminfoExpansion(t *testing.T) {
 	}
 	if ti.TParm(ti.SetFg, 200) != "\x1b[38;5;200m" {
 		t.Error("SetFg(200) failed")
-	}
-
-	if ti.TParm(ti.MouseMode, 1) != "\x1b[?1000h\x1b[?1003h\x1b[?1006h" {
-		t.Error("Enable mouse mode failed")
-	}
-	if ti.TParm(ti.MouseMode, 0) != "\x1b[?1000l\x1b[?1003l\x1b[?1006l" {
-		t.Error("Disable mouse mode failed")
 	}
 }
 

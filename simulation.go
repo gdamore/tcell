@@ -1,4 +1,4 @@
-// Copyright 2020 The TCell Authors
+// Copyright 2021 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -314,7 +314,7 @@ func (s *simscreen) draw() {
 	s.showCursor()
 }
 
-func (s *simscreen) EnableMouse() {
+func (s *simscreen) EnableMouse(...MouseFlags) {
 	s.mouse = true
 }
 

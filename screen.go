@@ -1,4 +1,4 @@
-// Copyright 2019 The TCell Authors
+// Copyright 2021 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -99,7 +99,9 @@ type Screen interface {
 	PostEventWait(ev Event)
 
 	// EnableMouse enables the mouse.  (If your terminal supports it.)
-	EnableMouse()
+	// If no flags are specified, then all events are reported, if the
+	// terminal supports them.
+	EnableMouse(...MouseFlags)
 
 	// DisableMouse disables the mouse.
 	DisableMouse()
@@ -217,3 +219,13 @@ func NewScreen() (Screen, error) {
 		return nil, e
 	}
 }
+
+// MouseFlags are options to modify the handling of mouse events.
+// Actual events can be or'd together.
+type MouseFlags int
+
+const (
+	MouseButtonEvents = MouseFlags(1) // Click events only
+	MouseDragEvents   = MouseFlags(2) // Click-drag events (includes button events)
+	MouseMotionEvents = MouseFlags(4) // All mouse events (includes click and drag events)
+)

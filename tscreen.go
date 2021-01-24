@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -292,7 +293,7 @@ func (t *tScreen) prepareBracketedPaste() {
 		t.disablePaste = t.ti.DisablePaste
 		t.prepareKey(keyPasteStart, t.ti.PasteStart)
 		t.prepareKey(keyPasteEnd, t.ti.PasteEnd)
-	} else if t.ti.MouseMode != "" {
+	} else if t.ti.Mouse != "" {
 		t.enablePaste = "\x1b[?2004h"
 		t.disablePaste = "\x1b[?2004l"
 		t.prepareKey(keyPasteStart, "\x1b[200~")
@@ -481,8 +482,8 @@ func (t *tScreen) finish() {
 	t.TPuts(ti.Clear)
 	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
-	t.TPuts(ti.TParm(ti.MouseMode, 0))
 	t.TPuts(t.disablePaste)
+	t.DisableMouse()
 	t.curstyle = styleInvalid
 	t.clear = false
 	t.fini = true
@@ -835,15 +836,42 @@ func (t *tScreen) draw() {
 	_, _ = t.buf.WriteTo(t.out)
 }
 
-func (t *tScreen) EnableMouse() {
+func (t *tScreen) EnableMouse(flags ...MouseFlags) {
+	var f MouseFlags
+	flagsPresent := false
+	for _, flag := range flags {
+		f |= flag
+		flagsPresent = true
+	}
+	if !flagsPresent {
+		f = MouseMotionEvents
+	}
+
+	// Rather than using terminfo to find mouse escape sequences, we rely on the fact that
+	// pretty much *every* terminal that supports mouse tracking follows the
+	// XTerm standards (the modern ones).
+
 	if len(t.mouse) != 0 {
-		t.TPuts(t.ti.TParm(t.ti.MouseMode, 1))
+		var mm int
+		if f & MouseMotionEvents != 0 {
+			mm = 1003
+		} else if f & MouseDragEvents != 0 {
+			mm = 1002
+		} else if f & MouseButtonEvents != 0 {
+			mm = 1000
+		} else {
+			// No recognized tracking enabled.
+			return
+		}
+
+		t.TPuts(fmt.Sprintf("\x1b[?%dh\x1b[?1006h", mm))
 	}
 }
 
 func (t *tScreen) DisableMouse() {
 	if len(t.mouse) != 0 {
-		t.TPuts(t.ti.TParm(t.ti.MouseMode, 0))
+		// This turns off everything.
+		t.TPuts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l")
 	}
 }
 
