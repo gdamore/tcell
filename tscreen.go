@@ -1,4 +1,4 @@
-// Copyright 2020 The TCell Authors
+// Copyright 2021 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"golang.org/x/term"
 	"golang.org/x/text/transform"
 
 	"github.com/gdamore/tcell/v2/terminfo"
@@ -101,7 +102,6 @@ type tScreen struct {
 	clear        bool
 	cursorx      int
 	cursory      int
-	tiosp        *termiosPrivate
 	wasbtn       bool
 	acs          map[rune]string
 	charset      string
@@ -116,6 +116,7 @@ type tScreen struct {
 	finiOnce     sync.Once
 	enablePaste  string
 	disablePaste string
+	saved        *term.State
 
 	sync.Mutex
 }
@@ -145,7 +146,7 @@ func (t *tScreen) Init() error {
 	if i, _ := strconv.Atoi(os.Getenv("COLUMNS")); i != 0 {
 		w = i
 	}
-	if e := t.termioInit(); e != nil {
+	if e := t.initialize(); e != nil {
 		return e
 	}
 
@@ -494,7 +495,7 @@ func (t *tScreen) finish() {
 		close(t.quit)
 	}
 
-	t.termioFini()
+	t.finalize()
 }
 
 func (t *tScreen) SetStyle(style Style) {

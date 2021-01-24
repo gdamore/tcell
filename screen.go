@@ -16,7 +16,7 @@ package tcell
 
 // Screen represents the physical (or emulated) screen.
 // This can be a terminal window or a physical console.  Platforms implement
-// this differerently.
+// this differently.
 type Screen interface {
 	// Init initializes the screen for use.
 	Init() error
