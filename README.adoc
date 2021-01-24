@@ -248,9 +248,7 @@ platforms (e.g. AIX) may need to be added.  Pull requests are welcome!
 
 === Windows
 
-Windows console mode applications are supported.  Unfortunately _mintty_
-and other _cygwin_ style applications are not supported, and are
-unlikely to be supportable due to limitations in their design.
+Windows console mode applications are supported.
 
 Modern console applications like ConEmu and the Windows 10 terminal,
 support all the good features (resize, mouse tracking, etc.)
