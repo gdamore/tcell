@@ -88,6 +88,9 @@ type Screen interface {
 	// is dropped, and ErrEventQFull is returned.
 	PostEvent(ev Event) error
 
+	// Deprecated: PostEventWait is unsafe, and will be removed
+	// in the future.
+	//
 	// PostEventWait is like PostEvent, but if the queue is full, it
 	// blocks until there is space in the queue, making delivery
 	// reliable.  However, it is VERY important that this function
