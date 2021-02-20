@@ -1,5 +1,3 @@
-// +build js plan9 windows
-
 // Copyright 2021 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,30 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build plan9 windows js
+
 package tcell
 
-// NB: We might someday wish to move Windows to this model.   However,
-// that would probably mean sacrificing some of the richer key reporting
-// that we can obtain with the console API present on Windows.
-
-func (t *tScreen) engage() error {
-	return ErrNoScreen
-}
-
-func (t *tScreen) disengage() {
-}
-
-func (t *tScreen) initialize() error {
-	return ErrNoScreen
-}
-
-func (t *tScreen) finalize() {
-}
-
-func (t *tScreen) getWinSize() (int, int, error) {
-	return 0, 0, ErrNoScreen
-}
-
-func (t *tScreen) Beep() error {
-	return ErrNoScreen
+func (t *tScreen) nonBlocking(on bool) error {
+	return nil
 }

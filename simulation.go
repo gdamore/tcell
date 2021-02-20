@@ -520,3 +520,11 @@ func (s *simscreen) HasKey(Key) bool {
 func (s *simscreen) Beep() error {
 	return nil
 }
+
+func (s *simscreen) Suspend() error {
+	return nil
+}
+
+func (s *simscreen) Resume() error {
+	return nil
+}

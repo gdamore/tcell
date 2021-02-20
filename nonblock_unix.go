@@ -1,5 +1,3 @@
-// +build js plan9 windows
-
 // Copyright 2021 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,30 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build linux aix zos solaris
+
 package tcell
+
+import (
+	"os"
+	"syscall"
+
+	"golang.org/x/sys/unix"
+)
 
 // NB: We might someday wish to move Windows to this model.   However,
 // that would probably mean sacrificing some of the richer key reporting
 // that we can obtain with the console API present on Windows.
 
-func (t *tScreen) engage() error {
-	return ErrNoScreen
-}
+// nonBlocking changes VMIN to 0, and VTIME to 1.  This basically ensures that
+// we can wake up the input loop.  We only want to do this if we are going to interrupt
+// that loop.  Normally we use VMIN 1 and VTIME 0, which ensures we pick up bytes when
+// they come but don't spin burning cycles.
+func (t *tScreen) nonBlocking(on bool) {
+	fd := int(os.Stdin.Fd())
+	tio, err := unix.IoctlGetTermios(fd, unix.TCGETS)
+	if err != nil {
+		return
+	}
+	if on {
+		tio.Cc[unix.VMIN] = 0
+		tio.Cc[unix.VTIME] = 0
+	} else {
+		// block for any output
+		tio.Cc[unix.VTIME] = 0
+		tio.Cc[unix.VMIN] = 1
+	}
 
-func (t *tScreen) disengage() {
-}
-
-func (t *tScreen) initialize() error {
-	return ErrNoScreen
-}
-
-func (t *tScreen) finalize() {
-}
-
-func (t *tScreen) getWinSize() (int, int, error) {
-	return 0, 0, ErrNoScreen
-}
-
-func (t *tScreen) Beep() error {
-	return ErrNoScreen
+	_ = syscall.SetNonblock(fd, on)
+	// We want to set this *right now*.
+	_ = unix.IoctlSetTermios(fd, unix.TCSETS, tio)
 }

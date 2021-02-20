@@ -22,6 +22,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gdamore/tcell/v2/encoding"
@@ -99,6 +101,15 @@ func drawSelect(s tcell.Screen, x1, y1, x2, y2 int, sel bool) {
 // This program just shows simple mouse and keyboard events.  Press ESC twice to
 // exit.
 func main() {
+
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		if runtime.GOOS == "windows" {
+			shell = "CMD.EXE"
+		} else {
+			shell = "/bin/sh"
+		}
+	}
 
 	encoding.Register()
 
@@ -190,6 +201,20 @@ func main() {
 				}
 			} else if ev.Key() == tcell.KeyCtrlL {
 				s.Sync()
+			} else if ev.Key() == tcell.KeyCtrlZ {
+				// CtrlZ doesn't really suspend the process, but we use it to execute a subshell.
+				if err := s.Suspend(); err == nil {
+					fmt.Printf("Executing shell (%s -l)...\n", shell)
+					fmt.Printf("Exit the shell to return to the demo.\n")
+					c := exec.Command(shell, "-l" ) // NB: -l works for cmd.exe too (ignored)
+					c.Stdin = os.Stdin
+					c.Stdout = os.Stdout
+					c.Stderr = os.Stderr
+					c.Run()
+					if err := s.Resume(); err != nil {
+						panic("failed to resume: " + err.Error())
+					}
+				}
 			} else {
 				ecnt = 0
 				if ev.Rune() == 'C' || ev.Rune() == 'c' {

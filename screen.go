@@ -205,6 +205,14 @@ type Screen interface {
 	// runes) is always true.
 	HasKey(Key) bool
 
+	// Suspend pauses input and output processing.  It also restores the
+	// terminal settings to what they were when the application started.
+	// This can be used to, for example, run a sub-shell.
+	Suspend() error
+
+	// Resume resumes after Suspend().
+	Resume() error
+
 	// Beep attempts to sound an OS-dependent audible alert and returns an error
 	// when unsuccessful.
 	Beep() error
