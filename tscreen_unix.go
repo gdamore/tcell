@@ -103,10 +103,13 @@ func (t *tScreen) disengage() {
 func (t *tScreen) initialize() error {
 	var err error
 	t.out = os.Stdout
-	t.in = os.Stdin
-	t.saved, err = term.GetState(int(os.Stdin.Fd()))
-	if err != nil {
+	if t.in, err = os.Open("/dev/tty"); err != nil {
 		return err
+	}
+
+	t.saved, err = term.GetState(int(t.in.Fd()))
+	if err == nil {
+		return nil
 	}
 	return nil
 }
