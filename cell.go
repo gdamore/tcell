@@ -19,13 +19,37 @@ import (
 )
 
 type cell struct {
-	currMain  rune
-	currComb  []rune
+	currComb []rune
+	lastComb []rune
+
+	currMain rune
+	lastMain rune
+
 	currStyle Style
-	lastMain  rune
 	lastStyle Style
-	lastComb  []rune
-	width     int
+
+	width int
+}
+
+func (c *cell) dirty() bool {
+	if c.lastMain == rune(0) {
+		return true
+	}
+	if c.lastMain != c.currMain {
+		return true
+	}
+	if c.lastStyle != c.currStyle {
+		return true
+	}
+	if len(c.lastComb) != len(c.currComb) {
+		return true
+	}
+	for i := range c.lastComb {
+		if c.lastComb[i] != c.currComb[i] {
+			return true
+		}
+	}
+	return false
 }
 
 // CellBuffer represents a two dimensional array of character cells.
@@ -35,9 +59,9 @@ type cell struct {
 //
 // CellBuffer is not thread safe.
 type CellBuffer struct {
+	cells []cell
 	w     int
 	h     int
-	cells []cell
 }
 
 // SetContent sets the contents (primary rune, combining runes,
@@ -67,6 +91,7 @@ func (cb *CellBuffer) GetContent(x, y int) (rune, []rune, Style, int) {
 	var combc []rune
 	var style Style
 	var width int
+
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		c := &cb.cells[(y*cb.w)+x]
 		mainc, combc, style = c.currMain, c.currComb, c.currStyle
@@ -90,31 +115,35 @@ func (cb *CellBuffer) Invalidate() {
 	}
 }
 
-// Dirty checks if a character at the given location needs an
-// to be refreshed on the physical display.  This returns true
-// if the cell content is different since the last time it was
-// marked clean.
+// Dirty checks if a character at the given location needs an to be refreshed on
+// the physical display. This returns true if the cell content is different
+// since the last time it was marked clean.
 func (cb *CellBuffer) Dirty(x, y int) bool {
-	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
-		c := &cb.cells[(y*cb.w)+x]
-		if c.lastMain == rune(0) {
-			return true
-		}
-		if c.lastMain != c.currMain {
-			return true
-		}
-		if c.lastStyle != c.currStyle {
-			return true
-		}
-		if len(c.lastComb) != len(c.currComb) {
-			return true
-		}
-		for i := range c.lastComb {
-			if c.lastComb[i] != c.currComb[i] {
+	return x >= 0 && y >= 0 && x < cb.w && y < cb.h && cb.cells[(y*cb.w)+x].dirty()
+}
+
+// DirtyRegion checks if a region needs to be refreshed on the physical display.
+// It is effectively the equivalent of calling Dirty in a loop. If the given
+// boundaries are larger than the buffer, then false is returned.
+func (cb *CellBuffer) DirtyRegion(x1, y1, x2, y2 int) bool {
+	if x1 > x2 || y1 > y2 || x1 < 0 || y1 < 0 || x2 >= cb.w || y2 >= cb.h {
+		return true
+	}
+
+	// eliminate bound check.
+	_ = cb.cells[(y2*cb.w)+x2]
+
+	for y := y1; y <= y2; y++ {
+		// iterate x more often than y for cache line alignments.
+		line := y * cb.w
+
+		for x := x1; x <= x2; x++ {
+			if cb.cells[line+x].dirty() {
 				return true
 			}
 		}
 	}
+
 	return false
 }
 
@@ -138,7 +167,7 @@ func (cb *CellBuffer) SetDirty(x, y int, dirty bool) {
 }
 
 // Resize is used to resize the cells array, with different dimensions,
-// while preserving the original contents.  The cells will be invalidated
+// while preserving the original contents. The cells will be invalidated
 // so that they can be redrawn.
 func (cb *CellBuffer) Resize(w, h int) {
 
@@ -148,9 +177,13 @@ func (cb *CellBuffer) Resize(w, h int) {
 
 	newc := make([]cell, w*h)
 	for y := 0; y < h && y < cb.h; y++ {
+		yOld := y * cb.w
+		yNew := y * w
+
 		for x := 0; x < w && x < cb.w; x++ {
-			oc := &cb.cells[(y*cb.w)+x]
-			nc := &newc[(y*w)+x]
+			oc := &cb.cells[yOld+x]
+			nc := &newc[yNew+x]
+
 			nc.currMain = oc.currMain
 			nc.currComb = oc.currComb
 			nc.currStyle = oc.currStyle

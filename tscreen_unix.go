@@ -22,13 +22,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
 // engage is used to place the terminal in raw mode and establish screen size, etc.
 // Thing of this is as tcell "engaging" the clutch, as it's going to be driving the
 // terminal interface.
-func (t *tScreen) engage() error {
+func (t tScreen) engage() error {
 	t.Lock()
 	defer t.Unlock()
 	if t.stopQ != nil {
@@ -57,7 +58,7 @@ func (t *tScreen) engage() error {
 // Think of this as tcell disengaging the clutch, so that another application
 // can take over the terminal interface.  This restores the TTY mode that was
 // present when the application was first started.
-func (t *tScreen) disengage() {
+func (t tScreen) disengage() {
 
 	t.Lock()
 	t.nonBlocking(true)
@@ -93,7 +94,7 @@ func (t *tScreen) disengage() {
 // initialize is used at application startup, and sets up the initial values
 // including file descriptors used for terminals and saving the initial state
 // so that it can be restored when the application terminates.
-func (t *tScreen) initialize() error {
+func (t tScreen) initialize() error {
 	var err error
 	t.out = os.Stdout
 	t.in = os.Stdin
@@ -106,18 +107,36 @@ func (t *tScreen) initialize() error {
 
 // finalize is used to at application shutdown, and restores the terminal
 // to it's initial state.  It should not be called more than once.
-func (t *tScreen) finalize() {
+func (t tScreen) finalize() {
 
 	t.disengage()
 }
 
-// getWinSize is called to obtain the terminal dimensions.
-func (t *tScreen) getWinSize() (int, int, error) {
-	return term.GetSize(int(t.in.Fd()))
+// updateScreenSize is called to update the terminal dimensions.
+func (t tScreen) updateScreenSize() (updated bool) {
+	winsz, err := unix.IoctlGetWinsize(int(t.in.Fd()), unix.TIOCGWINSZ)
+	if err != nil {
+		return false
+	}
+
+	h := int(winsz.Row)
+	w := int(winsz.Col)
+	xpx := int(winsz.Xpixel)
+	ypx := int(winsz.Ypixel)
+
+	updated = t.h != h || t.w != w || t.xpx != xpx || t.ypx != ypx
+	if updated {
+		t.h = h
+		t.w = w
+		t.xpx = xpx
+		t.ypx = ypx
+	}
+
+	return
 }
 
 // Beep emits a beep to the terminal.
-func (t *tScreen) Beep() error {
+func (t tScreen) Beep() error {
 	t.writeString(string(byte(7)))
 	return nil
 }

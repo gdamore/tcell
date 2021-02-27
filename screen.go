@@ -240,3 +240,52 @@ const (
 	MouseDragEvents   = MouseFlags(2) // Click-drag events (includes button events)
 	MouseMotionEvents = MouseFlags(4) // All mouse events (includes click and drag events)
 )
+
+// DrawInterceptFunc is the callback to intercept a draw. It is called when the
+// lock is acquired. Sync is true if the whole screen is about to be cleared, or
+// for after interceptors, after clearing.
+//
+// The interceptor function must use the given screen instead of referencing the
+// existing screen from outside. This is done to prevent deadlocks.
+type DrawInterceptFunc func(s Screen, sync bool)
+
+// DrawInterceptAdder is an interface that Screen can implement to add a draw
+// itnerceptor function. This interface could be used to draw custom SIXEL
+// images as well as other raw terminal things.
+//
+// Implementations must call these functions before any state changes, or in teh
+// case of After, after all state changes. For example, draw interceptors should
+// be called before the cursor is hidden, and the after interceptors should be
+// called after the cursor is shown and everything is drawn into the buffer (but
+// before flushing).
+type DrawInterceptAdder interface {
+	// AddDrawIntercept wraps the existing draw intercept function with the
+	// given one.
+	AddDrawIntercept(fn DrawInterceptFunc)
+	// AddDrawInterceptAfter adds the draw interceptor after everything is
+	// drawn.
+	AddDrawInterceptAfter(fn DrawInterceptFunc)
+}
+
+// PixelSizer exposes the terminal size in pixels, if available.
+type PixelSizer interface {
+	// PixelSize returns the dimensions in the exact pixels of the terminal. It
+	// may return (0, 0) or a lesser value if the information is not available.
+	PixelSize() (xpx, ypx int)
+}
+
+// DirectDrawer exposes the raw draw function for the caller to draw code
+// unknown to tcell.
+type DirectDrawer interface {
+	// DrawDirectly draws the given bytes as-is directly into the screen.
+	DrawDirectly([]byte)
+}
+
+// CellBufferViewer is an interface that allows exposing the raw cell buffer for
+// optimizations regarding damage tracking.
+type CellBufferViewer interface {
+	// ViewCellBuffer exposes the internal cell buffer to the callback while
+	// acquiring its lock. ViewCellBuffer is not guaranteed to return after f
+	// did.
+	ViewCellBuffer(f func(*CellBuffer))
+}

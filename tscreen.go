@@ -50,7 +50,10 @@ func NewTerminfoScreen() (Screen, error) {
 		}
 		terminfo.AddTerminfo(ti)
 	}
-	t := &tScreen{ti: ti}
+	t := tScreen{
+		tState: &tState{ti: ti},
+		Locker: &sync.Mutex{},
+	}
 
 	t.keyexist = make(map[Key]bool)
 	t.keycodes = make(map[string]*tKeyCode)
@@ -59,7 +62,7 @@ func NewTerminfoScreen() (Screen, error) {
 	}
 	t.prepareKeys()
 	t.buildAcsMap()
-	t.sigwinch = make(chan os.Signal, 10)
+	t.sigwinch = make(chan os.Signal, 2)
 	t.fallback = make(map[rune]string)
 	for k, v := range RuneFallbacks {
 		t.fallback[k] = v
@@ -76,9 +79,15 @@ type tKeyCode struct {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
+	*tState
+	sync.Locker
+}
+
+// tState represents a screen's internal states.
+type tState struct {
+	tScreenSize
+
 	ti           *terminfo.Terminfo
-	h            int
-	w            int
 	fini         bool
 	cells        CellBuffer
 	in           *os.File
@@ -120,11 +129,17 @@ type tScreen struct {
 	wg           sync.WaitGroup
 	mouseFlags   MouseFlags
 	pasteEnabled bool
-
-	sync.Mutex
+	interceptors interceptors
 }
 
-func (t *tScreen) Init() error {
+type tScreenSize struct {
+	h   int
+	w   int
+	xpx int
+	ypx int
+}
+
+func (t tScreen) Init() error {
 	if e := t.initialize(); e != nil {
 		return e
 	}
@@ -192,7 +207,7 @@ func (t *tScreen) Init() error {
 	return nil
 }
 
-func (t *tScreen) prepareKeyMod(key Key, mod ModMask, val string) {
+func (t tScreen) prepareKeyMod(key Key, mod ModMask, val string) {
 	if val != "" {
 		// Do not override codes that already exist
 		if _, exist := t.keycodes[val]; !exist {
@@ -202,7 +217,7 @@ func (t *tScreen) prepareKeyMod(key Key, mod ModMask, val string) {
 	}
 }
 
-func (t *tScreen) prepareKeyModReplace(key Key, replace Key, mod ModMask, val string) {
+func (t tScreen) prepareKeyModReplace(key Key, replace Key, mod ModMask, val string) {
 	if val != "" {
 		// Do not override codes that already exist
 		if old, exist := t.keycodes[val]; !exist || old.key == replace {
@@ -212,7 +227,7 @@ func (t *tScreen) prepareKeyModReplace(key Key, replace Key, mod ModMask, val st
 	}
 }
 
-func (t *tScreen) prepareKeyModXTerm(key Key, val string) {
+func (t tScreen) prepareKeyModXTerm(key Key, val string) {
 
 	if strings.HasPrefix(val, "\x1b[") && strings.HasSuffix(val, "~") {
 
@@ -257,7 +272,7 @@ func (t *tScreen) prepareKeyModXTerm(key Key, val string) {
 	}
 }
 
-func (t *tScreen) prepareXtermModifiers() {
+func (t tScreen) prepareXtermModifiers() {
 	if t.ti.Modifiers != terminfo.ModifiersXTerm {
 		return
 	}
@@ -285,7 +300,7 @@ func (t *tScreen) prepareXtermModifiers() {
 	t.prepareKeyModXTerm(KeyF12, t.ti.KeyF12)
 }
 
-func (t *tScreen) prepareBracketedPaste() {
+func (t tScreen) prepareBracketedPaste() {
 	// Another workaround for lack of reporting in terminfo.
 	// We assume if the terminal has a mouse entry, that it
 	// offers bracketed paste.  But we allow specific overrides
@@ -303,11 +318,11 @@ func (t *tScreen) prepareBracketedPaste() {
 	}
 }
 
-func (t *tScreen) prepareKey(key Key, val string) {
+func (t tScreen) prepareKey(key Key, val string) {
 	t.prepareKeyMod(key, ModNone, val)
 }
 
-func (t *tScreen) prepareKeys() {
+func (t tScreen) prepareKeys() {
 	ti := t.ti
 	t.prepareKey(KeyBackspace, ti.KeyBackspace)
 	t.prepareKey(KeyF1, ti.KeyF1)
@@ -469,16 +484,16 @@ outer:
 	}
 }
 
-func (t *tScreen) Fini() {
+func (t tScreen) Fini() {
 	t.finiOnce.Do(t.finish)
 }
 
-func (t *tScreen) finish() {
+func (t tScreen) finish() {
 	close(t.quit)
 	t.finalize()
 }
 
-func (t *tScreen) SetStyle(style Style) {
+func (t tScreen) SetStyle(style Style) {
 	t.Lock()
 	if !t.fini {
 		t.style = style
@@ -486,11 +501,11 @@ func (t *tScreen) SetStyle(style Style) {
 	t.Unlock()
 }
 
-func (t *tScreen) Clear() {
+func (t tScreen) Clear() {
 	t.Fill(' ', t.style)
 }
 
-func (t *tScreen) Fill(r rune, style Style) {
+func (t tScreen) Fill(r rune, style Style) {
 	t.Lock()
 	if !t.fini {
 		t.cells.Fill(r, style)
@@ -498,7 +513,7 @@ func (t *tScreen) Fill(r rune, style Style) {
 	t.Unlock()
 }
 
-func (t *tScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
+func (t tScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
 	t.Lock()
 	if !t.fini {
 		t.cells.SetContent(x, y, mainc, combc, style)
@@ -506,14 +521,14 @@ func (t *tScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
 	t.Unlock()
 }
 
-func (t *tScreen) GetContent(x, y int) (rune, []rune, Style, int) {
+func (t tScreen) GetContent(x, y int) (rune, []rune, Style, int) {
 	t.Lock()
 	mainc, combc, style, width := t.cells.GetContent(x, y)
 	t.Unlock()
 	return mainc, combc, style, width
 }
 
-func (t *tScreen) SetCell(x, y int, style Style, ch ...rune) {
+func (t tScreen) SetCell(x, y int, style Style, ch ...rune) {
 	if len(ch) > 0 {
 		t.SetContent(x, y, ch[0], ch[1:], style)
 	} else {
@@ -521,7 +536,7 @@ func (t *tScreen) SetCell(x, y int, style Style, ch ...rune) {
 	}
 }
 
-func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
+func (t tScreen) encodeRune(r rune, buf []byte) []byte {
 
 	nb := make([]byte, 6)
 	ob := make([]byte, 6)
@@ -551,7 +566,7 @@ func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 	return buf
 }
 
-func (t *tScreen) sendFgBg(fg Color, bg Color) {
+func (t tScreen) sendFgBg(fg Color, bg Color) {
 	ti := t.ti
 	if ti.Colors == 0 {
 		return
@@ -615,7 +630,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 	}
 }
 
-func (t *tScreen) drawCell(x, y int) int {
+func (t tScreen) drawCell(x, y int) int {
 
 	ti := t.ti
 
@@ -701,18 +716,18 @@ func (t *tScreen) drawCell(x, y int) int {
 	return width
 }
 
-func (t *tScreen) ShowCursor(x, y int) {
+func (t tScreen) ShowCursor(x, y int) {
 	t.Lock()
 	t.cursorx = x
 	t.cursory = y
 	t.Unlock()
 }
 
-func (t *tScreen) HideCursor() {
+func (t tScreen) HideCursor() {
 	t.ShowCursor(-1, -1)
 }
 
-func (t *tScreen) showCursor() {
+func (t tScreen) showCursor() {
 
 	x, y := t.cursorx, t.cursory
 	w, h := t.cells.Size()
@@ -726,13 +741,31 @@ func (t *tScreen) showCursor() {
 	t.cy = y
 }
 
+var _ DirectDrawer = (*tScreen)(nil)
+
+// DrawDirectly draws the given bytes directly into the screen buffer or the
+// screen file descriptor. If the screen is buffered, then the bytes will be
+// drawn on flush.
+func (t tScreen) DrawDirectly(b []byte) {
+	t.Lock()
+	defer t.Unlock()
+
+	t.showCursor()
+
+	if t.buffering {
+		_, _ = t.buf.Write(b)
+	} else {
+		_, _ = t.out.Write(b)
+	}
+}
+
 // writeString sends a string to the terminal. The string is sent as-is and
 // this function does not expand inline padding indications (of the form
 // $<[delay]> where [delay] is msec). In order to have these expanded, use
 // TPuts. If the screen is "buffering", the string is collected in a buffer,
 // with the intention that the entire buffer be sent to the terminal in one
 // write operation at some point later.
-func (t *tScreen) writeString(s string) {
+func (t tScreen) writeString(s string) {
 	if t.buffering {
 		_, _ = io.WriteString(&t.buf, s)
 	} else {
@@ -740,7 +773,7 @@ func (t *tScreen) writeString(s string) {
 	}
 }
 
-func (t *tScreen) TPuts(s string) {
+func (t tScreen) TPuts(s string) {
 	if t.buffering {
 		t.ti.TPuts(&t.buf, s)
 	} else {
@@ -748,7 +781,7 @@ func (t *tScreen) TPuts(s string) {
 	}
 }
 
-func (t *tScreen) Show() {
+func (t tScreen) Show() {
 	t.Lock()
 	if !t.fini {
 		t.resize()
@@ -757,14 +790,14 @@ func (t *tScreen) Show() {
 	t.Unlock()
 }
 
-func (t *tScreen) clearScreen() {
+func (t tScreen) clearScreen() {
 	fg, bg, _ := t.style.Decompose()
 	t.sendFgBg(fg, bg)
 	t.TPuts(t.ti.Clear)
 	t.clear = false
 }
 
-func (t *tScreen) hideCursor() {
+func (t tScreen) hideCursor() {
 	// does not update cursor position
 	if t.ti.HideCursor != "" {
 		t.TPuts(t.ti.HideCursor)
@@ -776,34 +809,42 @@ func (t *tScreen) hideCursor() {
 	}
 }
 
-func (t *tScreen) draw() {
-	// clobber cursor position, because we're gonna change it all
-	t.cx = -1
-	t.cy = -1
-
+func (t tScreen) draw() {
 	t.buf.Reset()
 	t.buffering = true
 	defer func() {
 		t.buffering = false
 	}()
 
+	clearing := t.clear
+
+	// t is passed by value, so we can directly mutate this; there is nothing
+	// after this that uses the mutex.
+	t.Locker = noopMutex{}
+
+	// call the interceptors with a clean buffer and call the after interceptors
+	// when we're done
+	t.interceptors.before(t, clearing)
+
+	// clobber cursor position, because we're gonna change it all
+	t.cx = -1
+	t.cy = -1
+
 	// hide the cursor while we move stuff around
 	t.hideCursor()
 
-	if t.clear {
+	if clearing {
 		t.clearScreen()
 	}
 
 	for y := 0; y < t.h; y++ {
 		for x := 0; x < t.w; x++ {
 			width := t.drawCell(x, y)
-			if width > 1 {
-				if x+1 < t.w {
-					// this is necessary so that if we ever
-					// go back to drawing that cell, we
-					// actually will *draw* it.
-					t.cells.SetDirty(x+1, y, true)
-				}
+			if width > 1 && x+1 < t.w {
+				// this is necessary so that if we ever
+				// go back to drawing that cell, we
+				// actually will *draw* it.
+				t.cells.SetDirty(x+1, y, true)
 			}
 			x += width - 1
 		}
@@ -812,10 +853,35 @@ func (t *tScreen) draw() {
 	// restore the cursor
 	t.showCursor()
 
+	// call the interceptor before flushing the buffer
+	t.interceptors.after(t, clearing)
+
 	_, _ = t.buf.WriteTo(t.out)
 }
 
-func (t *tScreen) EnableMouse(flags ...MouseFlags) {
+var _ CellBufferViewer = (*tScreen)(nil)
+
+func (t tScreen) ViewCellBuffer(f func(*CellBuffer)) {
+	t.Lock()
+	f(&t.cells)
+	t.Unlock()
+}
+
+var _ DirectDrawer = (*tScreen)(nil)
+
+func (t tScreen) AddDrawIntercept(fn DrawInterceptFunc) {
+	t.Lock()
+	t.interceptors.AddDrawIntercept(fn)
+	t.Unlock()
+}
+
+func (t tScreen) AddDrawInterceptAfter(fn DrawInterceptFunc) {
+	t.Lock()
+	t.interceptors.AddDrawInterceptAfter(fn)
+	t.Unlock()
+}
+
+func (t tScreen) EnableMouse(flags ...MouseFlags) {
 	var f MouseFlags
 	flagsPresent := false
 	for _, flag := range flags {
@@ -832,7 +898,7 @@ func (t *tScreen) EnableMouse(flags ...MouseFlags) {
 	t.Unlock()
 }
 
-func (t *tScreen) enableMouse(f MouseFlags) {
+func (t tScreen) enableMouse(f MouseFlags) {
 	// Rather than using terminfo to find mouse escape sequences, we rely on the fact that
 	// pretty much *every* terminal that supports mouse tracking follows the
 	// XTerm standards (the modern ones).
@@ -849,28 +915,28 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	}
 }
 
-func (t *tScreen) DisableMouse() {
+func (t tScreen) DisableMouse() {
 	t.Lock()
 	t.mouseFlags = 0
 	t.enableMouse(0)
 	t.Unlock()
 }
 
-func (t *tScreen) EnablePaste() {
+func (t tScreen) EnablePaste() {
 	t.Lock()
 	t.pasteEnabled = true
 	t.enablePasting(true)
 	t.Unlock()
 }
 
-func (t *tScreen) DisablePaste() {
+func (t tScreen) DisablePaste() {
 	t.Lock()
 	t.pasteEnabled = false
 	t.enablePasting(false)
 	t.Unlock()
 }
 
-func (t *tScreen) enablePasting(on bool) {
+func (t tScreen) enablePasting(on bool) {
 	var s string
 	if on {
 		s = t.enablePaste
@@ -882,30 +948,44 @@ func (t *tScreen) enablePasting(on bool) {
 	}
 }
 
-func (t *tScreen) Size() (int, int) {
+func (t tScreen) Size() (int, int) {
 	t.Lock()
-	w, h := t.w, t.h
-	t.Unlock()
-	return w, h
+	defer t.Unlock()
+
+	return t.w, t.h
 }
 
-func (t *tScreen) resize() {
-	if w, h, e := t.getWinSize(); e == nil {
-		if w != t.w || h != t.h {
-			t.cx = -1
-			t.cy = -1
+// PixelSize returns the pixel size of the terminal. It returns (0, 0) if the
+// information is not available.
+func (t tScreen) PixelSize() (int, int) {
+	t.Lock()
+	defer t.Unlock()
 
-			t.cells.Resize(w, h)
-			t.cells.Invalidate()
-			t.h = h
-			t.w = w
-			ev := NewEventResize(w, h)
-			_ = t.PostEvent(ev)
-		}
+	return t.xpx, t.ypx
+}
+
+func (t tScreen) resize(dispatch bool) {
+	if !t.updateScreenSize() {
+		return
+	}
+
+	t.cx = -1
+	t.cy = -1
+
+	t.cells.Resize(t.w, t.h)
+	t.cells.Invalidate()
+
+	if dispatch {
+		t.dispatchResizeEvent()
 	}
 }
 
-func (t *tScreen) Colors() int {
+func (t tScreen) dispatchResizeEvent() {
+	ev := NewEventResize(t.w, t.h)
+	_ = t.PostEvent(ev)
+}
+
+func (t tScreen) Colors() int {
 	// this doesn't change, no need for lock
 	if t.truecolor {
 		return 1 << 24
@@ -916,11 +996,11 @@ func (t *tScreen) Colors() int {
 // nColors returns the size of the built-in palette.
 // This is distinct from Colors(), as it will generally
 // always be a small number. (<= 256)
-func (t *tScreen) nColors() int {
+func (t tScreen) nColors() int {
 	return t.ti.Colors
 }
 
-func (t *tScreen) PollEvent() Event {
+func (t tScreen) PollEvent() Event {
 	select {
 	case <-t.quit:
 		return nil
@@ -980,7 +1060,7 @@ var vtACSNames = map[byte]rune{
 // alternate character encodings.  To do this, we use the standard VT100 ACS
 // maps.  This is only done if the terminal lacks support for Unicode; we
 // always prefer to emit Unicode glyphs when we are able.
-func (t *tScreen) buildAcsMap() {
+func (t tScreen) buildAcsMap() {
 	acsstr := t.ti.AltChars
 	t.acs = make(map[rune]string)
 	for len(acsstr) > 2 {
@@ -993,11 +1073,11 @@ func (t *tScreen) buildAcsMap() {
 	}
 }
 
-func (t *tScreen) PostEventWait(ev Event) {
+func (t tScreen) PostEventWait(ev Event) {
 	t.evch <- ev
 }
 
-func (t *tScreen) PostEvent(ev Event) error {
+func (t tScreen) PostEvent(ev Event) error {
 	select {
 	case t.evch <- ev:
 		return nil
@@ -1006,7 +1086,7 @@ func (t *tScreen) PostEvent(ev Event) error {
 	}
 }
 
-func (t *tScreen) clip(x, y int) (int, int) {
+func (t tScreen) clip(x, y int) (int, int) {
 	w, h := t.cells.Size()
 	if x < 0 {
 		x = 0
@@ -1026,7 +1106,7 @@ func (t *tScreen) clip(x, y int) (int, int) {
 // buildMouseEvent returns an event based on the supplied coordinates and button
 // state. Note that the screen's mouse button state is updated based on the
 // input to this function (i.e. it mutates the receiver).
-func (t *tScreen) buildMouseEvent(x, y, btn int) *EventMouse {
+func (t tScreen) buildMouseEvent(x, y, btn int) *EventMouse {
 
 	// XTerm mouse events only report at most one button at a time,
 	// which may include a wheel button.  Wheel motion events are
@@ -1090,7 +1170,7 @@ func (t *tScreen) buildMouseEvent(x, y, btn int) *EventMouse {
 // be removed from the buffer.  It returns true, false if the buffer might
 // contain such an event, but more bytes are necessary (partial match), and
 // false, false if the content is definitely *not* an SGR mouse record.
-func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
+func (t tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 
 	b := buf.Bytes()
 
@@ -1209,7 +1289,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 
 // parseXtermMouse is like parseSgrMouse, but it parses a legacy
 // X11 mouse record.
-func (t *tScreen) parseXtermMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
+func (t tScreen) parseXtermMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 
 	b := buf.Bytes()
 
@@ -1258,7 +1338,7 @@ func (t *tScreen) parseXtermMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) 
 	return true, false
 }
 
-func (t *tScreen) parseFunctionKey(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
+func (t tScreen) parseFunctionKey(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	b := buf.Bytes()
 	partial := false
 	for e, k := range t.keycodes {
@@ -1297,7 +1377,7 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer, evs *[]Event) (bool, bool)
 	return partial, false
 }
 
-func (t *tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
+func (t tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	b := buf.Bytes()
 	if b[0] >= ' ' && b[0] <= 0x7F {
 		// printable ASCII easy to deal with -- no encodings
@@ -1344,7 +1424,7 @@ func (t *tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	return true, false
 }
 
-func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
+func (t tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 	evs := t.collectEventsFromInput(buf, expire)
 
 	for _, ev := range evs {
@@ -1355,7 +1435,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 // Return an array of Events extracted from the supplied buffer. This is done
 // while holding the screen's lock - the events can then be queued for
 // application processing with the lock released.
-func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event {
+func (t tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event {
 
 	res := make([]Event, 0, 20)
 
@@ -1433,7 +1513,7 @@ func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event
 	return res
 }
 
-func (t *tScreen) mainLoop(stopQ chan struct{}) {
+func (t tScreen) mainLoop(stopQ chan struct{}) {
 	defer t.wg.Done()
 	buf := &bytes.Buffer{}
 	for {
@@ -1447,7 +1527,6 @@ func (t *tScreen) mainLoop(stopQ chan struct{}) {
 			t.cx = -1
 			t.cy = -1
 			t.resize()
-			t.cells.Invalidate()
 			t.draw()
 			t.Unlock()
 			continue
@@ -1488,7 +1567,7 @@ func (t *tScreen) mainLoop(stopQ chan struct{}) {
 	}
 }
 
-func (t *tScreen) inputLoop(stopQ chan struct{}) {
+func (t tScreen) inputLoop(stopQ chan struct{}) {
 
 	defer t.wg.Done()
 	for {
@@ -1511,7 +1590,7 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 	}
 }
 
-func (t *tScreen) Sync() {
+func (t tScreen) Sync() {
 	t.Lock()
 	t.cx = -1
 	t.cy = -1
@@ -1524,23 +1603,23 @@ func (t *tScreen) Sync() {
 	t.Unlock()
 }
 
-func (t *tScreen) CharacterSet() string {
+func (t tScreen) CharacterSet() string {
 	return t.charset
 }
 
-func (t *tScreen) RegisterRuneFallback(orig rune, fallback string) {
+func (t tScreen) RegisterRuneFallback(orig rune, fallback string) {
 	t.Lock()
 	t.fallback[orig] = fallback
 	t.Unlock()
 }
 
-func (t *tScreen) UnregisterRuneFallback(orig rune) {
+func (t tScreen) UnregisterRuneFallback(orig rune) {
 	t.Lock()
 	delete(t.fallback, orig)
 	t.Unlock()
 }
 
-func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
+func (t tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 
 	if enc := t.encoder; enc != nil {
 		nb := make([]byte, 6)
@@ -1567,25 +1646,24 @@ func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 	return false
 }
 
-func (t *tScreen) HasMouse() bool {
+func (t tScreen) HasMouse() bool {
 	return len(t.mouse) != 0
 }
 
-func (t *tScreen) HasKey(k Key) bool {
+func (t tScreen) HasKey(k Key) bool {
 	if k == KeyRune {
 		return true
 	}
 	return t.keyexist[k]
 }
 
-func (t *tScreen) Resize(int, int, int, int) {}
+func (t tScreen) Resize(int, int, int, int) {}
 
-
-func (t *tScreen) Suspend() error {
+func (t tScreen) Suspend() error {
 	t.disengage()
 	return nil
 }
 
-func (t *tScreen) Resume() error {
+func (t tScreen) Resume() error {
 	return t.engage()
 }
