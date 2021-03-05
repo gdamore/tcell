@@ -197,7 +197,7 @@ func (t tScreen) Init() error {
 	t.cells.Resize(w, h)
 	t.cursorx = -1
 	t.cursory = -1
-	t.resize()
+	t.resize(true)
 	t.Unlock()
 
 	if err := t.engage(); err != nil {
@@ -784,8 +784,9 @@ func (t tScreen) TPuts(s string) {
 func (t tScreen) Show() {
 	t.Lock()
 	if !t.fini {
-		t.resize()
+		t.resize(false)
 		t.draw()
+		t.dispatchResizeEvent()
 	}
 	t.Unlock()
 }
@@ -1526,8 +1527,9 @@ func (t tScreen) mainLoop(stopQ chan struct{}) {
 			t.Lock()
 			t.cx = -1
 			t.cy = -1
-			t.resize()
+			t.resize(false)
 			t.draw()
+			t.dispatchResizeEvent()
 			t.Unlock()
 			continue
 		case <-t.keytimer.C:
@@ -1595,10 +1597,11 @@ func (t tScreen) Sync() {
 	t.cx = -1
 	t.cy = -1
 	if !t.fini {
-		t.resize()
+		t.resize(false)
 		t.clear = true
 		t.cells.Invalidate()
 		t.draw()
+		t.dispatchResizeEvent()
 	}
 	t.Unlock()
 }
