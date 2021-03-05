@@ -51,7 +51,7 @@ Version 1.x remains available using the import `github.com/gdamore/tcell`.
 * https://github.com/jbaramidze/gonano[gonano] - CLI test editor
 * https://github.com/tmountain/uchess[uchess] - A UCI chess client for your terminal
 * https://github.com/a-h/min[min] - A Gemini browser
-* https://github.com/noborus/ov - Terminal pager
+* https://github.com/noborus/ov[ov] - Terminal pager
 
 == Pure Go Terminfo Database
 
