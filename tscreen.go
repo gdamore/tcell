@@ -825,7 +825,11 @@ func (t tScreen) draw() {
 
 	// call the interceptors with a clean buffer and call the after interceptors
 	// when we're done
-	t.interceptors.before(t, clearing)
+	interceptClear := t.interceptors.before(t, clearing)
+
+	if !clearing {
+		clearing = interceptClear
+	}
 
 	// clobber cursor position, because we're gonna change it all
 	t.cx = -1
@@ -855,7 +859,7 @@ func (t tScreen) draw() {
 	t.showCursor()
 
 	// call the interceptor before flushing the buffer
-	t.interceptors.after(t, clearing)
+	t.clear = t.interceptors.after(t, clearing)
 
 	_, _ = t.buf.WriteTo(t.out)
 }

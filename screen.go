@@ -243,17 +243,19 @@ const (
 
 // DrawInterceptFunc is the callback to intercept a draw. It is called when the
 // lock is acquired. Sync is true if the whole screen is about to be cleared, or
-// for after interceptors, after clearing.
+// for after interceptors, after clearing. If the callback returns true on
+// before, then the screen is cleared after the callback is done. If it's an
+// after, then the screen will be cleared on the next draw.
 //
 // The interceptor function must use the given screen instead of referencing the
 // existing screen from outside. This is done to prevent deadlocks.
-type DrawInterceptFunc func(s Screen, sync bool)
+type DrawInterceptFunc func(s Screen, sync bool) (clear bool)
 
 // DrawInterceptAdder is an interface that Screen can implement to add a draw
-// itnerceptor function. This interface could be used to draw custom SIXEL
+// interceptor function. This interface could be used to draw custom SIXEL
 // images as well as other raw terminal things.
 //
-// Implementations must call these functions before any state changes, or in teh
+// Implementations must call these functions before any state changes, or in the
 // case of After, after all state changes. For example, draw interceptors should
 // be called before the cursor is hidden, and the after interceptors should be
 // called after the cursor is shown and everything is drawn into the buffer (but

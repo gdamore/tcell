@@ -7,16 +7,18 @@ type interceptors struct {
 	afterFunc  DrawInterceptFunc
 }
 
-func (icepts interceptors) before(s Screen, sync bool) {
+func (icepts interceptors) before(s Screen, sync bool) bool {
 	if icepts.beforeFunc != nil {
-		icepts.beforeFunc(s, sync)
+		return icepts.beforeFunc(s, sync)
 	}
+	return false
 }
 
-func (icepts interceptors) after(s Screen, sync bool) {
+func (icepts interceptors) after(s Screen, sync bool) bool {
 	if icepts.afterFunc != nil {
-		icepts.afterFunc(s, sync)
+		return icepts.afterFunc(s, sync)
 	}
+	return false
 }
 
 // AddDrawIntercept wraps the existing draw intercept function with the given
@@ -36,9 +38,10 @@ func wrapDrawInterceptFunc(oldFn, newFn DrawInterceptFunc) DrawInterceptFunc {
 		return newFn
 	}
 
-	return func(s Screen, sync bool) {
-		newFn(s, sync)
-		oldFn(s, sync)
+	return func(s Screen, sync bool) bool {
+		a := newFn(s, sync)
+		b := oldFn(s, sync)
+		return a || b
 	}
 }
 
