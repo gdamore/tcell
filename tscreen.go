@@ -120,7 +120,8 @@ type tScreen struct {
 	wg           sync.WaitGroup
 	mouseFlags   MouseFlags
 	pasteEnabled bool
-
+	privateData  interface{}
+	
 	sync.Mutex
 }
 
