@@ -1299,7 +1299,7 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer, evs *[]Event) (bool, bool)
 
 func (t *tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	b := buf.Bytes()
-	if b[0] >= ' ' && b[0] <= 0x7F {
+	if b[0] >= ' ' && b[0] < 0x7F {
 		// printable ASCII easy to deal with -- no encodings
 		mod := ModNone
 		if t.escaped {
