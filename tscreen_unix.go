@@ -49,6 +49,7 @@ func (t *tScreen) engage() error {
 
 	ti := t.ti
 	t.TPuts(ti.EnterCA)
+	t.TPuts(ti.EnterKeypad)
 	t.TPuts(ti.HideCursor)
 	t.TPuts(ti.EnableAcs)
 	t.TPuts(ti.Clear)
