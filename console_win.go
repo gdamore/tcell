@@ -370,7 +370,7 @@ func (s *cScreen) PostEvent(ev Event) error {
 
 func (s *cScreen) PollEvent() Event {
 	select {
-	case <-s.quit:
+	case <-s.stopQ:
 		return nil
 	case ev := <-s.evch:
 		return ev
