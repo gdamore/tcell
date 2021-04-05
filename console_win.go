@@ -265,6 +265,13 @@ func (s *cScreen) Fini() {
 	s.disengage()
 }
 
+func (s *cScreen) End() {
+	s.showCursor()
+	procSetConsoleTextAttribute.Call(
+		uintptr(s.out), uintptr(s.mapStyle(StyleDefault)),
+	)
+}
+
 func (s *cScreen) finish() {
 	s.Lock()
 	s.style = StyleDefault

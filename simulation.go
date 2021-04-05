@@ -151,6 +151,8 @@ func (s *simscreen) Fini() {
 	s.front = nil
 }
 
+func (s *simscreen) End() {}
+
 func (s *simscreen) SetStyle(style Style) {
 	s.Lock()
 	s.style = style

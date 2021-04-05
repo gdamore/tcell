@@ -24,6 +24,10 @@ type Screen interface {
 	// Fini finalizes the screen also releasing resources.
 	Fini()
 
+	// End sets default style and shows the cursor, without clearing the
+	// screen.
+	End()
+
 	// Clear erases the screen.  The contents of any screen buffers
 	// will also be cleared.  This has the logical effect of
 	// filling the screen with spaces, using the global default style.

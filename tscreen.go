@@ -473,6 +473,8 @@ func (t *tScreen) Fini() {
 	t.finiOnce.Do(t.finish)
 }
 
+func (t *tScreen) End() {}
+
 func (t *tScreen) finish() {
 	close(t.quit)
 	t.finalize()
