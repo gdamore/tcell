@@ -122,7 +122,7 @@ func enosys() js.Error {
 		fitAddon.fit()
 	}
 	window.onresize = resizeFit
-	
+
 	const go = new Go();
 	go.env.TERM = "xterm-256color";
 	WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
@@ -187,13 +187,13 @@ func (t *tScreen) initialize() error {
 					fd := args[0].Int()
 					// If we aren't reading stdin, we can't
 					if fd != 0 {
-						args[5].Invoke(enosys(), 0, js.Null())
+						args[5].Invoke(enosys(), 0)
 						return
 					}
 					// The default implementation errors if we try to do anything fancy.
 					length := args[1].Length()
 					if args[2].Int() != 0 || args[3].Int() != length || !args[4].Equal(js.Null()) {
-						args[5].Invoke(enosys(), 0, js.Null())
+						args[5].Invoke(enosys(), 0)
 						return
 					}
 					// Just in case of concurrent reads
@@ -213,7 +213,7 @@ func (t *tScreen) initialize() error {
 					// Copy into the buffer argument
 					js.CopyBytesToJS(args[1], inBuf)
 					inBuf = inBuf[length:]
-					args[5].Invoke(js.Null(), length, args[1])
+					args[5].Invoke(js.Null(), length)
 				}()
 				return nil
 			}))
