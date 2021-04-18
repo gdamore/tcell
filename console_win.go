@@ -312,6 +312,7 @@ func (s *cScreen) disengage() {
 	s.setBufferSize(int(s.oscreen.size.x), int(s.oscreen.size.y))
 	s.clearScreen(StyleDefault, false)
 	s.setCursorPos(0, 0, false)
+	s.setCursorInfo(&s.ocursor)
 	procSetConsoleTextAttribute.Call(
 		uintptr(s.out),
 		uintptr(s.mapStyle(StyleDefault)))
