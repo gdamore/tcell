@@ -34,10 +34,10 @@ func (t *tScreen) engage() error {
 	if t.stopQ != nil {
 		return errors.New("already engaged")
 	}
-	if _, err := term.MakeRaw(int(t.in.Fd())); err != nil {
+	if _, err := term.MakeRaw(t.inFd); err != nil {
 		return err
 	}
-	if w, h, err := term.GetSize(int(t.in.Fd())); err == nil && w != 0 && h != 0 {
+	if w, h, err := term.GetSize(t.inFd); err == nil && w != 0 && h != 0 {
 		t.cells.Resize(w, h)
 	}
 	stopQ := make(chan struct{})
@@ -93,7 +93,7 @@ func (t *tScreen) disengage() {
 	t.enablePasting(false)
 
 	// restore the termios that we were started with
-	_ = term.Restore(int(t.in.Fd()), t.saved)
+	_ = term.Restore(t.inFd, t.saved)
 
 }
 
@@ -102,15 +102,19 @@ func (t *tScreen) disengage() {
 // so that it can be restored when the application terminates.
 func (t *tScreen) initialize() error {
 	var err error
+	t.inFd, err = syscall.Open("/dev/tty", syscall.O_RDONLY|syscall.O_NONBLOCK, 0644)
+	if err != nil {
+		return err
+	}
+	t.in = os.NewFile(uintptr(t.inFd), "/dev/tty")
+
 	t.out = os.Stdout
-	if t.in, err = os.Open("/dev/tty"); err != nil {
+
+	t.saved, err = term.GetState(t.inFd)
+	if err != nil {
 		return err
 	}
 
-	t.saved, err = term.GetState(int(t.in.Fd()))
-	if err == nil {
-		return nil
-	}
 	return nil
 }
 
@@ -123,7 +127,7 @@ func (t *tScreen) finalize() {
 
 // getWinSize is called to obtain the terminal dimensions.
 func (t *tScreen) getWinSize() (int, int, error) {
-	return term.GetSize(int(t.in.Fd()))
+	return term.GetSize(t.inFd)
 }
 
 // Beep emits a beep to the terminal.

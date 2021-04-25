@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"strconv"
@@ -82,6 +83,7 @@ type tScreen struct {
 	fini         bool
 	cells        CellBuffer
 	in           *os.File
+	inFd         int
 	out          *os.File
 	buffering    bool // true if we are collecting writes to buf instead of sending directly to out
 	buf          bytes.Buffer
@@ -1484,20 +1486,29 @@ func (t *tScreen) mainLoop(stopQ chan struct{}) {
 }
 
 func (t *tScreen) inputLoop(stopQ chan struct{}) {
-
 	defer t.wg.Done()
+	var (
+		n   int
+		err error
+	)
 	for {
 		select {
 		case <-stopQ:
 			return
 		default:
 		}
+
+		err = t.in.SetReadDeadline(time.Now().Add(250 * time.Millisecond))
+		if err != nil {
+			panic(err)
+		}
+
 		chunk := make([]byte, 128)
-		n, e := t.in.Read(chunk)
-		switch e {
-		case nil:
-		default:
-			_ = t.PostEvent(NewEventError(e))
+		n, err = t.in.Read(chunk)
+		if errors.Is(err, os.ErrDeadlineExceeded) {
+			continue
+		} else if err != nil {
+			_ = t.PostEvent(NewEventError(err))
 			return
 		}
 		if n > 0 {
@@ -1574,7 +1585,6 @@ func (t *tScreen) HasKey(k Key) bool {
 }
 
 func (t *tScreen) Resize(int, int, int, int) {}
-
 
 func (t *tScreen) Suspend() error {
 	t.disengage()

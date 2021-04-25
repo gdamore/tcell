@@ -30,8 +30,7 @@ import (
 // that loop.  Normally we use VMIN 1 and VTIME 0, which ensures we pick up bytes when
 // they come but don't spin burning cycles.
 func (t *tScreen) nonBlocking(on bool) {
-	fd := int(os.Stdin.Fd())
-	tio, err := unix.IoctlGetTermios(fd, unix.TIOCGETA)
+	tio, err := unix.IoctlGetTermios(t.inFd, unix.TIOCGETA)
 	if err != nil {
 		return
 	}
@@ -44,7 +43,7 @@ func (t *tScreen) nonBlocking(on bool) {
 		tio.Cc[unix.VMIN] = 1
 	}
 
-	_ = syscall.SetNonblock(fd, on)
+	_ = syscall.SetNonblock(t.inFd, on)
 	// We want to set this *right now*.
-	_ = unix.IoctlSetTermios(fd, unix.TIOCSETA, tio)
+	_ = unix.IoctlSetTermios(t.inFd, unix.TIOCSETA, tio)
 }
