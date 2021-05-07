@@ -47,6 +47,13 @@ func (t *tScreen) engage() error {
 	t.enablePasting(t.pasteEnabled)
 	signal.Notify(t.sigwinch, syscall.SIGWINCH)
 
+	ti := t.ti
+	t.TPuts(ti.EnterCA)
+	t.TPuts(ti.EnterKeypad)
+	t.TPuts(ti.HideCursor)
+	t.TPuts(ti.EnableAcs)
+	t.TPuts(ti.Clear)
+
 	t.wg.Add(2)
 	go t.inputLoop(stopQ)
 	go t.mainLoop(stopQ)
@@ -96,10 +103,13 @@ func (t *tScreen) disengage() {
 func (t *tScreen) initialize() error {
 	var err error
 	t.out = os.Stdout
-	t.in = os.Stdin
-	t.saved, err = term.GetState(int(os.Stdin.Fd()))
-	if err != nil {
+	if t.in, err = os.Open("/dev/tty"); err != nil {
 		return err
+	}
+
+	t.saved, err = term.GetState(int(t.in.Fd()))
+	if err == nil {
+		return nil
 	}
 	return nil
 }
