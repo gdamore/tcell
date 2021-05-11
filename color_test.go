@@ -15,6 +15,7 @@
 package tcell
 
 import (
+	ic "image/color"
 	"testing"
 )
 
@@ -108,5 +109,21 @@ func TestColorRGB(t *testing.T) {
 	r, g, b := GetColor("#112233").RGB()
 	if r != 0x11 || g != 0x22 || b != 0x33 {
 		t.Errorf("RGB wrong (%x, %x, %x)", r, g, b)
+	}
+}
+
+func TestFromImageColor(t *testing.T) {
+	red := ic.RGBA{0xFF, 0x00, 0x00, 0x00}
+	white := ic.Gray{0xFF}
+	cyan := ic.CMYK{0xFF, 0x00, 0x00, 0x00}
+
+	if hex := FromImageColor(red).Hex(); hex != 0xFF0000 {
+		t.Errorf("%v is not 0xFF0000", hex)
+	}
+	if hex := FromImageColor(white).Hex(); hex != 0xFFFFFF {
+		t.Errorf("%v is not 0xFFFFFF", hex)
+	}
+	if hex := FromImageColor(cyan).Hex(); hex != 0x00FFFF {
+		t.Errorf("%v is not 0x00FFFF", hex)
 	}
 }

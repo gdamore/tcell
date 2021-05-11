@@ -14,7 +14,10 @@
 
 package tcell
 
-import "strconv"
+import (
+	ic "image/color"
+	"strconv"
+)
 
 // Color represents a color.  The low numeric values are the same as used
 // by ECMA-48, and beyond that XTerm.  A 24-bit RGB value may be used by
@@ -1066,4 +1069,13 @@ func GetColor(name string) Color {
 // PaletteColor creates a color based on the palette index.
 func PaletteColor(index int) Color {
 	return Color(index) | ColorValid
+}
+
+// FromImageColor converts an image/color.Color into tcell.Color.
+// The alpha value is dropped, so it should be tracked separately if it is
+// needed.
+func FromImageColor(imageColor ic.Color) Color {
+	r, g, b, _ := imageColor.RGBA()
+	// NOTE image/color.Color RGB values range is [0, 0xFFFF] as uint32
+	return NewRGBColor(int32(r>>8), int32(g>>8), int32(b>>8))
 }
