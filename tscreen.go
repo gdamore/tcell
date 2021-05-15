@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"strconv"
@@ -42,6 +43,14 @@ import (
 // $COLUMNS environment variables can be set to the actual window size,
 // otherwise defaults taken from the terminal database are used.
 func NewTerminfoScreen() (Screen, error) {
+	return NewTerminfoScreenFromTty(nil)
+}
+
+// NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
+// If the passed in tty is nil, then a reasonable default (typically /dev/tty)
+// is presumed, at least on UNIX hosts. (Windows hosts will typically fail this
+// call altogether.)
+func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
 	ti, e := terminfo.LookupTerminfo(os.Getenv("TERM"))
 	if e != nil {
 		ti, e = loadDynamicTerminfo(os.Getenv("TERM"))
@@ -50,7 +59,7 @@ func NewTerminfoScreen() (Screen, error) {
 		}
 		terminfo.AddTerminfo(ti)
 	}
-	t := &tScreen{ti: ti}
+	t := &tScreen{ti: ti, tty: tty}
 
 	t.keyexist = make(map[Key]bool)
 	t.keycodes = make(map[string]*tKeyCode)
@@ -77,12 +86,11 @@ type tKeyCode struct {
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
 	ti           *terminfo.Terminfo
+	tty          Tty
 	h            int
 	w            int
 	fini         bool
 	cells        CellBuffer
-	in           *os.File
-	out          *os.File
 	buffering    bool // true if we are collecting writes to buf instead of sending directly to out
 	buf          bytes.Buffer
 	curstyle     Style
@@ -731,7 +739,7 @@ func (t *tScreen) writeString(s string) {
 	if t.buffering {
 		_, _ = io.WriteString(&t.buf, s)
 	} else {
-		_, _ = io.WriteString(t.out, s)
+		_, _ = io.WriteString(t.tty, s)
 	}
 }
 
@@ -739,7 +747,7 @@ func (t *tScreen) TPuts(s string) {
 	if t.buffering {
 		t.ti.TPuts(&t.buf, s)
 	} else {
-		t.ti.TPuts(t.out, s)
+		t.ti.TPuts(t.tty, s)
 	}
 }
 
@@ -807,7 +815,7 @@ func (t *tScreen) draw() {
 	// restore the cursor
 	t.showCursor()
 
-	_, _ = t.buf.WriteTo(t.out)
+	_, _ = t.buf.WriteTo(t.tty)
 }
 
 func (t *tScreen) EnableMouse(flags ...MouseFlags) {
@@ -885,7 +893,7 @@ func (t *tScreen) Size() (int, int) {
 }
 
 func (t *tScreen) resize() {
-	if w, h, e := t.getWinSize(); e == nil {
+	if w, h, e := t.tty.WindowSize(); e == nil {
 		if w != t.w || h != t.h {
 			t.cx = -1
 			t.cy = -1
@@ -1493,7 +1501,7 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 		default:
 		}
 		chunk := make([]byte, 128)
-		n, e := t.in.Read(chunk)
+		n, e := t.tty.Read(chunk)
 		switch e {
 		case nil:
 		default:
@@ -1575,7 +1583,6 @@ func (t *tScreen) HasKey(k Key) bool {
 
 func (t *tScreen) Resize(int, int, int, int) {}
 
-
 func (t *tScreen) Suspend() error {
 	t.disengage()
 	return nil
@@ -1583,4 +1590,83 @@ func (t *tScreen) Suspend() error {
 
 func (t *tScreen) Resume() error {
 	return t.engage()
+}
+
+// engage is used to place the terminal in raw mode and establish screen size, etc.
+// Thing of this is as tcell "engaging" the clutch, as it's going to be driving the
+// terminal interface.
+func (t *tScreen) engage() error {
+	t.Lock()
+	defer t.Unlock()
+	if t.tty == nil {
+		return ErrNoScreen
+	}
+	if t.stopQ != nil {
+		return errors.New("already engaged")
+	}
+	if err := t.tty.Start(); err != nil {
+		return err
+	}
+	if w, h, err := t.tty.WindowSize(); err == nil && w != 0 && h != 0 {
+		t.cells.Resize(w, h)
+	}
+	stopQ := make(chan struct{})
+	t.stopQ = stopQ
+	t.enableMouse(t.mouseFlags)
+	t.enablePasting(t.pasteEnabled)
+
+	ti := t.ti
+	t.TPuts(ti.EnterCA)
+	t.TPuts(ti.EnterKeypad)
+	t.TPuts(ti.HideCursor)
+	t.TPuts(ti.EnableAcs)
+	t.TPuts(ti.Clear)
+
+	t.wg.Add(2)
+	go t.inputLoop(stopQ)
+	go t.mainLoop(stopQ)
+	return nil
+}
+
+// disengage is used to release the terminal back to support from the caller.
+// Think of this as tcell disengaging the clutch, so that another application
+// can take over the terminal interface.  This restores the TTY mode that was
+// present when the application was first started.
+func (t *tScreen) disengage() {
+
+	t.Lock()
+	stopQ := t.stopQ
+	t.stopQ = nil
+	close(stopQ)
+	_ = t.tty.Drain()
+	t.Unlock()
+
+	// wait for everything to shut down
+	t.wg.Wait()
+
+	// shutdown the screen and disable special modes (e.g. mouse and bracketed paste)
+	ti := t.ti
+	t.cells.Resize(0, 0)
+	t.TPuts(ti.ShowCursor)
+	t.TPuts(ti.AttrOff)
+	t.TPuts(ti.Clear)
+	t.TPuts(ti.ExitCA)
+	t.TPuts(ti.ExitKeypad)
+	t.enableMouse(0)
+	t.enablePasting(false)
+
+	_ = t.tty.Stop()
+}
+
+// Beep emits a beep to the terminal.
+func (t *tScreen) Beep() error {
+	t.writeString(string(byte(7)))
+	return nil
+}
+
+// finalize is used to at application shutdown, and restores the terminal
+// to it's initial state.  It should not be called more than once.
+func (t *tScreen) finalize() {
+	t.disengage()
+	_ = t.tty.Close()
 }
