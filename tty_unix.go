@@ -93,7 +93,9 @@ func (tty *devTty) Start() error {
 				tty.l.Lock()
 				cb := tty.cb
 				tty.l.Unlock()
-				cb()
+				if cb != nil {
+					cb()
+				}
 			case <-stopQ:
 				return
 			}

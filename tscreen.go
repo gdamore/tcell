@@ -68,7 +68,7 @@ func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
 	}
 	t.prepareKeys()
 	t.buildAcsMap()
-	t.sigwinch = make(chan os.Signal, 10)
+	t.resizeQ = make(chan bool, 1)
 	t.fallback = make(map[rune]string)
 	for k, v := range RuneFallbacks {
 		t.fallback[k] = v
@@ -96,7 +96,7 @@ type tScreen struct {
 	curstyle     Style
 	style        Style
 	evch         chan Event
-	sigwinch     chan os.Signal
+	resizeQ      chan bool
 	quit         chan struct{}
 	keyexist     map[Key]bool
 	keycodes     map[string]*tKeyCode
@@ -937,7 +937,6 @@ func (t *tScreen) HasPendingEvent() bool {
 	return len(t.evch) > 0
 }
 
-
 // vtACSNames is a map of bytes defined by terminfo that are used in
 // the terminals Alternate Character Set to represent other glyphs.
 // For example, the upper left corner of the box drawing set can be
@@ -1451,7 +1450,7 @@ func (t *tScreen) mainLoop(stopQ chan struct{}) {
 			return
 		case <-t.quit:
 			return
-		case <-t.sigwinch:
+		case <-t.resizeQ:
 			t.Lock()
 			t.cx = -1
 			t.cy = -1
@@ -1607,6 +1606,12 @@ func (t *tScreen) engage() error {
 	if t.tty == nil {
 		return ErrNoScreen
 	}
+	t.tty.NotifyResize(func() {
+		select {
+		case t.resizeQ <- true:
+		default:
+		}
+	})
 	if t.running {
 		return errors.New("already engaged")
 	}
@@ -1652,6 +1657,7 @@ func (t *tScreen) disengage() {
 	_ = t.tty.Drain()
 	t.Unlock()
 
+	t.tty.NotifyResize(nil)
 	// wait for everything to shut down
 	t.wg.Wait()
 
