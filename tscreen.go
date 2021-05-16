@@ -933,6 +933,11 @@ func (t *tScreen) PollEvent() Event {
 	}
 }
 
+func (t *tScreen) HasPendingEvent() bool {
+	return len(t.evch) > 0
+}
+
+
 // vtACSNames is a map of bytes defined by terminfo that are used in
 // the terminals Alternate Character Set to represent other glyphs.
 // For example, the upper left corner of the box drawing set can be

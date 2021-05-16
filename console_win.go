@@ -352,6 +352,10 @@ func (s *cScreen) PollEvent() Event {
 	}
 }
 
+func (s *cScreen) HasPendingEvent() bool {
+	return len(s.evch) > 0
+}
+
 type cursorInfo struct {
 	size    uint32
 	visible uint32
