@@ -88,6 +88,12 @@ type Screen interface {
 	// is dropped, and ErrEventQFull is returned.
 	PostEvent(ev Event) error
 
+	// ChannelEvents is an infinite loop that waits for an event and
+	// channels it into the user provided channel. The channel is
+	// closed and the function returns when Fini() is called. This
+	// function should be used as a goroutine.
+	ChannelEvents(ch chan Event)
+
 	// Deprecated: PostEventWait is unsafe, and will be removed
 	// in the future.
 	//

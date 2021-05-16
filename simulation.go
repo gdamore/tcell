@@ -360,6 +360,18 @@ func (s *simscreen) PollEvent() Event {
 	}
 }
 
+func (s *simscreen) ChannelEvents(ch chan Event) {
+	for {
+		select {
+		case <-s.quit:
+			close(ch)
+			return
+		case ev := <-s.evch:
+			ch <- ev
+		}
+	}
+}
+
 func (s *simscreen) PostEventWait(ev Event) {
 	s.evch <- ev
 }

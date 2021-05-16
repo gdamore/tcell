@@ -350,6 +350,18 @@ func (s *cScreen) PollEvent() Event {
 	}
 }
 
+func (s *cScreen) ChannelEvents(ch chan Event) {
+	for {
+		select {
+		case <-s.stopQ:
+			close(ch)
+			return
+		case ev := <-s.evch:
+			ch <- ev
+		}
+	}
+}
+
 type cursorInfo struct {
 	size    uint32
 	visible uint32

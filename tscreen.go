@@ -924,6 +924,18 @@ func (t *tScreen) PollEvent() Event {
 	}
 }
 
+func (t *tScreen) ChannelEvents(ch chan Event) {
+	for {
+		select {
+		case <-t.quit:
+			close(ch)
+			return
+		case ev := <-t.evch:
+			ch <- ev
+		}
+	}
+}
+
 // vtACSNames is a map of bytes defined by terminfo that are used in
 // the terminals Alternate Character Set to represent other glyphs.
 // For example, the upper left corner of the box drawing set can be
@@ -1574,7 +1586,6 @@ func (t *tScreen) HasKey(k Key) bool {
 }
 
 func (t *tScreen) Resize(int, int, int, int) {}
-
 
 func (t *tScreen) Suspend() error {
 	t.disengage()
