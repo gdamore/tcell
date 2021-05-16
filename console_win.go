@@ -41,6 +41,7 @@ type cScreen struct {
 	fini       bool
 	vten       bool
 	truecolor  bool
+	running    bool
 
 	w int
 	h int
@@ -267,12 +268,12 @@ func (s *cScreen) Fini() {
 
 func (s *cScreen) disengage() {
 	s.Lock()
-	stopQ := s.stopQ
-	if stopQ == nil {
+	if !s.running {
 		s.Unlock()
 		return
 	}
-	s.stopQ = nil
+	s.running = false
+	stopQ := s.stopQ
 	procSetEvent.Call(uintptr(s.cancelflag))
 	close(stopQ)
 	s.Unlock()
@@ -293,7 +294,7 @@ func (s *cScreen) disengage() {
 func (s *cScreen) engage() error {
 	s.Lock()
 	defer s.Unlock()
-	if s.stopQ != nil {
+	if s.running {
 		return errors.New("already engaged")
 	}
 	s.stopQ = make(chan struct{})
@@ -305,6 +306,7 @@ func (s *cScreen) engage() error {
 	if cf == uintptr(0) {
 		return e
 	}
+	s.running = true
 	s.cancelflag = syscall.Handle(cf)
 	s.enableMouse(s.mouseEnabled)
 

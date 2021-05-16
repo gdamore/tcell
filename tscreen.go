@@ -125,6 +125,7 @@ type tScreen struct {
 	disablePaste string
 	saved        *term.State
 	stopQ        chan struct{}
+	running      bool
 	wg           sync.WaitGroup
 	mouseFlags   MouseFlags
 	pasteEnabled bool
@@ -1601,12 +1602,13 @@ func (t *tScreen) engage() error {
 	if t.tty == nil {
 		return ErrNoScreen
 	}
-	if t.stopQ != nil {
+	if t.running {
 		return errors.New("already engaged")
 	}
 	if err := t.tty.Start(); err != nil {
 		return err
 	}
+	t.running = true
 	if w, h, err := t.tty.WindowSize(); err == nil && w != 0 && h != 0 {
 		t.cells.Resize(w, h)
 	}
@@ -1635,8 +1637,12 @@ func (t *tScreen) engage() error {
 func (t *tScreen) disengage() {
 
 	t.Lock()
+	if !t.running {
+		t.Unlock()
+		return
+	}
+	t.running = false
 	stopQ := t.stopQ
-	t.stopQ = nil
 	close(stopQ)
 	_ = t.tty.Drain()
 	t.Unlock()
