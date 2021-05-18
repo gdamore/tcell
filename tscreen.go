@@ -933,9 +933,12 @@ func (t *tScreen) PollEvent() Event {
 	}
 }
 
-func (t *tScreen) ChannelEvents(ch chan Event) {
+func (t *tScreen) ChannelEvents(ch chan Event, quit chan struct{}) {
 	for {
 		select {
+		case <-quit:
+			close(ch)
+			return
 		case <-t.quit:
 			close(ch)
 			return

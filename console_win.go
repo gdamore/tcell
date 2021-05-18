@@ -352,9 +352,12 @@ func (s *cScreen) PollEvent() Event {
 	}
 }
 
-func (s *cScreen) ChannelEvents(ch chan Event) {
+func (s *cScreen) ChannelEvents(ch chan Event, quit chan struct{}) {
 	for {
 		select {
+		case <-quit:
+			close(ch)
+			return
 		case <-s.stopQ:
 			close(ch)
 			return

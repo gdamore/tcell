@@ -360,9 +360,12 @@ func (s *simscreen) PollEvent() Event {
 	}
 }
 
-func (s *simscreen) ChannelEvents(ch chan Event) {
+func (s *simscreen) ChannelEvents(ch chan Event, quit chan struct{}) {
 	for {
 		select {
+		case <-quit:
+			close(ch)
+			return
 		case <-s.quit:
 			close(ch)
 			return
