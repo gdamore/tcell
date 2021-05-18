@@ -366,8 +366,7 @@ func (s *simscreen) ChannelEvents(ch chan Event) {
 		case <-s.quit:
 			close(ch)
 			return
-		case ev := <-s.evch:
-			ch <- ev
+		case ch <- (<-s.evch):
 		}
 	}
 }

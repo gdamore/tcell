@@ -356,8 +356,7 @@ func (s *cScreen) ChannelEvents(ch chan Event) {
 		case <-s.stopQ:
 			close(ch)
 			return
-		case ev := <-s.evch:
-			ch <- ev
+		case ch <- (<-s.evch):
 		}
 	}
 }

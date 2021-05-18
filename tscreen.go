@@ -930,8 +930,7 @@ func (t *tScreen) ChannelEvents(ch chan Event) {
 		case <-t.quit:
 			close(ch)
 			return
-		case ev := <-t.evch:
-			ch <- ev
+		case ch <- (<-t.evch):
 		}
 	}
 }
