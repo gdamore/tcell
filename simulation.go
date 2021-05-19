@@ -369,7 +369,16 @@ func (s *simscreen) ChannelEvents(ch chan Event, quit chan struct{}) {
 		case <-s.quit:
 			close(ch)
 			return
-		case ch <- (<-s.evch):
+		case ev := <-s.evch:
+			select {
+			case <-quit:
+				close(ch)
+				return
+			case <-s.quit:
+				close(ch)
+				return
+			case ch <- ev:
+			}
 		}
 	}
 }
