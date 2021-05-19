@@ -238,6 +238,8 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.SetCursor = tc.getstr("cup")
 	t.CursorBack1 = tc.getstr("cub1")
 	t.CursorUp1 = tc.getstr("cuu1")
+	t.InsertChar = tc.getstr("ich1")
+	t.AutoMargin = tc.getflag("am")
 	t.KeyF1 = tc.getstr("kf1")
 	t.KeyF2 = tc.getstr("kf2")
 	t.KeyF3 = tc.getstr("kf3")
@@ -605,6 +607,8 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "KeyCtrlEnd", t.KeyCtrlEnd)
 		dotGoAddInt(w, "Modifiers", t.Modifiers)
 		dotGoAddFlag(w, "TrueColor", t.TrueColor)
+		dotGoAddFlag(w, "AutoMargin", t.AutoMargin)
+		dotGoAddStr(w, "InsertChar", t.InsertChar)
 		fmt.Fprintln(w, "\t})")
 	}
 	fmt.Fprintln(w, "}")

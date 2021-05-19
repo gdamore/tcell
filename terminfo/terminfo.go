@@ -1,4 +1,5 @@
 // Copyright 2020 The TCell Authors
+// Copyright 2020 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -217,7 +218,9 @@ type Terminfo struct {
 	PasteStart      string
 	PasteEnd        string
 	Modifiers       int
-	TrueColor       bool // true if the terminal supports direct color
+	InsertChar      string // string to insert a character (ich1)
+	AutoMargin      bool   // true if writing to last cell in line advances
+	TrueColor       bool   // true if the terminal supports direct color
 }
 
 const (

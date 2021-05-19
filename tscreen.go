@@ -628,7 +628,24 @@ func (t *tScreen) drawCell(x, y int) int {
 		return width
 	}
 
-	if t.cy != y || t.cx != x {
+	if y == t.h-1 && x == t.w-1 && t.ti.AutoMargin && ti.InsertChar != "" {
+		// our solution is somewhat goofy.
+		// we write to the second to the last cell what we want in the last cell, then we
+		// insert a character at that 2nd to last position to shift the last column into
+		// place, then we rewrite that 2nd to last cell.  Old terminals suck.
+		t.TPuts(ti.TGoto(x-1, y))
+		defer func() {
+			t.TPuts(ti.TGoto(x-1, y))
+			t.TPuts(ti.InsertChar)
+			t.cy = y
+			t.cx = x-1
+			t.cells.SetDirty(x-1, y, true)
+			_ = t.drawCell(x-1, y)
+			t.TPuts(t.ti.TGoto(0, 0))
+			t.cy = 0
+			t.cx = 0
+		}()
+	} else if t.cy != y || t.cx != x {
 		t.TPuts(ti.TGoto(x, y))
 		t.cx = x
 		t.cy = y

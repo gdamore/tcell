@@ -43,6 +43,8 @@ func init() {
 		KeyF10:       "\x1b[233z",
 		KeyF11:       "\x1b[234z",
 		KeyF12:       "\x1b[235z",
+		AutoMargin:   true,
+		InsertChar:   "\x1b[@",
 	})
 
 	// Sun Microsystems Workstation console with color support (IA systems)
@@ -87,5 +89,7 @@ func init() {
 		KeyF10:       "\x1b[233z",
 		KeyF11:       "\x1b[234z",
 		KeyF12:       "\x1b[235z",
+		AutoMargin:   true,
+		InsertChar:   "\x1b[@",
 	})
 }
