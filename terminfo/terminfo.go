@@ -742,6 +742,7 @@ func LookupTerminfo(name string) (*Terminfo, error) {
 	}
 
 	addtruecolor := false
+	add256color := false
 	switch os.Getenv("COLORTERM") {
 	case "truecolor", "24bit", "24-bit":
 		addtruecolor = true
@@ -766,6 +767,21 @@ func LookupTerminfo(name string) (*Terminfo, error) {
 		for _, s := range suffixes {
 			if t, _ = LookupTerminfo(base + s); t != nil {
 				addtruecolor = true
+				break
+			}
+		}
+	}
+
+	// If the name ends in -256color, maybe fabricate using the xterm 256 color sequences
+	if t == nil && strings.HasSuffix(name, "-256color") {
+		suffixes := []string{
+			"-88color",
+			"-color",
+		}
+		base := name[:len(name)-len("-256color")]
+		for _, s := range suffixes {
+			if t, _ = LookupTerminfo(base + s); t != nil {
+				add256color = true
 				break
 			}
 		}
@@ -798,5 +814,12 @@ func LookupTerminfo(name string) (*Terminfo, error) {
 			"48;2;%p4%d;%p5%d;%p6%dm"
 	}
 
+	if add256color {
+		t.Colors = 256
+		t.SetFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"
+		t.SetBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m"
+		t.SetFgBg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;;%?%p2%{8}%<%t4%p2%d%e%p2%{16}%<%t10%p2%{8}%-%d%e48;5;%p2%d%;m"
+		t.ResetFgBg = "\x1b[39;49m"
+	}
 	return t, nil
 }
