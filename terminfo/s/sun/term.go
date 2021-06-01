@@ -1,4 +1,22 @@
-// Generated automatically.  DO NOT HAND-EDIT.
+// Copyright 2021 The TCell Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use file except in compliance with the License.
+// You may obtain a copy of the license at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This terminal definition is hand-coded, as the default terminfo for
+// this terminal is busted with respect to color.  Unlike pretty much every
+// other ANSI compliant terminal, this terminal cannot combine foreground and
+// background escapes.  The default terminfo also only provides escapes for
+// 16-bit color.
 
 package sun
 
@@ -58,9 +76,8 @@ func init() {
 		AttrOff:      "\x1b[m",
 		Bold:         "\x1b[1m",
 		Reverse:      "\x1b[7m",
-		SetFg:        "\x1b[3%p1%dm",
-		SetBg:        "\x1b[4%p1%dm",
-		SetFgBg:      "\x1b[3%p1%d;4%p2%dm",
+		SetFg:        "\x1b[38;5;%p1%dm",
+		SetBg:        "\x1b[48;5;%p1%dm",
 		ResetFgBg:    "\x1b[0m",
 		PadChar:      "\x00",
 		SetCursor:    "\x1b[%i%p1%d;%p2%dH",
