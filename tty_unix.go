@@ -37,6 +37,7 @@ type devTty struct {
 	sig   chan os.Signal
 	cb    func()
 	stopQ chan struct{}
+	dev   string
 	wg    sync.WaitGroup
 	l     sync.Mutex
 }
@@ -67,7 +68,7 @@ func (tty *devTty) Start() error {
 	// we will have up to two separate file handles open on /dev/tty.  (Note that when
 	// using stdin/stdout instead of /dev/tty this problem is not observed.)
 	var err error
-	if tty.f, err = os.OpenFile("/dev/tty", os.O_RDWR, 0); err != nil {
+	if tty.f, err = os.OpenFile(tty.dev, os.O_RDWR, 0); err != nil {
 		return err
 	}
 	tty.fd = int(tty.of.Fd())
@@ -144,12 +145,19 @@ func (tty *devTty) NotifyResize(cb func()) {
 	tty.l.Unlock()
 }
 
+// NewDevTty opens a /dev/tty based Tty.
 func NewDevTty() (Tty, error) {
+	return NewDevTtyFromDev("/dev/tty")
+}
+
+// NewDevTtyFromDev opens a tty device given a path.  This can be useful to bind to other nodes.
+func NewDevTtyFromDev(dev string) (Tty, error) {
 	tty := &devTty{
+		dev: dev,
 		sig: make(chan os.Signal),
 	}
 	var err error
-	if tty.of, err = os.OpenFile("/dev/tty", os.O_RDWR, 0); err != nil {
+	if tty.of, err = os.OpenFile(dev, os.O_RDWR, 0); err != nil {
 		return nil, err
 	}
 	tty.fd = int(tty.of.Fd())
