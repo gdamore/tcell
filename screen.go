@@ -78,6 +78,12 @@ type Screen interface {
 	// response to a call to Clear or Flush.
 	Size() (int, int)
 
+	// ChannelEvents is an infinite loop that waits for an event and
+	// channels it into the user provided channel. When Fini() is called
+	// or quit is closed, the function returns. This function should be
+	// used as a goroutine.
+	ChannelEvents(ch chan<- Event, quit <-chan struct{})
+
 	// PollEvent waits for events to arrive.  Main application loops
 	// must spin on this to prevent the application from stalling.
 	// Furthermore, this will return nil if the Screen is finalized.
