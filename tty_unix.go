@@ -52,7 +52,7 @@ func (tty *devTty) Write(b []byte) (int, error) {
 }
 
 func (tty *devTty) Close() error {
-	return nil
+	return tty.f.Close()
 }
 
 func (tty *devTty) Start() error {
