@@ -749,6 +749,11 @@ func (t *tScreen) drawCell(x, y int) int {
 		if attrs&AttrStrikeThrough != 0 {
 			t.TPuts(ti.StrikeThrough)
 		}
+		if style.hyperlink != "" && ti.StartHyperlink != "" {
+			t.TPuts(ti.TStartHyperlink(style.hyperlink))
+		} else if t.curstyle.hyperlink != "" && ti.StartHyperlink != "" {
+			t.TPuts(ti.EndHyperlink)
+		}
 		t.curstyle = style
 	}
 	// now emit runes - taking care to not overrun width with a

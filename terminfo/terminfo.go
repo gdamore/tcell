@@ -227,6 +227,8 @@ type Terminfo struct {
 	CursorSteadyUnderline   string
 	CursorBlinkingBar       string
 	CursorSteadyBar         string
+	StartHyperlink          string
+	EndHyperlink            string
 }
 
 const (
@@ -724,6 +726,10 @@ func (t *Terminfo) TColor(fi, bi int) string {
 		rv += t.TParm(t.SetBg, bi)
 	}
 	return rv
+}
+
+func (t *Terminfo) TStartHyperlink(url string) string {
+	return fmt.Sprintf(t.StartHyperlink, url)
 }
 
 var (

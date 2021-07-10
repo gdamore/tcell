@@ -23,9 +23,10 @@ package tcell
 //
 // To use Style, just declare a variable of its type.
 type Style struct {
-	fg    Color
-	bg    Color
-	attrs AttrMask
+	fg        Color
+	bg        Color
+	attrs     AttrMask
+	hyperlink string
 }
 
 // StyleDefault represents a default style, based upon the context.
@@ -39,9 +40,10 @@ var styleInvalid = Style{attrs: AttrInvalid}
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Foreground(c Color) Style {
 	return Style{
-		fg:    c,
-		bg:    s.bg,
-		attrs: s.attrs,
+		fg:        c,
+		bg:        s.bg,
+		attrs:     s.attrs,
+		hyperlink: s.hyperlink,
 	}
 }
 
@@ -49,9 +51,10 @@ func (s Style) Foreground(c Color) Style {
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Background(c Color) Style {
 	return Style{
-		fg:    s.fg,
-		bg:    c,
-		attrs: s.attrs,
+		fg:        s.fg,
+		bg:        c,
+		attrs:     s.attrs,
+		hyperlink: s.hyperlink,
 	}
 }
 
@@ -64,23 +67,26 @@ func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
 func (s Style) setAttrs(attrs AttrMask, on bool) Style {
 	if on {
 		return Style{
-			fg:    s.fg,
-			bg:    s.bg,
-			attrs: s.attrs | attrs,
+			fg:        s.fg,
+			bg:        s.bg,
+			attrs:     s.attrs | attrs,
+			hyperlink: s.hyperlink,
 		}
 	}
 	return Style{
-		fg:    s.fg,
-		bg:    s.bg,
-		attrs: s.attrs &^ attrs,
+		fg:        s.fg,
+		bg:        s.bg,
+		attrs:     s.attrs &^ attrs,
+		hyperlink: s.hyperlink,
 	}
 }
 
 // Normal returns the style with all attributes disabled.
 func (s Style) Normal() Style {
 	return Style{
-		fg: s.fg,
-		bg: s.bg,
+		fg:        s.fg,
+		bg:        s.bg,
+		hyperlink: s.hyperlink,
 	}
 }
 
@@ -130,8 +136,20 @@ func (s Style) StrikeThrough(on bool) Style {
 // specified.
 func (s Style) Attributes(attrs AttrMask) Style {
 	return Style{
-		fg:    s.fg,
-		bg:    s.bg,
-		attrs: attrs,
+		fg:        s.fg,
+		bg:        s.bg,
+		attrs:     attrs,
+		hyperlink: s.hyperlink,
+	}
+}
+
+// Hyperlink returns a new style based on s, with its hyperlink set to the
+// specified URL. An empty string disables the hyperlink.
+func (s Style) Hyperlink(url string) Style {
+	return Style{
+		fg:        s.fg,
+		bg:        s.bg,
+		attrs:     s.attrs,
+		hyperlink: url,
 	}
 }
