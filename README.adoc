@@ -4,7 +4,7 @@
 image:https://img.shields.io/travis/gdamore/tcell.svg?label=linux[Linux Status,link="https://travis-ci.org/gdamore/tcell"]
 image:https://img.shields.io/appveyor/ci/gdamore/tcell.svg?label=windows[Windows Status,link="https://ci.appveyor.com/project/gdamore/tcell"]
 image:https://img.shields.io/badge/license-APACHE2-blue.svg[Apache License,link="https://github.com/gdamore/tcell/blob/master/LICENSE"]
-image:https://img.shields.io/badge/godoc-reference-blue.svg[GoDoc,link="https://godoc.org/github.com/gdamore/tcell"]
+image:https://img.shields.io/badge/godoc-reference-blue.svg[GoDoc,link="https://godocs.io/github.com/gdamore/tcell"]
 image:https://goreportcard.com/badge/gdamore/tcell[Go Report Card,link="http://goreportcard.com/report/gdamore/tcell"]
 image:https://img.shields.io/discord/639503822733180969?label=discord[Discord,link="https://discord.gg/urTTxDN"]
 image:https://codecov.io/gh/gdamore/tcell/branch/master/graph/badge.svg[codecov,link="https://codecov.io/gh/gdamore/tcell"]
