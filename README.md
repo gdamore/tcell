@@ -16,6 +16,9 @@ It was inspired by _termbox_, but includes many additional improvements.
 NOTE: This is version 2 of _Tcell_.  There are breaking changes relative to version 1.
 Version 1.x remains available using the import `github.com/gdamore/tcell`.
 
+## Tutorial
+
+A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 ## Examples
 
 * [proxima5](https://github.com/gdamore/proxima5) - space shooter ([video](https://youtu.be/jNxKTCmY_bQ))
@@ -25,6 +28,7 @@ Version 1.x remains available using the import `github.com/gdamore/tcell`.
 * [micro](https://github.com/zyedidia/micro/) - lightweight text editor with syntax-highlighting and themes
 * [godu](https://github.com/viktomas/godu) - utility to discover large files/folders
 * [tview](https://github.com/rivo/tview/) - rich interactive widgets
+* [cview](https://code.rocketnine.space/tslocum/cview) - user interface toolkit (fork of _tview_)
 * [awsome gocui](https://github.com/awesome-gocui/gocui) - Go Console User Interface
 * [gomandelbrot](https://github.com/rgm3/gomandelbrot) - Mandelbrot!
 * [WTF](https://github.com/senorprogrammer/wtf) - personal information dashboard
@@ -35,7 +39,7 @@ Version 1.x remains available using the import `github.com/gdamore/tcell`.
 * [go-tetris](https://github.com/MichaelS11/go-tetris) - Go Tetris with AI option
 * [fzf](https://github.com/junegunn/fzf) - command-line fuzzy finder
 * [ascii-fluid](https://github.com/esimov/ascii-fluid) - fluid simulation controlled by webcam
-* [cbind](https://gitlab.com/tslocum/cbind) - provides key event encoding, decoding and handling
+* [cbind](https://code.rocketnine.space/tslocum/cbind) - key event encoding, decoding and handling
 * [tpong](https://github.com/spinzed/tpong) - old-school Pong
 * [aerc](https://git.sr.ht/~sircmpwn/aerc) - email client
 * [tblogs](https://github.com/ezeoleaf/tblogs) - development blogs reader
