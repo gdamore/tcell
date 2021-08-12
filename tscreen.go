@@ -844,7 +844,7 @@ func (t *tScreen) EnableMouse(flags ...MouseFlags) {
 		flagsPresent = true
 	}
 	if !flagsPresent {
-		f = MouseMotionEvents
+		f = MouseMotionEvents | MouseDragEvents | MouseButtonEvents
 	}
 
 	t.Lock()
@@ -860,14 +860,19 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	if len(t.mouse) != 0 {
 		// start by disabling all tracking.
 		t.TPuts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l")
-		if f&MouseMotionEvents != 0 {
-			t.TPuts("\x1b[?1003h\x1b[?1006h")
-		} else if f&MouseDragEvents != 0 {
-			t.TPuts("\x1b[?1002h\x1b[?1006h")
-		} else if f&MouseButtonEvents != 0 {
-			t.TPuts("\x1b[?1000h\x1b[?1006h")
+		if f&MouseButtonEvents != 0 {
+			t.TPuts("\x1b[?1000h")
 		}
+		if f&MouseDragEvents != 0 {
+			t.TPuts("\x1b[?1002h")
+		}
+		if f&MouseMotionEvents != 0 {
+			t.TPuts("\x1b[?1003h")
+		}
+
+		t.TPuts("\x1b[?1006h")
 	}
+
 }
 
 func (t *tScreen) DisableMouse() {
