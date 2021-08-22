@@ -46,19 +46,36 @@ func NewTerminfoScreen() (Screen, error) {
 	return NewTerminfoScreenFromTty(nil)
 }
 
-// NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
-// If the passed in tty is nil, then a reasonable default (typically /dev/tty)
-// is presumed, at least on UNIX hosts. (Windows hosts will typically fail this
-// call altogether.)
-func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
-	ti, e := terminfo.LookupTerminfo(os.Getenv("TERM"))
+// LookupTerminfo attempts to find a definition for the named $TERM falling
+// back to attempting to parse the output from infocmp.
+func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
+	ti, e = terminfo.LookupTerminfo(name)
 	if e != nil {
-		ti, e = loadDynamicTerminfo(os.Getenv("TERM"))
+		ti, e = loadDynamicTerminfo(name)
 		if e != nil {
 			return nil, e
 		}
 		terminfo.AddTerminfo(ti)
 	}
+
+	return
+}
+
+// NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
+// implementation  and custom terminfo specification.
+// If the passed in tty is nil, then a reasonable default (typically /dev/tty)
+// is presumed, at least on UNIX hosts. (Windows hosts will typically fail this
+// call altogether.)
+// If passed terminfo is nil, then TERM environment variable is queried for
+// terminal specification.
+func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen, e error) {
+	if ti == nil {
+		ti, e = LookupTerminfo(os.Getenv("TERM"))
+		if e != nil {
+			return
+		}
+	}
+
 	t := &tScreen{ti: ti, tty: tty}
 
 	t.keyexist = make(map[Key]bool)
@@ -75,6 +92,14 @@ func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
 	}
 
 	return t, nil
+}
+
+// NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
+// If the passed in tty is nil, then a reasonable default (typically /dev/tty)
+// is presumed, at least on UNIX hosts. (Windows hosts will typically fail this
+// call altogether.)
+func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
+	return NewTerminfoScreenFromTtyTerminfo(tty, nil)
 }
 
 // tKeyCode represents a combination of a key code and modifiers.
