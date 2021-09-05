@@ -1547,7 +1547,12 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 		switch e {
 		case nil:
 		default:
-			_ = t.PostEvent(NewEventError(e))
+			t.Lock()
+			running := t.running
+			t.Unlock()
+			if running {
+				_ = t.PostEvent(NewEventError(e))
+			}
 			return
 		}
 		if n > 0 {
