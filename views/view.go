@@ -265,18 +265,15 @@ func (v *ViewPort) Resize(x, y, width, height int) {
 	if y >= 0 && y < py {
 		v.physy = y
 	}
-	if width < 0 {
+	if width < 0 || width > px-x {
 		width = px - x
 	}
-	if height < 0 {
+	if height < 0 || height > py-y {
 		height = py - y
 	}
-	if width <= x+px {
-		v.width = width
-	}
-	if height <= y+py {
-		v.height = height
-	}
+
+	v.width = width
+	v.height = height
 }
 
 // SetView is called during setup, to provide the parent View.
