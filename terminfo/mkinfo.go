@@ -609,6 +609,13 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddFlag(w, "TrueColor", t.TrueColor)
 		dotGoAddFlag(w, "AutoMargin", t.AutoMargin)
 		dotGoAddStr(w, "InsertChar", t.InsertChar)
+		dotGoAddStr(w, "CursorDefault", t.CursorDefault)
+		dotGoAddStr(w, "CursorBlinkingBlock", t.CursorBlinkingBlock)
+		dotGoAddStr(w, "CursorSteadyBlock", t.CursorSteadyBlock)
+		dotGoAddStr(w, "CursorBlinkingUnderline", t.CursorBlinkingUnderline)
+		dotGoAddStr(w, "CursorSteadyUnderline", t.CursorSteadyUnderline)
+		dotGoAddStr(w, "CursorBlinkingBar", t.CursorBlinkingBar)
+		dotGoAddStr(w, "CursorSteadyBar", t.CursorSteadyBar)
 		fmt.Fprintln(w, "\t})")
 	}
 	fmt.Fprintln(w, "}")
