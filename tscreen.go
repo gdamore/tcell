@@ -341,13 +341,13 @@ func (t *tScreen) prepareCursorStyles() {
 	// via our terminal database.
 	if t.ti.CursorDefault != "" {
 		t.cursorStyles = map[CursorStyle]string{
-			CursorStyleDefault: t.ti.CursorDefault,
-			CursorStyleBlinkingBlock: t.ti.CursorBlinkingBlock,
-			CursorStyleSteadyBlock: t.ti.CursorSteadyBlock,
+			CursorStyleDefault:           t.ti.CursorDefault,
+			CursorStyleBlinkingBlock:     t.ti.CursorBlinkingBlock,
+			CursorStyleSteadyBlock:       t.ti.CursorSteadyBlock,
 			CursorStyleBlinkingUnderline: t.ti.CursorBlinkingUnderline,
-			CursorStyleSteadyUnderline: t.ti.CursorSteadyUnderline,
-			CursorStyleBlinkingBar: t.ti.CursorBlinkingBar,
-			CursorStyleSteadyBar: t.ti.CursorSteadyBar,
+			CursorStyleSteadyUnderline:   t.ti.CursorSteadyUnderline,
+			CursorStyleBlinkingBar:       t.ti.CursorBlinkingBar,
+			CursorStyleSteadyBar:         t.ti.CursorSteadyBar,
 		}
 	} else if t.ti.Mouse != "" {
 		t.cursorStyles = map[CursorStyle]string{
@@ -358,7 +358,6 @@ func (t *tScreen) prepareCursorStyles() {
 			CursorStyleSteadyUnderline:   "\x1b[4 q",
 			CursorStyleBlinkingBar:       "\x1b[5 q",
 			CursorStyleSteadyBar:         "\x1b[6 q",
-
 		}
 	}
 }
@@ -549,6 +548,18 @@ func (t *tScreen) SetStyle(style Style) {
 
 func (t *tScreen) Clear() {
 	t.Fill(' ', t.style)
+	t.Lock()
+	t.clear = true
+	w, h := t.cells.Size()
+	// because we are going to clear (see t.clear) in the next cycle,
+	// let's also unmark the dirty bit so that we don't waste cycles
+	// drawing things that are already dealt with via the clear escape sequence.
+	for row := 0; row < h; row++ {
+		for col := 0; col < w; col++ {
+			t.cells.SetDirty(col, row, false)
+		}
+	}
+	t.Unlock()
 }
 
 func (t *tScreen) Fill(r rune, style Style) {
