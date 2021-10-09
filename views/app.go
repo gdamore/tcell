@@ -126,6 +126,7 @@ func (app *Application) run() {
 		app.wg.Done()
 	}()
 	screen.Init()
+	screen.EnableMouse()
 	screen.Clear()
 	widget.SetView(screen)
 
