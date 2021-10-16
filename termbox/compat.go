@@ -94,15 +94,13 @@ func fixColor(c tcell.Color) tcell.Color {
 	}
 	switch outMode {
 	case OutputNormal:
-		c %= tcell.Color(16)
+		c = tcell.PaletteColor(int(c) & 0xf)
 	case Output256:
-		c %= tcell.Color(256)
+		c = tcell.PaletteColor(int(c) & 0xff)
 	case Output216:
-		c %= tcell.Color(216)
-		c += tcell.Color(16)
+		c = tcell.PaletteColor(int(c) % 216 + 16)
 	case OutputGrayscale:
-		c %= tcell.Color(24)
-		c += tcell.Color(232)
+		c %= tcell.PaletteColor(int(c) % 24 + 232)
 	default:
 		c = tcell.ColorDefault
 	}
@@ -112,8 +110,8 @@ func fixColor(c tcell.Color) tcell.Color {
 func mkStyle(fg, bg Attribute) tcell.Style {
 	st := tcell.StyleDefault
 
-	f := tcell.Color(int(fg)&0x1ff) - 1
-	b := tcell.Color(int(bg)&0x1ff) - 1
+	f := tcell.PaletteColor(int(fg)&0x1ff-1)
+	b := tcell.PaletteColor(int(bg)&0x1ff-1)
 
 	f = fixColor(f)
 	b = fixColor(b)
