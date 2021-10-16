@@ -98,9 +98,9 @@ func fixColor(c tcell.Color) tcell.Color {
 	case Output256:
 		c = tcell.PaletteColor(int(c) & 0xff)
 	case Output216:
-		c = tcell.PaletteColor(int(c) % 216 + 16)
+		c = tcell.PaletteColor(int(c)%216 + 16)
 	case OutputGrayscale:
-		c %= tcell.PaletteColor(int(c) % 24 + 232)
+		c %= tcell.PaletteColor(int(c)%24 + 232)
 	default:
 		c = tcell.ColorDefault
 	}
@@ -110,8 +110,8 @@ func fixColor(c tcell.Color) tcell.Color {
 func mkStyle(fg, bg Attribute) tcell.Style {
 	st := tcell.StyleDefault
 
-	f := tcell.PaletteColor(int(fg)&0x1ff-1)
-	b := tcell.PaletteColor(int(bg)&0x1ff-1)
+	f := tcell.PaletteColor(int(fg)&0x1ff - 1)
+	b := tcell.PaletteColor(int(bg)&0x1ff - 1)
 
 	f = fixColor(f)
 	b = fixColor(b)
@@ -290,6 +290,7 @@ const (
 	KeyPgup           = Key(tcell.KeyPgUp)
 	KeySpace          = Key(tcell.Key(' '))
 	KeyTilde          = Key(tcell.Key('~'))
+	KeyCtrlSpace      = Key(tcell.KeyCtrlSpace)
 
 	// The following assignments are provided for termbox
 	// compatibility.  Their use in applications is discouraged.
@@ -301,12 +302,14 @@ const (
 	MouseRelease      = Key(tcell.KeyF60)
 	MouseWheelUp      = Key(tcell.KeyF59)
 	MouseWheelDown    = Key(tcell.KeyF58)
-	KeyCtrl2          = Key(tcell.KeyNUL) // termbox defines theses
+	KeyCtrlTilde      = Key(tcell.KeyCtrlSpace) // termbox defines a bunch of weird ones, don't use them
+	KeyCtrl2          = Key(tcell.KeyNUL)
 	KeyCtrl3          = Key(tcell.KeyEscape)
 	KeyCtrl4          = Key(tcell.KeyCtrlBackslash)
 	KeyCtrl5          = Key(tcell.KeyCtrlRightSq)
 	KeyCtrl6          = Key(tcell.KeyCtrlCarat)
 	KeyCtrl7          = Key(tcell.KeyCtrlUnderscore)
+	KeyCtrl8          = Key(tcell.KeyDEL)
 	KeyCtrlSlash      = Key(tcell.KeyCtrlUnderscore)
 	KeyCtrlRsqBracket = Key(tcell.KeyCtrlRightSq)
 	KeyCtrlBackslash  = Key(tcell.KeyCtrlBackslash)
