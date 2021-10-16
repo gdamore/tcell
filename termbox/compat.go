@@ -330,9 +330,7 @@ func makeEvent(tev tcell.Event) Event {
 		ch := rune(0)
 		if k == tcell.KeyRune {
 			ch = tev.Rune()
-			if ch == ' ' {
-				k = tcell.Key(' ')
-			}
+			k = tcell.Key(ch)
 		}
 		mod := tev.Modifiers()
 		return Event{
