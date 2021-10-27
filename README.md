@@ -17,6 +17,7 @@ Version 1.x remains available using the import `github.com/gdamore/tcell`.
 ## Tutorial
 
 A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
+
 ## Examples
 
 * [proxima5](https://github.com/gdamore/proxima5) - space shooter ([video](https://youtu.be/jNxKTCmY_bQ))
@@ -53,7 +54,7 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 * [tmux-wormhole](https://github.com/gcla/tmux-wormhole) - _tmux_ plugin to transfer files
 * [gruid-tcell](https://github.com/anaseto/gruid-tcell) - driver for the grid based UI and game framework
 * [aretext](https://github.com/aretext/aretext) - minimalist text editor with _vim_ key bindings
-* [sync](https://github.com/kyprifog/sync) - github repo synchronization tool
+* [sync](https://github.com/kyprifog/sync) - GitHub repo synchronization tool
 * [statusbar](https://github.com/kyprifog/statusbar) - statusbar motivation tool for tracking periodic tasks/goals
 * [todo](https://github.com/kyprifog/todo) - simple todo app
 
