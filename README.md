@@ -46,6 +46,7 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 * [gorss](https://github.com/lallassu/gorss) - RSS/Atom feed reader
 * [memoryalike](https://github.com/Bios-Marcel/memoryalike) - memorization game
 * [lf](https://github.com/gokcehan/lf) - file manager
+* [goful](https://github.com/anmitsu/goful) - CUI file manager
 * [gokeybr](https://github.com/bunyk/gokeybr) - deliberately practice your typing
 * [gonano](https://github.com/jbaramidze/gonano) - editor, mimics _nano_
 * [uchess](https://github.com/tmountain/uchess) - UCI chess client
