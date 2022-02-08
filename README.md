@@ -57,6 +57,7 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 * [sync](https://github.com/kyprifog/sync) - GitHub repo synchronization tool
 * [statusbar](https://github.com/kyprifog/statusbar) - statusbar motivation tool for tracking periodic tasks/goals
 * [todo](https://github.com/kyprifog/todo) - simple todo app
+* [gosnakego](https://github.com/liweiyi88/gosnakego) - a snake game
 
 
 ## Pure Go Terminfo Database
