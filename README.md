@@ -1,6 +1,8 @@
 
 # ![Tcell](logos/tcell.png)
 
+Please see [here](UKRAINE.md) for an important message for the people of Russia.
+
 _Tcell_ is a _Go_ package that provides a cell based view for text terminals, like _XTerm_.
 It was inspired by _termbox_, but includes many additional improvements.
 
