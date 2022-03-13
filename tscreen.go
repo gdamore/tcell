@@ -948,8 +948,9 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 		if f&MouseMotionEvents != 0 {
 			t.TPuts("\x1b[?1003h")
 		}
-
-		t.TPuts("\x1b[?1006h")
+		if f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) != 0 {
+			t.TPuts("\x1b[?1006h")
+		}
 	}
 
 }
