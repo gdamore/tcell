@@ -1,4 +1,4 @@
-// Copyright 2021 The TCell Authors
+// Copyright 2022 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -36,6 +36,7 @@ var testTerminfo = &Terminfo{
 	Mouse:     "\x1b[M",
 	SetCursor: "\x1b[%i%p1%d;%p2%dH",
 	PadChar:   "\x00",
+	EnterUrl:  "\x1b]8;;%p1%s\x1b\\",
 }
 
 func TestTerminfoExpansion(t *testing.T) {
@@ -79,6 +80,14 @@ func TestTerminfoDelay(t *testing.T) {
 	}
 	if then.Sub(now) > time.Millisecond*50 {
 		t.Error("Too late delay")
+	}
+}
+
+func TestStringParameter(t *testing.T) {
+	ti := testTerminfo
+	s := ti.TParm(ti.EnterUrl, "https://example.org/test")
+	if s != "\x1b]8;;https://example.org/test\x1b\\" {
+		t.Errorf("Result string failed: %s", s)
 	}
 }
 
