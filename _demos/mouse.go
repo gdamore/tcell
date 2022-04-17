@@ -1,6 +1,7 @@
+//go:build ignore
 // +build ignore
 
-// Copyright 2015 The TCell Authors
+// Copyright 2022 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -206,7 +207,7 @@ func main() {
 				if err := s.Suspend(); err == nil {
 					fmt.Printf("Executing shell (%s -l)...\n", shell)
 					fmt.Printf("Exit the shell to return to the demo.\n")
-					c := exec.Command(shell, "-l" ) // NB: -l works for cmd.exe too (ignored)
+					c := exec.Command(shell, "-l") // NB: -l works for cmd.exe too (ignored)
 					c.Stdin = os.Stdin
 					c.Stdout = os.Stdout
 					c.Stderr = os.Stderr
@@ -230,6 +231,19 @@ func main() {
 		case *tcell.EventMouse:
 			x, y := ev.Position()
 			button := ev.Buttons()
+			mods := ev.Modifiers()
+			if mods&tcell.ModShift != 0 {
+				bstr += " Shift"
+			}
+			if mods&tcell.ModCtrl != 0 {
+				bstr += " Ctrl"
+			}
+			if mods&tcell.ModAlt != 0 {
+				bstr += " Alt"
+			}
+			if mods&tcell.ModMeta != 0 {
+				bstr += " Meta"
+			}
 			for i := uint(0); i < 8; i++ {
 				if int(button)&(1<<i) != 0 {
 					bstr += fmt.Sprintf(" Button%d", i+1)
