@@ -150,6 +150,7 @@ type tScreen struct {
 	disablePaste string
 	enterUrl     string
 	exitUrl      string
+	setWinSize   string
 	cursorStyles map[CursorStyle]string
 	cursorStyle  CursorStyle
 	saved        *term.State
@@ -347,6 +348,12 @@ func (t *tScreen) prepareExtendedOSC() {
 	} else if t.ti.Mouse != "" {
 		t.enterUrl = "\x1b]8;;%p1%s\x1b\\"
 		t.exitUrl = "\x1b]8;;\x1b\\"
+	}
+
+	if t.ti.SetWindowSize != "" {
+		t.setWinSize = t.ti.SetWindowSize
+	} else if t.ti.Mouse != "" {
+		t.setWinSize = "\x1b[8;%p1%p2%d;%dt"
 	}
 }
 
@@ -1743,6 +1750,14 @@ func (t *tScreen) HasKey(k Key) bool {
 		return true
 	}
 	return t.keyexist[k]
+}
+
+func (t *tScreen) SetSize(w, h int) {
+	if t.setWinSize != "" {
+		t.TPuts(t.ti.TParm(t.setWinSize, w, h))
+	}
+	t.cells.Invalidate()
+	t.resize()
 }
 
 func (t *tScreen) Resize(int, int, int, int) {}

@@ -239,6 +239,15 @@ type Screen interface {
 	// Beep attempts to sound an OS-dependent audible alert and returns an error
 	// when unsuccessful.
 	Beep() error
+
+	// SetSize attempts to resize the window.  It also invalidates the cells and
+	// calls the resize function.  Note that if the window size is changed, it will
+	// not be restored upon application exit.
+	//
+	// Many terminals cannot support this.  Perversely, the "modern" Windows Terminal
+	// does not support application-initiated resizing, whereas the legacy terminal does.
+	// Also, some emulators can support this but may have it disabled by default.
+	SetSize(int, int)
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal

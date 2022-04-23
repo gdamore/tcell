@@ -229,6 +229,7 @@ type Terminfo struct {
 	CursorSteadyBar         string
 	EnterUrl                string
 	ExitUrl                 string
+	SetWindowSize           string
 }
 
 const (
