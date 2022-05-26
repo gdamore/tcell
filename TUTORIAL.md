@@ -166,10 +166,8 @@ package main
 
 import (
 	"fmt"
+	tcell "github.com/gdamore/tcell/v2"
 	"log"
-	"os"
-
-	"github.com/gdamore/tcell/v2"
 )
 
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
@@ -223,7 +221,6 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string)
 
 	drawText(s, x1+1, y1+1, x2-1, y2-1, style, text)
 }
-
 func main() {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 	boxStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorPurple)
@@ -245,12 +242,29 @@ func main() {
 	drawBox(s, 1, 1, 42, 7, boxStyle, "Click and drag to draw a box")
 	drawBox(s, 5, 9, 32, 14, boxStyle, "Press C to reset")
 
+	quit := func() {
+		// You have to catch panics in a defer, clean up, and
+		// re-raise them - otherwise your application can
+		// die without leaving any diagnostic trace.
+		maybePanic := recover()
+		s.Fini()
+		if maybePanic != nil {
+			panic(maybePanic)
+		}
+	}
+	defer quit()
+
+	// Here's how to get the screen size when you need it.
+	// xmax, ymax := s.Size()
+
+	// Here's an example of how to inject a keystroke where it will
+	// be picked up by the next PollEvent call.  Note that the
+	// queue is LIFO, it has a limited length, and PostEvent() can
+	// return an error.
+	// s.PostEvent(tcell.NewEventKey(tcell.KeyRune, rune('a'), 0))
+
 	// Event loop
 	ox, oy := -1, -1
-	quit := func() {
-		s.Fini()
-		os.Exit(0)
-	}
 	for {
 		// Update screen
 		s.Show()
@@ -264,7 +278,7 @@ func main() {
 			s.Sync()
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				quit()
+				return
 			} else if ev.Key() == tcell.KeyCtrlL {
 				s.Sync()
 			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
@@ -291,3 +305,4 @@ func main() {
 	}
 }
 ```
+
