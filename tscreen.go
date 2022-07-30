@@ -647,11 +647,27 @@ func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 	return buf
 }
 
-func (t *tScreen) sendFgBg(fg Color, bg Color) {
+func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 	ti := t.ti
 	if ti.Colors == 0 {
-		return
+		// foreground vs background, we calculate luminance
+		// and possibly do a reverse video
+		if !fg.Valid() {
+			return attr
+		}
+		v, ok := t.colors[fg]
+		if !ok {
+			v = FindColor(fg, []Color{ColorBlack, ColorWhite})
+			t.colors[fg] = v
+		}
+		switch v {
+		case ColorWhite:
+			return attr
+		case ColorBlack:
+			return attr ^ AttrReverse
+		}
 	}
+
 	if fg == ColorReset || bg == ColorReset {
 		t.TPuts(ti.ResetFgBg)
 	}
@@ -662,7 +678,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 			t.TPuts(ti.TParm(ti.SetFgBgRGB,
 				int(r1), int(g1), int(b1),
 				int(r2), int(g2), int(b2)))
-			return
+			return attr
 		}
 
 		if fg.IsRGB() && ti.SetFgRGB != "" {
@@ -709,6 +725,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color) {
 			t.TPuts(ti.TParm(ti.SetBg, int(bg&0xff)))
 		}
 	}
+	return attr
 }
 
 func (t *tScreen) drawCell(x, y int) int {
@@ -751,7 +768,7 @@ func (t *tScreen) drawCell(x, y int) int {
 
 		t.TPuts(ti.AttrOff)
 
-		t.sendFgBg(fg, bg)
+		attrs = t.sendFgBg(fg, bg, attrs)
 		if attrs&AttrBold != 0 {
 			t.TPuts(ti.Bold)
 		}
@@ -896,7 +913,7 @@ func (t *tScreen) clearScreen() {
 	t.TPuts(t.ti.AttrOff)
 	t.TPuts(t.exitUrl)
 	fg, bg, _ := t.style.Decompose()
-	t.sendFgBg(fg, bg)
+	_ = t.sendFgBg(fg, bg, AttrNone)
 	t.TPuts(t.ti.Clear)
 	t.clear = false
 }

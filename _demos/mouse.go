@@ -136,7 +136,7 @@ func main() {
 	keyfmt := "Keys: %s"
 	pastefmt := "Paste: [%d] %s"
 	white := tcell.StyleDefault.
-		Foreground(tcell.ColorWhite).Background(tcell.ColorRed)
+		Foreground(tcell.ColorMidnightBlue).Background(tcell.ColorLightCoral)
 
 	mx, my := -1, -1
 	ox, oy := -1, -1
