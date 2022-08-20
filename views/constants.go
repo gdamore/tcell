@@ -53,7 +53,7 @@ type Orientation int
 
 const (
 	// Horizontal indicates left to right orientation.
-	Horizontal = iota
+	Horizontal Orientation = iota
 
 	// Vertical indicates top to bottom orientation.
 	Vertical
