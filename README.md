@@ -1,16 +1,15 @@
-<a href="https://stand-with-ukraine.pp.ua">
-<img src="https://upload.wikimedia.org/wikipedia/commons/d/d2/Flag_of_Ukraine.png" height="20px" width="100%"/>
-</a>
-
 <img src="logos/tcell.png" style="float: right"/>
 
-Please see [here](UKRAINE.md) for an important message for the people of Russia.
-
 # Tcell
+
+<em>
+Please see [here](UKRAINE.md) for an important message for the people of Russia.
+</em>
 
 _Tcell_ is a _Go_ package that provides a cell based view for text terminals, like _XTerm_.
 It was inspired by _termbox_, but includes many additional improvements.
 
+[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 [![Linux](https://img.shields.io/github/workflow/status/gdamore/tcell/linux?logoColor=grey&logo=linux&label=)](https://github.com/gdamore/tcell/actions/workflows/linux.yml)
 [![Windows](https://img.shields.io/github/workflow/status/gdamore/tcell/windows?logoColor=grey&logo=windows&label=)](https://github.com/gdamore/tcell/actions/workflows/windows.yml)
 [![Apache License](https://img.shields.io/github/license/gdamore/tcell.svg?logoColor=silver&logo=opensourceinitiative&color=blue&label=)](https://github.com/gdamore/tcell/blob/master/LICENSE)
