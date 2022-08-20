@@ -2,10 +2,6 @@
 
 # Tcell
 
-<em>
-Please see [here](UKRAINE.md) for an important message for the people of Russia.
-</em>
-
 _Tcell_ is a _Go_ package that provides a cell based view for text terminals, like _XTerm_.
 It was inspired by _termbox_, but includes many additional improvements.
 
@@ -16,6 +12,8 @@ It was inspired by _termbox_, but includes many additional improvements.
 [![Docs](https://img.shields.io/badge/godoc-reference-blue.svg?label=&logo=go)](https://pkg.go.dev/github.com/gdamore/tcell/v2)
 [![Discord](https://img.shields.io/discord/639503822733180969?label=&logo=discord)](https://discord.gg/urTTxDN)
 [![Coverage](https://img.shields.io/codecov/c/github/gdamore/tcell?logoColor=grey&logo=codecov&label=)](https://codecov.io/gh/gdamore/tcell)
+
+Please see [here](UKRAINE.md) for an important message for the people of Russia.
 
 NOTE: This is version 2 of _Tcell_.  There are breaking changes relative to version 1.
 Version 1.x remains available using the import `github.com/gdamore/tcell`.
