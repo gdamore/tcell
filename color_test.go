@@ -90,11 +90,11 @@ func TestColorNameLookup(t *testing.T) {
 			t.Errorf("Wrong color for %v: %v", v.name, c.Hex())
 		}
 		if v.rgb {
-			if c & ColorIsRGB == 0 {
+			if c&ColorIsRGB == 0 {
 				t.Errorf("Color should have RGB")
 			}
 		} else {
-			if c & ColorIsRGB != 0 {
+			if c&ColorIsRGB != 0 {
 				t.Errorf("Named color should not be RGB")
 			}
 		}

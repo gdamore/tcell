@@ -1,3 +1,4 @@
+//go:build js || plan9 || windows
 // +build js plan9 windows
 
 // Copyright 2021 The TCell Authors

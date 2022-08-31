@@ -21,13 +21,13 @@ package views
 // Only the content pane is resizable.  The panel will be formatted
 // like this:
 //
-//  +----------
-//  | title
-//  | menu
-//  | content....
-//  | <padding>
-//  | status
-//  +----------
+//	+----------
+//	| title
+//	| menu
+//	| content....
+//	| <padding>
+//	| status
+//	+----------
 //
 // Each of these components may be any valid widget; their names are
 // only meant to be indicative of conventional use, not prescriptive.

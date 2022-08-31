@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Copyright 2021 The TCell Authors
