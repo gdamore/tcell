@@ -224,10 +224,10 @@ func (a *CellView) Size() (int, int) {
 	// We always return a minimum of two rows, and two columns.
 	w, h := a.model.GetBounds()
 	// Clip to a 2x2 minimum square; we can scroll within that.
-	if w > 2 {
+	if w < 2 {
 		w = 2
 	}
-	if h > 2 {
+	if h < 2 {
 		h = 2
 	}
 	return w, h
