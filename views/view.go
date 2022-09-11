@@ -146,7 +146,7 @@ func (v *ViewPort) MakeVisible(x, y int) {
 // ValidateViewY ensures that the Y offset of the view port is limited so that
 // it cannot scroll away from the content.
 func (v *ViewPort) ValidateViewY() {
-	if v.viewy >= v.limy-v.height {
+	if v.viewy > v.limy-v.height {
 		v.viewy = (v.limy - v.height)
 	}
 	if v.viewy < 0 {
@@ -157,7 +157,7 @@ func (v *ViewPort) ValidateViewY() {
 // ValidateViewX ensures that the X offset of the view port is limited so that
 // it cannot scroll away from the content.
 func (v *ViewPort) ValidateViewX() {
-	if v.viewx >= v.limx-v.width {
+	if v.viewx > v.limx-v.width {
 		v.viewx = (v.limx - v.width)
 	}
 	if v.viewx < 0 {
