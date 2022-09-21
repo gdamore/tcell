@@ -27,11 +27,18 @@ type Application struct {
 	style  tcell.Style
 	err    error
 	wg     sync.WaitGroup
+	paste  bool
 }
 
 // SetRootWidget sets the primary (root, main) Widget to be displayed.
 func (app *Application) SetRootWidget(widget Widget) {
 	app.widget = widget
+}
+
+// EnablePaste enables or disables pasting support in the application.
+// It must be called before Start or Run or else it will have no effect.
+func (app *Application) EnablePaste(on bool) {
+	app.paste = on
 }
 
 // initialize initializes the application.  It will normally attempt to
@@ -127,6 +134,9 @@ func (app *Application) run() {
 	}()
 	screen.Init()
 	screen.EnableMouse()
+	if app.paste {
+		screen.EnablePaste()
+	}
 	screen.Clear()
 	widget.SetView(screen)
 
