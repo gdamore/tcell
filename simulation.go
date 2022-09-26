@@ -482,6 +482,10 @@ func (s *simscreen) SetClipboard(content string) bool {
 	return false
 }
 
+func (s *simscreen) SetTitle(title string) bool {
+	return false
+}
+
 func (s *simscreen) GetContents() ([]SimCell, int, int) {
 	s.Lock()
 	cells, w, h := s.front, s.physw, s.physh

@@ -250,6 +250,8 @@ type Screen interface {
 	SetSize(int, int)
 
 	SetClipboard(string) bool
+
+	SetTitle(string) bool
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal

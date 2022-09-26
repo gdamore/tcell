@@ -1788,6 +1788,15 @@ func (t *tScreen) SetClipboard(content string) bool {
 	return true
 }
 
+func (t *tScreen) SetTitle(title string) bool {
+	ti := t.ti
+	if ti.SetTitle == "" {
+		return false
+	}
+	t.TPuts(ti.TParm(ti.SetTitle, title))
+	return true
+}
+
 func (t *tScreen) Resize(int, int, int, int) {}
 
 func (t *tScreen) Suspend() error {

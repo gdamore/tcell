@@ -220,6 +220,9 @@ func LoadTerminfo(name string) (*terminfo.Terminfo, string, error) {
 	t.CursorBack1 = tc.getstr("cub1")
 	t.CursorUp1 = tc.getstr("cuu1")
 	t.SetClipboard = tc.getstr("Ms")
+	if tc.getstr("tsl") != "" && tc.getstr("fsl") != "" {
+		t.SetTitle = tc.getstr("tsl") + "%p1%s" + tc.getstr("fsl")
+	}
 	t.KeyF1 = tc.getstr("kf1")
 	t.KeyF2 = tc.getstr("kf2")
 	t.KeyF3 = tc.getstr("kf3")
