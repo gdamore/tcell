@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"io"
 	"os"
@@ -1775,6 +1776,16 @@ func (t *tScreen) SetSize(w, h int) {
 	}
 	t.cells.Invalidate()
 	t.resize()
+}
+
+func (t *tScreen) SetClipboard(content string) bool {
+	ti := t.ti
+	if ti.SetClipboard == "" {
+		return false
+	}
+	encoded := base64.StdEncoding.EncodeToString([]byte(content))
+	t.TPuts(ti.TParm(ti.SetClipboard, "c", encoded))
+	return true
 }
 
 func (t *tScreen) Resize(int, int, int, int) {}

@@ -117,7 +117,7 @@ func unescape(s string) string {
 }
 
 func (tc *termcap) setupterm(name string) error {
-	cmd := exec.Command("infocmp", "-1", name)
+	cmd := exec.Command("infocmp", "-x", "-1", name)
 	output := &bytes.Buffer{}
 	cmd.Stdout = output
 
@@ -219,6 +219,7 @@ func LoadTerminfo(name string) (*terminfo.Terminfo, string, error) {
 	t.SetCursor = tc.getstr("cup")
 	t.CursorBack1 = tc.getstr("cub1")
 	t.CursorUp1 = tc.getstr("cuu1")
+	t.SetClipboard = tc.getstr("Ms")
 	t.KeyF1 = tc.getstr("kf1")
 	t.KeyF2 = tc.getstr("kf2")
 	t.KeyF3 = tc.getstr("kf3")

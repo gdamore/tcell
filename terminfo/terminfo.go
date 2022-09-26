@@ -230,6 +230,7 @@ type Terminfo struct {
 	EnterUrl                string
 	ExitUrl                 string
 	SetWindowSize           string
+	SetClipboard            string
 }
 
 const (

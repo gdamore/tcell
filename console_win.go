@@ -1131,6 +1131,10 @@ func (s *cScreen) SetSize(w, h int) {
 	s.resize()
 }
 
+func (s *cScreen) SetClipboard(content string) bool {
+	return false
+}
+
 func (s *cScreen) resize() {
 	info := consoleInfo{}
 	s.getConsoleInfo(&info)

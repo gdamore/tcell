@@ -248,6 +248,8 @@ type Screen interface {
 	// does not support application-initiated resizing, whereas the legacy terminal does.
 	// Also, some emulators can support this but may have it disabled by default.
 	SetSize(int, int)
+
+	SetClipboard(string) bool
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
