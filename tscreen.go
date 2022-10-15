@@ -346,7 +346,7 @@ func (t *tScreen) prepareExtendedOSC() {
 		t.enterUrl = t.ti.EnterUrl
 		t.exitUrl = t.ti.ExitUrl
 	} else if t.ti.Mouse != "" {
-		t.enterUrl = "\x1b]8;;%p1%s\x1b\\"
+		t.enterUrl = "\x1b]8;%p2%s;%p1%s\x1b\\"
 		t.exitUrl = "\x1b]8;;\x1b\\"
 	}
 
@@ -794,7 +794,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		// URL string can be long, so don't send it unless we really need to
 		if t.enterUrl != "" && t.curstyle != style {
 			if style.url != "" {
-				t.TPuts(ti.TParm(t.enterUrl, style.url))
+				t.TPuts(ti.TParm(t.enterUrl, style.url, style.urlId))
 			} else {
 				t.TPuts(t.exitUrl)
 			}
