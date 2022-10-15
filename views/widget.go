@@ -15,6 +15,8 @@
 package views
 
 import (
+	"sync"
+
 	"github.com/gdamore/tcell/v2"
 )
 
@@ -81,16 +83,21 @@ func (wev *widgetEvent) SetWidget(widget Widget) {
 	wev.widget = widget
 }
 
-// WidgetWatchers provides a common implementation for base Widget
-// Watch and Unwatch interfaces, suitable for embedding in more concrete
-// widget implementations.
+// WidgetWatchers provides a common implementation for base Widget Watch and
+// Unwatch interfaces, suitable for embedding in more concrete widget
+// implementations. This implementation is thread-safe, meaning an embedder can
+// expect safety when calling WidgetWatcher methods from separate goroutines.
+// In general, the views package does not support thread safety.
 type WidgetWatchers struct {
+	sync.Mutex
 	watchers map[tcell.EventHandler]struct{}
 }
 
 // Watch monitors this WidgetWatcher, causing the handler to be fired
 // with EventWidget as they are occur on the watched Widget.
 func (ww *WidgetWatchers) Watch(handler tcell.EventHandler) {
+	ww.Lock()
+	defer ww.Unlock()
 	if ww.watchers == nil {
 		ww.watchers = make(map[tcell.EventHandler]struct{})
 	}
@@ -100,6 +107,8 @@ func (ww *WidgetWatchers) Watch(handler tcell.EventHandler) {
 // Unwatch stops monitoring this WidgetWatcher. The handler will no longer
 // be fired for Widget events.
 func (ww *WidgetWatchers) Unwatch(handler tcell.EventHandler) {
+	ww.Lock()
+	defer ww.Unlock()
 	if ww.watchers != nil {
 		delete(ww.watchers, handler)
 	}
@@ -108,7 +117,13 @@ func (ww *WidgetWatchers) Unwatch(handler tcell.EventHandler) {
 // PostEvent delivers the EventWidget to all registered watchers.  It is
 // to be called by the Widget implementation.
 func (ww *WidgetWatchers) PostEvent(wev EventWidget) {
-	for watcher := range ww.watchers {
+	ww.Lock()
+	watcherCopy := make(map[tcell.EventHandler]struct{}, len(ww.watchers))
+	for k := range ww.watchers {
+		watcherCopy[k] = struct{}{}
+	}
+	ww.Unlock()
+	for watcher := range watcherCopy {
 		// Deliver events to all listeners, ignoring return value.
 		watcher.HandleEvent(wev)
 	}
