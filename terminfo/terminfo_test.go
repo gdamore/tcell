@@ -139,8 +139,8 @@ func TestStringParameter(t *testing.T) {
 	if s != "\x1b]8;;https://example.org/test\x1b\\" {
 		t.Errorf("Result string failed: %s", s)
 	}
-	s = ti.TParm(ti.EnterUrl, "https://example.org/test", "id:1234")
-	if s != "\x1b]8;id:1234;https://example.org/test\x1b\\" {
+	s = ti.TParm(ti.EnterUrl, "https://example.org/test", "id=1234")
+	if s != "\x1b]8;id=1234;https://example.org/test\x1b\\" {
 		t.Errorf("Result string failed: %s", s)
 	}
 }
