@@ -171,6 +171,6 @@ func (s Style) UrlId(id string) Style {
 		bg:    s.bg,
 		attrs: s.attrs,
 		url:   s.url,
-		urlId: "id:" + id,
+		urlId: "id=" + id,
 	}
 }
