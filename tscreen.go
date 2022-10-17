@@ -199,9 +199,13 @@ func (t *tScreen) Init() error {
 	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
 		t.truecolor = false
 	}
-	t.colors = make(map[Color]Color)
-	t.palette = make([]Color, t.nColors())
-	for i := 0; i < t.nColors(); i++ {
+	nColors := t.nColors()
+	if nColors > 256 {
+		nColors = 256 // clip to reasonable limits
+	}
+	t.colors = make(map[Color]Color, nColors)
+	t.palette = make([]Color, nColors)
+	for i := 0; i < nColors; i++ {
 		t.palette[i] = Color(i) | ColorValid
 		// identity map for our builtin colors
 		t.colors[Color(i)|ColorValid] = Color(i) | ColorValid
