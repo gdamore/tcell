@@ -134,7 +134,6 @@ type tScreen struct {
 	clear        bool
 	cursorx      int
 	cursory      int
-	wasbtn       bool
 	acs          map[rune]string
 	charset      string
 	encoder      transform.Transformer
@@ -1233,28 +1232,16 @@ func (t *tScreen) buildMouseEvent(x, y, btn int) *EventMouse {
 	switch btn & 0x43 {
 	case 0:
 		button = Button1
-		t.wasbtn = true
 	case 1:
 		button = Button3 // Note we prefer to treat right as button 2
-		t.wasbtn = true
 	case 2:
 		button = Button2 // And the middle button as button 3
-		t.wasbtn = true
 	case 3:
 		button = ButtonNone
-		t.wasbtn = false
 	case 0x40:
-		if !t.wasbtn {
-			button = WheelUp
-		} else {
-			button = Button1
-		}
+		button = WheelUp
 	case 0x41:
-		if !t.wasbtn {
-			button = WheelDown
-		} else {
-			button = Button2
-		}
+		button = WheelDown
 	}
 
 	if btn&0x4 != 0 {
