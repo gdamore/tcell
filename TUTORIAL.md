@@ -18,7 +18,7 @@ to the terminal capabilities.
 Applications receive an event of type `EventResize` when they are first initialized and each time the terminal is resized.
 The new size is available as `Size`.
 
-```golang
+```go
 switch ev := ev.(type) {
 case *tcell.EventResize:
 	w, h := ev.Size()
@@ -35,7 +35,7 @@ When a rune key is pressed, an event with its `Key` set to `KeyRune` is dispatch
 
 When a non-rune key is pressed, it is available as the `Key` of the event.
 
-```golang
+```go
 switch ev := ev.(type) {
 case *tcell.EventKey:
     mod, key, ch := ev.Mod(), ev.Key(), ev.Rune()
@@ -62,7 +62,7 @@ Mouse events are only delivered if
 
 The mouse buttons being pressed (if any) are available as `Buttons`, and the position of the mouse is available as `Position`.
 
-```golang
+```go
 switch ev := ev.(type) {
 case *tcell.EventMouse:
 	mod := ev.Modifiers()
@@ -88,9 +88,9 @@ WheelRight |                 | Horizontal wheel right
 
 ## Usage
 
-To create a tcell application, first initialize a screen to hold it.
+To create a _Tcell_ application, first initialize a screen to hold it.
 
-```golang
+```go
 s, err := tcell.NewScreen()
 if err != nil {
 	log.Fatalf("%+v", err)
@@ -109,7 +109,7 @@ s.Clear()
 
 Text may be drawn on the screen using `SetContent`.
 
-```golang
+```go
 s.SetContent(0, 0, 'H', nil, defStyle)
 s.SetContent(1, 0, 'i', nil, defStyle)
 s.SetContent(2, 0, '!', nil, defStyle)
@@ -117,7 +117,7 @@ s.SetContent(2, 0, '!', nil, defStyle)
 
 To draw text more easily, define a render function.
 
-```golang
+```go
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
 	col := x1
@@ -137,7 +137,7 @@ func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string
 
 Lastly, define an event loop to handle user input and update application state.
 
-```golang
+```go
 quit := func() {
     s.Fini()
     os.Exit(0)
@@ -165,7 +165,7 @@ for {
 
 The following demonstrates how to initialize a screen, draw text/graphics and handle user input.
 
-```golang
+```go
 package main
 
 import (
