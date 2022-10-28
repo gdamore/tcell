@@ -64,7 +64,7 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 * [statusbar](https://github.com/kyprifog/statusbar) - statusbar motivation tool for tracking periodic tasks/goals
 * [todo](https://github.com/kyprifog/todo) - simple todo app
 * [gosnakego](https://github.com/liweiyi88/gosnakego) - a snake game
-
+* [gbb](https://github.com/sdemingo/gbb) - A classical bulletin board app for tildes or public unix servers
 
 ## Pure Go Terminfo Database
 
