@@ -42,6 +42,6 @@
 // point will only be displayed if your terminal or emulator (or the font
 // the emulator is using) supports them.
 //
-// A rich set of keycodes is supported, with support for up to 65 function
+// A rich set of key codes is supported, with support for up to 65 function
 // keys, and various other special keys.
 package tcell
