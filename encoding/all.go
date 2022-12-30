@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package encoding is used to provide a fairly complete set of encodings
+// for tcell applications.  Importing this package will automatically
+// register encodings.  Note that this package will add several MB to the
+// generated binaries, as the encodings themselves can be somewhat large,
+// particularly for the East Asian locales.
 package encoding
 
 import (
@@ -29,7 +34,13 @@ import (
 // add full character set support to your program.  Note that this can
 // add several megabytes to your program's size, because some of the encodings
 // are rather large (particularly those from East Asia.)
+//
+// Deprecated: This is no longer needed, importing the package is sufficient.
 func Register() {
+	registerAll()
+}
+
+func registerAll() {
 	// We supply latin1 and latin5, because Go doesn't
 	tcell.RegisterEncoding("ISO8859-1", encoding.ISO8859_1)
 	tcell.RegisterEncoding("ISO8859-9", encoding.ISO8859_9)
@@ -62,7 +73,7 @@ func Register() {
 
 	tcell.RegisterEncoding("Big5", traditionalchinese.Big5)
 
-	// Common aliaess
+	// Common aliases
 	aliases := map[string]string{
 		"8859-1":      "ISO8859-1",
 		"ISO-8859-1":  "ISO8859-1",
@@ -112,4 +123,8 @@ func Register() {
 			tcell.RegisterEncoding(n, enc)
 		}
 	}
+}
+
+func init() {
+	registerAll();
 }
