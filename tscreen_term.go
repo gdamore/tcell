@@ -544,6 +544,36 @@ func (t *tScreen) finish() {
 	t.finalize()
 }
 
+func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
+
+	nb := make([]byte, 6)
+	ob := make([]byte, 6)
+	num := utf8.EncodeRune(ob, r)
+	ob = ob[:num]
+	dst := 0
+	var err error
+	if enc := t.encoder; enc != nil {
+		enc.Reset()
+		dst, _, err = enc.Transform(nb, ob, true)
+	}
+	if err != nil || dst == 0 || nb[0] == '\x1a' {
+		// Combining characters are elided
+		if len(buf) == 0 {
+			if acs, ok := t.acs[r]; ok {
+				buf = append(buf, []byte(acs)...)
+			} else if fb, ok := t.fallback[r]; ok {
+				buf = append(buf, []byte(fb)...)
+			} else {
+				buf = append(buf, '?')
+			}
+		}
+	} else {
+		buf = append(buf, nb[:dst]...)
+	}
+
+	return buf
+}
+
 func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 	ti := t.ti
 	if ti.Colors == 0 {
@@ -623,47 +653,6 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 		}
 	}
 	return attr
-}
-
-func (t *tScreen) draw() {
-	// clobber cursor position, because we're going to change it all
-	t.cx = -1
-	t.cy = -1
-	// make no style assumptions
-	t.curstyle = styleInvalid
-
-	t.buf.Reset()
-	t.buffering = true
-	defer func() {
-		t.buffering = false
-	}()
-
-	// hide the cursor while we move stuff around
-	t.hideCursor()
-
-	if t.clear {
-		t.clearScreen()
-	}
-
-	for y := 0; y < t.h; y++ {
-		for x := 0; x < t.w; x++ {
-			width := t.drawCell(x, y)
-			if width > 1 {
-				if x+1 < t.w {
-					// this is necessary so that if we ever
-					// go back to drawing that cell, we
-					// actually will *draw* it.
-					t.cells.SetDirty(x+1, y, true)
-				}
-			}
-			x += width - 1
-		}
-	}
-
-	// restore the cursor
-	t.showCursor()
-
-	_, _ = t.buf.WriteTo(t.tty)
 }
 
 func (t *tScreen) drawCell(x, y int) int {
@@ -780,6 +769,19 @@ func (t *tScreen) drawCell(x, y int) int {
 	return width
 }
 
+func (t *tScreen) ShowCursor(x, y int) {
+	t.Lock()
+	t.cursorx = x
+	t.cursory = y
+	t.Unlock()
+}
+
+func (t *tScreen) SetCursorStyle(cs CursorStyle) {
+	t.Lock()
+	t.cursorStyle = cs
+	t.Unlock()
+}
+
 func (t *tScreen) showCursor() {
 
 	x, y := t.cursorx, t.cursory
@@ -797,22 +799,6 @@ func (t *tScreen) showCursor() {
 	}
 	t.cx = x
 	t.cy = y
-}
-
-func (t *tScreen) resize() {
-	if w, h, e := t.tty.WindowSize(); e == nil {
-		if w != t.w || h != t.h {
-			t.cx = -1
-			t.cy = -1
-
-			t.cells.Resize(w, h)
-			t.cells.Invalidate()
-			t.h = h
-			t.w = w
-			ev := NewEventResize(w, h)
-			_ = t.PostEvent(ev)
-		}
-	}
 }
 
 // writeString sends a string to the terminal. The string is sent as-is and
@@ -858,6 +844,47 @@ func (t *tScreen) hideCursor() {
 	}
 }
 
+func (t *tScreen) draw() {
+	// clobber cursor position, because we're going to change it all
+	t.cx = -1
+	t.cy = -1
+	// make no style assumptions
+	t.curstyle = styleInvalid
+
+	t.buf.Reset()
+	t.buffering = true
+	defer func() {
+		t.buffering = false
+	}()
+
+	// hide the cursor while we move stuff around
+	t.hideCursor()
+
+	if t.clear {
+		t.clearScreen()
+	}
+
+	for y := 0; y < t.h; y++ {
+		for x := 0; x < t.w; x++ {
+			width := t.drawCell(x, y)
+			if width > 1 {
+				if x+1 < t.w {
+					// this is necessary so that if we ever
+					// go back to drawing that cell, we
+					// actually will *draw* it.
+					t.cells.SetDirty(x+1, y, true)
+				}
+			}
+			x += width - 1
+		}
+	}
+
+	// restore the cursor
+	t.showCursor()
+
+	_, _ = t.buf.WriteTo(t.tty)
+}
+
 func (t *tScreen) enableMouse(f MouseFlags) {
 	// Rather than using terminfo to find mouse escape sequences, we rely on the fact that
 	// pretty much *every* terminal that supports mouse tracking follows the
@@ -890,6 +917,22 @@ func (t *tScreen) enablePasting(on bool) {
 	}
 	if s != "" {
 		t.TPuts(s)
+	}
+}
+
+func (t *tScreen) resize() {
+	if w, h, e := t.tty.WindowSize(); e == nil {
+		if w != t.w || h != t.h {
+			t.cx = -1
+			t.cy = -1
+
+			t.cells.Resize(w, h)
+			t.cells.Invalidate()
+			t.h = h
+			t.w = w
+			ev := NewEventResize(w, h)
+			_ = t.PostEvent(ev)
+		}
 	}
 }
 
@@ -970,36 +1013,6 @@ func (t *tScreen) buildAcsMap() {
 		}
 		acsstr = acsstr[2:]
 	}
-}
-
-func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
-
-	nb := make([]byte, 6)
-	ob := make([]byte, 6)
-	num := utf8.EncodeRune(ob, r)
-	ob = ob[:num]
-	dst := 0
-	var err error
-	if enc := t.encoder; enc != nil {
-		enc.Reset()
-		dst, _, err = enc.Transform(nb, ob, true)
-	}
-	if err != nil || dst == 0 || nb[0] == '\x1a' {
-		// Combining characters are elided
-		if len(buf) == 0 {
-			if acs, ok := t.acs[r]; ok {
-				buf = append(buf, []byte(acs)...)
-			} else if fb, ok := t.fallback[r]; ok {
-				buf = append(buf, []byte(fb)...)
-			} else {
-				buf = append(buf, '?')
-			}
-		}
-	} else {
-		buf = append(buf, nb[:dst]...)
-	}
-
-	return buf
 }
 
 // buildMouseEvent returns an event based on the supplied coordinates and button
@@ -1483,17 +1496,8 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 	}
 }
 
-func (t *tScreen) ShowCursor(x, y int) {
-	t.Lock()
-	t.cursorx = x
-	t.cursory = y
-	t.Unlock()
-}
-
-func (t *tScreen) SetCursorStyle(cs CursorStyle) {
-	t.Lock()
-	t.cursorStyle = cs
-	t.Unlock()
+func (t *tScreen) CharacterSet() string {
+	return t.charset
 }
 
 func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
@@ -1523,6 +1527,17 @@ func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 	return false
 }
 
+func (t *tScreen) HasMouse() bool {
+	return len(t.mouse) != 0
+}
+
+func (t *tScreen) HasKey(k Key) bool {
+	if k == KeyRune {
+		return true
+	}
+	return t.keyexist[k]
+}
+
 func (t *tScreen) SetSize(w, h int) {
 	if t.setWinSize != "" {
 		t.TPuts(t.ti.TParm(t.setWinSize, w, h))
@@ -1538,17 +1553,6 @@ func (t *tScreen) Suspend() error {
 
 func (t *tScreen) Resume() error {
 	return t.engage()
-}
-
-func (t *tScreen) CharacterSet() string {
-	return t.charset
-}
-
-func (t *tScreen) HasKey(k Key) bool {
-	if k == KeyRune {
-		return true
-	}
-	return t.keyexist[k]
 }
 
 // engage is used to place the terminal in raw mode and establish screen size, etc.
@@ -1632,12 +1636,6 @@ func (t *tScreen) disengage() {
 
 	_ = t.tty.Stop()
 }
-
-func (t *tScreen) HasMouse() bool {
-	return len(t.mouse) != 0
-}
-
-func (t *tScreen) Resize(int, int, int, int) {}
 
 // Beep emits a beep to the terminal.
 func (t *tScreen) Beep() error {
