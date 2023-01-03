@@ -12,7 +12,10 @@ import (
 )
 
 func NewTerminfoScreen() (Screen, error) {
-	return &tScreen{}, nil
+	t := &tScreen{}
+	t.fallback = make(map[rune]string)
+
+	return t, nil
 }
 
 type tScreen struct {
@@ -38,8 +41,7 @@ type tScreen struct {
 }
 
 func (t *tScreen) Init() error {
-	t.w, t.h = 80, 24
-	t.fallback = make(map[rune]string)
+	t.w, t.h = 80, 24 // default for html as of now
 	t.evch = make(chan Event, 10)
 	t.quit = make(chan struct{})
 
@@ -57,6 +59,127 @@ func (t *tScreen) Init() error {
 
 func (t *tScreen) Fini() {
 	close(t.quit)
+}
+
+func (t *tScreen) drawCell(x, y int) int {
+	mainc, combc, style, width := t.cells.GetContent(x, y)
+
+	if !t.cells.Dirty(x, y) {
+		return width
+	}
+
+	if style == StyleDefault {
+		style = t.style
+	}
+
+	fg, bg := style.fg.Hex(), style.bg.Hex()
+
+	var combcarr []interface{} = make([]interface{}, len(combc))
+	for i, c := range combc {
+		combcarr[i] = c
+	}
+
+	t.cells.SetDirty(x, y, false)
+	js.Global().Call("drawCell", x, y, mainc, combcarr, fg, bg, int(style.attrs))
+
+	return width
+}
+
+func (t *tScreen) ShowCursor(x, y int) {
+	t.Lock()
+	js.Global().Call("showCursor", x, y)
+	t.Unlock()
+}
+
+func (t *tScreen) SetCursorStyle(cs CursorStyle) {
+	t.Lock()
+	js.Global().Call("setCursorStyle", curStyleClasses[cs])
+	t.Unlock()
+}
+
+func (t *tScreen) clearScreen() {
+	js.Global().Call("clearScreen", t.style.fg.Hex(), t.style.bg.Hex())
+	t.clear = false
+}
+
+func (t *tScreen) draw() {
+	if t.clear {
+		t.clearScreen()
+	}
+
+	for y := 0; y < t.h; y++ {
+		for x := 0; x < t.w; x++ {
+			width := t.drawCell(x, y)
+			x += width - 1
+		}
+	}
+
+	js.Global().Call("show")
+}
+
+func (t *tScreen) enableMouse(f MouseFlags) {
+	if f&MouseButtonEvents != 0 {
+		js.Global().Set("onMouseClick", js.FuncOf(t.onMouseEvent))
+	} else {
+		js.Global().Set("onMouseClick", js.FuncOf(t.unset))
+	}
+
+	if f&MouseDragEvents != 0 || f&MouseMotionEvents != 0 {
+		js.Global().Set("onMouseMove", js.FuncOf(t.onMouseEvent))
+	} else {
+		js.Global().Set("onMouseMove", js.FuncOf(t.unset))
+	}
+}
+
+func (t *tScreen) enablePasting(on bool) {
+	if on {
+		js.Global().Set("onPaste", js.FuncOf(t.onPaste))
+	} else {
+		js.Global().Set("onPaste", js.FuncOf(t.unset))
+	}
+}
+
+// resize does nothing, as asking the web window to resize
+// without a specified width or height will cause no change.
+func (t *tScreen) resize() {}
+
+func (t *tScreen) Colors() int {
+	return 16777216 // 256 ^ 3
+}
+
+func (t *tScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
+	mod := ModNone
+	button := ButtonNone
+
+	switch args[2].Int() {
+	case 0:
+		if t.mouseFlags&MouseMotionEvents == 0 {
+			// don't want this event! is a mouse motion event, but user has asked not.
+			return nil
+		}
+		button = ButtonNone
+	case 1:
+		button = Button1
+	case 2:
+		button = Button3 // Note we prefer to treat right as button 2
+	case 3:
+		button = Button2 // And the middle button as button 3
+	}
+
+	if args[3].Bool() { // mod shift
+		mod |= ModShift
+	}
+
+	if args[4].Bool() { // mod alt
+		mod |= ModAlt
+	}
+
+	if args[5].Bool() { // mod ctrl
+		mod |= ModCtrl
+	}
+
+	t.PostEventWait(NewEventMouse(args[0].Int(), args[1].Int(), button, mod))
+	return nil
 }
 
 func (t *tScreen) onKeyEvent(this js.Value, args []js.Value) interface{} {
@@ -109,121 +232,12 @@ func (t *tScreen) onPaste(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func (t *tScreen) enableMouse(f MouseFlags) {
-	if f&MouseButtonEvents != 0 {
-		js.Global().Set("onMouseClick", js.FuncOf(t.onMouseEvent))
-	} else {
-		js.Global().Set("onMouseClick", js.FuncOf(t.unset))
-	}
-
-	if f&MouseDragEvents != 0 || f&MouseMotionEvents != 0 {
-		js.Global().Set("onMouseMove", js.FuncOf(t.onMouseEvent))
-	} else {
-		js.Global().Set("onMouseMove", js.FuncOf(t.unset))
-	}
-}
-
-func (t *tScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
-	mod := ModNone
-	button := ButtonNone
-
-	switch args[2].Int() {
-	case 0:
-		if t.mouseFlags&MouseMotionEvents == 0 {
-			// don't want this event! is a mouse motion event, but user has asked not.
-			return nil
-		}
-		button = ButtonNone
-	case 1:
-		button = Button1
-	case 2:
-		button = Button3 // Note we prefer to treat right as button 2
-	case 3:
-		button = Button2 // And the middle button as button 3
-	}
-
-	if args[3].Bool() { // mod shift
-		mod |= ModShift
-	}
-
-	if args[4].Bool() { // mod alt
-		mod |= ModAlt
-	}
-
-	if args[5].Bool() { // mod ctrl
-		mod |= ModCtrl
-	}
-
-	t.PostEventWait(NewEventMouse(args[0].Int(), args[1].Int(), button, mod))
-	return nil
-}
-
+// unset is a dummy function for js when we want nothing to
+// happen when javascript calls a function (for example, when
+// mouse input is disabled, when onMouseEvent() is called from
+// js, it redirects here and does nothing).
 func (t *tScreen) unset(this js.Value, args []js.Value) interface{} {
 	return nil
-}
-
-func (t *tScreen) Colors() int {
-	return 16777216 // 256 ^ 3
-}
-
-// resize does nothing, as asking the web window to resize
-// without a specified width or height will cause no change.
-func (t *tScreen) resize() {}
-
-func (t *tScreen) draw() {
-	if t.clear {
-		t.clearScreen()
-	}
-
-	for y := 0; y < t.h; y++ {
-		for x := 0; x < t.w; x++ {
-			width := t.drawCell(x, y)
-			x += width - 1
-		}
-	}
-
-	js.Global().Call("show")
-}
-
-func (t *tScreen) clearScreen() {
-	js.Global().Call("clearScreen", t.style.fg.Hex(), t.style.bg.Hex())
-	t.clear = false
-}
-
-func (t *tScreen) drawCell(x, y int) int {
-	mainc, combc, style, width := t.cells.GetContent(x, y)
-
-	if !t.cells.Dirty(x, y) {
-		return width
-	}
-
-	if style == StyleDefault {
-		style = t.style
-	}
-
-	fg, bg := style.fg.Hex(), style.bg.Hex()
-
-	var combcarr []interface{} = make([]interface{}, len(combc))
-	for i, c := range combc {
-		combcarr[i] = c
-	}
-
-	t.cells.SetDirty(x, y, false)
-	js.Global().Call("drawCell", x, y, mainc, combcarr, fg, bg, int(style.attrs))
-
-	return width
-}
-
-func (t *tScreen) ShowCursor(x, y int) {
-	t.Lock()
-	js.Global().Call("showCursor", x, y)
-	t.Unlock()
-}
-
-func (t *tScreen) SetCursorStyle(cs CursorStyle) {
-	t.Lock()
-	js.Global().Call("setCursorStyle", curStyleClasses[cs])
-	t.Unlock()
 }
 
 func (t *tScreen) CharacterSet() string {
@@ -231,6 +245,23 @@ func (t *tScreen) CharacterSet() string {
 }
 
 func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
+	if utf8.ValidRune(r) {
+		return true
+	}
+	if !checkFallbacks {
+		return false
+	}
+	if _, ok := t.fallback[r]; ok {
+		return true
+	}
+	return false
+}
+
+func (t *tScreen) HasMouse() bool {
+	return true
+}
+
+func (t *tScreen) HasKey(k Key) bool {
 	return true
 }
 
@@ -247,6 +278,7 @@ func (t *tScreen) SetSize(w, h int) {
 }
 
 // Suspend simply pauses all input and output, and clears the screen.
+// There isn't a "default terminal" to go back to.
 func (t *tScreen) Suspend() error {
 	t.Lock()
 	if !t.running {
@@ -276,26 +308,6 @@ func (t *tScreen) Resume() error {
 
 	t.Unlock()
 	return nil
-}
-
-func (t *tScreen) HasKey(k Key) bool {
-	return true
-}
-
-func (t *tScreen) enablePasting(on bool) {
-	if on {
-		js.Global().Set("onPaste", js.FuncOf(t.onPaste))
-	} else {
-		js.Global().Set("onPaste", js.FuncOf(t.unset))
-	}
-}
-
-func (t *tScreen) HasMouse() bool {
-	return true
-}
-
-func (t *tScreen) Resize(x int, y int, w int, h int) {
-	t.SetSize(w, h)
 }
 
 func (t *tScreen) Beep() error {
@@ -396,34 +408,34 @@ var WebKeyNames = map[string]Key{
 	"F62":        KeyF62,
 	"F63":        KeyF63,
 	"F64":        KeyF64,
-	"Ctrl-a":     KeyCtrlA,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-b":     KeyCtrlB,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-c":     KeyCtrlC,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-d":     KeyCtrlD,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-e":     KeyCtrlE,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-f":     KeyCtrlF,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-g":     KeyCtrlG,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-j":     KeyCtrlJ,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-k":     KeyCtrlK,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-l":     KeyCtrlL,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-n":     KeyCtrlN,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-o":     KeyCtrlO,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-p":     KeyCtrlP,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-q":     KeyCtrlQ,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-r":     KeyCtrlR,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-s":     KeyCtrlS,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-t":     KeyCtrlT,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-u":     KeyCtrlU,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-v":     KeyCtrlV,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-w":     KeyCtrlW,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-x":     KeyCtrlX,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-y":     KeyCtrlY,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-z":     KeyCtrlZ,          // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl- ":     KeyCtrlSpace,      // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-_":     KeyCtrlUnderscore, // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-]":     KeyCtrlRightSq,    // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-\\":    KeyCtrlBackslash,  // not supported by HTML- reported as key + modifier ctrl
-	"Ctrl-^":     KeyCtrlCarat,      // not supported by HTML- reported as key + modifier ctrl
+	"Ctrl-a":     KeyCtrlA,          // not reported by HTML- need to do special check
+	"Ctrl-b":     KeyCtrlB,          // not reported by HTML- need to do special check
+	"Ctrl-c":     KeyCtrlC,          // not reported by HTML- need to do special check
+	"Ctrl-d":     KeyCtrlD,          // not reported by HTML- need to do special check
+	"Ctrl-e":     KeyCtrlE,          // not reported by HTML- need to do special check
+	"Ctrl-f":     KeyCtrlF,          // not reported by HTML- need to do special check
+	"Ctrl-g":     KeyCtrlG,          // not reported by HTML- need to do special check
+	"Ctrl-j":     KeyCtrlJ,          // not reported by HTML- need to do special check
+	"Ctrl-k":     KeyCtrlK,          // not reported by HTML- need to do special check
+	"Ctrl-l":     KeyCtrlL,          // not reported by HTML- need to do special check
+	"Ctrl-n":     KeyCtrlN,          // not reported by HTML- need to do special check
+	"Ctrl-o":     KeyCtrlO,          // not reported by HTML- need to do special check
+	"Ctrl-p":     KeyCtrlP,          // not reported by HTML- need to do special check
+	"Ctrl-q":     KeyCtrlQ,          // not reported by HTML- need to do special check
+	"Ctrl-r":     KeyCtrlR,          // not reported by HTML- need to do special check
+	"Ctrl-s":     KeyCtrlS,          // not reported by HTML- need to do special check
+	"Ctrl-t":     KeyCtrlT,          // not reported by HTML- need to do special check
+	"Ctrl-u":     KeyCtrlU,          // not reported by HTML- need to do special check
+	"Ctrl-v":     KeyCtrlV,          // not reported by HTML- need to do special check
+	"Ctrl-w":     KeyCtrlW,          // not reported by HTML- need to do special check
+	"Ctrl-x":     KeyCtrlX,          // not reported by HTML- need to do special check
+	"Ctrl-y":     KeyCtrlY,          // not reported by HTML- need to do special check
+	"Ctrl-z":     KeyCtrlZ,          // not reported by HTML- need to do special check
+	"Ctrl- ":     KeyCtrlSpace,      // not reported by HTML- need to do special check
+	"Ctrl-_":     KeyCtrlUnderscore, // not reported by HTML- need to do special check
+	"Ctrl-]":     KeyCtrlRightSq,    // not reported by HTML- need to do special check
+	"Ctrl-\\":    KeyCtrlBackslash,  // not reported by HTML- need to do special check
+	"Ctrl-^":     KeyCtrlCarat,      // not reported by HTML- need to do special check
 }
 
 var curStyleClasses = map[CursorStyle]string{

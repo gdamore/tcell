@@ -35,18 +35,6 @@ func (t *tScreen) SetStyle(style Style) {
 
 func (t *tScreen) Clear() {
 	t.Fill(' ', t.style)
-	t.Lock()
-	t.clear = true
-	w, h := t.cells.Size()
-	// because we are going to clear (see t.clear) in the next cycle,
-	// let's also unmark the dirty bit so that we don't waste cycles
-	// drawing things that are already dealt with via the clear escape sequence.
-	for row := 0; row < h; row++ {
-		for col := 0; col < w; col++ {
-			t.cells.SetDirty(col, row, false)
-		}
-	}
-	t.Unlock()
 }
 
 func (t *tScreen) Fill(r rune, style Style) {
@@ -54,30 +42,6 @@ func (t *tScreen) Fill(r rune, style Style) {
 	if !t.fini {
 		t.cells.Fill(r, style)
 	}
-	t.Unlock()
-}
-
-func (t *tScreen) EnableMouse(flags ...MouseFlags) {
-	var f MouseFlags
-	flagsPresent := false
-	for _, flag := range flags {
-		f |= flag
-		flagsPresent = true
-	}
-	if !flagsPresent {
-		f = MouseMotionEvents | MouseDragEvents | MouseButtonEvents
-	}
-
-	t.Lock()
-	t.mouseFlags = f
-	t.enableMouse(f)
-	t.Unlock()
-}
-
-func (t *tScreen) DisableMouse() {
-	t.Lock()
-	t.mouseFlags = 0
-	t.enableMouse(0)
 	t.Unlock()
 }
 
@@ -114,6 +78,30 @@ func (t *tScreen) Show() {
 		t.resize()
 		t.draw()
 	}
+	t.Unlock()
+}
+
+func (t *tScreen) EnableMouse(flags ...MouseFlags) {
+	var f MouseFlags
+	flagsPresent := false
+	for _, flag := range flags {
+		f |= flag
+		flagsPresent = true
+	}
+	if !flagsPresent {
+		f = MouseMotionEvents | MouseDragEvents | MouseButtonEvents
+	}
+
+	t.Lock()
+	t.mouseFlags = f
+	t.enableMouse(f)
+	t.Unlock()
+}
+
+func (t *tScreen) DisableMouse() {
+	t.Lock()
+	t.mouseFlags = 0
+	t.enableMouse(0)
 	t.Unlock()
 }
 
@@ -225,3 +213,5 @@ func (t *tScreen) UnregisterRuneFallback(orig rune) {
 	delete(t.fallback, orig)
 	t.Unlock()
 }
+
+func (t *tScreen) Resize(int, int, int, int) {}
