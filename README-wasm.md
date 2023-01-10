@@ -39,10 +39,11 @@ import (
 )
 
 func main() {
-	log.Fatal(http.ListenAndServe(":8080", 
-        http.FileServer(http.Dir("/path/to/dir/to/serve"))
-    ))
+	log.Fatal(http.ListenAndServe(":8080",
+		http.FileServer(http.Dir("/path/to/dir/to/serve")),
+	))
 }
+
 ```
 
 To see the webpage with this example, you can type in `localhost:8080/tcell.html` into your browser while `server.go` is running.
@@ -52,3 +53,9 @@ It is recomended to use an iframe if you want to embed the app into a webpage:
 ```html
 <iframe src="tcell.html" title="Tcell app"></iframe>
 ```
+
+## Other considerations
+
+### Accessing files
+
+`io.Open(filename)` and other related functions for reading file systems do not work; use `http.Get(filename)` instead.
