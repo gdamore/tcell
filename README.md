@@ -265,18 +265,8 @@ Modern console applications like ConEmu and the Windows 10 terminal,
 support all the good features (resize, mouse tracking, etc.)
 
 ### WASM
-WASM needs special build flags and extra files in the same directory in order to work. You can build it by executing
-```sh
-GOOS=js GOARCH=wasm build -o yourfile.wasm
-```
-You also need 5 other files. Four (`tcell.html`, `tcell.js`, `termstyle.css`, and `beep.wav`) are provided in the `webfiles` directory. The last one, `wasm_exec.js`, can be copied from GOROOT into the current directory by executing
-```sh
-cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" ./
-```
-It is recomended use an iframe if you want to embed the app into a webpage:
-```html
-<iframe src="tcell.html" title="Tcell app"></iframe>
-```
+
+WASM is supported, but needs additional setup detailed in [README-wasm](README-wasm.md).
 
 ### Plan9 and others
 

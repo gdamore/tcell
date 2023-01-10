@@ -26,26 +26,24 @@ import (
 )
 
 func NewTerminfoScreen() (Screen, error) {
-	t := &tScreen{}
+	t := &wScreen{}
 	t.fallback = make(map[rune]string)
 
 	return t, nil
 }
 
-type tScreen struct {
+type wScreen struct {
 	w, h  int
 	style Style
 	cells CellBuffer
 
 	running      bool
-	fini         bool // dummy var; html doesn't need to get restored or "shut down"
 	clear        bool
 	flagsPresent bool
 	pasteEnabled bool
 	mouseFlags   MouseFlags
 
 	cursorStyle CursorStyle
-	cx, cy      int // dummies so web tScreen can use generic tScreen.Sync
 
 	quit     chan struct{}
 	evch     chan Event
@@ -54,14 +52,13 @@ type tScreen struct {
 	sync.Mutex
 }
 
-func (t *tScreen) Init() error {
+func (t *wScreen) Init() error {
 	t.w, t.h = 80, 24 // default for html as of now
 	t.evch = make(chan Event, 10)
 	t.quit = make(chan struct{})
 
 	t.Lock()
 	t.running = true
-	t.cx, t.cy = -1, -1
 	t.style = StyleDefault
 	t.cells.Resize(t.w, t.h)
 	t.Unlock()
@@ -71,11 +68,48 @@ func (t *tScreen) Init() error {
 	return nil
 }
 
-func (t *tScreen) Fini() {
+func (t *wScreen) Fini() {
 	close(t.quit)
 }
 
-func (t *tScreen) drawCell(x, y int) int {
+func (t *wScreen) SetStyle(style Style) {
+	t.Lock()
+	t.style = style
+	t.Unlock()
+}
+
+func (t *wScreen) Clear() {
+	t.Fill(' ', t.style)
+}
+
+func (t *wScreen) Fill(r rune, style Style) {
+	t.Lock()
+	t.cells.Fill(r, style)
+	t.Unlock()
+}
+
+func (t *wScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
+	t.Lock()
+	t.cells.SetContent(x, y, mainc, combc, style)
+	t.Unlock()
+}
+
+func (t *wScreen) GetContent(x, y int) (rune, []rune, Style, int) {
+	t.Lock()
+	mainc, combc, style, width := t.cells.GetContent(x, y)
+	t.Unlock()
+	return mainc, combc, style, width
+}
+
+func (t *wScreen) SetCell(x, y int, style Style, ch ...rune) {
+	if len(ch) > 0 {
+		t.SetContent(x, y, ch[0], ch[1:], style)
+	} else {
+		t.SetContent(x, y, ' ', nil, style)
+	}
+}
+
+func (t *wScreen) drawCell(x, y int) int {
 	mainc, combc, style, width := t.cells.GetContent(x, y)
 
 	if !t.cells.Dirty(x, y) {
@@ -99,24 +133,35 @@ func (t *tScreen) drawCell(x, y int) int {
 	return width
 }
 
-func (t *tScreen) ShowCursor(x, y int) {
+func (t *wScreen) ShowCursor(x, y int) {
 	t.Lock()
 	js.Global().Call("showCursor", x, y)
 	t.Unlock()
 }
 
-func (t *tScreen) SetCursorStyle(cs CursorStyle) {
+func (t *wScreen) SetCursorStyle(cs CursorStyle) {
 	t.Lock()
 	js.Global().Call("setCursorStyle", curStyleClasses[cs])
 	t.Unlock()
 }
 
-func (t *tScreen) clearScreen() {
+func (t *wScreen) HideCursor() {
+	t.ShowCursor(-1, -1)
+}
+
+func (t *wScreen) Show() {
+	t.Lock()
+	t.resize()
+	t.draw()
+	t.Unlock()
+}
+
+func (t *wScreen) clearScreen() {
 	js.Global().Call("clearScreen", t.style.fg.Hex(), t.style.bg.Hex())
 	t.clear = false
 }
 
-func (t *tScreen) draw() {
+func (t *wScreen) draw() {
 	if t.clear {
 		t.clearScreen()
 	}
@@ -131,7 +176,24 @@ func (t *tScreen) draw() {
 	js.Global().Call("show")
 }
 
-func (t *tScreen) enableMouse(f MouseFlags) {
+func (t *wScreen) EnableMouse(flags ...MouseFlags) {
+	var f MouseFlags
+	flagsPresent := false
+	for _, flag := range flags {
+		f |= flag
+		flagsPresent = true
+	}
+	if !flagsPresent {
+		f = MouseMotionEvents | MouseDragEvents | MouseButtonEvents
+	}
+
+	t.Lock()
+	t.mouseFlags = f
+	t.enableMouse(f)
+	t.Unlock()
+}
+
+func (t *wScreen) enableMouse(f MouseFlags) {
 	if f&MouseButtonEvents != 0 {
 		js.Global().Set("onMouseClick", js.FuncOf(t.onMouseEvent))
 	} else {
@@ -145,7 +207,28 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	}
 }
 
-func (t *tScreen) enablePasting(on bool) {
+func (t *wScreen) DisableMouse() {
+	t.Lock()
+	t.mouseFlags = 0
+	t.enableMouse(0)
+	t.Unlock()
+}
+
+func (t *wScreen) EnablePaste() {
+	t.Lock()
+	t.pasteEnabled = true
+	t.enablePasting(true)
+	t.Unlock()
+}
+
+func (t *wScreen) DisablePaste() {
+	t.Lock()
+	t.pasteEnabled = false
+	t.enablePasting(false)
+	t.Unlock()
+}
+
+func (t *wScreen) enablePasting(on bool) {
 	if on {
 		js.Global().Set("onPaste", js.FuncOf(t.onPaste))
 	} else {
@@ -153,15 +236,85 @@ func (t *tScreen) enablePasting(on bool) {
 	}
 }
 
+func (t *wScreen) Size() (int, int) {
+	t.Lock()
+	w, h := t.w, t.h
+	t.Unlock()
+	return w, h
+}
+
 // resize does nothing, as asking the web window to resize
 // without a specified width or height will cause no change.
-func (t *tScreen) resize() {}
+func (t *wScreen) resize() {}
 
-func (t *tScreen) Colors() int {
+func (t *wScreen) Colors() int {
 	return 16777216 // 256 ^ 3
 }
 
-func (t *tScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
+func (t *wScreen) ChannelEvents(ch chan<- Event, quit <-chan struct{}) {
+	defer close(ch)
+	for {
+		select {
+		case <-quit:
+			return
+		case <-t.quit:
+			return
+		case ev := <-t.evch:
+			select {
+			case <-quit:
+				return
+			case <-t.quit:
+				return
+			case ch <- ev:
+			}
+		}
+	}
+}
+
+func (t *wScreen) PollEvent() Event {
+	select {
+	case <-t.quit:
+		return nil
+	case ev := <-t.evch:
+		return ev
+	}
+}
+
+func (t *wScreen) HasPendingEvent() bool {
+	return len(t.evch) > 0
+}
+
+func (t *wScreen) PostEventWait(ev Event) {
+	t.evch <- ev
+}
+
+func (t *wScreen) PostEvent(ev Event) error {
+	select {
+	case t.evch <- ev:
+		return nil
+	default:
+		return ErrEventQFull
+	}
+}
+
+func (t *wScreen) clip(x, y int) (int, int) {
+	w, h := t.cells.Size()
+	if x < 0 {
+		x = 0
+	}
+	if y < 0 {
+		y = 0
+	}
+	if x > w-1 {
+		x = w - 1
+	}
+	if y > h-1 {
+		y = h - 1
+	}
+	return x, y
+}
+
+func (t *wScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
 	mod := ModNone
 	button := ButtonNone
 
@@ -196,7 +349,7 @@ func (t *tScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func (t *tScreen) onKeyEvent(this js.Value, args []js.Value) interface{} {
+func (t *wScreen) onKeyEvent(this js.Value, args []js.Value) interface{} {
 	key := args[0].String()
 
 	// don't accept any modifier keys as their own
@@ -241,7 +394,7 @@ func (t *tScreen) onKeyEvent(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func (t *tScreen) onPaste(this js.Value, args []js.Value) interface{} {
+func (t *wScreen) onPaste(this js.Value, args []js.Value) interface{} {
 	t.PostEventWait(NewEventPaste(args[0].Bool()))
 	return nil
 }
@@ -250,15 +403,36 @@ func (t *tScreen) onPaste(this js.Value, args []js.Value) interface{} {
 // happen when javascript calls a function (for example, when
 // mouse input is disabled, when onMouseEvent() is called from
 // js, it redirects here and does nothing).
-func (t *tScreen) unset(this js.Value, args []js.Value) interface{} {
+func (t *wScreen) unset(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func (t *tScreen) CharacterSet() string {
+func (t *wScreen) Sync() {
+	t.Lock()
+	t.resize()
+	t.clear = true
+	t.cells.Invalidate()
+	t.draw()
+	t.Unlock()
+}
+
+func (t *wScreen) CharacterSet() string {
 	return "UTF-8"
 }
 
-func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
+func (t *wScreen) RegisterRuneFallback(orig rune, fallback string) {
+	t.Lock()
+	t.fallback[orig] = fallback
+	t.Unlock()
+}
+
+func (t *wScreen) UnregisterRuneFallback(orig rune) {
+	t.Lock()
+	delete(t.fallback, orig)
+	t.Unlock()
+}
+
+func (t *wScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 	if utf8.ValidRune(r) {
 		return true
 	}
@@ -271,15 +445,15 @@ func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 	return false
 }
 
-func (t *tScreen) HasMouse() bool {
+func (t *wScreen) HasMouse() bool {
 	return true
 }
 
-func (t *tScreen) HasKey(k Key) bool {
+func (t *wScreen) HasKey(k Key) bool {
 	return true
 }
 
-func (t *tScreen) SetSize(w, h int) {
+func (t *wScreen) SetSize(w, h int) {
 	if w == t.w && h == t.h {
 		return
 	}
@@ -291,9 +465,11 @@ func (t *tScreen) SetSize(w, h int) {
 	t.PostEvent(NewEventResize(w, h))
 }
 
+func (t *wScreen) Resize(int, int, int, int) {}
+
 // Suspend simply pauses all input and output, and clears the screen.
 // There isn't a "default terminal" to go back to.
-func (t *tScreen) Suspend() error {
+func (t *wScreen) Suspend() error {
 	t.Lock()
 	if !t.running {
 		t.Unlock()
@@ -307,7 +483,7 @@ func (t *tScreen) Suspend() error {
 	return nil
 }
 
-func (t *tScreen) Resume() error {
+func (t *wScreen) Resume() error {
 	t.Lock()
 
 	if t.running {
@@ -324,7 +500,7 @@ func (t *tScreen) Resume() error {
 	return nil
 }
 
-func (t *tScreen) Beep() error {
+func (t *wScreen) Beep() error {
 	js.Global().Call("beep")
 	return nil
 }

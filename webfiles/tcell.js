@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+const wasmFilePath = "main.wasm"
 const term = document.getElementById("terminal")
 var width = 80; var height = 24
 const beepAudio = new Audio("beep.wav");
@@ -192,6 +193,6 @@ document.addEventListener("paste", e => {
 });
 
 const go = new Go();
-WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+WebAssembly.instantiateStreaming(fetch(wasmFilePath), go.importObject).then((result) => {
     go.run(result.instance);
 });
