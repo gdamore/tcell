@@ -1,0 +1,4 @@
+# TODO: What other disabled-by-default linters should we enable?
+linters:
+  enable:
+    - misspell
