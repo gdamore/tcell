@@ -22,16 +22,16 @@ var cursorClass = "cursor-blinking-block"
 
 var content // {data: row[height], dirty: bool}
 // row = {data: element[width], previous: span}
-// dirty/[previous being null] indicates if previous (or entire terminal) needs to be recaclulated. 
+// dirty/[previous being null] indicates if previous (or entire terminal) needs to be recalculated.
 // dirty is true/null if terminal/previous need to be re-calculated/shown
 
 function initialize() {
-    resize(width, height) // intialize content
+    resize(width, height) // initialize content
     show() // then show the screen
 }
 
 function resize(w, h) {
-    
+
     width = w
     height = h
     content = {data: new Array(height), dirty: true}
@@ -48,7 +48,7 @@ function clearScreen(fg, bg) {
 
     content.dirty = true
     for (let i = 0; i < height; i++) {
-        content.data[i].previous = null // we set the row to be recacluated later
+        content.data[i].previous = null // we set the row to be recalculated later
         for (let j = 0; j < width; j++) {
             content.data[i].data[j] = document.createTextNode(" ") // set the entire row to spaces.
         }
@@ -61,7 +61,7 @@ function drawCell(x, y, mainc, combc, fg, bg, attrs) {
 
     var span = document.createElement("span")
     var use = false
-    
+
     if (fg) { span.style.color = intToHex(fg); use = true }
     if (bg) { span.style.backgroundColor = intToHex(bg); use = true }
 
