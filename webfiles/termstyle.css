@@ -25,8 +25,6 @@
 
 .blink { animation: blinker 1s step-start infinite; }
 
-.reverse { unicode-bidi: bidi-override; direction: rtl; }
-
 .underline { text-decoration: underline; }
 
 .dim { filter: brightness(50) }

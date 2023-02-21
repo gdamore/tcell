@@ -62,14 +62,19 @@ function drawCell(x, y, mainc, combc, fg, bg, attrs) {
     var span = document.createElement("span")
     var use = false
 
-    if (fg) { span.style.color = intToHex(fg); use = true }
-    if (bg) { span.style.backgroundColor = intToHex(bg); use = true }
+    if ((attrs & (1<<2)) != 0) { // reverse video
+        var temp = bg
+        bg = fg
+        fg = temp
+        use = true
+    }
+    if (fg != -1) { span.style.color = intToHex(fg); use = true }
+    if (bg != -1) { span.style.backgroundColor = intToHex(bg); use = true }
 
     if (attrs != 0) {
         use = true
         if ((attrs & 1) != 0) { span.classList.add("bold") }
         if ((attrs & (1<<1)) != 0) { span.classList.add("blink") }
-        if ((attrs & (1<<2)) != 0) { span.classList.add("reverse") }
         if ((attrs & (1<<3)) != 0) { span.classList.add("underline") }
         if ((attrs & (1<<4)) != 0) { span.classList.add("dim") }
         if ((attrs & (1<<5)) != 0) { span.classList.add("italic") }
