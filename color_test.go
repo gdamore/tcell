@@ -24,18 +24,23 @@ func TestColorValues(t *testing.T) {
 		color Color
 		hex   int32
 	}{
-		{ColorRed, 0x00FF0000},
-		{ColorGreen, 0x00008000},
-		{ColorLime, 0x0000FF00},
-		{ColorBlue, 0x000000FF},
-		{ColorBlack, 0x00000000},
-		{ColorWhite, 0x00FFFFFF},
-		{ColorSilver, 0x00C0C0C0},
+		{ColorRed, 0xFF0000},
+		{ColorGreen, 0x008000},
+		{ColorLime, 0x00FF00},
+		{ColorBlue, 0x0000FF},
+		{ColorBlack, 0x000000},
+		{ColorWhite, 0xFFFFFF},
+		{ColorSilver, 0xC0C0C0},
+		{ColorNavy, 0x000080},
 	}
 
 	for _, tc := range values {
 		if tc.color.Hex() != tc.hex {
 			t.Errorf("Color: %x != %x", tc.color.Hex(), tc.hex)
+		}
+
+		if tc.color.TrueColor().Hex() != tc.hex {
+			t.Errorf("TrueColor %x != %x", tc.color.TrueColor().Hex(), tc.hex)
 		}
 	}
 }
