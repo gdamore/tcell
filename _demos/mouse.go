@@ -268,12 +268,23 @@ func main() {
 			if button != tcell.ButtonNone && ox < 0 {
 				ox, oy = x, y
 			}
+			theme := []tcell.Color{
+				tcell.ColorGray,
+				tcell.ColorRed,
+				tcell.ColorLime,
+				tcell.ColorYellow,
+				tcell.ColorFuchsia,
+				tcell.ColorBlue,
+				tcell.ColorAqua,
+				tcell.ColorSilver,
+			}
 			switch ev.Buttons() {
 			case tcell.ButtonNone:
 				if ox >= 0 {
-					bg := tcell.Color((lchar-'0')*2) | tcell.ColorValid
+					bg := theme[(lchar-'0') % 8]
+					fg := tcell.ColorBlack
 					drawBox(s, ox, oy, x, y,
-						up.Background(bg),
+						up.Background(bg).Foreground(fg),
 						lchar)
 					ox, oy = -1, -1
 					bx, by = -1, -1
