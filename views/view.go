@@ -1,4 +1,4 @@
-// Copyright 2016 The Tcell Authors
+// Copyright 2023 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -147,7 +147,7 @@ func (v *ViewPort) MakeVisible(x, y int) {
 // it cannot scroll away from the content.
 func (v *ViewPort) ValidateViewY() {
 	if v.viewy > v.limy-v.height {
-		v.viewy = (v.limy - v.height)
+		v.viewy = v.limy - v.height
 	}
 	if v.viewy < 0 {
 		v.viewy = 0
@@ -158,7 +158,7 @@ func (v *ViewPort) ValidateViewY() {
 // it cannot scroll away from the content.
 func (v *ViewPort) ValidateViewX() {
 	if v.viewx > v.limx-v.width {
-		v.viewx = (v.limx - v.width)
+		v.viewx = v.limx - v.width
 	}
 	if v.viewx < 0 {
 		v.viewx = 0
