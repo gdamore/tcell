@@ -153,6 +153,8 @@ type tScreen struct {
 	enterUrl     string
 	exitUrl      string
 	setWinSize   string
+	enableFocus  string
+	disableFocus string
 	cursorStyles map[CursorStyle]string
 	cursorStyle  CursorStyle
 	saved        *term.State
@@ -365,6 +367,17 @@ func (t *tScreen) prepareExtendedOSC() {
 		t.setWinSize = t.ti.SetWindowSize
 	} else if t.ti.Mouse != "" {
 		t.setWinSize = "\x1b[8;%p1%p2%d;%dt"
+	}
+
+	if t.ti.EnableFocusReporting != "" {
+		t.enableFocus = t.ti.EnableFocusReporting
+	} else if t.ti.Mouse != "" {
+		t.enableFocus = "\x1b[?1004h"
+	}
+	if t.ti.DisableFocusReporting != "" {
+		t.disableFocus = t.ti.DisableFocusReporting
+	} else if t.ti.Mouse != "" {
+		t.disableFocus = "\x1b[?1004l"
 	}
 }
 
@@ -1044,11 +1057,15 @@ func (t *tScreen) enablePasting(on bool) {
 }
 
 func (t *tScreen) enableFocusReporting() {
-	t.TPuts("\x1b[?1004h")
+	if t.enableFocus != "" {
+		t.TPuts(t.enableFocus)
+	}
 }
 
 func (t *tScreen) disableFocusReporting() {
-	t.TPuts("\x1b[?1004l")
+	if t.disableFocus != "" {
+		t.TPuts(t.disableFocus)
+	}
 }
 
 func (t *tScreen) Size() (int, int) {
