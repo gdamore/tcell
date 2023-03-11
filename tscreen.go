@@ -1043,6 +1043,14 @@ func (t *tScreen) enablePasting(on bool) {
 	}
 }
 
+func (t *tScreen) enableFocusReporting() {
+	t.TPuts("\x1b[?1004h")
+}
+
+func (t *tScreen) disableFocusReporting() {
+	t.TPuts("\x1b[?1004l")
+}
+
 func (t *tScreen) Size() (int, int) {
 	t.Lock()
 	w, h := t.w, t.h
@@ -1380,6 +1388,35 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	return true, false
 }
 
+func (t *tScreen) parseFocus(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
+	state := 0
+	b := buf.Bytes()
+	for i := range b {
+		switch state {
+		case 0:
+			if b[i] != '\x1b' {
+				return false, false
+			}
+			state = 1
+		case 1:
+			if b[i] != '[' {
+				return false, false
+			}
+			state = 2
+		case 2:
+			if b[i] != 'I' && b[i] != 'O' {
+				return false, false
+			}
+			*evs = append(*evs, NewEventFocus(b[i] == 'I'))
+			_, _ = buf.ReadByte()
+			_, _ = buf.ReadByte()
+			_, _ = buf.ReadByte()
+			return true, true
+		}
+	}
+	return true, false
+}
+
 // parseXtermMouse is like parseSgrMouse, but it parses a legacy
 // X11 mouse record.
 func (t *tScreen) parseXtermMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
@@ -1551,6 +1588,12 @@ func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event
 		}
 
 		if part, comp := t.parseFunctionKey(buf, &res); comp {
+			continue
+		} else if part {
+			partials++
+		}
+
+		if part, comp := t.parseFocus(buf, &res); comp {
 			continue
 		} else if part {
 			partials++
@@ -1804,6 +1847,7 @@ func (t *tScreen) engage() error {
 	t.stopQ = stopQ
 	t.enableMouse(t.mouseFlags)
 	t.enablePasting(t.pasteEnabled)
+	t.enableFocusReporting()
 
 	ti := t.ti
 	t.TPuts(ti.EnterCA)
@@ -1853,6 +1897,7 @@ func (t *tScreen) disengage() {
 	t.TPuts(ti.ExitKeypad)
 	t.enableMouse(0)
 	t.enablePasting(false)
+	t.disableFocusReporting()
 
 	_ = t.tty.Stop()
 }

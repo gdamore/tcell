@@ -135,6 +135,7 @@ func main() {
 	btnfmt := "Buttons: %s"
 	keyfmt := "Keys: %s"
 	pastefmt := "Paste: [%d] %s"
+	focusfmt := "Focus: %s"
 	white := tcell.StyleDefault.
 		Foreground(tcell.ColorMidnightBlue).Background(tcell.ColorLightCoral)
 
@@ -148,9 +149,10 @@ func main() {
 	pstr := ""
 	ecnt := 0
 	pasting := false
+	focus := true // assume we are focused when we start
 
 	for {
-		drawBox(s, 1, 1, 42, 7, white, ' ')
+		drawBox(s, 1, 1, 42, 8, white, ' ')
 		emitStr(s, 2, 2, white, "Press ESC twice to exit, C to clear.")
 		emitStr(s, 2, 3, white, fmt.Sprintf(posfmt, mx, my))
 		emitStr(s, 2, 4, white, fmt.Sprintf(btnfmt, bstr))
@@ -161,6 +163,12 @@ func main() {
 			ps = "..." + ps[len(ps)-24:]
 		}
 		emitStr(s, 2, 6, white, fmt.Sprintf(pastefmt, len(pstr), ps))
+
+		fstr := "false"
+		if focus {
+			fstr = "true"
+		}
+		emitStr(s, 2, 7, white, fmt.Sprintf(focusfmt, fstr))
 
 		s.Show()
 		bstr = ""
@@ -315,6 +323,8 @@ func main() {
 			lchar = ch
 			s.SetContent(w-1, h-1, 'M', nil, st)
 			mx, my = x, y
+		case *tcell.EventFocus:
+			focus = ev.Focused
 		default:
 			s.SetContent(w-1, h-1, 'X', nil, st)
 		}
