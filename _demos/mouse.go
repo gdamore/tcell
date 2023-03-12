@@ -129,6 +129,7 @@ func main() {
 	s.SetStyle(defStyle)
 	s.EnableMouse()
 	s.EnablePaste()
+	s.EnableFocus()
 	s.Clear()
 
 	posfmt := "Mouse: %d, %d  "
