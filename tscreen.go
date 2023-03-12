@@ -163,6 +163,7 @@ type tScreen struct {
 	wg           sync.WaitGroup
 	mouseFlags   MouseFlags
 	pasteEnabled bool
+	focusEnabled bool
 
 	sync.Mutex
 }
@@ -1056,6 +1057,20 @@ func (t *tScreen) enablePasting(on bool) {
 	}
 }
 
+func (t *tScreen) EnableFocus() {
+	t.Lock()
+	t.focusEnabled = true
+	t.enableFocusReporting()
+	t.Unlock()
+}
+
+func (t *tScreen) DisableFocus() {
+	t.Lock()
+	t.focusEnabled = false
+	t.disableFocusReporting()
+	t.Unlock()
+}
+
 func (t *tScreen) enableFocusReporting() {
 	if t.enableFocus != "" {
 		t.TPuts(t.enableFocus)
@@ -1866,7 +1881,9 @@ func (t *tScreen) engage() error {
 	t.stopQ = stopQ
 	t.enableMouse(t.mouseFlags)
 	t.enablePasting(t.pasteEnabled)
-	t.enableFocusReporting()
+	if t.focusEnabled {
+		t.enableFocusReporting()
+	}
 
 	ti := t.ti
 	t.TPuts(ti.EnterCA)
