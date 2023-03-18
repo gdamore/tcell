@@ -28,6 +28,7 @@ type cell struct {
 	lastStyle Style
 	lastComb  []rune
 	width     int
+	lock      bool
 }
 
 // CellBuffer represents a two dimensional array of character cells.
@@ -45,8 +46,8 @@ type CellBuffer struct {
 // SetContent sets the contents (primary rune, combining runes,
 // and style) for a cell at a given location.
 func (cb *CellBuffer) SetContent(x int, y int,
-	mainc rune, combc []rune, style Style) {
-
+	mainc rune, combc []rune, style Style,
+) {
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		c := &cb.cells[(y*cb.w)+x]
 
@@ -103,6 +104,9 @@ func (cb *CellBuffer) Invalidate() {
 func (cb *CellBuffer) Dirty(x, y int) bool {
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		c := &cb.cells[(y*cb.w)+x]
+		if c.lock {
+			return false
+		}
 		if c.lastMain == rune(0) {
 			return true
 		}
@@ -143,11 +147,39 @@ func (cb *CellBuffer) SetDirty(x, y int, dirty bool) {
 	}
 }
 
+// LockCell locks a cell from being drawn, effectively marking it "clean" until
+// the lock is removed. This can be used to prevent tcell from drawing a given
+// cell, even if the underlying content has changed. For example, when drawing a
+// sixel graphic directly to a TTY screen an implementer must lock the region
+// underneath the graphic to prevent tcell from drawing on top of the graphic.
+func (cb *CellBuffer) LockCell(x, y int) {
+	if x < 0 || y < 0 {
+		return
+	}
+	if x >= cb.w || y >= cb.h {
+		return
+	}
+	c := &cb.cells[(y*cb.w)+x]
+	c.lock = true
+}
+
+// UnlockCell removes a lock from the cell and marks it as dirty
+func (cb *CellBuffer) UnlockCell(x, y int) {
+	if x < 0 || y < 0 {
+		return
+	}
+	if x >= cb.w || y >= cb.h {
+		return
+	}
+	c := &cb.cells[(y*cb.w)+x]
+	c.lock = false
+	cb.SetDirty(x, y, true)
+}
+
 // Resize is used to resize the cells array, with different dimensions,
 // while preserving the original contents.  The cells will be invalidated
 // so that they can be redrawn.
 func (cb *CellBuffer) Resize(w, h int) {
-
 	if cb.h == h && cb.w == w {
 		return
 	}
