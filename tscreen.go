@@ -1791,6 +1791,10 @@ func (t *tScreen) LockRegion(x, y, width, height int, lock bool) {
 	}
 }
 
+func (t *tScreen) Tty() (Tty, bool) {
+	return t.tty, true
+}
+
 // engage is used to place the terminal in raw mode and establish screen size, etc.
 // Think of this is as tcell "engaging" the clutch, as it's going to be driving the
 // terminal interface.
