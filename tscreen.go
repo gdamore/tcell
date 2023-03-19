@@ -1091,19 +1091,22 @@ func (t *tScreen) Size() (int, int) {
 }
 
 func (t *tScreen) resize() {
-	if w, h, e := t.tty.WindowSize(); e == nil {
-		if w != t.w || h != t.h {
-			t.cx = -1
-			t.cy = -1
-
-			t.cells.Resize(w, h)
-			t.cells.Invalidate()
-			t.h = h
-			t.w = w
-			ev := NewEventResize(w, h)
-			_ = t.PostEvent(ev)
-		}
+	ws, err := t.tty.WindowSize()
+	if err != nil {
+		return
 	}
+	if ws.Width == t.w && ws.Height == t.h {
+		return
+	}
+	t.cx = -1
+	t.cy = -1
+
+	t.cells.Resize(ws.Width, ws.Height)
+	t.cells.Invalidate()
+	t.h = ws.Height
+	t.w = ws.Width
+	ev := &EventResize{t: time.Now(), ws: ws}
+	_ = t.PostEvent(ev)
 }
 
 func (t *tScreen) Colors() int {
@@ -1894,8 +1897,8 @@ func (t *tScreen) engage() error {
 		return err
 	}
 	t.running = true
-	if w, h, err := t.tty.WindowSize(); err == nil && w != 0 && h != 0 {
-		t.cells.Resize(w, h)
+	if ws, err := t.tty.WindowSize(); err == nil && ws.Width != 0 && ws.Height != 0 {
+		t.cells.Resize(ws.Width, ws.Height)
 	}
 	stopQ := make(chan struct{})
 	t.stopQ = stopQ
