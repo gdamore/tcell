@@ -249,6 +249,10 @@ type Screen interface {
 	// does not support application-initiated resizing, whereas the legacy terminal does.
 	// Also, some emulators can support this but may have it disabled by default.
 	SetSize(int, int)
+
+	// LockRegion sets or unsets a lock on a region of cells. A lock on a
+	// cell prevents the cell from being redrawn.
+	LockRegion(x, y, width, height int, lock bool)
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
