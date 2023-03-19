@@ -1852,6 +1852,22 @@ func (t *tScreen) Resume() error {
 	return t.engage()
 }
 
+
+func (t *tScreen) LockRegion(x, y, width, height int, lock bool) {
+	t.Lock()
+	defer t.Unlock()
+	for j := y; j < (y + height); j += 1 {
+		for i := x; i < (x + width); i += 1 {
+			switch lock {
+			case true:
+				t.cells.LockCell(i, j)
+			case false:
+				t.cells.UnlockCell(i, j)
+			}
+		}
+	}
+}
+
 // engage is used to place the terminal in raw mode and establish screen size, etc.
 // Think of this is as tcell "engaging" the clutch, as it's going to be driving the
 // terminal interface.

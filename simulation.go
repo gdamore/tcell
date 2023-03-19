@@ -553,3 +553,18 @@ func (s *simscreen) Suspend() error {
 func (s *simscreen) Resume() error {
 	return nil
 }
+
+func (s *simscreen) LockRegion(x, y, width, height int, lock bool) {
+	s.Lock()
+	defer s.Unlock()
+	for j := y; j < (y + height); j += 1 {
+		for i := x; i < (x + width); i += 1 {
+			switch lock {
+			case true:
+				s.back.LockCell(i, j)
+			case false:
+				s.back.UnlockCell(i, j)
+			}
+		}
+	}
+}
