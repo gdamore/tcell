@@ -577,6 +577,10 @@ func (t *wScreen) LockRegion(x, y, width, height int, lock bool) {
 	}
 }
 
+func (t *wScreen) Tty() (Tty, bool) {
+	return nil, false
+}
+
 // WebKeyNames maps string names reported from HTML
 // (KeyboardEvent.key) to tcell accepted keys.
 var WebKeyNames = map[string]Key{

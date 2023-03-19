@@ -568,3 +568,7 @@ func (s *simscreen) LockRegion(x, y, width, height int, lock bool) {
 		}
 	}
 }
+
+func (s *simscreen) Tty() (Tty, bool) {
+	return nil, false
+}

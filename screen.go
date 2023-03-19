@@ -259,6 +259,11 @@ type Screen interface {
 	// LockRegion sets or unsets a lock on a region of cells. A lock on a
 	// cell prevents the cell from being redrawn.
 	LockRegion(x, y, width, height int, lock bool)
+
+	// Tty returns the underlying Tty. If the screen is not a terminal, the
+	// returned bool will be false
+	Tty() (Tty, bool)
+
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
