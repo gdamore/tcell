@@ -1346,7 +1346,7 @@ func (t *tScreen) parseSgrMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 			y = val - 1
 
 			motion = (btn & 32) != 0
-			scroll = (btn & 0x43) == 0x40 || (btn & 0x43) == 0x41
+			scroll = (btn & 0x42) == 0x40
 			btn &^= 32
 			if b[i] == 'm' {
 				// mouse release, clear all buttons
