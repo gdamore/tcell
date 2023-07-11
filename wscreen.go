@@ -19,6 +19,7 @@ package tcell
 
 import (
 	"errors"
+	"github.com/gdamore/tcell/v2/terminfo"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -675,4 +676,8 @@ var curStyleClasses = map[CursorStyle]string{
 	CursorStyleSteadyUnderline:   "cursor-steady-underline",
 	CursorStyleBlinkingBar:       "cursor-blinking-bar",
 	CursorStyleSteadyBar:         "cursor-steady-bar",
+}
+
+func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
+	return nil, errors.New("LookupTermInfo not supported")
 }
