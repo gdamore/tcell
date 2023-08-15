@@ -231,6 +231,8 @@ type Terminfo struct {
 	ExitUrl                 string
 	SetWindowSize           string
 	SetClipboard            string
+	EnableFocusReporting    string
+	DisableFocusReporting   string
 }
 
 const (

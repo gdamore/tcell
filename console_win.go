@@ -231,7 +231,7 @@ func (s *cScreen) Init() error {
 	// 24-bit color is opt-in for now, because we can't figure out
 	// to make it work consistently.
 	if s.truecolor {
-		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut)
+		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
 		var om uint32
 		s.getOutMode(&om)
 		if om&modeVtOutput == modeVtOutput {
@@ -281,6 +281,10 @@ func (s *cScreen) enableMouse(on bool) {
 func (s *cScreen) EnablePaste() {}
 
 func (s *cScreen) DisablePaste() {}
+
+func (s *cScreen) EnableFocus() {}
+
+func (s *cScreen) DisableFocus() {}
 
 func (s *cScreen) Fini() {
 	s.disengage()
@@ -334,7 +338,7 @@ func (s *cScreen) engage() error {
 	s.enableMouse(s.mouseEnabled)
 
 	if s.vten {
-		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut)
+		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
 	} else {
 		s.setOutMode(0)
 	}
@@ -1217,6 +1221,7 @@ const (
 	modeCookedOut uint32 = 0x0001
 	modeVtOutput         = 0x0004
 	modeNoAutoNL         = 0x0008
+	modeUnderline        = 0x0010 // ENABLE_LVB_GRID_WORLDWIDE, needed for underlines
 	// modeWrapEOL          = 0x0002
 )
 
