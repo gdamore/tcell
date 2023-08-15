@@ -1217,8 +1217,7 @@ const (
 	modeCookedOut uint32 = 0x0001
 	modeVtOutput         = 0x0004
 	modeNoAutoNL         = 0x0008
-	// ENABLE_LVB_GRID_WORLDWIDE, needed to make underlines actually work.
-	modeUnderline        = 0x0010
+	modeUnderline        = 0x0010 // ENABLE_LVB_GRID_WORLDWIDE, needed for underlines
 	// modeWrapEOL          = 0x0002
 )
 

@@ -126,5 +126,5 @@ func registerAll() {
 }
 
 func init() {
-	registerAll();
+	registerAll()
 }
