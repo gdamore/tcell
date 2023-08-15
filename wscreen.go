@@ -276,6 +276,18 @@ func (t *wScreen) enablePasting(on bool) {
 	}
 }
 
+func (t *wScreen) EnableFocus() {
+	t.Lock()
+	js.Global().Set("onFocus", js.FuncOf(t.onFocus))
+	t.Unlock()
+}
+
+func (t *wScreen) DisableFocus() {
+	t.Lock()
+	js.Global().Set("onFocus", js.FuncOf(t.unset))
+	t.Unlock()
+}
+
 func (t *wScreen) Size() (int, int) {
 	t.Lock()
 	w, h := t.w, t.h
@@ -436,6 +448,11 @@ func (t *wScreen) onKeyEvent(this js.Value, args []js.Value) interface{} {
 
 func (t *wScreen) onPaste(this js.Value, args []js.Value) interface{} {
 	t.PostEventWait(NewEventPaste(args[0].Bool()))
+	return nil
+}
+
+func (t *wScreen) onFocus(this js.Value, args []js.Value) interface{} {
+	t.PostEventWait(NewEventFocus(args[0].Bool()))
 	return nil
 }
 

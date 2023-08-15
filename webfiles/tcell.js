@@ -187,6 +187,16 @@ term.addEventListener("mousemove", e => {
     onMouseMove(Math.min((e.offsetX / fontwidth) | 0, width-1), Math.min((e.offsetY / fontheight) | 0, height-1), e.which, e.shiftKey, e.altKey, e.ctrlKey)
 })
 
+term.addEventListener("focus", e => {
+    onFocus(true)
+})
+
+term.addEventListener("blur", e => {
+    onFocus(false)
+})
+term.tabIndex = 0
+
+
 document.addEventListener("paste", e => {
     e.preventDefault();
     var text = (e.originalEvent || e).clipboardData.getData('text/plain');
