@@ -1043,7 +1043,7 @@ func (c Color) Hex() int32 {
 		return -1
 	}
 	if c&ColorIsRGB != 0 {
-		return int32(c) & 0xffffff
+		return int32(c & 0xffffff)
 	}
 	if v, ok := ColorValues[c]; ok {
 		return v
@@ -1070,7 +1070,7 @@ func (c Color) TrueColor() Color {
 		return ColorDefault
 	}
 	if c&ColorIsRGB != 0 {
-		return c
+		return c | ColorValid
 	}
 	return Color(c.Hex()) | ColorIsRGB | ColorValid
 }
