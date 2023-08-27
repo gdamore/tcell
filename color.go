@@ -15,6 +15,7 @@
 package tcell
 
 import (
+	"fmt"
 	ic "image/color"
 	"strconv"
 )
@@ -1001,15 +1002,48 @@ func (c Color) IsRGB() bool {
 	return c&(ColorValid|ColorIsRGB) == (ColorValid | ColorIsRGB)
 }
 
+// CSS returns the CSS hex string ( #ABCDEF ) if valid 
+// if not a valid color returns empty string 
+func (c Color) CSS() string {
+	if !c.Valid() {
+		return ""
+	}
+	return fmt.Sprintf("#%06X", c.Hex())
+}
+
+// String implements fmt.Stringer to return either the
+// W3C name if it has one or the CSS hex string '#ABCDEF'
+func (c Color) String() string {
+	if !c.Valid() {
+		return ""
+	}
+	return c.Name(true)
+}
+
+// Name returns W3C name or an empty string if no arguments
+// if passed true as an argument it will falls back to 
+// the CSS hex string if no W3C name found '#ABCDEF'
+func (c Color) Name(css ...bool) string {
+	for name, hex := range ColorNames {
+		if c == hex {
+			return name
+		}
+	}
+	if len(css) > 0 && css[0] {
+		return c.CSS()
+	}
+	return ""
+}
+
 // Hex returns the color's hexadecimal RGB 24-bit value with each component
-// consisting of a single byte, R << 16 | G << 8 | B.  If the color
+// consisting of a single byte, ala R << 16 | G << 8 | B.  If the color
 // is unknown or unset, -1 is returned.
 func (c Color) Hex() int32 {
 	if !c.Valid() {
 		return -1
 	}
 	if c&ColorIsRGB != 0 {
-		return int32(c & 0xffffff)
+		return int32(c) & 0xffffff
 	}
 	if v, ok := ColorValues[c]; ok {
 		return v
@@ -1036,7 +1070,7 @@ func (c Color) TrueColor() Color {
 		return ColorDefault
 	}
 	if c&ColorIsRGB != 0 {
-		return c | ColorValid
+		return c
 	}
 	return Color(c.Hex()) | ColorIsRGB | ColorValid
 }
