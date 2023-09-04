@@ -9,5 +9,5 @@ require (
 	github.com/rivo/uniseg v0.4.3 // indirect
 	golang.org/x/sys v0.11.0
 	golang.org/x/term v0.9.0
-	golang.org/x/text v0.12.0
+	golang.org/x/text v0.13.0
 )
