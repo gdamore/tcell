@@ -190,9 +190,6 @@ func LoadTerminfo(name string) (*terminfo.Terminfo, string, error) {
 	t := &terminfo.Terminfo{}
 	// If this is an alias record, then just emit the alias
 	t.Name = tc.name
-	if t.Name != name {
-		return t, "", nil
-	}
 	t.Aliases = tc.aliases
 	t.Colors = tc.getnum("colors")
 	t.Columns = tc.getnum("cols")
