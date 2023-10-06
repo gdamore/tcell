@@ -19,11 +19,19 @@ package tcell
 
 import (
 	"errors"
-	"github.com/gdamore/tcell/v2/terminfo"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall/js"
 	"unicode/utf8"
+
+	"github.com/gdamore/tcell/v2/terminfo"
+)
+
+// Extra attributes for web display
+const (
+	attrCursor AttrMask = AttrInvalid << 1
 )
 
 func NewTerminfoScreen() (Screen, error) {
@@ -31,6 +39,11 @@ func NewTerminfoScreen() (Screen, error) {
 	t.fallback = make(map[rune]string)
 
 	return t, nil
+}
+
+type resized struct {
+	w int
+	h int
 }
 
 type wScreen struct {
@@ -44,19 +57,31 @@ type wScreen struct {
 	pasteEnabled bool
 	mouseFlags   MouseFlags
 
+	cx          int
+	cy          int
 	cursorStyle CursorStyle
 
 	quit     chan struct{}
 	evch     chan Event
+	rsch     chan resized
 	fallback map[rune]string
 
 	sync.Mutex
 }
 
 func (t *wScreen) Init() error {
-	t.w, t.h = 80, 24 // default for html as of now
+	t.w, t.h = 80, 24
+	if i, _ := strconv.Atoi(os.Getenv("LINES")); i != 0 {
+		t.h = i
+	}
+	if i, _ := strconv.Atoi(os.Getenv("COLUMNS")); i != 0 {
+		t.w = i
+	}
+	t.cx, t.cy = -1, -1
+
 	t.evch = make(chan Event, 10)
 	t.quit = make(chan struct{})
+	t.rsch = make(chan resized, 1)
 
 	t.Lock()
 	t.running = true
@@ -65,6 +90,8 @@ func (t *wScreen) Init() error {
 	t.Unlock()
 
 	js.Global().Set("onKeyEvent", js.FuncOf(t.onKeyEvent))
+	js.Global().Set("onResizeEvent", js.FuncOf(t.onResizeEvent))
+	go t.watchResize()
 
 	return nil
 }
@@ -91,6 +118,9 @@ func (t *wScreen) Fill(r rune, style Style) {
 
 func (t *wScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
 	t.Lock()
+	if x == t.cx && y == t.cy {
+		style.attrs |= attrCursor
+	}
 	t.cells.SetContent(x, y, mainc, combc, style)
 	t.Unlock()
 }
@@ -98,6 +128,7 @@ func (t *wScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
 func (t *wScreen) GetContent(x, y int) (rune, []rune, Style, int) {
 	t.Lock()
 	mainc, combc, style, width := t.cells.GetContent(x, y)
+	style.attrs &= ^attrCursor
 	t.Unlock()
 	return mainc, combc, style, width
 }
@@ -175,7 +206,17 @@ func (t *wScreen) drawCell(x, y int) int {
 
 func (t *wScreen) ShowCursor(x, y int) {
 	t.Lock()
-	js.Global().Call("showCursor", x, y)
+	if t.cx > -1 && t.cy > -1 {
+		mainc, combc, style, _ := t.cells.GetContent(t.cx, t.cy)
+		style.attrs &= ^attrCursor
+		t.cells.SetContent(t.cx, t.cy, mainc, combc, style)
+	}
+	t.cx, t.cy = x, y
+	if t.cx > -1 && t.cy > -1 {
+		mainc, combc, style, _ := t.cells.GetContent(t.cx, t.cy)
+		style.attrs |= attrCursor
+		t.cells.SetContent(t.cx, t.cy, mainc, combc, style)
+	}
 	t.Unlock()
 }
 
@@ -212,8 +253,6 @@ func (t *wScreen) draw() {
 			x += width - 1
 		}
 	}
-
-	js.Global().Call("show")
 }
 
 func (t *wScreen) EnableMouse(flags ...MouseFlags) {
@@ -364,6 +403,22 @@ func (t *wScreen) clip(x, y int) (int, int) {
 		y = h - 1
 	}
 	return x, y
+}
+
+func (t *wScreen) watchResize() {
+	for {
+		select {
+		case <-t.quit:
+			break
+		case rs := <-t.rsch:
+			t.SetSize(rs.w, rs.h)
+		}
+	}
+}
+
+func (t *wScreen) onResizeEvent(this js.Value, args []js.Value) interface{} {
+	t.rsch <- resized{w: args[0].Int(), h: args[1].Int()}
+	return nil
 }
 
 func (t *wScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
