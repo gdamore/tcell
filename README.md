@@ -26,7 +26,6 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 ## Examples
 
 - [proxima5](https://github.com/gdamore/proxima5) - space shooter ([video](https://youtu.be/jNxKTCmY_bQ))
-- [hero.go](https://github.com/barisbll/hero.go) - 2d monster shooter ([video](https://user-images.githubusercontent.com/40062673/277157369-240d7606-b471-4aa1-8c54-4379a513122b.mp4))
 - [govisor](https://github.com/gdamore/govisor) - service management UI ([screenshot](http://2.bp.blogspot.com/--OsvnfzSNow/Vf7aqMw3zXI/AAAAAAAAARo/uOMtOvw4Sbg/s1600/Screen%2BShot%2B2015-09-20%2Bat%2B9.08.41%2BAM.png))
 - mouse demo - included mouse test ([screenshot](http://2.bp.blogspot.com/-fWvW5opT0es/VhIdItdKqJI/AAAAAAAAATE/7Ojc0L1SpB0/s1600/Screen%2BShot%2B2015-10-04%2Bat%2B11.47.13%2BPM.png))
 - [gomatrix](https://github.com/gdamore/gomatrix) - converted from Termbox
@@ -67,6 +66,7 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 - [gosnakego](https://github.com/liweiyi88/gosnakego) - a snake game
 - [gbb](https://github.com/sdemingo/gbb) - A classical bulletin board app for tildes or public unix servers
 - [lil](https://github.com/andrievsky/lil) - A simple and flexible interface for any service by implementing only list and get operations
+- [hero.go](https://github.com/barisbll/hero.go) - 2d monster shooter ([video](https://user-images.githubusercontent.com/40062673/277157369-240d7606-b471-4aa1-8c54-4379a513122b.mp4))
 
 ## Pure Go Terminfo Database
 
