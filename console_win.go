@@ -1332,3 +1332,22 @@ func (s *cScreen) Suspend() error {
 func (s *cScreen) Resume() error {
 	return s.engage()
 }
+
+func (s *cScreen) LockRegion(x, y, width, height int, lock bool) {
+	s.Lock()
+	defer s.Unlock()
+	for j := y; j < (y + height); j += 1 {
+		for i := x; i < (x + width); i += 1 {
+			switch lock {
+			case true:
+				s.cells.LockCell(i, j)
+			case false:
+				s.cells.UnlockCell(i, j)
+			}
+		}
+	}
+}
+
+func (s *cScreen) Tty() (Tty, bool) {
+	return nil, true
+}
