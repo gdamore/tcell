@@ -38,7 +38,6 @@ type cScreen struct {
 	curx       int
 	cury       int
 	style      Style
-	clear      bool
 	fini       bool
 	vten       bool
 	truecolor  bool
@@ -972,11 +971,6 @@ func (s *cScreen) writeString(x, y int, style Style, ch []uint16) {
 func (s *cScreen) draw() {
 	// allocate a scratch line bit enough for no combining chars.
 	// if you have combining characters, you may pay for extra allocations.
-	if s.clear {
-		s.clearScreen(s.style, s.vten)
-		s.clear = false
-		s.cells.Invalidate()
-	}
 	buf := make([]uint16, 0, s.w)
 	wcs := buf[:]
 	lstyle := styleInvalid
@@ -1165,12 +1159,7 @@ func (s *cScreen) Clear() {
 }
 
 func (s *cScreen) Fill(r rune, style Style) {
-	s.Lock()
-	if !s.fini {
-		s.cells.Fill(r, style)
-		s.clear = true
-	}
-	s.Unlock()
+	s.cells.Fill(r, style)
 }
 
 func (s *cScreen) clearScreen(style Style, vtEnable bool) {
