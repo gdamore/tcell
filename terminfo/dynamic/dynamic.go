@@ -185,16 +185,10 @@ func (tc *termcap) setupterm(name string) error {
 func LoadTerminfo(name string) (*terminfo.Terminfo, string, error) {
 	var tc termcap
 	if err := tc.setupterm(name); err != nil {
-		if err != nil {
-			return nil, "", err
-		}
+		return nil, "", err
 	}
 	t := &terminfo.Terminfo{}
-	// If this is an alias record, then just emit the alias
 	t.Name = tc.name
-	if t.Name != name {
-		return t, "", nil
-	}
 	t.Aliases = tc.aliases
 	t.Colors = tc.getnum("colors")
 	t.Columns = tc.getnum("cols")
