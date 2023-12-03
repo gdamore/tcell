@@ -1349,5 +1349,5 @@ func (s *cScreen) LockRegion(x, y, width, height int, lock bool) {
 }
 
 func (s *cScreen) Tty() (Tty, bool) {
-	return nil, true
+	return nil, false
 }
