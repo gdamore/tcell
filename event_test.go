@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-func eventLoop(s SimulationScreen, evch chan Event) {
+func eventLoop(s Screen, evch chan Event) {
 	for {
 		ev := s.PollEvent()
 		if ev == nil {
@@ -35,11 +35,11 @@ func eventLoop(s SimulationScreen, evch chan Event) {
 
 func TestMouseEvents(t *testing.T) {
 
-	s := mkTestScreen(t, "")
+	s, ss := mkTestScreen(t, "")
 	defer s.Fini()
 
 	s.EnableMouse()
-	s.InjectMouse(4, 9, Button1, ModCtrl)
+	ss.InjectMouse(4, 9, Button1, ModCtrl)
 	evch := make(chan Event)
 	em := &EventMouse{}
 	done := false
@@ -71,11 +71,11 @@ func TestMouseEvents(t *testing.T) {
 
 func TestChannelMouseEvents(t *testing.T) {
 
-	s := mkTestScreen(t, "")
+	s, ss := mkTestScreen(t, "")
 	defer s.Fini()
 
 	s.EnableMouse()
-	s.InjectMouse(4, 9, Button1, ModCtrl)
+	ss.InjectMouse(4, 9, Button1, ModCtrl)
 	evch := make(chan Event)
 	quit := make(chan struct{})
 	em := new(EventMouse)

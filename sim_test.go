@@ -1,4 +1,4 @@
-// Copyright 2018 The TCell Authors
+// Copyright 2023 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -18,20 +18,20 @@ import (
 	"testing"
 )
 
-func mkTestScreen(t *testing.T, charset string) SimulationScreen {
-	s := NewSimulationScreen(charset)
-	if s == nil {
+func mkTestScreen(t *testing.T, charset string) (Screen, SimulationScreen) {
+	s, ss := NewSimulationScreen(charset)
+	if s == nil || ss == nil {
 		t.Fatalf("Failed to get simulation screen")
 	}
 	if e := s.Init(); e != nil {
 		t.Fatalf("Failed to initialize screen: %v", e)
 	}
-	return s
+	return s, ss
 }
 
 func TestInitScreen(t *testing.T) {
 
-	s := mkTestScreen(t, "")
+	s, ss := mkTestScreen(t, "")
 	defer s.Fini()
 
 	if x, y := s.Size(); x != 80 || y != 25 {
@@ -40,16 +40,16 @@ func TestInitScreen(t *testing.T) {
 	if s.CharacterSet() != "UTF-8" {
 		t.Fatalf("Character Set (%v) not UTF-8", s.CharacterSet())
 	}
-	if b, x, y := s.GetContents(); len(b) != x*y || x != 80 || y != 25 {
+	if b, x, y := ss.GetContents(); len(b) != x*y || x != 80 || y != 25 {
 		t.Fatalf("Contents (%v, %v, %v) wrong", len(b), x, y)
 	}
 }
 
 func TestClearScreen(t *testing.T) {
-	s := mkTestScreen(t, "")
+	s, ss := mkTestScreen(t, "")
 	defer s.Fini()
 	s.Clear()
-	b, x, y := s.GetContents()
+	b, x, y := ss.GetContents()
 	if len(b) != x*y || x != 80 || y != 25 {
 		t.Fatalf("Contents (%v, %v, %v) wrong", len(b), x, y)
 	}
@@ -65,10 +65,10 @@ func TestClearScreen(t *testing.T) {
 
 func TestSetCell(t *testing.T) {
 	st := StyleDefault.Background(ColorRed).Blink(true)
-	s := mkTestScreen(t, "")
+	s, ss := mkTestScreen(t, "")
 	defer s.Fini()
 	s.SetCell(2, 5, st, '@')
-	b, _, _ := s.GetContents()
+	b, _, _ := ss.GetContents()
 	s.Show()
 	if len(b) != 80*25 {
 		t.Fatalf("Wrong content size")
@@ -83,10 +83,10 @@ func TestSetCell(t *testing.T) {
 
 func TestResize(t *testing.T) {
 	st := StyleDefault.Background(ColorYellow).Underline(true)
-	s := mkTestScreen(t, "")
+	s, ss := mkTestScreen(t, "")
 	defer s.Fini()
 	s.SetCell(2, 5, st, '&')
-	b, x, y := s.GetContents()
+	b, x, y := ss.GetContents()
 	s.Show()
 
 	cell := &b[5*80+2]
@@ -97,7 +97,7 @@ func TestResize(t *testing.T) {
 	}
 	s.SetSize(30, 10)
 	s.Show()
-	b2, x2, y2 := s.GetContents()
+	b2, x2, y2 := ss.GetContents()
 	if len(b2) == len(b) || x2 == x || y2 == y {
 		t.Errorf("Screen parameters should not match")
 	}
@@ -111,17 +111,17 @@ func TestResize(t *testing.T) {
 }
 
 func TestBeep(t *testing.T) {
-	s := mkTestScreen(t, "")
+	s, ss := mkTestScreen(t, "")
 	defer s.Fini()
 
-	b0, x0, y0 := s.GetContents()
+	b0, x0, y0 := ss.GetContents()
 
 	if err := s.Beep(); err != nil {
 		t.Errorf("could not beep: %v", err)
 	}
 	s.Show()
 
-	b1, x1, y1 := s.GetContents()
+	b1, x1, y1 := ss.GetContents()
 	if x0 != x1 {
 		t.Fatalf("screen width changed unexpectedly from %d to %d", x0, x1)
 	}

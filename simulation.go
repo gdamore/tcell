@@ -23,12 +23,13 @@ import (
 
 // NewSimulationScreen returns a SimulationScreen.  Note that
 // SimulationScreen is also a Screen.
-func NewSimulationScreen(charset string) SimulationScreen {
+func NewSimulationScreen(charset string) (Screen, SimulationScreen) {
 	if charset == "" {
 		charset = "UTF-8"
 	}
-	s := &simscreen{charset: charset}
-	return s
+	ss := &simscreen{charset: charset}
+	s := &baseScreen{screenImpl: ss}
+	return s, ss
 }
 
 // SimulationScreen represents a screen simulation.  This is intended to
@@ -57,8 +58,6 @@ type SimulationScreen interface {
 
 	// GetCursor returns the cursor details.
 	GetCursor() (x int, y int, visible bool)
-
-	Screen
 }
 
 // SimCell represents a simulated screen cell.  The purpose of this
@@ -150,23 +149,10 @@ func (s *simscreen) SetStyle(style Style) {
 	s.Unlock()
 }
 
-func (s *simscreen) Clear() {
-	s.Fill(' ', s.style)
-}
-
 func (s *simscreen) Fill(r rune, style Style) {
 	s.Lock()
 	s.back.Fill(r, style)
 	s.Unlock()
-}
-
-func (s *simscreen) SetCell(x, y int, style Style, ch ...rune) {
-
-	if len(ch) > 0 {
-		s.SetContent(x, y, ch[0], ch[1:], style)
-	} else {
-		s.SetContent(x, y, ' ', nil, style)
-	}
 }
 
 func (s *simscreen) SetContent(x, y int, mainc rune, combc []rune, st Style) {

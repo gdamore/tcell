@@ -19,7 +19,7 @@ import (
 )
 
 func TestStyle(t *testing.T) {
-	s := mkTestScreen(t, "")
+	s, _ := mkTestScreen(t, "")
 	defer s.Fini()
 
 	style := StyleDefault
