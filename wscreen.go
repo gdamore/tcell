@@ -30,7 +30,7 @@ func NewTerminfoScreen() (Screen, error) {
 	t := &wScreen{}
 	t.fallback = make(map[rune]string)
 
-	return t, nil
+	return &baseScreen{screenImpl: t}, nil
 }
 
 type wScreen struct {
@@ -79,10 +79,6 @@ func (t *wScreen) SetStyle(style Style) {
 	t.Unlock()
 }
 
-func (t *wScreen) Clear() {
-	t.Fill(' ', t.style)
-}
-
 func (t *wScreen) Fill(r rune, style Style) {
 	t.Lock()
 	t.cells.Fill(r, style)
@@ -100,14 +96,6 @@ func (t *wScreen) GetContent(x, y int) (rune, []rune, Style, int) {
 	mainc, combc, style, width := t.cells.GetContent(x, y)
 	t.Unlock()
 	return mainc, combc, style, width
-}
-
-func (t *wScreen) SetCell(x, y int, style Style, ch ...rune) {
-	if len(ch) > 0 {
-		t.SetContent(x, y, ch[0], ch[1:], style)
-	} else {
-		t.SetContent(x, y, ' ', nil, style)
-	}
 }
 
 // paletteColor gives a more natural palette color actually matching

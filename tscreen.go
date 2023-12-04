@@ -94,7 +94,7 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 		t.fallback[k] = v
 	}
 
-	return t, nil
+	return &baseScreen{screenImpl: t}, nil
 }
 
 // NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
@@ -595,10 +595,6 @@ func (t *tScreen) SetStyle(style Style) {
 	t.Unlock()
 }
 
-func (t *tScreen) Clear() {
-	t.Fill(' ', t.style)
-}
-
 func (t *tScreen) Fill(r rune, style Style) {
 	t.Lock()
 	if !t.fini {
@@ -620,14 +616,6 @@ func (t *tScreen) GetContent(x, y int) (rune, []rune, Style, int) {
 	mainc, combc, style, width := t.cells.GetContent(x, y)
 	t.Unlock()
 	return mainc, combc, style, width
-}
-
-func (t *tScreen) SetCell(x, y int, style Style, ch ...rune) {
-	if len(ch) > 0 {
-		t.SetContent(x, y, ch[0], ch[1:], style)
-	} else {
-		t.SetContent(x, y, ' ', nil, style)
-	}
 }
 
 func (t *tScreen) encodeRune(r rune, buf []byte) []byte {

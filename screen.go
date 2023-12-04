@@ -263,7 +263,6 @@ type Screen interface {
 	// Tty returns the underlying Tty. If the screen is not a terminal, the
 	// returned bool will be false
 	Tty() (Tty, bool)
-
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
@@ -302,3 +301,61 @@ const (
 	CursorStyleBlinkingBar
 	CursorStyleSteadyBar
 )
+
+// screenImpl is a subset of Screen that can be used with baseScreen to formulate
+// a complete implementation of Screen.  See Screen for doc comments about methods.
+type screenImpl interface {
+	Init() error
+	Fini()
+	Fill(rune, Style)
+	GetContent(x, y int) (primary rune, combining []rune, style Style, width int)
+	SetContent(x int, y int, primary rune, combining []rune, style Style)
+	SetStyle(style Style)
+	ShowCursor(x int, y int)
+	HideCursor()
+	SetCursorStyle(CursorStyle)
+	Size() (width, height int)
+	ChannelEvents(ch chan<- Event, quit <-chan struct{})
+	PollEvent() Event
+	HasPendingEvent() bool
+	PostEvent(ev Event) error
+	PostEventWait(ev Event)
+	EnableMouse(...MouseFlags)
+	DisableMouse()
+	EnablePaste()
+	DisablePaste()
+	EnableFocus()
+	DisableFocus()
+	HasMouse() bool
+	Colors() int
+	Show()
+	Sync()
+	CharacterSet() string
+	RegisterRuneFallback(r rune, subst string)
+	UnregisterRuneFallback(r rune)
+	CanDisplay(r rune, checkFallbacks bool) bool
+	Resize(int, int, int, int)
+	HasKey(Key) bool
+	Suspend() error
+	Resume() error
+	Beep() error
+	SetSize(int, int)
+	LockRegion(x, y, width, height int, lock bool)
+	Tty() (Tty, bool)
+}
+
+type baseScreen struct {
+	screenImpl
+}
+
+func (b *baseScreen) SetCell(x int, y int, style Style, ch ...rune) {
+	if len(ch) > 0 {
+		b.SetContent(x, y, ch[0], ch[1:], style)
+	} else {
+		b.SetContent(x, y, ' ', nil, style)
+	}
+}
+
+func (b *baseScreen) Clear() {
+	b.Fill(' ', StyleDefault)
+}

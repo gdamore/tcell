@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-// Copyright 2022 The TCell Authors
+// Copyright 2023 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -175,7 +175,7 @@ var vtCursorStyles = map[CursorStyle]string{
 // with the current process.  The Screen makes use of the Windows Console
 // API to display content and read events.
 func NewConsoleScreen() (Screen, error) {
-	return &cScreen{}, nil
+	return &baseScreen{screenImpl: &cScreen{}}, nil
 }
 
 func (s *cScreen) Init() error {
@@ -894,14 +894,6 @@ func (s *cScreen) mapStyle(style Style) uint16 {
 	return attr
 }
 
-func (s *cScreen) SetCell(x, y int, style Style, ch ...rune) {
-	if len(ch) > 0 {
-		s.SetContent(x, y, ch[0], ch[1:], style)
-	} else {
-		s.SetContent(x, y, ' ', nil, style)
-	}
-}
-
 func (s *cScreen) SetContent(x, y int, primary rune, combining []rune, style Style) {
 	s.Lock()
 	if !s.fini {
@@ -1152,10 +1144,6 @@ func (s *cScreen) resize() {
 		uintptr(1),
 		uintptr(unsafe.Pointer(&r)))
 	_ = s.PostEvent(NewEventResize(w, h))
-}
-
-func (s *cScreen) Clear() {
-	s.Fill(' ', s.style)
 }
 
 func (s *cScreen) Fill(r rune, style Style) {
