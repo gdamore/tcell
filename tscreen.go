@@ -595,29 +595,6 @@ func (t *tScreen) SetStyle(style Style) {
 	t.Unlock()
 }
 
-func (t *tScreen) Fill(r rune, style Style) {
-	t.Lock()
-	if !t.fini {
-		t.cells.Fill(r, style)
-	}
-	t.Unlock()
-}
-
-func (t *tScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
-	t.Lock()
-	if !t.fini {
-		t.cells.SetContent(x, y, mainc, combc, style)
-	}
-	t.Unlock()
-}
-
-func (t *tScreen) GetContent(x, y int) (rune, []rune, Style, int) {
-	t.Lock()
-	mainc, combc, style, width := t.cells.GetContent(x, y)
-	t.Unlock()
-	return mainc, combc, style, width
-}
-
 func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 
 	nb := make([]byte, 6)
@@ -1959,4 +1936,8 @@ func (t *tScreen) Beep() error {
 func (t *tScreen) finalize() {
 	t.disengage()
 	_ = t.tty.Close()
+}
+
+func (t *tScreen) GetCells() *CellBuffer {
+	return &t.cells
 }

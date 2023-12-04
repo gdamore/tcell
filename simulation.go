@@ -1,4 +1,4 @@
-// Copyright 2022 The TCell Authors
+// Copyright 2023 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -147,30 +147,6 @@ func (s *simscreen) SetStyle(style Style) {
 	s.Lock()
 	s.style = style
 	s.Unlock()
-}
-
-func (s *simscreen) Fill(r rune, style Style) {
-	s.Lock()
-	s.back.Fill(r, style)
-	s.Unlock()
-}
-
-func (s *simscreen) SetContent(x, y int, mainc rune, combc []rune, st Style) {
-
-	s.Lock()
-	s.back.SetContent(x, y, mainc, combc, st)
-	s.Unlock()
-}
-
-func (s *simscreen) GetContent(x, y int) (rune, []rune, Style, int) {
-	var mainc rune
-	var combc []rune
-	var style Style
-	var width int
-	s.Lock()
-	mainc, combc, style, width = s.back.GetContent(x, y)
-	s.Unlock()
-	return mainc, combc, style, width
 }
 
 func (s *simscreen) drawCell(x, y int) int {
@@ -557,4 +533,8 @@ func (s *simscreen) LockRegion(x, y, width, height int, lock bool) {
 
 func (s *simscreen) Tty() (Tty, bool) {
 	return nil, false
+}
+
+func (s *simscreen) GetCells() *CellBuffer {
+	return &s.back
 }

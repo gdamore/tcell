@@ -14,6 +14,8 @@
 
 package tcell
 
+import "sync"
+
 // Screen represents the physical (or emulated) screen.
 // This can be a terminal window or a physical console.  Platforms implement
 // this differently.
@@ -307,9 +309,6 @@ const (
 type screenImpl interface {
 	Init() error
 	Fini()
-	Fill(rune, Style)
-	GetContent(x, y int) (primary rune, combining []rune, style Style, width int)
-	SetContent(x int, y int, primary rune, combining []rune, style Style)
 	SetStyle(style Style)
 	ShowCursor(x int, y int)
 	HideCursor()
@@ -342,6 +341,17 @@ type screenImpl interface {
 	SetSize(int, int)
 	LockRegion(x, y, width, height int, lock bool)
 	Tty() (Tty, bool)
+
+	// Following methods are not part of the Screen api, but are used for interaction with
+	// the common layer code.
+
+	// Locker locks the underlying data structures so that we can access them
+	// in a thread-safe way.
+	sync.Locker
+
+	// GetCells returns a pointer to the underlying CellBuffer that the implementation uses.
+	// Various methods will write to these for performance, but will use the lock to do so.
+	GetCells() *CellBuffer
 }
 
 type baseScreen struct {
@@ -358,4 +368,37 @@ func (b *baseScreen) SetCell(x int, y int, style Style, ch ...rune) {
 
 func (b *baseScreen) Clear() {
 	b.Fill(' ', StyleDefault)
+}
+
+func (b *baseScreen) Fill(r rune, style Style) {
+	cb := b.GetCells()
+	b.Lock()
+	for i := range cb.cells {
+		c := &cb.cells[i]
+		c.currMain = r
+		c.currComb = nil
+		c.currStyle = style
+		c.width = 1
+	}
+	b.Unlock()
+}
+
+func (b *baseScreen) SetContent(x, y int, mainc rune, combc []rune, st Style) {
+
+	cells := b.GetCells()
+	b.Lock()
+	cells.SetContent(x, y, mainc, combc, st)
+	b.Unlock()
+}
+
+func (b *baseScreen) GetContent(x, y int) (rune, []rune, Style, int) {
+	var primary rune
+	var combining []rune
+	var style Style
+	var width int
+	cells := b.GetCells()
+	b.Lock()
+	primary, combining, style, width = cells.GetContent(x, y)
+	b.Unlock()
+	return primary, combining, style, width
 }

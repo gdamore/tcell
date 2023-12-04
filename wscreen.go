@@ -79,25 +79,6 @@ func (t *wScreen) SetStyle(style Style) {
 	t.Unlock()
 }
 
-func (t *wScreen) Fill(r rune, style Style) {
-	t.Lock()
-	t.cells.Fill(r, style)
-	t.Unlock()
-}
-
-func (t *wScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
-	t.Lock()
-	t.cells.SetContent(x, y, mainc, combc, style)
-	t.Unlock()
-}
-
-func (t *wScreen) GetContent(x, y int) (rune, []rune, Style, int) {
-	t.Lock()
-	mainc, combc, style, width := t.cells.GetContent(x, y)
-	t.Unlock()
-	return mainc, combc, style, width
-}
-
 // paletteColor gives a more natural palette color actually matching
 // typical XTerm.  We might in the future want to permit styling these
 // via CSS.
@@ -567,6 +548,10 @@ func (t *wScreen) LockRegion(x, y, width, height int, lock bool) {
 
 func (t *wScreen) Tty() (Tty, bool) {
 	return nil, false
+}
+
+func (t *wScreen) GetCells() *CellBuffer {
+	return &t.cells
 }
 
 // WebKeyNames maps string names reported from HTML

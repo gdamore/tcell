@@ -894,21 +894,6 @@ func (s *cScreen) mapStyle(style Style) uint16 {
 	return attr
 }
 
-func (s *cScreen) SetContent(x, y int, primary rune, combining []rune, style Style) {
-	s.Lock()
-	if !s.fini {
-		s.cells.SetContent(x, y, primary, combining, style)
-	}
-	s.Unlock()
-}
-
-func (s *cScreen) GetContent(x, y int) (rune, []rune, Style, int) {
-	s.Lock()
-	primary, combining, style, width := s.cells.GetContent(x, y)
-	s.Unlock()
-	return primary, combining, style, width
-}
-
 func (s *cScreen) sendVtStyle(style Style) {
 	esc := &strings.Builder{}
 
@@ -1146,10 +1131,6 @@ func (s *cScreen) resize() {
 	_ = s.PostEvent(NewEventResize(w, h))
 }
 
-func (s *cScreen) Fill(r rune, style Style) {
-	s.cells.Fill(r, style)
-}
-
 func (s *cScreen) clearScreen(style Style, vtEnable bool) {
 	if vtEnable {
 		s.sendVtStyle(style)
@@ -1327,4 +1308,8 @@ func (s *cScreen) LockRegion(x, y, width, height int, lock bool) {
 
 func (s *cScreen) Tty() (Tty, bool) {
 	return nil, false
+}
+
+func (s *cScreen) GetCells() *CellBuffer {
+	return &s.cells
 }
