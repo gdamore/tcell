@@ -339,7 +339,6 @@ type screenImpl interface {
 	Resume() error
 	Beep() error
 	SetSize(int, int)
-	LockRegion(x, y, width, height int, lock bool)
 	Tty() (Tty, bool)
 
 	// Following methods are not part of the Screen api, but are used for interaction with
@@ -401,4 +400,20 @@ func (b *baseScreen) GetContent(x, y int) (rune, []rune, Style, int) {
 	primary, combining, style, width = cells.GetContent(x, y)
 	b.Unlock()
 	return primary, combining, style, width
+}
+
+func (b *baseScreen) LockRegion(x, y, width, height int, lock bool) {
+	cells := b.GetCells()
+	b.Lock()
+	for j := y; j < (y + height); j += 1 {
+		for i := x; i < (x + width); i += 1 {
+			switch lock {
+			case true:
+				cells.LockCell(i, j)
+			case false:
+				cells.UnlockCell(i, j)
+			}
+		}
+	}
+	b.Unlock()
 }

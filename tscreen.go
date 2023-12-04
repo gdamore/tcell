@@ -1820,21 +1820,6 @@ func (t *tScreen) Resume() error {
 	return t.engage()
 }
 
-func (t *tScreen) LockRegion(x, y, width, height int, lock bool) {
-	t.Lock()
-	defer t.Unlock()
-	for j := y; j < (y + height); j += 1 {
-		for i := x; i < (x + width); i += 1 {
-			switch lock {
-			case true:
-				t.cells.LockCell(i, j)
-			case false:
-				t.cells.UnlockCell(i, j)
-			}
-		}
-	}
-}
-
 func (t *tScreen) Tty() (Tty, bool) {
 	return t.tty, true
 }
