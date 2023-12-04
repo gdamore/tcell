@@ -290,7 +290,7 @@ func main() {
 			switch ev.Buttons() {
 			case tcell.ButtonNone:
 				if ox >= 0 {
-					bg := theme[(lchar-'0')%8]
+					bg := theme[lchar%8]
 					fg := tcell.ColorBlack
 					drawBox(s, ox, oy, x, y,
 						up.Background(bg).Foreground(fg),
