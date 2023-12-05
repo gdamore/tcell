@@ -19,7 +19,7 @@ import (
 )
 
 func TestCanDisplayUTF8(t *testing.T) {
-	s, _ := mkTestScreen(t, "UTF-8")
+	s := mkTestScreen(t, "UTF-8")
 	defer s.Fini()
 
 	if s.CharacterSet() != "UTF-8" {
@@ -39,7 +39,7 @@ func TestCanDisplayUTF8(t *testing.T) {
 	}
 }
 func TestCanDisplayASCII(t *testing.T) {
-	s, _ := mkTestScreen(t, "US-ASCII")
+	s := mkTestScreen(t, "US-ASCII")
 	defer s.Fini()
 
 	if s.CharacterSet() != "US-ASCII" {
@@ -60,7 +60,7 @@ func TestCanDisplayASCII(t *testing.T) {
 }
 
 func TestRuneFallbacks(t *testing.T) {
-	s, _ := mkTestScreen(t, "US-ASCII")
+	s := mkTestScreen(t, "US-ASCII")
 	defer s.Fini()
 	if s.CharacterSet() != "US-ASCII" {
 		t.Errorf("Wrong character set: %v", s.CharacterSet())

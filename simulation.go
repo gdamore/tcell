@@ -23,19 +23,21 @@ import (
 
 // NewSimulationScreen returns a SimulationScreen.  Note that
 // SimulationScreen is also a Screen.
-func NewSimulationScreen(charset string) (Screen, SimulationScreen) {
+func NewSimulationScreen(charset string) SimulationScreen {
 	if charset == "" {
 		charset = "UTF-8"
 	}
 	ss := &simscreen{charset: charset}
-	s := &baseScreen{screenImpl: ss}
-	return s, ss
+	ss.Screen = &baseScreen{screenImpl: ss}
+	return ss
 }
 
 // SimulationScreen represents a screen simulation.  This is intended to
 // be a superset of normal Screens, but also adds some important interfaces
 // for testing.
 type SimulationScreen interface {
+	Screen
+
 	// InjectKeyBytes injects a stream of bytes corresponding to
 	// the native encoding (see charset).  It turns true if the entire
 	// set of bytes were processed and delivered as KeyEvents, false
@@ -97,6 +99,7 @@ type simscreen struct {
 	fillstyle Style
 	fallback  map[rune]string
 
+	Screen
 	sync.Mutex
 }
 
