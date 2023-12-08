@@ -49,6 +49,7 @@ type wScreen struct {
 	quit     chan struct{}
 	evch     chan Event
 	fallback map[rune]string
+	finiOnce sync.Once
 
 	sync.Mutex
 }
@@ -70,7 +71,9 @@ func (t *wScreen) Init() error {
 }
 
 func (t *wScreen) Fini() {
-	close(t.quit)
+	t.finiOnce.Do(func() {
+		close(t.quit)
+	})
 }
 
 func (t *wScreen) SetStyle(style Style) {
@@ -272,52 +275,6 @@ func (t *wScreen) Colors() int {
 	return 16777216 // 256 ^ 3
 }
 
-func (t *wScreen) ChannelEvents(ch chan<- Event, quit <-chan struct{}) {
-	defer close(ch)
-	for {
-		select {
-		case <-quit:
-			return
-		case <-t.quit:
-			return
-		case ev := <-t.evch:
-			select {
-			case <-quit:
-				return
-			case <-t.quit:
-				return
-			case ch <- ev:
-			}
-		}
-	}
-}
-
-func (t *wScreen) PollEvent() Event {
-	select {
-	case <-t.quit:
-		return nil
-	case ev := <-t.evch:
-		return ev
-	}
-}
-
-func (t *wScreen) HasPendingEvent() bool {
-	return len(t.evch) > 0
-}
-
-func (t *wScreen) PostEventWait(ev Event) {
-	t.evch <- ev
-}
-
-func (t *wScreen) PostEvent(ev Event) error {
-	select {
-	case t.evch <- ev:
-		return nil
-	default:
-		return ErrEventQFull
-	}
-}
-
 func (t *wScreen) clip(x, y int) (int, int) {
 	w, h := t.cells.Size()
 	if x < 0 {
@@ -333,6 +290,13 @@ func (t *wScreen) clip(x, y int) (int, int) {
 		y = h - 1
 	}
 	return x, y
+}
+
+func (t *wScreen) postEvent(ev Event) {
+	select {
+	case t.evch <- ev:
+	case <-t.quit:
+	}
 }
 
 func (t *wScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
@@ -366,7 +330,7 @@ func (t *wScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
 		mod |= ModCtrl
 	}
 
-	t.PostEventWait(NewEventMouse(args[0].Int(), args[1].Int(), button, mod))
+	t.postEvent(NewEventMouse(args[0].Int(), args[1].Int(), button, mod))
 	return nil
 }
 
@@ -398,30 +362,30 @@ func (t *wScreen) onKeyEvent(this js.Value, args []js.Value) interface{} {
 	// check for special case of Ctrl + key
 	if mod == ModCtrl {
 		if k, ok := WebKeyNames["Ctrl-"+strings.ToLower(key)]; ok {
-			t.PostEventWait(NewEventKey(k, 0, mod))
+			t.postEvent(NewEventKey(k, 0, mod))
 			return nil
 		}
 	}
 
 	// next try function keys
 	if k, ok := WebKeyNames[key]; ok {
-		t.PostEventWait(NewEventKey(k, 0, mod))
+		t.postEvent(NewEventKey(k, 0, mod))
 		return nil
 	}
 
 	// finally try normal, printable chars
 	r, _ := utf8.DecodeRuneInString(key)
-	t.PostEventWait(NewEventKey(KeyRune, r, mod))
+	t.postEvent(NewEventKey(KeyRune, r, mod))
 	return nil
 }
 
 func (t *wScreen) onPaste(this js.Value, args []js.Value) interface{} {
-	t.PostEventWait(NewEventPaste(args[0].Bool()))
+	t.postEvent(NewEventPaste(args[0].Bool()))
 	return nil
 }
 
 func (t *wScreen) onFocus(this js.Value, args []js.Value) interface{} {
-	t.PostEventWait(NewEventFocus(args[0].Bool()))
+	t.postEvent(NewEventFocus(args[0].Bool()))
 	return nil
 }
 
@@ -488,7 +452,7 @@ func (t *wScreen) SetSize(w, h int) {
 	t.cells.Resize(w, h)
 	js.Global().Call("resize", w, h)
 	t.w, t.h = w, h
-	t.PostEvent(NewEventResize(w, h))
+	t.postEvent(NewEventResize(w, h))
 }
 
 func (t *wScreen) Resize(int, int, int, int) {}
@@ -537,6 +501,14 @@ func (t *wScreen) Tty() (Tty, bool) {
 
 func (t *wScreen) GetCells() *CellBuffer {
 	return &t.cells
+}
+
+func (t *wScreen) EventQ() chan Event {
+	return t.evch
+}
+
+func (t *wScreen) StopQ() <-chan struct{} {
+	return t.quit
 }
 
 // WebKeyNames maps string names reported from HTML

@@ -309,7 +309,7 @@ func (s *simscreen) resize() {
 	if w != ow || h != oh {
 		s.back.Resize(w, h)
 		ev := NewEventResize(w, h)
-		s.PostEvent(ev)
+		s.postEvent(ev)
 	}
 }
 
@@ -317,60 +317,21 @@ func (s *simscreen) Colors() int {
 	return 256
 }
 
-func (s *simscreen) ChannelEvents(ch chan<- Event, quit <-chan struct{}) {
-	defer close(ch)
-	for {
-		select {
-		case <-quit:
-			return
-		case <-s.quit:
-			return
-		case ev := <-s.evch:
-			select {
-			case <-quit:
-				return
-			case <-s.quit:
-				return
-			case ch <- ev:
-			}
-		}
-	}
-}
-
-func (s *simscreen) PollEvent() Event {
-	select {
-	case <-s.quit:
-		return nil
-	case ev := <-s.evch:
-		return ev
-	}
-}
-
-func (s *simscreen) HasPendingEvent() bool {
-	return len(s.evch) > 0
-}
-
-func (s *simscreen) PostEventWait(ev Event) {
-	s.evch <- ev
-}
-
-func (s *simscreen) PostEvent(ev Event) error {
+func (s *simscreen) postEvent(ev Event) {
 	select {
 	case s.evch <- ev:
-		return nil
-	default:
-		return ErrEventQFull
+	case <-s.quit:
 	}
 }
 
 func (s *simscreen) InjectMouse(x, y int, buttons ButtonMask, mod ModMask) {
 	ev := NewEventMouse(x, y, buttons, mod)
-	s.PostEvent(ev)
+	s.postEvent(ev)
 }
 
 func (s *simscreen) InjectKey(key Key, r rune, mod ModMask) {
 	ev := NewEventKey(key, r, mod)
-	s.PostEvent(ev)
+	s.postEvent(ev)
 }
 
 func (s *simscreen) InjectKeyBytes(b []byte) bool {
@@ -381,7 +342,7 @@ outer:
 		if b[0] >= ' ' && b[0] <= 0x7F {
 			// printable ASCII easy to deal with -- no encodings
 			ev := NewEventKey(KeyRune, rune(b[0]), ModNone)
-			s.PostEvent(ev)
+			s.postEvent(ev)
 			b = b[1:]
 			continue
 		}
@@ -393,7 +354,7 @@ outer:
 				mod = ModCtrl
 			}
 			ev := NewEventKey(Key(b[0]), 0, mod)
-			s.PostEvent(ev)
+			s.postEvent(ev)
 			b = b[1:]
 			continue
 		}
@@ -407,7 +368,7 @@ outer:
 				r, _ := utf8.DecodeRune(utfb[:nout])
 				if r != utf8.RuneError {
 					ev := NewEventKey(KeyRune, r, ModNone)
-					s.PostEvent(ev)
+					s.postEvent(ev)
 				}
 				b = b[nin:]
 				continue outer
@@ -525,4 +486,12 @@ func (s *simscreen) Tty() (Tty, bool) {
 
 func (s *simscreen) GetCells() *CellBuffer {
 	return &s.back
+}
+
+func (s *simscreen) EventQ() chan Event {
+	return s.evch
+}
+
+func (s *simscreen) StopQ() <-chan struct{} {
+	return s.quit
 }

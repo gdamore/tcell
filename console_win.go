@@ -33,7 +33,6 @@ type cScreen struct {
 	out        syscall.Handle
 	cancelflag syscall.Handle
 	scandone   chan struct{}
-	evch       chan Event
 	quit       chan struct{}
 	curx       int
 	cury       int
@@ -53,11 +52,11 @@ type cScreen struct {
 	oomode      uint32
 	cells       CellBuffer
 
-	finiOnce sync.Once
-
 	mouseEnabled bool
 	wg           sync.WaitGroup
+	eventQ       chan Event
 	stopQ        chan struct{}
+	finiOnce     sync.Once
 
 	sync.Mutex
 }
@@ -146,7 +145,7 @@ const (
 	vtSgr0                    = "\x1b[0m"
 	vtBold                    = "\x1b[1m"
 	vtUnderline               = "\x1b[4m"
-	vtBlink                   = "\x1b[5m" // Not sure this is processed
+	vtBlink                   = "\x1b[5m" // Not sure if this is processed
 	vtReverse                 = "\x1b[7m"
 	vtSetFg                   = "\x1b[38;5;%dm"
 	vtSetBg                   = "\x1b[48;5;%dm"
@@ -179,7 +178,7 @@ func NewConsoleScreen() (Screen, error) {
 }
 
 func (s *cScreen) Init() error {
-	s.evch = make(chan Event, 10)
+	s.eventQ = make(chan Event, 10)
 	s.quit = make(chan struct{})
 	s.scandone = make(chan struct{})
 
@@ -286,7 +285,10 @@ func (s *cScreen) EnableFocus() {}
 func (s *cScreen) DisableFocus() {}
 
 func (s *cScreen) Fini() {
-	s.disengage()
+	s.finiOnce.Do(func() {
+		close(s.quit)
+		s.disengage()
+	})
 }
 
 func (s *cScreen) disengage() {
@@ -354,52 +356,6 @@ func (s *cScreen) engage() error {
 	s.wg.Add(1)
 	go s.scanInput(s.stopQ)
 	return nil
-}
-
-func (s *cScreen) PostEventWait(ev Event) {
-	s.evch <- ev
-}
-
-func (s *cScreen) PostEvent(ev Event) error {
-	select {
-	case s.evch <- ev:
-		return nil
-	default:
-		return ErrEventQFull
-	}
-}
-
-func (s *cScreen) ChannelEvents(ch chan<- Event, quit <-chan struct{}) {
-	defer close(ch)
-	for {
-		select {
-		case <-quit:
-			return
-		case <-s.stopQ:
-			return
-		case ev := <-s.evch:
-			select {
-			case <-quit:
-				return
-			case <-s.stopQ:
-				return
-			case ch <- ev:
-			}
-		}
-	}
-}
-
-func (s *cScreen) PollEvent() Event {
-	select {
-	case <-s.stopQ:
-		return nil
-	case ev := <-s.evch:
-		return ev
-	}
-}
-
-func (s *cScreen) HasPendingEvent() bool {
-	return len(s.evch) > 0
 }
 
 type cursorInfo struct {
@@ -701,6 +657,13 @@ func mrec2btns(mbtns, flags uint32) ButtonMask {
 	return btns
 }
 
+func (s *cScreen) postEvent(ev Event) {
+	select {
+	case s.eventQ <- ev:
+	case <-s.quit:
+	}
+}
+
 func (s *cScreen) getConsoleInput() error {
 	// cancelFlag comes first as WaitForMultipleObjects returns the lowest index
 	// in the event that both events are signalled.
@@ -743,7 +706,7 @@ func (s *cScreen) getConsoleInput() error {
 			krec.mod = getu32(rec.data[12:])
 
 			if krec.isdown == 0 || krec.repeat < 1 {
-				// its a key release event, ignore it
+				// it's a key release event, ignore it
 				return nil
 			}
 			if krec.ch != 0 {
@@ -751,11 +714,9 @@ func (s *cScreen) getConsoleInput() error {
 				for krec.repeat > 0 {
 					// convert shift+tab to backtab
 					if mod2mask(krec.mod) == ModShift && krec.ch == vkTab {
-						s.PostEventWait(NewEventKey(KeyBacktab, 0,
-							ModNone))
+						s.postEvent(NewEventKey(KeyBacktab, 0, ModNone))
 					} else {
-						s.PostEventWait(NewEventKey(KeyRune, rune(krec.ch),
-							mod2mask(krec.mod)))
+						s.postEvent(NewEventKey(KeyRune, rune(krec.ch), mod2mask(krec.mod)))
 					}
 					krec.repeat--
 				}
@@ -767,8 +728,7 @@ func (s *cScreen) getConsoleInput() error {
 				return nil
 			}
 			for krec.repeat > 0 {
-				s.PostEventWait(NewEventKey(key, rune(krec.ch),
-					mod2mask(krec.mod)))
+				s.postEvent(NewEventKey(key, rune(krec.ch), mod2mask(krec.mod)))
 				krec.repeat--
 			}
 
@@ -781,14 +741,13 @@ func (s *cScreen) getConsoleInput() error {
 			mrec.flags = getu32(rec.data[12:])
 			btns := mrec2btns(mrec.btns, mrec.flags)
 			// we ignore double click, events are delivered normally
-			s.PostEventWait(NewEventMouse(int(mrec.x), int(mrec.y), btns,
-				mod2mask(mrec.mod)))
+			s.postEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns, mod2mask(mrec.mod)))
 
 		case resizeEvent:
 			var rrec resizeRecord
 			rrec.x = geti16(rec.data[0:])
 			rrec.y = geti16(rec.data[2:])
-			s.PostEventWait(NewEventResize(int(rrec.x), int(rrec.y)))
+			s.postEvent(NewEventResize(int(rrec.x), int(rrec.y)))
 
 		default:
 		}
@@ -1128,7 +1087,10 @@ func (s *cScreen) resize() {
 		uintptr(s.out),
 		uintptr(1),
 		uintptr(unsafe.Pointer(&r)))
-	_ = s.PostEvent(NewEventResize(w, h))
+	select {
+	case s.eventQ <- NewEventResize(w, h):
+	default:
+	}
 }
 
 func (s *cScreen) clearScreen(style Style, vtEnable bool) {
@@ -1297,4 +1259,12 @@ func (s *cScreen) Tty() (Tty, bool) {
 
 func (s *cScreen) GetCells() *CellBuffer {
 	return &s.cells
+}
+
+func (s *cScreen) EventQ() chan Event {
+	return s.eventQ
+}
+
+func (s *cScreen) StopQ() <-chan struct{} {
+	return s.stopQ
 }
