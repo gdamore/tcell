@@ -376,13 +376,7 @@ func (b *baseScreen) Clear() {
 func (b *baseScreen) Fill(r rune, style Style) {
 	cb := b.GetCells()
 	b.Lock()
-	for i := range cb.cells {
-		c := &cb.cells[i]
-		c.currMain = r
-		c.currComb = nil
-		c.currStyle = style
-		c.width = 1
-	}
+	cb.Fill(r, style)
 	b.Unlock()
 }
 

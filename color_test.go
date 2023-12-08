@@ -1,4 +1,4 @@
-// Copyright 2018 The TCell Authors
+// Copyright 2023 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -46,7 +46,7 @@ func TestColorValues(t *testing.T) {
 }
 
 func TestColorFitting(t *testing.T) {
-	pal := []Color{}
+	var pal []Color
 	for i := 0; i < 255; i++ {
 		pal = append(pal, PaletteColor(i))
 	}
@@ -108,6 +108,17 @@ func TestColorNameLookup(t *testing.T) {
 			t.Errorf("TrueColor did not match")
 		}
 	}
+
+	// these colors only have strings (for debugging), you cannot use them to create a color
+	if ColorNone.String() != "none" {
+		t.Errorf("ColorNone did not match")
+	}
+	if ColorReset.String() != "reset" {
+		t.Errorf("ColorReset did not match")
+	}
+	if ColorDefault.String() != "default" {
+		t.Errorf("ColorDefault did not match")
+	}
 }
 
 func TestColorRGB(t *testing.T) {
@@ -130,5 +141,36 @@ func TestFromImageColor(t *testing.T) {
 	}
 	if hex := FromImageColor(cyan).Hex(); hex != 0x00FFFF {
 		t.Errorf("%v is not 0x00FFFF", hex)
+	}
+}
+
+func TestColorNone(t *testing.T) {
+	s := mkTestScreen(t, "")
+	s.Init()
+	s.SetSize(80, 24)
+	st := StyleDefault.Foreground(ColorBlack).Background(ColorWhite)
+	s.Fill(' ', st)
+	if _, _, s1, _ := s.GetContent(0, 0); s1 != st {
+		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
+	}
+	st2 := st.Foreground(ColorNone).Background(ColorNone)
+	s.Fill('X', st2)
+	if _, _, s1, _ := s.GetContent(0, 0); s1 != st {
+		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
+	}
+	red := st.Foreground(ColorRed).Background(ColorNone)
+	s.SetContent(1, 0, ' ', nil, red)
+	if _, _, s1, _ := s.GetContent(1, 0); s1 != red.Background(st.bg) {
+		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
+	}
+	if _, _, s1, _ := s.GetContent(0, 0); s1 != st {
+		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
+	}
+	pink := st.Background(ColorPink).Foreground(ColorNone)
+	s.SetContent(1, 0, ' ', nil, pink)
+	combined := pink.Foreground(ColorRed)
+
+	if _, _, s1, _ := s.GetContent(1, 0); s1 != combined {
+		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
 	}
 }
