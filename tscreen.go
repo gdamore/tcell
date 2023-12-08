@@ -123,7 +123,6 @@ type tScreen struct {
 	buf          bytes.Buffer
 	curstyle     Style
 	style        Style
-	evch         chan Event
 	resizeQ      chan bool
 	quit         chan struct{}
 	keyexist     map[Key]bool
@@ -159,6 +158,7 @@ type tScreen struct {
 	cursorStyle  CursorStyle
 	saved        *term.State
 	stopQ        chan struct{}
+	eventQ       chan Event
 	running      bool
 	wg           sync.WaitGroup
 	mouseFlags   MouseFlags
@@ -173,7 +173,6 @@ func (t *tScreen) Init() error {
 		return e
 	}
 
-	t.evch = make(chan Event, 10)
 	t.keychan = make(chan []byte, 10)
 	t.keytimer = time.NewTimer(time.Millisecond * 50)
 	t.charset = "UTF-8"
@@ -217,6 +216,7 @@ func (t *tScreen) Init() error {
 	}
 
 	t.quit = make(chan struct{})
+	t.eventQ = make(chan Event, 10)
 
 	t.Lock()
 	t.cx = -1
@@ -1071,7 +1071,10 @@ func (t *tScreen) resize() {
 	t.h = ws.Height
 	t.w = ws.Width
 	ev := &EventResize{t: time.Now(), ws: ws}
-	_ = t.PostEvent(ev)
+	select {
+	case t.eventQ <- ev:
+	default:
+	}
 }
 
 func (t *tScreen) Colors() int {
@@ -1087,39 +1090,6 @@ func (t *tScreen) Colors() int {
 // always be a small number. (<= 256)
 func (t *tScreen) nColors() int {
 	return t.ti.Colors
-}
-
-func (t *tScreen) ChannelEvents(ch chan<- Event, quit <-chan struct{}) {
-	defer close(ch)
-	for {
-		select {
-		case <-quit:
-			return
-		case <-t.quit:
-			return
-		case ev := <-t.evch:
-			select {
-			case <-quit:
-				return
-			case <-t.quit:
-				return
-			case ch <- ev:
-			}
-		}
-	}
-}
-
-func (t *tScreen) PollEvent() Event {
-	select {
-	case <-t.quit:
-		return nil
-	case ev := <-t.evch:
-		return ev
-	}
-}
-
-func (t *tScreen) HasPendingEvent() bool {
-	return len(t.evch) > 0
 }
 
 // vtACSNames is a map of bytes defined by terminfo that are used in
@@ -1183,19 +1153,6 @@ func (t *tScreen) buildAcsMap() {
 			t.acs[r] = t.ti.EnterAcs + dstv + t.ti.ExitAcs
 		}
 		acsstr = acsstr[2:]
-	}
-}
-
-func (t *tScreen) PostEventWait(ev Event) {
-	t.evch <- ev
-}
-
-func (t *tScreen) PostEvent(ev Event) error {
-	select {
-	case t.evch <- ev:
-		return nil
-	default:
-		return ErrEventQFull
 	}
 }
 
@@ -1560,7 +1517,11 @@ func (t *tScreen) scanInput(buf *bytes.Buffer, expire bool) {
 	evs := t.collectEventsFromInput(buf, expire)
 
 	for _, ev := range evs {
-		t.PostEventWait(ev)
+		select {
+		case t.eventQ <- ev:
+		case <-t.quit:
+			return
+		}
 	}
 }
 
@@ -1629,7 +1590,7 @@ func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event
 				_, _ = buf.ReadByte()
 				continue
 			}
-			// Nothing was going to match, or we timed out
+			// Nothing was going to match, or we timed-out
 			// waiting for more data -- just deliver the characters
 			// to the app & let them sort it out.  Possibly we
 			// should only do this for control characters like ESC.
@@ -1724,7 +1685,10 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 			running := t.running
 			t.Unlock()
 			if running {
-				_ = t.PostEvent(NewEventError(e))
+				select {
+				case t.eventQ <- NewEventError(e):
+				case <-t.quit:
+				}
 			}
 			return
 		}
@@ -1921,6 +1885,14 @@ func (t *tScreen) Beep() error {
 func (t *tScreen) finalize() {
 	t.disengage()
 	_ = t.tty.Close()
+}
+
+func (t *tScreen) StopQ() <-chan struct{} {
+	return t.stopQ
+}
+
+func (t *tScreen) EventQ() chan Event {
+	return t.eventQ
 }
 
 func (t *tScreen) GetCells() *CellBuffer {
