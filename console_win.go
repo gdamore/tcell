@@ -599,12 +599,17 @@ func geti16(v []byte) int16 {
 func mod2mask(cks uint32) ModMask {
 	mm := ModNone
 	// Left or right control
-	if (cks & (0x0008 | 0x0004)) != 0 {
-		mm |= ModCtrl
-	}
+	ctrl := (cks & (0x0008 | 0x0004)) != 0
 	// Left or right alt
-	if (cks & (0x0002 | 0x0001)) != 0 {
-		mm |= ModAlt
+	alt := (cks & (0x0002 | 0x0001)) != 0
+	// Filter out ctrl+alt (it means AltGr)
+	if !(ctrl && alt) {
+		if ctrl {
+			mm |= ModCtrl
+		}
+		if alt {
+			mm |= ModAlt
+		}
 	}
 	// Any shift
 	if (cks & 0x0010) != 0 {
