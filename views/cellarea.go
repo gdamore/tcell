@@ -1,4 +1,4 @@
-// Copyright 2016 The Tcell Authors
+// Copyright 2024 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -33,14 +33,13 @@ type CellModel interface {
 // CellView is a flexible view of a CellModel, offering both cursor
 // management and a panning.
 type CellView struct {
-	port     *ViewPort
-	view     View
-	content  Widget
-	contentV *ViewPort
-	style    tcell.Style
-	lines    []string
-	model    CellModel
-	once     sync.Once
+	port    *ViewPort
+	view    View
+	content Widget
+	style   tcell.Style
+	lines   []string
+	model   CellModel
+	once    sync.Once
 
 	WidgetWatchers
 }
