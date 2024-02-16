@@ -1,7 +1,7 @@
 //go:build ignore
 // +build ignore
 
-// Copyright 2021 The TCell Authors
+// Copyright 2024 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -73,7 +73,7 @@ const (
 	ESC
 )
 
-var notaddressable = errors.New("terminal not cursor addressable")
+var notAddressable = errors.New("terminal not cursor addressable")
 
 func unescape(s string) string {
 	// Various escapes are in \x format.  Control codes are
@@ -276,6 +276,8 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.EnableAcs = tc.getstr("enacs")
 	t.StrikeThrough = tc.getstr("smxx")
 	t.Mouse = tc.getstr("kmous")
+	t.EnableAutoMargin = tc.getstr("smam")
+	t.DisableAutoMargin = tc.getstr("rmam")
 
 	t.Modifiers = terminfo.ModifiersNone
 
@@ -390,7 +392,7 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		t.Colors = 0
 	}
 	if t.SetCursor == "" {
-		return nil, "", notaddressable
+		return nil, "", notAddressable
 	}
 
 	// For padding, we lookup the pad char.  If that isn't present,
@@ -501,6 +503,8 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "EnterAcs", t.EnterAcs)
 		dotGoAddStr(w, "ExitAcs", t.ExitAcs)
 		dotGoAddStr(w, "EnableAcs", t.EnableAcs)
+		dotGoAddStr(w, "EnableAutoMargin", t.EnableAutoMargin)
+		dotGoAddStr(w, "DisableAutoMargin", t.DisableAutoMargin)
 		dotGoAddStr(w, "SetFgRGB", t.SetFgRGB)
 		dotGoAddStr(w, "SetBgRGB", t.SetBgRGB)
 		dotGoAddStr(w, "SetFgBgRGB", t.SetFgBgRGB)
@@ -677,7 +681,7 @@ func main() {
 
 	for _, term := range args {
 		if t, desc, e := getinfo(term); e != nil {
-			if all && e == notaddressable {
+			if all && e == notAddressable {
 				continue
 			}
 			if !quiet {

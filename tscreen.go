@@ -715,7 +715,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		return width
 	}
 
-	if y == t.h-1 && x == t.w-1 && t.ti.AutoMargin && ti.InsertChar != "" {
+	if y == t.h-1 && x == t.w-1 && t.ti.AutoMargin && ti.DisableAutoMargin == "" && ti.InsertChar != "" {
 		// our solution is somewhat goofy.
 		// we write to the second to the last cell what we want in the last cell, then we
 		// insert a character at that 2nd to last position to shift the last column into
@@ -1826,6 +1826,7 @@ func (t *tScreen) engage() error {
 	t.TPuts(ti.EnterKeypad)
 	t.TPuts(ti.HideCursor)
 	t.TPuts(ti.EnableAcs)
+	t.TPuts(ti.DisableAutoMargin)
 	t.TPuts(ti.Clear)
 
 	t.wg.Add(2)
@@ -1867,6 +1868,7 @@ func (t *tScreen) disengage() {
 	t.TPuts(ti.Clear)
 	t.TPuts(ti.ExitCA)
 	t.TPuts(ti.ExitKeypad)
+	t.TPuts(ti.EnableAutoMargin)
 	t.enableMouse(0)
 	t.enablePasting(false)
 	t.disableFocusReporting()
