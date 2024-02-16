@@ -1,4 +1,4 @@
-// Copyright 2018 The Tcell Authors
+// Copyright 2024 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -22,12 +22,15 @@ import (
 
 // Application represents an event-driven application running on a screen.
 type Application struct {
-	widget Widget
-	screen tcell.Screen
-	style  tcell.Style
-	err    error
-	wg     sync.WaitGroup
-	paste  bool
+	widget   Widget
+	screen   tcell.Screen
+	style    tcell.Style
+	err      error
+	wg       sync.WaitGroup
+	paste    bool
+	stopQ    chan struct{}
+	eventQ   chan tcell.Event
+	stopOnce sync.Once
 }
 
 // SetRootWidget sets the primary (root, main) Widget to be displayed.
@@ -56,30 +59,23 @@ func (app *Application) initialize() error {
 // Quit causes the application to shutdown gracefully.  It does not wait
 // for the application to exit, but returns immediately.
 func (app *Application) Quit() {
-	ev := &eventAppQuit{}
-	ev.SetEventNow()
-	if scr := app.screen; scr != nil {
-		go func() { scr.PostEventWait(ev) }()
-	}
+	app.stopOnce.Do(func() { close(app.stopQ) })
 }
 
 // Refresh causes the application forcibly redraw everything.  Use this
 // to clear up screen corruption, etc.
 func (app *Application) Refresh() {
-	ev := &eventAppRefresh{}
-	ev.SetEventNow()
 	if scr := app.screen; scr != nil {
-		go func() { scr.PostEventWait(ev) }()
+		scr.Sync()
 	}
 }
 
 // Update asks the application to draw any screen updates that have not
-// been drawn yet.
+// been drawn yet.  It is not necessary to call this from inside an
+// event handler, as a draw will be done implicitly after handling events.
 func (app *Application) Update() {
-	ev := &eventAppUpdate{}
-	ev.SetEventNow()
 	if scr := app.screen; scr != nil {
-		go func() { scr.PostEventWait(ev) }()
+		scr.Show()
 	}
 }
 
@@ -140,6 +136,10 @@ func (app *Application) run() {
 	screen.Clear()
 	widget.SetView(screen)
 
+	app.eventQ = make(chan tcell.Event, 16)
+	app.stopQ = make(chan struct{})
+	go screen.ChannelEvents(app.eventQ, app.stopQ)
+
 loop:
 	for {
 		if widget = app.widget; widget == nil {
@@ -148,14 +148,13 @@ loop:
 		widget.Draw()
 		screen.Show()
 
-		ev := screen.PollEvent()
-		switch nev := ev.(type) {
-		case *eventAppQuit:
+		ev := <-app.eventQ
+		// ev := screen.PollEvent()
+		if ev == nil {
+			screen.Fini()
 			break loop
-		case *eventAppUpdate:
-			screen.Show()
-		case *eventAppRefresh:
-			screen.Sync()
+		}
+		switch nev := ev.(type) {
 		case *eventAppFunc:
 			nev.fn()
 		case *tcell.EventResize:
@@ -186,18 +185,6 @@ func (app *Application) Wait() error {
 func (app *Application) Run() error {
 	app.Start()
 	return app.Wait()
-}
-
-type eventAppUpdate struct {
-	tcell.EventTime
-}
-
-type eventAppQuit struct {
-	tcell.EventTime
-}
-
-type eventAppRefresh struct {
-	tcell.EventTime
 }
 
 type eventAppFunc struct {
