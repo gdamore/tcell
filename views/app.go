@@ -149,7 +149,6 @@ loop:
 		screen.Show()
 
 		ev := <-app.eventQ
-		// ev := screen.PollEvent()
 		if ev == nil {
 			screen.Fini()
 			break loop
