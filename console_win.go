@@ -196,20 +196,22 @@ func (s *cScreen) Init() error {
 
 	s.truecolor = true
 
-	// ConEmu handling of colors and scrolling when in terminal
-	// mode is extremely problematic at the best.  The color
-	// palette will scroll even though characters do not, when
-	// emitting stuff for the last character.  In the future we
-	// might change this to look at specific versions of ConEmu
-	// if they fix the bug.
+	// ConEmu handling of colors and scrolling when in VT output mode is extremely poor.
+	// The color palette will scroll even though characters do not, when
+	// emitting stuff for the last character.  In the future we might change this to
+	// look at specific versions of ConEmu if they fix the bug.
+	// We can also try disabling auto margin mode.
+	tryVt := true
 	if os.Getenv("ConEmuPID") != "" {
 		s.truecolor = false
+		tryVt = false
 	}
 	switch os.Getenv("TCELL_TRUECOLOR") {
 	case "disable":
 		s.truecolor = false
 	case "enable":
 		s.truecolor = true
+		tryVt = true
 	}
 
 	s.Lock()
@@ -229,7 +231,13 @@ func (s *cScreen) Init() error {
 	// If a user needs to force old style console, they may do so
 	// by setting TCELL_VTMODE to disable.  This is an undocumented safety net for now.
 	// It may be removed in the future.  (This mostly exists because of ConEmu.)
-	if os.Getenv("TCELL_VTMODE") != "disable" {
+	switch os.Getenv("TCELL_VTMODE") {
+	case "disable":
+		tryVt = false
+	case "enable":
+		tryVt = true
+	}
+	if tryVt {
 		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
 		var om uint32
 		s.getOutMode(&om)
