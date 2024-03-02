@@ -336,19 +336,20 @@ func (s *cScreen) disengage() {
 	if s.vten {
 		s.emitVtString(vtCursorStyles[CursorStyleDefault])
 		s.emitVtString(vtEnableAm)
+		if !s.disableAlt {
+			s.emitVtString(vtExitCA)
+		}
+	} else if !s.disableAlt {
+		s.clearScreen(StyleDefault, s.vten)
 	}
 	s.setInMode(s.oimode)
 	s.setOutMode(s.oomode)
 	s.setBufferSize(int(s.oscreen.size.x), int(s.oscreen.size.y))
-	s.clearScreen(StyleDefault, false)
 	s.setCursorPos(0, 0, false)
 	s.setCursorInfo(&s.ocursor)
 	_, _, _ = procSetConsoleTextAttribute.Call(
 		uintptr(s.out),
 		uintptr(s.mapStyle(StyleDefault)))
-	if s.vten && !s.disableAlt {
-		s.emitVtString(vtExitCA)
-	}
 }
 
 func (s *cScreen) engage() error {
