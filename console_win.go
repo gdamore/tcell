@@ -41,6 +41,7 @@ type cScreen struct {
 	vten       bool
 	truecolor  bool
 	running    bool
+	disableAlt bool // disable the alternate screen
 
 	w int
 	h int
@@ -161,6 +162,8 @@ const (
 	vtCursorSteadyBar         = "\x1b[6 q"
 	vtDisableAm               = "\x1b[?7l"
 	vtEnableAm                = "\x1b[?7h"
+	vtEnterCA                 = "\x1b[?1049h\x1b[22;0;0t"
+	vtExitCA                  = "\x1b[?1049l\x1b[23;0;0t"
 )
 
 var vtCursorStyles = map[CursorStyle]string{
@@ -238,6 +241,12 @@ func (s *cScreen) Init() error {
 		tryVt = false
 	case "enable":
 		tryVt = true
+	}
+	switch os.Getenv("TCELL_ALTSCREEN") {
+	case "enable":
+		s.disableAlt = false // also the default
+	case "disable":
+		s.disableAlt = true
 	}
 	if tryVt {
 		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
@@ -337,6 +346,9 @@ func (s *cScreen) disengage() {
 	_, _, _ = procSetConsoleTextAttribute.Call(
 		uintptr(s.out),
 		uintptr(s.mapStyle(StyleDefault)))
+	if s.vten && !s.disableAlt {
+		s.emitVtString(vtExitCA)
+	}
 }
 
 func (s *cScreen) engage() error {
@@ -360,6 +372,9 @@ func (s *cScreen) engage() error {
 
 	if s.vten {
 		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
+		if !s.disableAlt {
+			s.emitVtString(vtEnterCA)
+		}
 		s.emitVtString(vtDisableAm)
 	} else {
 		s.setOutMode(0)
