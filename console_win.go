@@ -182,7 +182,6 @@ func (s *cScreen) Init() error {
 	s.eventQ = make(chan Event, 10)
 	s.quit = make(chan struct{})
 	s.scandone = make(chan struct{})
-
 	in, e := syscall.Open("CONIN$", syscall.O_RDWR, 0)
 	if e != nil {
 		return e
@@ -227,9 +226,10 @@ func (s *cScreen) Init() error {
 	s.fini = false
 	s.setInMode(modeResizeEn | modeExtendFlg)
 
-	// 24-bit color is opt-in for now, because we can't figure out
-	// to make it work consistently.
-	if s.truecolor {
+	// If a user needs to force old style console, they may do so
+	// by setting TCELL_VTMODE to disable.  This is an undocumented safety net for now.
+	// It may be removed in the future.  (This mostly exists because of ConEmu.)
+	if os.Getenv("TCELL_VTMODE") != "disable" {
 		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
 		var om uint32
 		s.getOutMode(&om)
