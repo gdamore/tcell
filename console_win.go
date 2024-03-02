@@ -159,6 +159,8 @@ const (
 	vtCursorSteadyUnderline   = "\x1b[4 q"
 	vtCursorBlinkingBar       = "\x1b[5 q"
 	vtCursorSteadyBar         = "\x1b[6 q"
+	vtDisableAm               = "\x1b[?7l"
+	vtEnableAm                = "\x1b[?7h"
 )
 
 var vtCursorStyles = map[CursorStyle]string{
@@ -324,6 +326,7 @@ func (s *cScreen) disengage() {
 
 	if s.vten {
 		s.emitVtString(vtCursorStyles[CursorStyleDefault])
+		s.emitVtString(vtEnableAm)
 	}
 	s.setInMode(s.oimode)
 	s.setOutMode(s.oomode)
@@ -357,6 +360,7 @@ func (s *cScreen) engage() error {
 
 	if s.vten {
 		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
+		s.emitVtString(vtDisableAm)
 	} else {
 		s.setOutMode(0)
 	}
