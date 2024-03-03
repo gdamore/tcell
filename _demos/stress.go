@@ -23,7 +23,6 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -38,27 +37,7 @@ func main() {
 		panic(err)
 	}
 
-	startTime := time.Now()
 	var frames int
-
-	go func() {
-		for {
-			event := screen.PollEvent()
-			if event, ok := event.(*tcell.EventKey); ok {
-				if event.Key() == tcell.KeyCtrlC || event.Key() == tcell.KeyESC {
-					break
-				}
-			}
-		}
-
-		screen.Fini()
-
-		duration := time.Since(startTime)
-		fps := int(float64(frames) / duration.Seconds())
-		fmt.Println("FPS:", fps)
-
-		os.Exit(0)
-	}()
 
 	type cell struct {
 		c     rune
@@ -97,17 +76,36 @@ func main() {
 		patterns = append(patterns, pattern)
 	}
 
+	evCh := make(chan tcell.Event)
+	quitCh := make(chan struct{})
+
+	go screen.ChannelEvents(evCh, quitCh)
+	startTime := time.Now()
+loop:
 	for {
-		for i := 0; i < len(patterns); i++ {
-			pattern := patterns[i]
-			for h := 0; h < height; h++ {
-				for w := 0; w < width; w++ {
-					c := pattern[h][w]
-					screen.SetContent(w, h, c.c, nil, c.style)
+		select {
+		case event := <-evCh:
+			if event, ok := event.(*tcell.EventKey); ok {
+				if event.Key() == tcell.KeyCtrlC || event.Key() == tcell.KeyESC {
+					close(quitCh)
+					break loop
 				}
 			}
-			screen.Show()
-			frames++
+			break
+		default:
 		}
+		pattern := patterns[frames%len(patterns)]
+		for h := 0; h < height; h++ {
+			for w := 0; w < width; w++ {
+				c := pattern[h][w]
+				screen.SetContent(w, h, c.c, nil, c.style)
+			}
+		}
+		screen.Show()
+		frames++
 	}
+	duration := time.Since(startTime)
+	screen.Fini()
+	fps := int(float64(frames) / duration.Seconds())
+	fmt.Println("FPS:", fps)
 }
