@@ -154,6 +154,10 @@ type tScreen struct {
 	setWinSize   string
 	enableFocus  string
 	disableFocus string
+	doubleUnder  string
+	curlyUnder   string
+	dottedUnder  string
+	dashedUnder  string
 	cursorStyles map[CursorStyle]string
 	cursorStyle  CursorStyle
 	saved        *term.State
@@ -338,12 +342,36 @@ func (t *tScreen) prepareBracketedPaste() {
 		t.disablePaste = t.ti.DisablePaste
 		t.prepareKey(keyPasteStart, t.ti.PasteStart)
 		t.prepareKey(keyPasteEnd, t.ti.PasteEnd)
-	} else if t.ti.Mouse != "" {
+	} else if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.enablePaste = "\x1b[?2004h"
 		t.disablePaste = "\x1b[?2004l"
 		t.prepareKey(keyPasteStart, "\x1b[200~")
 		t.prepareKey(keyPasteEnd, "\x1b[201~")
 	}
+}
+
+func (t *tScreen) prepareUnderlines() {
+	if t.ti.DoubleUnderline != "" {
+		t.doubleUnder = t.ti.DoubleUnderline
+	} else if t.ti.XTermLike {
+		t.doubleUnder = "\x1b[4:2m"
+	}
+	if t.ti.CurlyUnderline != "" {
+		t.curlyUnder = t.ti.CurlyUnderline
+	} else {
+		t.curlyUnder = "\x1b[4:3m"
+	}
+	if t.ti.DottedUnderline != "" {
+		t.dottedUnder = t.ti.DottedUnderline
+	} else {
+		t.dottedUnder = "\x1b[4:4m"
+	}
+	if t.ti.DashedUnderline != "" {
+		t.dashedUnder = t.ti.DashedUnderline
+	} else {
+		t.dashedUnder = "\x1b[4:5m"
+	}
+	// Still TODO: Underline Color
 }
 
 func (t *tScreen) prepareExtendedOSC() {
@@ -397,7 +425,7 @@ func (t *tScreen) prepareCursorStyles() {
 			CursorStyleBlinkingBar:       t.ti.CursorBlinkingBar,
 			CursorStyleSteadyBar:         t.ti.CursorSteadyBar,
 		}
-	} else if t.ti.Mouse != "" {
+	} else if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.cursorStyles = map[CursorStyle]string{
 			CursorStyleDefault:           "\x1b[0 q",
 			CursorStyleBlinkingBlock:     "\x1b[1 q",
@@ -408,6 +436,8 @@ func (t *tScreen) prepareCursorStyles() {
 			CursorStyleSteadyBar:         "\x1b[6 q",
 		}
 	}
+
+	// Still TODO: Cursor Color
 }
 
 func (t *tScreen) prepareKey(key Key, val string) {
@@ -550,6 +580,7 @@ func (t *tScreen) prepareKeys() {
 	t.prepareXtermModifiers()
 	t.prepareBracketedPaste()
 	t.prepareCursorStyles()
+	t.prepareUnderlines()
 	t.prepareExtendedOSC()
 
 outer:
@@ -750,8 +781,17 @@ func (t *tScreen) drawCell(x, y int) int {
 		if attrs&AttrBold != 0 {
 			t.TPuts(ti.Bold)
 		}
-		if attrs&AttrUnderline != 0 {
-			t.TPuts(ti.Underline)
+		if attrs&(AttrUnderline|AttrDoubleUnderline|AttrCurlyUnderline|AttrDottedUnderline|AttrDashedUnderline) != 0 {
+			t.TPuts(ti.Underline) // to ensure everyone gets at least a basic underline
+			if (attrs & AttrDoubleUnderline) != 0 {
+				t.TPuts(t.doubleUnder)
+			} else if (attrs & AttrCurlyUnderline) != 0 {
+				t.TPuts(t.curlyUnder)
+			} else if (attrs & AttrDottedUnderline) != 0 {
+				t.TPuts(t.dottedUnder)
+			} else if (attrs & AttrDashedUnderline) != 0 {
+				t.TPuts(t.dashedUnder)
+			}
 		}
 		if attrs&AttrReverse != 0 {
 			t.TPuts(ti.Reverse)
