@@ -91,9 +91,6 @@ function drawCell(x, y, mainc, combc, fg, bg, attrs) {
     if ((attrs & 1) != 0) {
       span.classList.add("bold");
     }
-    if ((attrs & (1 << 1)) != 0) {
-      span.classList.add("blink");
-    }
     if ((attrs & (1 << 3)) != 0) {
       span.classList.add("underline");
     }
@@ -119,9 +116,16 @@ function drawCell(x, y, mainc, combc, fg, bg, attrs) {
       span.classList.add("dashed_underline");
     }
   }
-
-  var textnode = document.createTextNode(combString);
-  span.appendChild(textnode);
+  if ((attrs & (1 << 1)) != 0) {
+    var blink = document.createElement("span");
+    blink.classList.add("blink");
+    var textnode = document.createTextNode(combString);
+    blink.appendChild(textnode);
+    span.appendChild(blink);
+  } else {
+    var textnode = document.createTextNode(combString);
+    span.appendChild(textnode);
+  }
 
   content.dirty = true; // invalidate terminal- new cell
   content.data[y].previous = null; // invalidate row- new row
