@@ -1,7 +1,7 @@
 //go:build ignore
 // +build ignore
 
-// Copyright 2019 The TCell Authors
+// Copyright 2024 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -30,12 +30,6 @@ import (
 
 var row = 0
 var style = tcell.StyleDefault
-
-func putln(s tcell.Screen, str string) {
-
-	puts(s, style, 1, row, str)
-	row++
-}
 
 func puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
 	i := 0
