@@ -164,6 +164,10 @@ const (
 	vtEnableAm                = "\x1b[?7h"
 	vtEnterCA                 = "\x1b[?1049h\x1b[22;0;0t"
 	vtExitCA                  = "\x1b[?1049l\x1b[23;0;0t"
+	vtDoubleUnderline         = "\x1b[4:2m"
+	vtCurlyUnderline          = "\x1b[4:3m"
+	vtDottedUnderline         = "\x1b[4:4m"
+	vtDashedUnderline         = "\x1b[4:5m"
 )
 
 var vtCursorStyles = map[CursorStyle]string{
@@ -922,8 +926,18 @@ func (s *cScreen) sendVtStyle(style Style) {
 	if attrs&AttrBlink != 0 {
 		esc.WriteString(vtBlink)
 	}
-	if attrs&AttrUnderline != 0 {
+	if attrs&(AttrUnderline|AttrDoubleUnderline|AttrCurlyUnderline|AttrDottedUnderline|AttrDashedUnderline) != 0 {
 		esc.WriteString(vtUnderline)
+		// legacy ConHost does not understand these but Terminal does
+		if (attrs & AttrDoubleUnderline) != 0 {
+			esc.WriteString(vtDoubleUnderline)
+		} else if (attrs & AttrCurlyUnderline) != 0 {
+			esc.WriteString(vtCurlyUnderline)
+		} else if (attrs & AttrDottedUnderline) != 0 {
+			esc.WriteString(vtDottedUnderline)
+		} else if (attrs & AttrDashedUnderline) != 0 {
+			esc.WriteString(vtDashedUnderline)
+		}
 	}
 	if attrs&AttrReverse != 0 {
 		esc.WriteString(vtReverse)

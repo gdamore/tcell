@@ -416,6 +416,23 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		t.SetFgBg = fg + ";" + bg
 	}
 
+	if tc.getflag("XT") {
+		t.XTermLike = true
+	}
+	if smulx := tc.getstr("Smulx"); smulx != "" {
+		if t.DoubleUnderline == "" {
+			t.DoubleUnderline = t.TParm(smulx, 2)
+		}
+		if t.CurlyUnderline == "" {
+			t.CurlyUnderline = t.TParm(smulx, 3)
+		}
+		if t.DottedUnderine == "" {
+			t.DottedUnderine = t.TParm(smulx, 4)
+		}
+		if t.DashedUnderline == "" {
+			t.DashedUnderline = t.TParm(smulx, 5)
+		}
+	}
 	return t, tc.desc, nil
 }
 
@@ -621,6 +638,11 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "CursorSteadyUnderline", t.CursorSteadyUnderline)
 		dotGoAddStr(w, "CursorBlinkingBar", t.CursorBlinkingBar)
 		dotGoAddStr(w, "CursorSteadyBar", t.CursorSteadyBar)
+		dotGoAddStr(w, "DoubleUnderline", t.DoubleUnderline)
+		dotGoAddStr(w, "CurlyUnderline", t.CurlyUnderline)
+		dotGoAddStr(w, "DottedUnderline", t.DottedUnderine)
+		dotGoAddStr(w, "DashedUnderline", t.DashedUnderline)
+		dotGoAddFlag(w, "XTermLike", t.XTermLike)
 		fmt.Fprintln(w, "\t})")
 	}
 	fmt.Fprintln(w, "}")

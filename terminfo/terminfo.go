@@ -234,6 +234,11 @@ type Terminfo struct {
 	DisableFocusReporting   string
 	DisableAutoMargin       string // smam
 	EnableAutoMargin        string // rmam
+	DoubleUnderline         string // Smulx with param 2
+	CurlyUnderline          string // Smulx with param 3
+	DottedUnderline         string // Smulx with param 4
+	DashedUnderline         string // Smulx with param 5
+	XTermLike               bool   // (XT) has XTerm extensions
 }
 
 const (

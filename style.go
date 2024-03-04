@@ -1,4 +1,4 @@
-// Copyright 2022 The TCell Authors
+// Copyright 2024 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -134,6 +134,22 @@ func (s Style) Underline(on bool) Style {
 // StrikeThrough sets strikethrough mode.
 func (s Style) StrikeThrough(on bool) Style {
 	return s.setAttrs(AttrStrikeThrough, on)
+}
+
+func (s Style) DoubleUnderline(on bool) Style {
+	return s.setAttrs(AttrDoubleUnderline, on)
+}
+
+func (s Style) CurlyUnderline(on bool) Style {
+	return s.setAttrs(AttrCurlyUnderline, on)
+}
+
+func (s Style) DottedUnderline(on bool) Style {
+	return s.setAttrs(AttrDottedUnderline, on)
+}
+
+func (s Style) DashedUnderline(on bool) Style {
+	return s.setAttrs(AttrDashedUnderline, on)
 }
 
 // Attributes returns a new style based on s, with its attributes set as
