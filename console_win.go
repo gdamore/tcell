@@ -930,14 +930,13 @@ func (s *cScreen) sendVtStyle(style Style) {
 		esc.WriteString(vtBlink)
 	}
 	if us != UnderlineStyleNone {
-			if uc == ColorReset {
-				esc.WriteString(vtUnderColorReset)
-			} else if uc.IsRGB() {
-				r, g, b := uc.RGB()
-				_, _ = fmt.Fprintf(esc, vtUnderColorRGB, int(r), int(g), int(b))
-			} else if uc.Valid() {
-				_, _ = fmt.Fprintf(esc, vtUnderColor, uc&0xff)
-			}
+		if uc == ColorReset {
+			esc.WriteString(vtUnderColorReset)
+		} else if uc.IsRGB() {
+			r, g, b := uc.RGB()
+			_, _ = fmt.Fprintf(esc, vtUnderColorRGB, int(r), int(g), int(b))
+		} else if uc.Valid() {
+			_, _ = fmt.Fprintf(esc, vtUnderColor, uc&0xff)
 		}
 
 		esc.WriteString(vtUnderline)
@@ -954,6 +953,7 @@ func (s *cScreen) sendVtStyle(style Style) {
 			esc.WriteString(vtDashedUnderline)
 		}
 	}
+
 	if attrs&AttrReverse != 0 {
 		esc.WriteString(vtReverse)
 	}
