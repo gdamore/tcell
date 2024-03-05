@@ -426,8 +426,8 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		if t.CurlyUnderline == "" {
 			t.CurlyUnderline = t.TParm(smulx, 3)
 		}
-		if t.DottedUnderine == "" {
-			t.DottedUnderine = t.TParm(smulx, 4)
+		if t.DottedUnderline == "" {
+			t.DottedUnderline = t.TParm(smulx, 4)
 		}
 		if t.DashedUnderline == "" {
 			t.DashedUnderline = t.TParm(smulx, 5)
