@@ -879,7 +879,7 @@ func mapColor2RGB(c Color) uint16 {
 
 // Map a tcell style to Windows attributes
 func (s *cScreen) mapStyle(style Style) uint16 {
-	f, b, a := style.Decompose()
+	f, b, a := style.fg, style.bg, style.attrs
 	fa := s.oscreen.attrs & 0xf
 	ba := (s.oscreen.attrs) >> 4 & 0xf
 	if f != ColorDefault && f != ColorReset {
@@ -916,7 +916,7 @@ func (s *cScreen) mapStyle(style Style) uint16 {
 func (s *cScreen) sendVtStyle(style Style) {
 	esc := &strings.Builder{}
 
-	fg, bg, attrs := style.Decompose()
+	fg, bg, attrs := style.fg, style.bg, style.attrs
 
 	esc.WriteString(vtSgr0)
 

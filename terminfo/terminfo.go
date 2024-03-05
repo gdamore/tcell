@@ -238,6 +238,9 @@ type Terminfo struct {
 	CurlyUnderline          string // Smulx with param 3
 	DottedUnderline         string // Smulx with param 4
 	DashedUnderline         string // Smulx with param 5
+	UnderlineColor          string // Setuc1
+	UnderlineColorRGB       string // Setulc
+	UnderlineColorReset     string // ol
 	XTermLike               bool   // (XT) has XTerm extensions
 }
 
