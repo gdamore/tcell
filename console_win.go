@@ -919,37 +919,38 @@ func (s *cScreen) mapStyle(style Style) uint16 {
 func (s *cScreen) sendVtStyle(style Style) {
 	esc := &strings.Builder{}
 
-	fg, bg, uc, attrs := style.fg, style.bg, style.under, style.attrs
+	fg, bg, attrs := style.fg, style.bg, style.attrs
+	us, uc := style.ulStyle, style.ulColor
 
 	esc.WriteString(vtSgr0)
-
 	if attrs&(AttrBold|AttrDim) == AttrBold {
 		esc.WriteString(vtBold)
 	}
 	if attrs&AttrBlink != 0 {
 		esc.WriteString(vtBlink)
 	}
-	if attrs&(AttrUnderline|AttrDoubleUnderline|AttrCurlyUnderline|AttrDottedUnderline|AttrDashedUnderline) != 0 {
-		if uc.Valid() {
+	if us != UnderlineStyleNone {
 			if uc == ColorReset {
 				esc.WriteString(vtUnderColorReset)
 			} else if uc.IsRGB() {
 				r, g, b := uc.RGB()
 				_, _ = fmt.Fprintf(esc, vtUnderColorRGB, int(r), int(g), int(b))
-			} else {
+			} else if uc.Valid() {
 				_, _ = fmt.Fprintf(esc, vtUnderColor, uc&0xff)
 			}
 		}
 
 		esc.WriteString(vtUnderline)
 		// legacy ConHost does not understand these but Terminal does
-		if (attrs & AttrDoubleUnderline) != 0 {
+		switch us {
+		case UnderlineStyleSolid:
+		case UnderlineStyleDouble:
 			esc.WriteString(vtDoubleUnderline)
-		} else if (attrs & AttrCurlyUnderline) != 0 {
+		case UnderlineStyleCurly:
 			esc.WriteString(vtCurlyUnderline)
-		} else if (attrs & AttrDottedUnderline) != 0 {
+		case UnderlineStyleDotted:
 			esc.WriteString(vtDottedUnderline)
-		} else if (attrs & AttrDashedUnderline) != 0 {
+		case UnderlineStyleDashed:
 			esc.WriteString(vtDashedUnderline)
 		}
 	}

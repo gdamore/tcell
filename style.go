@@ -23,12 +23,13 @@ package tcell
 //
 // To use Style, just declare a variable of its type.
 type Style struct {
-	fg    Color
-	bg    Color
-	under Color
-	attrs AttrMask
-	url   string
-	urlId string
+	fg      Color
+	bg      Color
+	ulStyle UnderlineStyle
+	ulColor Color
+	attrs   AttrMask
+	url     string
+	urlId   string
 }
 
 // StyleDefault represents a default style, based upon the context.
@@ -111,36 +112,55 @@ func (s Style) Reverse(on bool) Style {
 	return s.setAttrs(AttrReverse, on)
 }
 
-// Underline returns a new style based on s, with the underline attribute set
-// as requested.
-func (s Style) Underline(on bool) Style {
-	return s.setAttrs(AttrUnderline, on)
-}
-
 // StrikeThrough sets strikethrough mode.
 func (s Style) StrikeThrough(on bool) Style {
 	return s.setAttrs(AttrStrikeThrough, on)
 }
 
-func (s Style) DoubleUnderline(on bool) Style {
-	return s.setAttrs(AttrDoubleUnderline, on)
-}
+// Underline style.  Modern terminals have the option of rendering the
+// underline using different styles, and even different colors.
+type UnderlineStyle int
 
-func (s Style) CurlyUnderline(on bool) Style {
-	return s.setAttrs(AttrCurlyUnderline, on)
-}
+const (
+	UnderlineStyleNone = UnderlineStyle(iota)
+	UnderlineStyleSolid
+	UnderlineStyleDouble
+	UnderlineStyleCurly
+	UnderlineStyleDotted
+	UnderlineStyleDashed
+)
 
-func (s Style) DottedUnderline(on bool) Style {
-	return s.setAttrs(AttrDottedUnderline, on)
-}
-
-func (s Style) DashedUnderline(on bool) Style {
-	return s.setAttrs(AttrDashedUnderline, on)
-}
-
-func (s Style) UnderlineColor(c Color) Style {
+// Underline returns a new style based on s, with the underline attribute set
+// as requested.  The parameters can be:
+//
+// bool: on / off - enables just a simple underline
+// UnderlineStyle: sets a specific style (should not coexist with the bool)
+// Color: the color to use
+func (s Style) Underline(params ...interface{}) Style {
 	s2 := s
-	s2.under = c
+	for _, param := range params {
+		switch v := param.(type) {
+		case bool:
+			if v {
+				s2.ulStyle = UnderlineStyleSolid
+				s2.attrs |= AttrUnderline
+			} else {
+				s2.ulStyle = UnderlineStyleNone
+				s2.attrs &^= AttrUnderline
+			}
+		case UnderlineStyle:
+			if v == UnderlineStyleNone {
+				s2.attrs &^= AttrUnderline
+			} else {
+				s2.attrs |= AttrUnderline
+			}
+			s2.ulStyle = v
+		case Color:
+			s2.ulColor = v
+		default:
+			panic("Bad type for underline")
+		}
+	}
 	return s2
 }
 

@@ -796,7 +796,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		style = t.style
 	}
 	if style != t.curstyle {
-		fg, bg, attrs, uc := style.fg, style.bg, style.attrs, style.under
+		fg, bg, attrs := style.fg, style.bg, style.attrs
 
 		t.TPuts(ti.AttrOff)
 
@@ -804,8 +804,8 @@ func (t *tScreen) drawCell(x, y int) int {
 		if attrs&AttrBold != 0 {
 			t.TPuts(ti.Bold)
 		}
-		if attrs&(AttrUnderline|AttrDoubleUnderline|AttrCurlyUnderline|AttrDottedUnderline|AttrDashedUnderline) != 0 {
-			if uc.Valid() && (t.underColor != "" || t.underRGB != "") {
+		if us, uc := style.ulStyle, style.ulColor; us != UnderlineStyleNone {
+			if t.underColor != "" || t.underRGB != "" {
 				if uc == ColorReset {
 					t.TPuts(t.underFg)
 				} else if uc.IsRGB() {
@@ -822,18 +822,19 @@ func (t *tScreen) drawCell(x, y int) int {
 						}
 						t.TPuts(ti.TParm(t.underColor, int(uc&0xff)))
 					}
-				} else {
+				} else if uc.Valid() {
 					t.TPuts(ti.TParm(t.underColor, int(uc&0xff)))
 				}
 			}
 			t.TPuts(ti.Underline) // to ensure everyone gets at least a basic underline
-			if (attrs & AttrDoubleUnderline) != 0 {
+			switch us {
+			case UnderlineStyleDouble:
 				t.TPuts(t.doubleUnder)
-			} else if (attrs & AttrCurlyUnderline) != 0 {
+			case UnderlineStyleCurly:
 				t.TPuts(t.curlyUnder)
-			} else if (attrs & AttrDottedUnderline) != 0 {
+			case UnderlineStyleDotted:
 				t.TPuts(t.dottedUnder)
-			} else if (attrs & AttrDashedUnderline) != 0 {
+			case UnderlineStyleDashed:
 				t.TPuts(t.dashedUnder)
 			}
 		}

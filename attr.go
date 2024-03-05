@@ -25,14 +25,10 @@ const (
 	AttrBold AttrMask = 1 << iota
 	AttrBlink
 	AttrReverse
-	AttrUnderline
+	AttrUnderline // Deprecated: Use UnderlineStyle
 	AttrDim
 	AttrItalic
 	AttrStrikeThrough
-	AttrDoubleUnderline
-	AttrCurlyUnderline
-	AttrDottedUnderline
-	AttrDashedUnderline
 	AttrInvalid AttrMask = 1 << 31 // Mark the style or attributes invalid
 	AttrNone    AttrMask = 0       // Just normal text.
 )

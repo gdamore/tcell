@@ -155,31 +155,31 @@ func main() {
 	puts(s, style, 2, row, "Strikethrough")
 	row++
 
-	style = plain.DoubleUnderline(true)
+	style = plain.Underline(tcell.UnderlineStyleDouble)
 	puts(s, style, 2, row, "Double Underline")
 	row++
 
-	style = plain.CurlyUnderline(true)
+	style = plain.Underline(tcell.UnderlineStyleCurly)
 	puts(s, style, 2, row, "Curly Underline")
 	row++
 
-	style = plain.DottedUnderline(true)
+	style = plain.Underline(tcell.UnderlineStyleDotted)
 	puts(s, style, 2, row, "Dotted Underline")
 	row++
 
-	style = plain.DashedUnderline(true)
+	style = plain.Underline(tcell.UnderlineStyleDashed)
 	puts(s, style, 2, row, "Dashed Underline")
 	row++
 
-	style = plain.Underline(true).UnderlineColor(tcell.ColorBlue)
+	style = plain.Underline(true, tcell.ColorBlue)
 	puts(s, style, 2, row, "Blue Underline")
 	row++
 
-	style = plain.Underline(true).UnderlineColor(tcell.ColorHoneydew)
+	style = plain.Underline(tcell.UnderlineStyleSolid, tcell.ColorHoneydew)
 	puts(s, style, 2, row, "Honeydew Underline")
 	row++
 
-	style = plain.CurlyUnderline(true).UnderlineColor(tcell.NewRGBColor(0xc5, 0x8a, 0xf9))
+	style = plain.Underline(tcell.UnderlineStyleCurly, tcell.NewRGBColor(0xc5, 0x8a, 0xf9))
 	puts(s, style, 2, row, "Pink Curly Underline")
 	row++
 
