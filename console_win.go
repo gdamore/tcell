@@ -171,6 +171,8 @@ const (
 	vtUnderColor              = "\x1b[58:5:%dm"
 	vtUnderColorRGB           = "\x1b[58:2::%d:%d:%dm"
 	vtUnderColorReset         = "\x1b[59m"
+	vtEnterUrl                = "\x1b]8;%s;%s\x1b\\" // NB arg 1 is id, arg 2 is url
+	vtExitUrl                 = "\x1b]8;;\x1b\\"
 )
 
 var vtCursorStyles = map[CursorStyle]string{
@@ -969,6 +971,13 @@ func (s *cScreen) sendVtStyle(style Style) {
 	} else if bg.Valid() {
 		_, _ = fmt.Fprintf(esc, vtSetBg, bg&0xff)
 	}
+	// URL string can be long, so don't send it unless we really need to
+	if style.url != "" {
+		_, _ = fmt.Fprintf(esc, vtEnterUrl, style.urlId, style.url)
+	} else {
+		esc.WriteString(vtExitUrl)
+	}
+
 	s.emitVtString(esc.String())
 }
 
