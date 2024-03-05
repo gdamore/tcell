@@ -144,7 +144,7 @@ Most _termbox-go_ programs will probably work without further modification.
 Internally _Tcell_ uses UTF-8, just like Go.
 However, _Tcell_ understands how to
 convert to and from other character sets, using the capabilities of
-the `golang.org/x/text/encoding packages`.
+the `golang.org/x/text/encoding` packages.
 Your application must supply
 them, as the full set of the most common ones bloats the program by about 2 MB.
 If you're lazy, and want them all anyway, see the `encoding` sub-directory.
