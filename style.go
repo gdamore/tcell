@@ -25,6 +25,7 @@ package tcell
 type Style struct {
 	fg    Color
 	bg    Color
+	under Color
 	attrs AttrMask
 	url   string
 	urlId string
@@ -40,50 +41,35 @@ var styleInvalid = Style{attrs: AttrInvalid}
 // Foreground returns a new style based on s, with the foreground color set
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Foreground(c Color) Style {
-	return Style{
-		fg:    c,
-		bg:    s.bg,
-		attrs: s.attrs,
-		url:   s.url,
-		urlId: s.urlId,
-	}
+	s2 := s
+	s2.fg = c
+	return s2
 }
 
 // Background returns a new style based on s, with the background color set
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Background(c Color) Style {
-	return Style{
-		fg:    s.fg,
-		bg:    c,
-		attrs: s.attrs,
-		url:   s.url,
-		urlId: s.urlId,
-	}
+	s2 := s
+	s2.bg = c
+	return s2
 }
 
 // Decompose breaks a style up, returning the foreground, background,
 // and other attributes.  The URL if set is not included.
+// Deprecated: Applications should not attempt to decompose style,
+// as this content is not sufficient to describe the actual style.
 func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
 	return s.fg, s.bg, s.attrs
 }
 
 func (s Style) setAttrs(attrs AttrMask, on bool) Style {
+	s2 := s
 	if on {
-		return Style{
-			fg:    s.fg,
-			bg:    s.bg,
-			attrs: s.attrs | attrs,
-			url:   s.url,
-			urlId: s.urlId,
-		}
+		s2.attrs |= attrs
+	} else {
+		s2.attrs &^= attrs
 	}
-	return Style{
-		fg:    s.fg,
-		bg:    s.bg,
-		attrs: s.attrs &^ attrs,
-		url:   s.url,
-		urlId: s.urlId,
-	}
+	return s2
 }
 
 // Normal returns the style with all attributes disabled.
@@ -152,29 +138,27 @@ func (s Style) DashedUnderline(on bool) Style {
 	return s.setAttrs(AttrDashedUnderline, on)
 }
 
+func (s Style) UnderlineColor(c Color) Style {
+	s2 := s
+	s2.under = c
+	return s2
+}
+
 // Attributes returns a new style based on s, with its attributes set as
 // specified.
 func (s Style) Attributes(attrs AttrMask) Style {
-	return Style{
-		fg:    s.fg,
-		bg:    s.bg,
-		attrs: attrs,
-		url:   s.url,
-		urlId: s.urlId,
-	}
+	s2 := s
+	s2.attrs = attrs
+	return s2
 }
 
 // Url returns a style with the Url set.  If the provided Url is not empty,
 // and the terminal supports it, text will typically be marked up as a clickable
 // link to that Url.  If the Url is empty, then this mode is turned off.
 func (s Style) Url(url string) Style {
-	return Style{
-		fg:    s.fg,
-		bg:    s.bg,
-		attrs: s.attrs,
-		url:   url,
-		urlId: s.urlId,
-	}
+	s2 := s
+	s2.url = url
+	return s2
 }
 
 // UrlId returns a style with the UrlId set. If the provided UrlId is not empty,
@@ -182,11 +166,7 @@ func (s Style) Url(url string) Style {
 // terminal supports it, any text with the same UrlId will be grouped as if it
 // were one Url, even if it spans multiple lines.
 func (s Style) UrlId(id string) Style {
-	return Style{
-		fg:    s.fg,
-		bg:    s.bg,
-		attrs: s.attrs,
-		url:   s.url,
-		urlId: "id=" + id,
-	}
+	s2 := s
+	s2.urlId = "id=" + id
+	return s2
 }

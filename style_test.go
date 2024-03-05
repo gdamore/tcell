@@ -1,4 +1,4 @@
-// Copyright 2018 The TCell Authors
+// Copyright 2024 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -23,7 +23,7 @@ func TestStyle(t *testing.T) {
 	defer s.Fini()
 
 	style := StyleDefault
-	fg, bg, attr := style.Decompose()
+	fg, bg, attr := style.fg, style.bg, style.attrs
 
 	if fg != ColorDefault || bg != ColorDefault || attr != AttrNone {
 		t.Errorf("Bad default style (%v, %v, %v)", fg, bg, attr)
@@ -34,7 +34,7 @@ func TestStyle(t *testing.T) {
 		Foreground(ColorBlue).
 		Blink(true)
 
-	fg, bg, attr = s2.Decompose()
+	fg, bg, attr = s2.fg, s2.bg, s2.attrs
 	if fg != ColorBlue || bg != ColorRed || attr != AttrBlink {
 		t.Errorf("Bad custom style (%v, %v, %v)", fg, bg, attr)
 	}

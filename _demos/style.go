@@ -171,6 +171,18 @@ func main() {
 	puts(s, style, 2, row, "Dashed Underline")
 	row++
 
+	style = plain.Underline(true).UnderlineColor(tcell.ColorBlue)
+	puts(s, style, 2, row, "Blue Underline")
+	row++
+
+	style = plain.Underline(true).UnderlineColor(tcell.ColorHoneydew)
+	puts(s, style, 2, row, "Honeydew Underline")
+	row++
+
+	style = plain.CurlyUnderline(true).UnderlineColor(tcell.NewRGBColor(0xc5, 0x8a, 0xf9))
+	puts(s, style, 2, row, "Pink Curly Underline")
+	row++
+
 	style = plain.Url("http://github.com/gdamore/tcell")
 	puts(s, style, 2, row, "HyperLink")
 	row++

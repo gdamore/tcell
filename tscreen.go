@@ -32,7 +32,6 @@ import (
 	"golang.org/x/text/transform"
 
 	"github.com/gdamore/tcell/v2/terminfo"
-
 )
 
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
@@ -156,6 +155,9 @@ type tScreen struct {
 	curlyUnder   string
 	dottedUnder  string
 	dashedUnder  string
+	underColor   string
+	underRGB     string
+	underFg      string
 	cursorStyles map[CursorStyle]string
 	cursorStyle  CursorStyle
 	saved        *term.State
@@ -356,20 +358,44 @@ func (t *tScreen) prepareUnderlines() {
 	}
 	if t.ti.CurlyUnderline != "" {
 		t.curlyUnder = t.ti.CurlyUnderline
-	} else {
+	} else if t.ti.XTermLike {
 		t.curlyUnder = "\x1b[4:3m"
 	}
 	if t.ti.DottedUnderline != "" {
 		t.dottedUnder = t.ti.DottedUnderline
-	} else {
+	} else if t.ti.XTermLike {
 		t.dottedUnder = "\x1b[4:4m"
 	}
 	if t.ti.DashedUnderline != "" {
 		t.dashedUnder = t.ti.DashedUnderline
-	} else {
+	} else if t.ti.XTermLike {
 		t.dashedUnder = "\x1b[4:5m"
 	}
-	// Still TODO: Underline Color
+
+	// Underline colors.  We're not going to rely upon terminfo for this
+	// Essentially all terminals that support the curly underlines are
+	// expected to also support coloring them too - which reflects actual
+	// practice since these were introduced at about the same time.
+	if t.ti.UnderlineColor != "" {
+		t.underColor = t.ti.UnderlineColor
+	} else if t.ti.CurlyUnderline != "" {
+		t.underColor = "\x1b[58:5:%p1%dm"
+	}
+	if t.ti.UnderlineColorRGB != "" {
+		// An interesting wart here is that in order to facilitate
+		// using just a single parameter, the Setulc parameter takes
+		// the 24-bit color as an integer rather than separate bytes.
+		// This matches the "new" style direct color approach that
+		// ncurses took, even though everyone else when another way.
+		t.underRGB = t.ti.UnderlineColorRGB
+	} else if t.ti.CurlyUnderline != "" {
+		t.underRGB = "\x1b[58:2::%p1%d:%p2%d:%p3%dm"
+	}
+	if t.ti.UnderlineColorReset != "" {
+		t.underFg = t.ti.UnderlineColorReset
+	} else if t.ti.CurlyUnderline != "" {
+		t.underFg = "\x1b[59m"
+	}
 }
 
 func (t *tScreen) prepareExtendedOSC() {
@@ -435,7 +461,6 @@ func (t *tScreen) prepareCursorStyles() {
 		}
 	}
 
-	// Still TODO: Cursor Color
 }
 
 func (t *tScreen) prepareKey(key Key, val string) {
@@ -771,7 +796,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		style = t.style
 	}
 	if style != t.curstyle {
-		fg, bg, attrs := style.Decompose()
+		fg, bg, attrs, uc := style.fg, style.bg, style.attrs, style.under
 
 		t.TPuts(ti.AttrOff)
 
@@ -780,6 +805,27 @@ func (t *tScreen) drawCell(x, y int) int {
 			t.TPuts(ti.Bold)
 		}
 		if attrs&(AttrUnderline|AttrDoubleUnderline|AttrCurlyUnderline|AttrDottedUnderline|AttrDashedUnderline) != 0 {
+			if uc.Valid() && (t.underColor != "" || t.underRGB != "") {
+				if uc == ColorReset {
+					t.TPuts(t.underFg)
+				} else if uc.IsRGB() {
+					if t.underRGB != "" {
+						r, g, b := uc.RGB()
+						t.TPuts(ti.TParm(t.underRGB, int(r), int(g), int(b)))
+					} else {
+						if v, ok := t.colors[uc]; ok {
+							uc = v
+						} else {
+							v = FindColor(uc, t.palette)
+							t.colors[uc] = v
+							uc = v
+						}
+						t.TPuts(ti.TParm(t.underColor, int(uc&0xff)))
+					}
+				} else {
+					t.TPuts(ti.TParm(t.underColor, int(uc&0xff)))
+				}
+			}
 			t.TPuts(ti.Underline) // to ensure everyone gets at least a basic underline
 			if (attrs & AttrDoubleUnderline) != 0 {
 				t.TPuts(t.doubleUnder)
@@ -928,8 +974,7 @@ func (t *tScreen) Show() {
 func (t *tScreen) clearScreen() {
 	t.TPuts(t.ti.AttrOff)
 	t.TPuts(t.exitUrl)
-	fg, bg, _ := t.style.Decompose()
-	_ = t.sendFgBg(fg, bg, AttrNone)
+	_ = t.sendFgBg(t.style.fg, t.style.bg, AttrNone)
 	t.TPuts(t.ti.Clear)
 	t.clear = false
 }
