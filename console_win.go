@@ -168,6 +168,9 @@ const (
 	vtCurlyUnderline          = "\x1b[4:3m"
 	vtDottedUnderline         = "\x1b[4:4m"
 	vtDashedUnderline         = "\x1b[4:5m"
+	vtUnderColor              = "\x1b[58;5;%dm"
+	vtUnderColorRGB           = "\x1b[58;2;%d;%d;%dm"
+	vtUnderColorReset         = "\x1b[59m"
 )
 
 var vtCursorStyles = map[CursorStyle]string{
@@ -916,7 +919,7 @@ func (s *cScreen) mapStyle(style Style) uint16 {
 func (s *cScreen) sendVtStyle(style Style) {
 	esc := &strings.Builder{}
 
-	fg, bg, attrs := style.fg, style.bg, style.attrs
+	fg, bg, uc, attrs := style.fg, style.bg, style.under, style.attrs
 
 	esc.WriteString(vtSgr0)
 
@@ -927,6 +930,17 @@ func (s *cScreen) sendVtStyle(style Style) {
 		esc.WriteString(vtBlink)
 	}
 	if attrs&(AttrUnderline|AttrDoubleUnderline|AttrCurlyUnderline|AttrDottedUnderline|AttrDashedUnderline) != 0 {
+		if uc.Valid() {
+			if uc == ColorReset {
+				esc.WriteString(vtUnderColorReset)
+			} else if uc.IsRGB() {
+				r, g, b := uc.RGB()
+				_, _ = fmt.Fprintf(esc, vtUnderColorRGB, int(r), int(g), int(b))
+			} else {
+				_, _ = fmt.Fprintf(esc, vtUnderColor, uc&0xff)
+			}
+		}
+
 		esc.WriteString(vtUnderline)
 		// legacy ConHost does not understand these but Terminal does
 		if (attrs & AttrDoubleUnderline) != 0 {
