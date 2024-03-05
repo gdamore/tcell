@@ -60,7 +60,7 @@ function clearScreen(fg, bg) {
   }
 }
 
-function drawCell(x, y, mainc, combc, fg, bg, attrs) {
+function drawCell(x, y, mainc, combc, fg, bg, attrs, us, uc) {
   var combString = String.fromCharCode(mainc);
   combc.forEach((char) => {
     combString += String.fromCharCode(char);
@@ -91,9 +91,6 @@ function drawCell(x, y, mainc, combc, fg, bg, attrs) {
     if ((attrs & 1) != 0) {
       span.classList.add("bold");
     }
-    if ((attrs & (1 << 3)) != 0) {
-      span.classList.add("underline");
-    }
     if ((attrs & (1 << 4)) != 0) {
       span.classList.add("dim");
     }
@@ -103,19 +100,25 @@ function drawCell(x, y, mainc, combc, fg, bg, attrs) {
     if ((attrs & (1 << 6)) != 0) {
       span.classList.add("strikethrough");
     }
-    if ((attrs & (1 << 7)) != 0) {
+  }
+  if (us != 0) {
+    use = true;
+    if (us == 1) {
+      span.classList.add("underline");
+    } else if (us == 2) {
       span.classList.add("double_underline");
-    }
-    if ((attrs & (1 << 8)) != 0) {
+    } else if (us == 3) {
       span.classList.add("curly_underline");
-    }
-    if ((attrs & (1 << 9)) != 0) {
+    } else if (us == 4) {
       span.classList.add("dotted_underline");
-    }
-    if ((attrs & (1 << 10)) != 0) {
+    } else if (us == 5) {
       span.classList.add("dashed_underline");
     }
+    if (uc != -1) {
+      span.style.textDecorationColor = intToHex(uc);
+    }
   }
+
   if ((attrs & (1 << 1)) != 0) {
     var blink = document.createElement("span");
     blink.classList.add("blink");

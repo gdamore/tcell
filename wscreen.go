@@ -66,6 +66,9 @@ func (t *wScreen) Init() error {
 	t.Unlock()
 
 	js.Global().Set("onKeyEvent", js.FuncOf(t.onKeyEvent))
+	js.Global().Set("onMouseClick", js.FuncOf(t.unset))
+	js.Global().Set("onMouseMove", js.FuncOf(t.unset))
+	js.Global().Set("onFocus", js.FuncOf(t.unset))
 
 	return nil
 }
@@ -133,6 +136,10 @@ func (t *wScreen) drawCell(x, y int) int {
 	if bg == -1 {
 		bg = 0x000000
 	}
+	us, uc := style.ulStyle, paletteColor(style.ulColor)
+	if uc == -1 {
+		uc = 0x000000
+	}
 
 	var combcarr []interface{} = make([]interface{}, len(combc))
 	for i, c := range combc {
@@ -140,7 +147,7 @@ func (t *wScreen) drawCell(x, y int) int {
 	}
 
 	t.cells.SetDirty(x, y, false)
-	js.Global().Call("drawCell", x, y, mainc, combcarr, fg, bg, int(style.attrs))
+	js.Global().Call("drawCell", x, y, mainc, combcarr, fg, bg, int(style.attrs), int(us), int(uc))
 
 	return width
 }
