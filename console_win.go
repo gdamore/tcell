@@ -168,8 +168,8 @@ const (
 	vtCurlyUnderline          = "\x1b[4:3m"
 	vtDottedUnderline         = "\x1b[4:4m"
 	vtDashedUnderline         = "\x1b[4:5m"
-	vtUnderColor              = "\x1b[58;5;%dm"
-	vtUnderColorRGB           = "\x1b[58;2;%d;%d;%dm"
+	vtUnderColor              = "\x1b[58:5:%dm"
+	vtUnderColorRGB           = "\x1b[58:2::%p1%d:%p2%d:%p3%dm"
 	vtUnderColorReset         = "\x1b[59m"
 )
 

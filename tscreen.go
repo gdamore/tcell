@@ -379,7 +379,7 @@ func (t *tScreen) prepareUnderlines() {
 	if t.ti.UnderlineColor != "" {
 		t.underColor = t.ti.UnderlineColor
 	} else if t.ti.CurlyUnderline != "" {
-		t.underColor = "\x1b[58;5;%p1%dm"
+		t.underColor = "\x1b[58:5:%p1%dm"
 	}
 	if t.ti.UnderlineColorRGB != "" {
 		// An interesting wart here is that in order to facilitate
@@ -389,7 +389,7 @@ func (t *tScreen) prepareUnderlines() {
 		// ncurses took, even though everyone else when another way.
 		t.underRGB = t.ti.UnderlineColorRGB
 	} else if t.ti.CurlyUnderline != "" {
-		t.underRGB = "\x1b[58;2;%p1%d;%p2%d;%p3%dm"
+		t.underRGB = "\x1b[58:2::%p1%d:%p2%d:%p3%dm"
 	}
 	if t.ti.UnderlineColorReset != "" {
 		t.underFg = t.ti.UnderlineColorReset
