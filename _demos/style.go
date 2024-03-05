@@ -175,8 +175,8 @@ func main() {
 	puts(s, style, 2, row, "Blue Underline")
 	row++
 
-	style = plain.Underline(tcell.UnderlineStyleSolid, tcell.ColorHoneydew)
-	puts(s, style, 2, row, "Honeydew Underline")
+	style = plain.Underline(tcell.UnderlineStyleSolid, tcell.ColorFireBrick)
+	puts(s, style, 2, row, "Firebrick Underline")
 	row++
 
 	style = plain.Underline(tcell.UnderlineStyleCurly, tcell.NewRGBColor(0xc5, 0x8a, 0xf9))
