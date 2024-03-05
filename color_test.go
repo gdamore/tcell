@@ -86,7 +86,7 @@ func TestColorNameLookup(t *testing.T) {
 	}{
 		{"#FF0000", ColorRed, true},
 		{"black", ColorBlack, false},
-		{"orange", ColorOrange, false},
+		{"orange", ColorOrange, true},
 		{"door", ColorDefault, false},
 	}
 	for _, v := range values {
@@ -96,11 +96,11 @@ func TestColorNameLookup(t *testing.T) {
 		}
 		if v.rgb {
 			if c&ColorIsRGB == 0 {
-				t.Errorf("Color should have RGB")
+				t.Errorf("Color should have RGB: %v", v.name)
 			}
 		} else {
 			if c&ColorIsRGB != 0 {
-				t.Errorf("Named color should not be RGB")
+				t.Errorf("Named color should not be RGB: %v", v.name)
 			}
 		}
 
