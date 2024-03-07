@@ -640,7 +640,7 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "CursorSteadyBar", t.CursorSteadyBar)
 		dotGoAddStr(w, "DoubleUnderline", t.DoubleUnderline)
 		dotGoAddStr(w, "CurlyUnderline", t.CurlyUnderline)
-		dotGoAddStr(w, "DottedUnderline", t.DottedUnderine)
+		dotGoAddStr(w, "DottedUnderline", t.DottedUnderline)
 		dotGoAddStr(w, "DashedUnderline", t.DashedUnderline)
 		dotGoAddFlag(w, "XTermLike", t.XTermLike)
 		fmt.Fprintln(w, "\t})")
