@@ -21,6 +21,7 @@ const beepAudio = new Audio("beep.wav");
 var cx = -1;
 var cy = -1;
 var cursorClass = "cursor-blinking-block";
+var cursorColor = "";
 
 var content; // {data: row[height], dirty: bool}
 // row = {data: element[width], previous: span}
@@ -185,12 +186,18 @@ function displayCursor() {
       content.data[cy].data[cx] = span;
     }
 
+    if (cursorColor != "") {
+      term.style.setProperty("--cursor-color", cursorColor);
+    } else {
+      term.style.setProperty("--cursor-color", "lightgrey");
+    }
+
     content.data[cy].data[cx].classList.add(cursorClass);
   }
 }
 
-function setCursorStyle(newClass) {
-  if (newClass == cursorClass) {
+function setCursorStyle(newClass, newColor) {
+  if (newClass == cursorClass && newColor == cursorColor) {
     return;
   }
 
@@ -207,6 +214,7 @@ function setCursorStyle(newClass) {
   }
 
   cursorClass = newClass;
+  cursorColor = newColor;
 }
 
 function beep() {

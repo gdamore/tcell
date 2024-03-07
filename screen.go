@@ -1,4 +1,4 @@
-// Copyright 2023 The TCell Authors
+// Copyright 2024 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -79,8 +79,9 @@ type Screen interface {
 
 	// SetCursorStyle is used to set the cursor style.  If the style
 	// is not supported (or cursor styles are not supported at all),
-	// then this will have no effect.
-	SetCursorStyle(CursorStyle)
+	// then this will have no effect.  Color will be changed if supplied,
+	// and the terminal supports doing so.
+	SetCursorStyle(CursorStyle, ...Color)
 
 	// Size returns the screen size as width, height.  This changes in
 	// response to a call to Clear or Flush.
@@ -312,7 +313,7 @@ type screenImpl interface {
 	SetStyle(style Style)
 	ShowCursor(x int, y int)
 	HideCursor()
-	SetCursorStyle(CursorStyle)
+	SetCursor(CursorStyle, Color)
 	Size() (width, height int)
 	EnableMouse(...MouseFlags)
 	DisableMouse()
@@ -462,5 +463,13 @@ func (b *baseScreen) PostEvent(ev Event) error {
 		return nil
 	default:
 		return ErrEventQFull
+	}
+}
+
+func (b *baseScreen) SetCursorStyle(cs CursorStyle, ccs ...Color) {
+	if len(ccs) > 0 {
+		b.SetCursor(cs, ccs[0])
+	} else {
+		b.SetCursor(cs, ColorNone)
 	}
 }

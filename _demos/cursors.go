@@ -15,7 +15,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// beep makes a beep every second until you press ESC
 package main
 
 import (
@@ -52,6 +51,7 @@ func main() {
 	style := tcell.StyleDefault
 	go func() {
 		for {
+			s.Show()
 			ev := s.PollEvent()
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
@@ -60,27 +60,26 @@ func main() {
 					switch ev.Rune() {
 					case '0':
 						s.SetContent(2, 2, '0', nil, style)
-						s.SetCursorStyle(tcell.CursorStyleDefault)
+						s.SetCursorStyle(tcell.CursorStyleDefault, tcell.ColorReset)
 					case '1':
 						s.SetContent(2, 2, '1', nil, style)
-						s.SetCursorStyle(tcell.CursorStyleBlinkingBlock)
+						s.SetCursorStyle(tcell.CursorStyleBlinkingBlock, tcell.ColorGreen)
 					case '2':
 						s.SetCell(2, 2, tcell.StyleDefault, '2')
-						s.SetCursorStyle(tcell.CursorStyleSteadyBlock)
+						s.SetCursorStyle(tcell.CursorStyleSteadyBlock, tcell.ColorBlue)
 					case '3':
 						s.SetCell(2, 2, tcell.StyleDefault, '3')
-						s.SetCursorStyle(tcell.CursorStyleBlinkingUnderline)
+						s.SetCursorStyle(tcell.CursorStyleBlinkingUnderline, tcell.ColorRed)
 					case '4':
 						s.SetCell(2, 2, tcell.StyleDefault, '4')
-						s.SetCursorStyle(tcell.CursorStyleSteadyUnderline)
+						s.SetCursorStyle(tcell.CursorStyleSteadyUnderline, tcell.ColorOrange)
 					case '5':
 						s.SetCell(2, 2, tcell.StyleDefault, '5')
-						s.SetCursorStyle(tcell.CursorStyleBlinkingBar)
+						s.SetCursorStyle(tcell.CursorStyleBlinkingBar, tcell.ColorYellow)
 					case '6':
 						s.SetCell(2, 2, tcell.StyleDefault, '6')
-						s.SetCursorStyle(tcell.CursorStyleSteadyBar)
+						s.SetCursorStyle(tcell.CursorStyleSteadyBar, tcell.ColorPink)
 					}
-					s.Show()
 
 				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:
 					close(quit)

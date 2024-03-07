@@ -19,11 +19,13 @@ package tcell
 
 import (
 	"errors"
-	"github.com/gdamore/tcell/v2/terminfo"
+	"fmt"
 	"strings"
 	"sync"
 	"syscall/js"
 	"unicode/utf8"
+
+	"github.com/gdamore/tcell/v2/terminfo"
 )
 
 func NewTerminfoScreen() (Screen, error) {
@@ -158,9 +160,12 @@ func (t *wScreen) ShowCursor(x, y int) {
 	t.Unlock()
 }
 
-func (t *wScreen) SetCursorStyle(cs CursorStyle) {
+func (t *wScreen) SetCursor(cs CursorStyle, cc Color) {
+	if !cc.Valid() {
+		cc = ColorLightGray
+	}
 	t.Lock()
-	js.Global().Call("setCursorStyle", curStyleClasses[cs])
+	js.Global().Call("setCursorStyle", curStyleClasses[cs], fmt.Sprintf("#%06x", cc.Hex()))
 	t.Unlock()
 }
 

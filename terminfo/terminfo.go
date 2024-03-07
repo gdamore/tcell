@@ -227,6 +227,9 @@ type Terminfo struct {
 	CursorSteadyUnderline   string
 	CursorBlinkingBar       string
 	CursorSteadyBar         string
+	CursorColor             string // nothing uses it yet
+	CursorColorRGB          string // Cs (but not really because Cs uses X11 color string)
+	CursorColorReset        string // Cr
 	EnterUrl                string
 	ExitUrl                 string
 	SetWindowSize           string

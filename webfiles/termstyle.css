@@ -17,6 +17,7 @@
   -khtml-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  --cursor-color: lightgrey;
 }
 
 /* Style attributes */
@@ -64,26 +65,26 @@
 /* Cursor styles */
 
 .cursor-steady-block {
-  background-color: lightgrey !important;
+  background-color: var(--cursor-color) !important;
 }
 .cursor-blinking-block {
   animation: blinking-block 1s step-start infinite !important;
 }
 @keyframes blinking-block {
   50% {
-    background-color: lightgrey;
+    background-color: var(--cursor-color);
   }
 }
 
 .cursor-steady-underline {
-  text-decoration: underline lightgrey !important;
+  text-decoration: underline var(--cursor-color) !important;
 }
 .cursor-blinking-underline {
   animation: blinking-underline 1s step-start infinite !important;
 }
 @keyframes blinking-underline {
   50% {
-    text-decoration: underline lightgrey;
+    text-decoration: underline var(--cursor-color);
   }
 }
 
@@ -93,7 +94,7 @@
 .cursor-steady-bar:before {
   content: " ";
   width: 2px;
-  background-color: lightgrey !important;
+  background-color: var(--cursor-color) !important;
   display: inline-block;
 }
 .cursor-blinking-bar {
@@ -102,7 +103,7 @@
 .cursor-blinking-bar:before {
   content: " ";
   width: 2px;
-  background-color: lightgrey !important;
+  background-color: var(--cursor-color) !important;
   display: inline-block;
   animation: blinker 1s step-start infinite;
 }

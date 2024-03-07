@@ -49,6 +49,7 @@ type cScreen struct {
 	oscreen     consoleInfo
 	ocursor     cursorInfo
 	cursorStyle CursorStyle
+	cursorColor Color
 	oimode      uint32
 	oomode      uint32
 	cells       CellBuffer
@@ -173,6 +174,8 @@ const (
 	vtUnderColorReset         = "\x1b[59m"
 	vtEnterUrl                = "\x1b]8;%s;%s\x1b\\" // NB arg 1 is id, arg 2 is url
 	vtExitUrl                 = "\x1b]8;;\x1b\\"
+	vtCursorColorRGB          = "\x1b]12;#%02x%02x%02x\007"
+	vtCursorColorReset        = "\x1b]112\007"
 )
 
 var vtCursorStyles = map[CursorStyle]string{
@@ -344,6 +347,7 @@ func (s *cScreen) disengage() {
 
 	if s.vten {
 		s.emitVtString(vtCursorStyles[CursorStyleDefault])
+		s.emitVtString(vtCursorColorReset)
 		s.emitVtString(vtEnableAm)
 		if !s.disableAlt {
 			s.emitVtString(vtExitCA)
@@ -435,6 +439,12 @@ func (s *cScreen) showCursor() {
 	if s.vten {
 		s.emitVtString(vtShowCursor)
 		s.emitVtString(vtCursorStyles[s.cursorStyle])
+		if s.cursorColor == ColorReset {
+			s.emitVtString(vtCursorColorReset)
+		} else if s.cursorColor.Valid() {
+			r, g, b := s.cursorColor.RGB()
+			s.emitVtString(fmt.Sprintf(vtCursorColorRGB, r, g, b))
+		}
 	} else {
 		s.setCursorInfo(&cursorInfo{size: 100, visible: 1})
 	}
@@ -458,11 +468,12 @@ func (s *cScreen) ShowCursor(x, y int) {
 	s.Unlock()
 }
 
-func (s *cScreen) SetCursorStyle(cs CursorStyle) {
+func (s *cScreen) SetCursor(cs CursorStyle, cc Color) {
 	s.Lock()
 	if !s.fini {
 		if _, ok := vtCursorStyles[cs]; ok {
 			s.cursorStyle = cs
+			s.cursorColor = cc
 			s.doCursor()
 		}
 	}
@@ -1100,7 +1111,6 @@ func (s *cScreen) setCursorInfo(info *cursorInfo) {
 	_, _, _ = procSetConsoleCursorInfo.Call(
 		uintptr(s.out),
 		uintptr(unsafe.Pointer(info)))
-
 }
 
 func (s *cScreen) setCursorPos(x, y int, vtEnable bool) {

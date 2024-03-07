@@ -160,6 +160,9 @@ type tScreen struct {
 	underFg      string
 	cursorStyles map[CursorStyle]string
 	cursorStyle  CursorStyle
+	cursorColor  Color
+	cursorRGB    string
+	cursorFg     string
 	saved        *term.State
 	stopQ        chan struct{}
 	eventQ       chan Event
@@ -460,7 +463,20 @@ func (t *tScreen) prepareCursorStyles() {
 			CursorStyleSteadyBar:         "\x1b[6 q",
 		}
 	}
+	if t.ti.CursorColorRGB != "" {
+		// if it was X11 style with just a single %p1%s, then convert
+		t.cursorRGB = t.ti.CursorColorRGB
+	}
+	if t.ti.CursorColorReset != "" {
+		t.cursorFg = t.ti.CursorColorReset
+	}
+	if t.cursorRGB == "" {
+		t.cursorRGB = "\x1b]12;%p1%s\007"
+		t.cursorFg = "\x1b]112\007"
+	}
 
+	// convert XTERM style color names to RGB color code.  We have no way to do palette colors
+	t.cursorRGB = strings.Replace(t.cursorRGB, "%p1%s", "#%p1%02x%p2%02x%p3%02x", 1)
 }
 
 func (t *tScreen) prepareKey(key Key, val string) {
@@ -912,9 +928,10 @@ func (t *tScreen) ShowCursor(x, y int) {
 	t.Unlock()
 }
 
-func (t *tScreen) SetCursorStyle(cs CursorStyle) {
+func (t *tScreen) SetCursor(cs CursorStyle, cc Color) {
 	t.Lock()
 	t.cursorStyle = cs
+	t.cursorColor = cc
 	t.Unlock()
 }
 
@@ -935,6 +952,14 @@ func (t *tScreen) showCursor() {
 	if t.cursorStyles != nil {
 		if esc, ok := t.cursorStyles[t.cursorStyle]; ok {
 			t.TPuts(esc)
+		}
+	}
+	if t.cursorRGB != "" {
+		if t.cursorColor == ColorReset {
+			t.TPuts(t.cursorFg)
+		} else if t.cursorColor.Valid() {
+			r, g, b := t.cursorColor.RGB()
+			t.TPuts(t.ti.TParm(t.cursorRGB, int(r), int(g), int(b)))
 		}
 	}
 	t.cx = x
@@ -1953,6 +1978,9 @@ func (t *tScreen) disengage() {
 	t.TPuts(ti.ShowCursor)
 	if t.cursorStyles != nil && t.cursorStyle != CursorStyleDefault {
 		t.TPuts(t.cursorStyles[CursorStyleDefault])
+	}
+	if t.cursorFg != "" && t.cursorColor.Valid() {
+		t.TPuts(t.cursorFg)
 	}
 	t.TPuts(ti.ResetFgBg)
 	t.TPuts(ti.AttrOff)
