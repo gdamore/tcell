@@ -109,6 +109,9 @@ func main() {
 		Background(tcell.ColorWhite))
 	s.Clear()
 
+	// we can even try to use unicode window titles!
+	s.SetTitle("Unicode Demonstration -- 🤯")
+
 	quit := make(chan struct{})
 
 	style = bold

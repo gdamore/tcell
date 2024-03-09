@@ -171,6 +171,10 @@ type tScreen struct {
 	mouseFlags   MouseFlags
 	pasteEnabled bool
 	focusEnabled bool
+	setTitle     string
+	saveTitle    string
+	restoreTitle string
+	title        string
 
 	sync.Mutex
 }
@@ -414,26 +418,36 @@ func (t *tScreen) prepareExtendedOSC() {
 	if t.ti.EnterUrl != "" {
 		t.enterUrl = t.ti.EnterUrl
 		t.exitUrl = t.ti.ExitUrl
-	} else if t.ti.Mouse != "" {
+	} else if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.enterUrl = "\x1b]8;%p2%s;%p1%s\x1b\\"
 		t.exitUrl = "\x1b]8;;\x1b\\"
 	}
 
 	if t.ti.SetWindowSize != "" {
 		t.setWinSize = t.ti.SetWindowSize
-	} else if t.ti.Mouse != "" {
+	} else if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.setWinSize = "\x1b[8;%p1%p2%d;%dt"
 	}
 
 	if t.ti.EnableFocusReporting != "" {
 		t.enableFocus = t.ti.EnableFocusReporting
-	} else if t.ti.Mouse != "" {
+	} else if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.enableFocus = "\x1b[?1004h"
 	}
 	if t.ti.DisableFocusReporting != "" {
 		t.disableFocus = t.ti.DisableFocusReporting
-	} else if t.ti.Mouse != "" {
+	} else if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.disableFocus = "\x1b[?1004l"
+	}
+
+	if t.ti.SetWindowTitle != "" {
+		t.setTitle = t.ti.SetWindowTitle
+	} else if t.ti.XTermLike {
+		t.saveTitle = "\x1b[22;2t"
+		t.restoreTitle = "\x1b[23;2t"
+		// this also tries to request that UTF-8 is allowed in the title
+		t.setTitle = "\x1b[>2t\x1b]2;%p1%s\x1b\\"
+
 	}
 }
 
@@ -1938,12 +1952,18 @@ func (t *tScreen) engage() error {
 		// (In theory there could be terminals that don't support X,Y cursor
 		// positions without a setup command, but we don't support them.)
 		t.TPuts(ti.EnterCA)
+		if t.saveTitle != "" {
+			t.TPuts(t.saveTitle)
+		}
 	}
 	t.TPuts(ti.EnterKeypad)
 	t.TPuts(ti.HideCursor)
 	t.TPuts(ti.EnableAcs)
 	t.TPuts(ti.DisableAutoMargin)
 	t.TPuts(ti.Clear)
+	if t.title != "" && t.setTitle != "" {
+		t.TPuts(t.ti.TParm(t.setTitle, t.title))
+	}
 
 	t.wg.Add(2)
 	go t.inputLoop(stopQ)
@@ -1987,6 +2007,9 @@ func (t *tScreen) disengage() {
 	t.TPuts(ti.ExitKeypad)
 	t.TPuts(ti.EnableAutoMargin)
 	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
+		if t.restoreTitle != "" {
+			t.TPuts(t.restoreTitle)
+		}
 		t.TPuts(ti.Clear) // only needed if ExitCA is empty
 		t.TPuts(ti.ExitCA)
 	}
@@ -2020,4 +2043,13 @@ func (t *tScreen) EventQ() chan Event {
 
 func (t *tScreen) GetCells() *CellBuffer {
 	return &t.cells
+}
+
+func (t *tScreen) SetTitle(title string) {
+	t.Lock()
+	t.title = title
+	if t.setTitle != "" && t.running {
+		t.TPuts(t.ti.TParm(t.setTitle, title))
+	}
+	t.Unlock()
 }

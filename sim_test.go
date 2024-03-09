@@ -150,3 +150,13 @@ func TestBeep(t *testing.T) {
 		}
 	}
 }
+
+func TestTitle(t *testing.T) {
+	s := mkTestScreen(t, "")
+	defer s.Fini()
+	s.SetTitle("My Title")
+	s.Show()
+	if s.GetTitle() != "My Title" {
+		t.Errorf("Title mismatched")
+	}
+}

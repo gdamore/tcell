@@ -266,6 +266,12 @@ type Screen interface {
 	// Tty returns the underlying Tty. If the screen is not a terminal, the
 	// returned bool will be false
 	Tty() (Tty, bool)
+
+	// SetTitle sets a window title on the screen.
+	// Terminals may be configured to ignore this, or unable to.
+	// Tcell may attempt to save and restore the window title on entry and exit, but
+	// the results may vary.  Use of unicode characters may not be supported.
+	SetTitle(string)
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
@@ -335,6 +341,7 @@ type screenImpl interface {
 	Resume() error
 	Beep() error
 	SetSize(int, int)
+	SetTitle(string)
 	Tty() (Tty, bool)
 
 	// Following methods are not part of the Screen api, but are used for interaction with

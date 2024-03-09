@@ -42,6 +42,7 @@ type cScreen struct {
 	truecolor  bool
 	running    bool
 	disableAlt bool // disable the alternate screen
+	title      string
 
 	w int
 	h int
@@ -176,6 +177,9 @@ const (
 	vtExitUrl                 = "\x1b]8;;\x1b\\"
 	vtCursorColorRGB          = "\x1b]12;#%02x%02x%02x\007"
 	vtCursorColorReset        = "\x1b]112\007"
+	vtSaveTitle               = "\x1b[22;2t"
+	vtRestoreTitle            = "\x1b[23;2t"
+	vtSetTitle                = "\x1b]2;%s\x1b\\"
 )
 
 var vtCursorStyles = map[CursorStyle]string{
@@ -350,6 +354,7 @@ func (s *cScreen) disengage() {
 		s.emitVtString(vtCursorColorReset)
 		s.emitVtString(vtEnableAm)
 		if !s.disableAlt {
+			s.emitVtString(vtRestoreTitle)
 			s.emitVtString(vtExitCA)
 		}
 	} else if !s.disableAlt {
@@ -387,9 +392,13 @@ func (s *cScreen) engage() error {
 	if s.vten {
 		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
 		if !s.disableAlt {
+			s.emitVtString(vtSaveTitle)
 			s.emitVtString(vtEnterCA)
 		}
 		s.emitVtString(vtDisableAm)
+		if s.title != "" {
+			s.emitVtString(fmt.Sprintf(vtSetTitle, s.title))
+		}
 	} else {
 		s.setOutMode(0)
 	}
@@ -1272,6 +1281,15 @@ func (s *cScreen) getOutMode(v *uint32) {
 func (s *cScreen) SetStyle(style Style) {
 	s.Lock()
 	s.style = style
+	s.Unlock()
+}
+
+func (s *cScreen) SetTitle(title string) {
+	s.Lock()
+	s.title = title
+	if s.vten {
+		s.emitVtString(fmt.Sprintf(vtSetTitle, title))
+	}
 	s.Unlock()
 }
 

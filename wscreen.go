@@ -523,6 +523,10 @@ func (t *wScreen) StopQ() <-chan struct{} {
 	return t.quit
 }
 
+func (t *wScreen) SetTitle(title string) {
+	js.Global().Call("setTitle", title)
+}
+
 // WebKeyNames maps string names reported from HTML
 // (KeyboardEvent.key) to tcell accepted keys.
 var WebKeyNames = map[string]Key{

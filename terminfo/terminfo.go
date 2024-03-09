@@ -233,6 +233,7 @@ type Terminfo struct {
 	EnterUrl                string
 	ExitUrl                 string
 	SetWindowSize           string
+	SetWindowTitle          string // no terminfo extension
 	EnableFocusReporting    string
 	DisableFocusReporting   string
 	DisableAutoMargin       string // smam

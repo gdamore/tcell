@@ -60,6 +60,9 @@ type SimulationScreen interface {
 
 	// GetCursor returns the cursor details.
 	GetCursor() (x int, y int, visible bool)
+
+	// GetTitle gets the set title
+	GetTitle() string
 }
 
 // SimCell represents a simulated screen cell.  The purpose of this
@@ -98,6 +101,7 @@ type simscreen struct {
 	fillchar  rune
 	fillstyle Style
 	fallback  map[rune]string
+	title     string
 
 	Screen
 	sync.Mutex
@@ -494,4 +498,12 @@ func (s *simscreen) EventQ() chan Event {
 
 func (s *simscreen) StopQ() <-chan struct{} {
 	return s.quit
+}
+
+func (s *simscreen) SetTitle(title string) {
+	s.title = title
+}
+
+func (s *simscreen) GetTitle() string {
+	return s.title
 }

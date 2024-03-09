@@ -222,6 +222,10 @@ function beep() {
   beepAudio.play();
 }
 
+function setTitle(title) {
+  document.title = title;
+}
+
 function intToHex(n) {
   return "#" + n.toString(16).padStart(6, "0");
 }
