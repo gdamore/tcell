@@ -272,6 +272,17 @@ type Screen interface {
 	// Tcell may attempt to save and restore the window title on entry and exit, but
 	// the results may vary.  Use of unicode characters may not be supported.
 	SetTitle(string)
+
+	// SetClipboard is used to post arbitrary data to the system clipboard.
+	// This need not be UTF-8 string data.  It's up to the recipient to decode the
+	// data meaningfully.  Terminals may prevent this for security reasons.
+	SetClipboard([]byte)
+
+	// GetClipboard is used to request the clipboard contents.  It may be ignored.
+	// If the terminal is willing, it will be post the clipboard contents using an
+	// EventPaste with the clipboard content as the Data() field.  Terminals may
+	// prevent this for security reasons.
+	GetClipboard()
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
@@ -343,6 +354,8 @@ type screenImpl interface {
 	SetSize(int, int)
 	SetTitle(string)
 	Tty() (Tty, bool)
+	SetClipboard([]byte)
+	GetClipboard()
 
 	// Following methods are not part of the Screen api, but are used for interaction with
 	// the common layer code.

@@ -19,6 +19,7 @@ package tcell
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"io"
 	"os"
@@ -175,6 +176,7 @@ type tScreen struct {
 	saveTitle    string
 	restoreTitle string
 	title        string
+	setClipboard string
 
 	sync.Mutex
 }
@@ -447,7 +449,13 @@ func (t *tScreen) prepareExtendedOSC() {
 		t.restoreTitle = "\x1b[23;2t"
 		// this also tries to request that UTF-8 is allowed in the title
 		t.setTitle = "\x1b[>2t\x1b]2;%p1%s\x1b\\"
+	}
 
+	if t.setClipboard == "" && t.ti.XTermLike {
+		// this string takes a base64 string and sends it to the clipboard.
+		// it will also be able to retrieve the clipboard using "?" as the
+		// sent string, when we support that.
+		t.setClipboard = "\x1b]52;c;%p1%s\x1b\\"
 	}
 }
 
@@ -499,6 +507,11 @@ func (t *tScreen) prepareKey(key Key, val string) {
 
 func (t *tScreen) prepareKeys() {
 	ti := t.ti
+	if strings.HasPrefix(ti.Name, "xterm") {
+		// assume its some form of XTerm clone
+		t.ti.XTermLike = true
+		ti.XTermLike = true
+	}
 	t.prepareKey(KeyBackspace, ti.KeyBackspace)
 	t.prepareKey(KeyF1, ti.KeyF1)
 	t.prepareKey(KeyF2, ti.KeyF2)
@@ -1499,6 +1512,61 @@ func (t *tScreen) parseFocus(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	return true, false
 }
 
+func (t *tScreen) parseClipboard(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
+	b := buf.Bytes()
+	state := 0
+	prefix := []byte("\x1b]52;c;")
+
+	if len(prefix) >= len(b) {
+		if bytes.HasPrefix(prefix, b) {
+			// inconclusive so far
+			return true, false
+		}
+		// definitely not a match
+		return false, false
+	}
+	b = b[len(prefix):]
+
+	for _, c := range b {
+		// valid base64 digits
+		if (state == 0) {
+			if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (c == '+') || (c == '/') || (c == '=') {
+				continue
+			}
+			if (c == '\x1b') {
+				state = 1
+				continue
+			}
+			if (c == '\a') {
+				// matched with BEL instead of ST
+				b = b[:len(b)-1] // drop the trailing BEL
+				decoded := make([]byte, base64.StdEncoding.DecodedLen(len(b)))
+				if num, err := base64.StdEncoding.Decode(decoded, b); err == nil {
+					*evs = append(*evs, NewEventClipboard(decoded[:num]))
+				}
+				_, _ = buf.ReadBytes('\a')
+				return true, true
+			}
+			return false, false
+		}
+		if (state == 1)  {
+			if (c == '\\') {
+				b = b[:len(b)-2] // drop the trailing ST (\x1b\\)
+				// now decode the data
+				decoded := make([]byte, base64.StdEncoding.DecodedLen(len(b)))
+				if num, err := base64.StdEncoding.Decode(decoded, b); err == nil {
+					*evs = append(*evs, NewEventClipboard(decoded[:num]))
+				}
+				_, _ = buf.ReadBytes('\\')
+				return true, true
+			}
+			return false, false
+		}
+	}
+	// not enough data yet (not terminated)
+	return true, false
+}
+
 // parseXtermMouse is like parseSgrMouse, but it parses a legacy
 // X11 mouse record.
 func (t *tScreen) parseXtermMouse(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
@@ -1696,6 +1764,14 @@ func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event
 			}
 
 			if part, comp := t.parseSgrMouse(buf, &res); comp {
+				continue
+			} else if part {
+				partials++
+			}
+		}
+
+		if t.setClipboard != "" {
+			if part, comp := t.parseClipboard(buf, &res); comp {
 				continue
 			} else if part {
 				partials++
@@ -2050,6 +2126,24 @@ func (t *tScreen) SetTitle(title string) {
 	t.title = title
 	if t.setTitle != "" && t.running {
 		t.TPuts(t.ti.TParm(t.setTitle, title))
+	}
+	t.Unlock()
+}
+
+func (t *tScreen) SetClipboard(data []byte) {
+	// Post binary data to the system clipboard.  It might be UTF-8, it might not be.
+	t.Lock()
+	if t.setClipboard != "" {
+		encoded := base64.StdEncoding.EncodeToString(data)
+		t.TPuts(t.ti.TParm(t.setClipboard, encoded))
+	}
+	t.Unlock()
+}
+
+func (t *tScreen) GetClipboard() {
+	t.Lock()
+	if t.setClipboard != "" {
+		t.TPuts(t.ti.TParm(t.setClipboard, "?"))
 	}
 	t.Unlock()
 }

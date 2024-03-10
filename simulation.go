@@ -61,8 +61,11 @@ type SimulationScreen interface {
 	// GetCursor returns the cursor details.
 	GetCursor() (x int, y int, visible bool)
 
-	// GetTitle gets the set title
+	// GetTitle gets the previously set title.
 	GetTitle() string
+
+	// GetClipboardData gets the actual data for the clipboard.
+	GetClipboardData() []byte
 }
 
 // SimCell represents a simulated screen cell.  The purpose of this
@@ -102,6 +105,7 @@ type simscreen struct {
 	fillstyle Style
 	fallback  map[rune]string
 	title     string
+	clipboard []byte
 
 	Screen
 	sync.Mutex
@@ -506,4 +510,19 @@ func (s *simscreen) SetTitle(title string) {
 
 func (s *simscreen) GetTitle() string {
 	return s.title
+}
+
+func (s *simscreen) SetClipboard(data []byte) {
+	s.clipboard = data
+}
+
+func (s *simscreen) GetClipboard() {
+	if s.clipboard != nil {
+		ev := NewEventClipboard(s.clipboard)
+		s.postEvent(ev)
+	}
+}
+
+func (s *simscreen) GetClipboardData() []byte {
+	return s.clipboard
 }

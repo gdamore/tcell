@@ -1312,6 +1312,12 @@ func (s *cScreen) HasMouse() bool {
 	return true
 }
 
+func (s *cScreen) SetClipboard(_ []byte) {
+}
+
+func (s *cScreen) GetClipboard() {
+}
+
 func (s *cScreen) Resize(int, int, int, int) {}
 
 func (s *cScreen) HasKey(k Key) bool {
