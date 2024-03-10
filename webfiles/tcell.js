@@ -61,12 +61,7 @@ function clearScreen(fg, bg) {
   }
 }
 
-function drawCell(x, y, mainc, combc, fg, bg, attrs, us, uc) {
-  var combString = String.fromCharCode(mainc);
-  combc.forEach((char) => {
-    combString += String.fromCharCode(char);
-  });
-
+function drawCell(x, y, s, fg, bg, attrs, us, uc) {
   var span = document.createElement("span");
   var use = false;
 
@@ -123,11 +118,11 @@ function drawCell(x, y, mainc, combc, fg, bg, attrs, us, uc) {
   if ((attrs & (1 << 1)) != 0) {
     var blink = document.createElement("span");
     blink.classList.add("blink");
-    var textnode = document.createTextNode(combString);
+    var textnode = document.createTextNode(s);
     blink.appendChild(textnode);
     span.appendChild(blink);
   } else {
-    var textnode = document.createTextNode(combString);
+    var textnode = document.createTextNode(s);
     span.appendChild(textnode);
   }
 

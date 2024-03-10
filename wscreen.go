@@ -143,13 +143,18 @@ func (t *wScreen) drawCell(x, y int) int {
 		uc = 0x000000
 	}
 
-	var combcarr []interface{} = make([]interface{}, len(combc))
-	for i, c := range combc {
-		combcarr[i] = c
+	s := ""
+	if len(combc) > 0 {
+		b := make([]rune, 0, 1 + len(combc))
+		b = append(b, mainc)
+		b = append(b, combc...)
+		s = string(b)
+	} else {
+		s = string(mainc)
 	}
 
 	t.cells.SetDirty(x, y, false)
-	js.Global().Call("drawCell", x, y, mainc, combcarr, fg, bg, int(style.attrs), int(us), int(uc))
+	js.Global().Call("drawCell", x, y, s, fg, bg, int(style.attrs), int(us), int(uc))
 
 	return width
 }
