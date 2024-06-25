@@ -68,6 +68,7 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 - [lil](https://github.com/andrievsky/lil) - A simple and flexible interface for any service by implementing only list and get operations
 - [hero.go](https://github.com/barisbll/hero.go) - 2d monster shooter ([video](https://user-images.githubusercontent.com/40062673/277157369-240d7606-b471-4aa1-8c54-4379a513122b.mp4))
 - [go-tetris](https://github.com/aaronriekenberg/go-tetris) - simple tetris game for native terminal and WASM using github actions+pages
+- [oddshub](https://github.com/dos-2/oddshub) - A TUI designed for analyzing sports betting odds
 
 ## Pure Go Terminfo Database
 
