@@ -28,7 +28,7 @@ type Spacer struct {
 // Draw is called to update the displayed content.
 func (*Spacer) Draw() {}
 
-// Size always returns 0, 0, since no size is ever *requird* to display nothing.
+// Size always returns 0, 0, since no size is ever *required* to display nothing.
 func (*Spacer) Size() (int, int) {
 	return 0, 0
 }
