@@ -33,7 +33,7 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 - [godu](https://github.com/viktomas/godu) - utility to discover large files/folders
 - [tview](https://github.com/rivo/tview/) - rich interactive widgets
 - [cview](https://code.rocketnine.space/tslocum/cview) - user interface toolkit (fork of _tview_)
-- [awsome gocui](https://github.com/awesome-gocui/gocui) - Go Console User Interface
+- [awesome gocui](https://github.com/awesome-gocui/gocui) - Go Console User Interface
 - [gomandelbrot](https://github.com/rgm3/gomandelbrot) - Mandelbrot!
 - [WTF](https://github.com/senorprogrammer/wtf) - personal information dashboard
 - [browsh](https://github.com/browsh-org/browsh) - modern web browser ([video](https://www.youtube.com/watch?v=HZq86XfBoRo))
