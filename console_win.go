@@ -669,14 +669,14 @@ func geti16(v []byte) int16 {
 }
 
 // Convert windows dwControlKeyState to modifier mask
-func mod2mask(cks uint32) ModMask {
+func mod2mask(cks uint32, filter_ctrl_alt bool) ModMask {
 	mm := ModNone
 	// Left or right control
 	ctrl := (cks & (0x0008 | 0x0004)) != 0
 	// Left or right alt
 	alt := (cks & (0x0002 | 0x0001)) != 0
 	// Filter out ctrl+alt (it means AltGr)
-	if !(ctrl && alt) {
+	if !filter_ctrl_alt || !(ctrl && alt) {
 		if ctrl {
 			mm |= ModCtrl
 		}
@@ -791,10 +791,10 @@ func (s *cScreen) getConsoleInput() error {
 				// synthesized key code
 				for krec.repeat > 0 {
 					// convert shift+tab to backtab
-					if mod2mask(krec.mod) == ModShift && krec.ch == vkTab {
+					if mod2mask(krec.mod, false) == ModShift && krec.ch == vkTab {
 						s.postEvent(NewEventKey(KeyBacktab, 0, ModNone))
 					} else {
-						s.postEvent(NewEventKey(KeyRune, rune(krec.ch), mod2mask(krec.mod)))
+						s.postEvent(NewEventKey(KeyRune, rune(krec.ch), mod2mask(krec.mod, true)))
 					}
 					krec.repeat--
 				}
@@ -806,7 +806,7 @@ func (s *cScreen) getConsoleInput() error {
 				return nil
 			}
 			for krec.repeat > 0 {
-				s.postEvent(NewEventKey(key, rune(krec.ch), mod2mask(krec.mod)))
+				s.postEvent(NewEventKey(key, rune(krec.ch), mod2mask(krec.mod, false)))
 				krec.repeat--
 			}
 
@@ -819,7 +819,7 @@ func (s *cScreen) getConsoleInput() error {
 			mrec.flags = getu32(rec.data[12:])
 			btns := mrec2btns(mrec.btns, mrec.flags)
 			// we ignore double click, events are delivered normally
-			s.postEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns, mod2mask(mrec.mod)))
+			s.postEvent(NewEventMouse(int(mrec.x), int(mrec.y), btns, mod2mask(mrec.mod, false)))
 
 		case resizeEvent:
 			var rrec resizeRecord
