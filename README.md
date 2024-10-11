@@ -33,7 +33,7 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 - [godu](https://github.com/viktomas/godu) - utility to discover large files/folders
 - [tview](https://github.com/rivo/tview/) - rich interactive widgets
 - [cview](https://code.rocketnine.space/tslocum/cview) - user interface toolkit (fork of _tview_)
-- [awsome gocui](https://github.com/awesome-gocui/gocui) - Go Console User Interface
+- [awesome gocui](https://github.com/awesome-gocui/gocui) - Go Console User Interface
 - [gomandelbrot](https://github.com/rgm3/gomandelbrot) - Mandelbrot!
 - [WTF](https://github.com/senorprogrammer/wtf) - personal information dashboard
 - [browsh](https://github.com/browsh-org/browsh) - modern web browser ([video](https://www.youtube.com/watch?v=HZq86XfBoRo))
@@ -69,6 +69,7 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 - [hero.go](https://github.com/barisbll/hero.go) - 2d monster shooter ([video](https://user-images.githubusercontent.com/40062673/277157369-240d7606-b471-4aa1-8c54-4379a513122b.mp4))
 - [go-tetris](https://github.com/aaronriekenberg/go-tetris) - simple tetris game for native terminal and WASM using github actions+pages
 - [tiles](https://github.com/16point7/tiles) - a lightweight implementation of 2048
+- [oddshub](https://github.com/dos-2/oddshub) - A TUI designed for analyzing sports betting odds
 
 ## Pure Go Terminfo Database
 
