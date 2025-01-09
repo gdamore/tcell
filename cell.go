@@ -246,11 +246,4 @@ func init() {
 	if os.Getenv("RUNEWIDTH_EASTASIAN") == "" {
 		runewidth.DefaultCondition.EastAsianWidth = false
 	}
-
-	// For performance reasons, we create a lookup table.  However, some users
-	// might be more memory conscious.  If that's you, set the TCELL_MINIMIZE
-	// environment variable.
-	if os.Getenv("TCELL_MINIMIZE") == "" {
-		runewidth.CreateLUT()
-	}
 }
