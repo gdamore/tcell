@@ -13,6 +13,7 @@ It was inspired by _termbox_, but includes many additional improvements.
 [![Discord](https://img.shields.io/discord/639503822733180969?label=&logo=discord)](https://discord.gg/urTTxDN)
 [![Coverage](https://img.shields.io/codecov/c/github/gdamore/tcell?logoColor=grey&logo=codecov&label=)](https://codecov.io/gh/gdamore/tcell)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdamore/tcell/v2)](https://goreportcard.com/report/github.com/gdamore/tcell/v2)
+[![Latest Release](https://img.shields.io/github/v/release/gdamore/tcell.svg?logo=github&label=)](https://github.com/gdamore/tcell/releases)
 
 Please see [here](UKRAINE.md) for an important message for the people of Russia.
 
