@@ -655,12 +655,15 @@ var vkKeys = map[uint16]Key{
 func getu32(v []byte) uint32 {
 	return uint32(v[0]) + (uint32(v[1]) << 8) + (uint32(v[2]) << 16) + (uint32(v[3]) << 24)
 }
+
 func geti32(v []byte) int32 {
 	return int32(getu32(v))
 }
+
 func getu16(v []byte) uint16 {
 	return uint16(v[0]) + (uint16(v[1]) << 8)
 }
+
 func geti16(v []byte) int16 {
 	return int16(getu16(v))
 }
@@ -938,7 +941,7 @@ func (s *cScreen) mapStyle(style Style) uint16 {
 	return attr
 }
 
-func (s *cScreen) sendVtStyle(style Style) {
+func (s *cScreen) makeVtStyle(style Style) string {
 	esc := &strings.Builder{}
 
 	fg, bg, attrs := style.fg, style.bg, style.attrs
@@ -998,30 +1001,40 @@ func (s *cScreen) sendVtStyle(style Style) {
 		esc.WriteString(vtExitUrl)
 	}
 
-	s.emitVtString(esc.String())
+	return esc.String()
 }
 
-func (s *cScreen) writeString(x, y int, style Style, ch []uint16) {
+func (s *cScreen) sendVtStyle(style Style) {
+	s.emitVtString(s.makeVtStyle(style))
+}
+
+func (s *cScreen) writeString(x, y int, style Style, vtBuf, ch []uint16) {
 	// we assume the caller has hidden the cursor
 	if len(ch) == 0 {
 		return
 	}
-	s.setCursorPos(x, y, s.vten)
 
 	if s.vten {
-		s.sendVtStyle(style)
+		vtBuf = append(vtBuf, utf16.Encode([]rune(fmt.Sprintf(vtCursorPos, y+1, x+1)))...)
+		styleStr := s.makeVtStyle(style)
+		vtBuf = append(vtBuf, utf16.Encode([]rune(styleStr))...)
+		vtBuf = append(vtBuf, ch...)
+		_ = syscall.WriteConsole(s.out, &vtBuf[0], uint32(len(vtBuf)), nil, nil)
+		vtBuf = vtBuf[:0]
 	} else {
+		s.setCursorPos(x, y, s.vten)
 		_, _, _ = procSetConsoleTextAttribute.Call(
 			uintptr(s.out),
 			uintptr(s.mapStyle(style)))
+		_ = syscall.WriteConsole(s.out, &ch[0], uint32(len(ch)), nil, nil)
 	}
-	_ = syscall.WriteConsole(s.out, &ch[0], uint32(len(ch)), nil, nil)
 }
 
 func (s *cScreen) draw() {
 	// allocate a scratch line bit enough for no combining chars.
 	// if you have combining characters, you may pay for extra allocations.
 	buf := make([]uint16, 0, s.w)
+	var vtBuf []uint16
 	wcs := buf[:]
 	lstyle := styleInvalid
 
@@ -1040,7 +1053,7 @@ func (s *cScreen) draw() {
 				// write out any data queued thus far
 				// because we are going to skip over some
 				// cells, or because we need to change styles
-				s.writeString(lx, ly, lstyle, wcs)
+				s.writeString(lx, ly, lstyle, vtBuf, wcs)
 				wcs = buf[0:0]
 				lstyle = StyleDefault
 				if !dirty {
@@ -1067,7 +1080,7 @@ func (s *cScreen) draw() {
 			}
 			x += width - 1
 		}
-		s.writeString(lx, ly, lstyle, wcs)
+		s.writeString(lx, ly, lstyle, vtBuf, wcs)
 		wcs = buf[0:0]
 		lstyle = styleInvalid
 	}
