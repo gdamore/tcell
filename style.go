@@ -164,6 +164,16 @@ func (s Style) Underline(params ...interface{}) Style {
 	return s2
 }
 
+// UnderlineStyle returns the underline style for the style.
+func (s Style) UnderlineStyle() UnderlineStyle {
+	return s.ulStyle
+}
+
+// UnderlineColor returns the underline color for the style.
+func (s Style) UnderlineColor() Color {
+	return s.ulColor
+}
+
 // Attributes returns a new style based on s, with its attributes set as
 // specified.
 func (s Style) Attributes(attrs AttrMask) Style {
