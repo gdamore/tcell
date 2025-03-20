@@ -1339,6 +1339,10 @@ func (t *tScreen) buildMouseEvent(x, y, btn int) *EventMouse {
 		button = WheelUp
 	case 0x41:
 		button = WheelDown
+	case 0x42:
+		button = WheelLeft
+	case 0x43:
+		button = WheelRight
 	}
 
 	if btn&0x4 != 0 {
