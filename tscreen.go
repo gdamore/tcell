@@ -898,7 +898,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		}
 
 		// URL string can be long, so don't send it unless we really need to
-		if t.enterUrl != "" && t.curstyle != style {
+		if t.enterUrl != "" && t.curstyle.url != style.url {
 			if style.url != "" {
 				t.TPuts(ti.TParm(t.enterUrl, style.url, style.urlId))
 			} else {
