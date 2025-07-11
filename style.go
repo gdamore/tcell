@@ -164,13 +164,13 @@ func (s Style) Underline(params ...interface{}) Style {
 	return s2
 }
 
-// UnderlineStyle returns the underline style for the style.
-func (s Style) UnderlineStyle() UnderlineStyle {
+// GetUnderlineStyle returns the underline style for the style.
+func (s Style) GetUnderlineStyle() UnderlineStyle {
 	return s.ulStyle
 }
 
-// UnderlineColor returns the underline color for the style.
-func (s Style) UnderlineColor() Color {
+// GetUnderlineColor returns the underline color for the style.
+func (s Style) GetUnderlineColor() Color {
 	return s.ulColor
 }
 
