@@ -87,6 +87,11 @@ _Tcell_ is portable to a wide variety of systems, and is pure Go, without
 any need for CGO.
 _Tcell_ is believed to work with mainstream systems officially supported by golang.
 
+Following the Go support policy, _Tcell_ officially only supports the current ("stable") version of go,
+and the version immediately prior ("oldstable").  This policy is necessary to make sure that we can
+update dependencies to pick up security fixes and new features, and it allows us to adopt changes
+(such as library and language features) that are only supported in newer versions of Go.
+
 ## No Async IO
 
 _Tcell_ is able to operate without requiring `SIGIO` signals (unlike _termbox_),
