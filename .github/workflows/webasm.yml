@@ -1,0 +1,24 @@
+name: webasm
+on: [push]
+jobs:
+  build:
+    name: build
+    runs-on: [ubuntu-latest]
+    strategy:
+      matrix:
+        go: ["stable", "oldstable"]
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+        id: go
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build the web assembly mouse demo
+        run: env GOOS=js GOARCH=wasm go build _demos/mouse.go
