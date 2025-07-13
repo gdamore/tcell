@@ -83,11 +83,6 @@ _Tcell_ will respect your terminal's color space as specified within your termin
 For example attempts to emit color sequences on VT100 terminals
 won't result in unintended consequences.
 
-In legacy Windows mode, _Tcell_ supports 16 colors, bold, dim, and reverse,
-instead of just termbox's 8 colors with reverse. (Note that there is some
-conflation with bold/dim and colors.)
-Modern Windows 10 can benefit from much richer colors however.
-
 _Tcell_ maps 16 colors down to 8, for terminals that need it.
 (The upper 8 colors are just brighter versions of the lower 8.)
 
@@ -95,10 +90,6 @@ _Tcell_ maps 16 colors down to 8, for terminals that need it.
 
 _Tcell_ supports enhanced mouse tracking mode, so your application can receive
 regular mouse motion events, and wheel events, if your terminal supports it.
-
-(Note: The Windows 10 Terminal application suffers from a flaw in this regard,
-and does not support mouse interaction. The stock Windows 10 console host
-fired up with cmd.exe or PowerShell works fine however.)
 
 ## _Termbox_ Compatibility
 
@@ -124,9 +115,6 @@ then the library will skip output from the following cell. Care must be
 taken in the application to avoid explicitly attempting to set content in the
 next cell, otherwise the results are undefined. (Normally the wide character
 is displayed, and the other character is not; do not depend on that behavior.)
-
-Older terminal applications (especially on systems like Windows 8) lack support
-for advanced Unicode, and thus may not fare well.
 
 ## Colors
 
@@ -231,7 +219,7 @@ platforms (e.g., AIX) may need to be added. Pull requests are welcome!
 
 Windows console mode applications are supported.
 
-Modern console applications like ConEmu and the Windows 10 terminal,
+Modern console applications like ConEmu and the Windows Terminal,
 support all the good features (resize, mouse tracking, etc.)
 
 ### WASM
