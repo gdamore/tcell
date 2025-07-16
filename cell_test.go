@@ -44,6 +44,8 @@ func (cb *CellBuffer) SetContentOld(x int, y int,
 }
 
 func Benchmark_SetContentOld_ascii(b *testing.B) {
+	b.ReportAllocs()
+
 	buffer := &CellBuffer{}
 	buffer.Resize(100, 100)
 	for i := 0; i < b.N; i++ {
@@ -61,6 +63,8 @@ func Benchmark_SetContentOld_ascii(b *testing.B) {
 }
 
 func Benchmark_SetContent_ascii(b *testing.B) {
+	b.ReportAllocs()
+
 	buffer := &CellBuffer{}
 	buffer.Resize(100, 100)
 	for i := 0; i < b.N; i++ {
@@ -78,6 +82,8 @@ func Benchmark_SetContent_ascii(b *testing.B) {
 }
 
 func Benchmark_SetContentOld(b *testing.B) {
+	b.ReportAllocs()
+
 	buffer := &CellBuffer{}
 	buffer.Resize(100, 100)
 	flag := []rune("🇦🇺")
@@ -96,6 +102,8 @@ func Benchmark_SetContentOld(b *testing.B) {
 }
 
 func Benchmark_SetContent(b *testing.B) {
+	b.ReportAllocs()
+
 	buffer := &CellBuffer{}
 	buffer.Resize(100, 100)
 	flag := []rune("🇦🇺")
