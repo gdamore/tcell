@@ -17,19 +17,14 @@
 
 package tcell
 
-// NewScreen returns a terminfo-backed screen using the Plan 9 TTY.
+// NewConsoleScreen returns a terminfo-backed screen using the Plan 9 TTY.
 // TERM should be "vt100" in a vt(1) window; color/mouse support will be limited.
-func NewScreen() (Screen, error) {
+func NewConsoleScreen() (Screen, error) {
 	tty, err := NewDevTty()
 	if err != nil {
 		return nil, err
 	}
 	return NewTerminfoScreenFromTty(tty)
-}
-
-// NewConsoleScreen matches the non-Plan 9 API surface.
-func NewConsoleScreen() (Screen, error) {
-	return NewScreen()
 }
 
 // initialize on Plan 9: if no TTY was provided, use the Plan 9 TTY.
