@@ -105,13 +105,24 @@ func (t *p9Tty) Start() error {
 	if t.closed.Load() {
 		return errors.New("tty closed")
 	}
+
+	// Recreate stop channel if absent or closed (supports resume).
+	if t.stopCh == nil || isClosed(t.stopCh) {
+		t.stopCh = make(chan struct{})
+	}
+
 	// Put console into raw mode; remains active while consctl is open.
-	// If consctl is closed or "rawoff" written, raw mode ends. (kbdfs(8))
 	if _, err := t.consctl.Write([]byte("rawon")); err != nil {
 		return fmt.Errorf("enable raw mode: %w", err)
 	}
 
-	// Spawn a watcher for wctl resize notifications.
+	// Reopen /dev/wctl on resume; best-effort (system console may lack it).
+	if t.wctl == nil {
+		if f, err := os.OpenFile("/dev/wctl", os.O_RDWR, 0); err == nil {
+			t.wctl = f
+		}
+	}
+
 	if t.wctl != nil {
 		t.wg.Add(1)
 		go t.watchResize()
@@ -129,19 +140,22 @@ func (t *p9Tty) Stop() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// Signal watcher to stop.
-	close(t.stopCh)
-	// Ending raw mode first reduces surprises if something else reads the console.
+	// Signal watcher to stop (if not already).
+	if t.stopCh != nil && !isClosed(t.stopCh) {
+		close(t.stopCh)
+	}
+
+	// Exit raw mode first.
 	_, _ = t.consctl.Write([]byte("rawoff"))
 
-	// Closing wctl unblocks watchResize read.
+	// Closing wctl unblocks watchResize; nil it so Start() can reopen later.
 	if t.wctl != nil {
 		_ = t.wctl.Close()
 		t.wctl = nil
 	}
-	// We keep cons/consctl open so a subsequent Start() can reuse them.
-	// If you prefer stricter semantics, close cons and consctl here and
-	// reopen in Start(). Current approach matches tcell’s "suspend/resume".
+
+	// Ensure watcher goroutine has exited before returning.
+	t.wg.Wait()
 	return nil
 }
 
@@ -152,14 +166,19 @@ func (t *p9Tty) Close() error {
 	if t.closed.Swap(true) {
 		return nil
 	}
-	// Stop watching, exit raw mode, close fds.
-	close(t.stopCh)
+
+	if t.stopCh != nil && !isClosed(t.stopCh) {
+		close(t.stopCh)
+	}
 	_, _ = t.consctl.Write([]byte("rawoff"))
+
 	_ = t.cons.Close()
 	_ = t.consctl.Close()
 	if t.wctl != nil {
 		_ = t.wctl.Close()
+		t.wctl = nil
 	}
+
 	t.wg.Wait()
 	return nil
 }
@@ -199,7 +218,7 @@ func (t *p9Tty) WindowSize() (WindowSize, error) {
 	if cols <= 0 {
 		cols = 80
 	}
-	return WindowSize{Rows: lines, Cols: cols}, nil
+	return WindowSize{Width: cols, Height: lines}, nil
 }
 
 // watchResize blocks on /dev/wctl reads; each read returns when the window
@@ -238,4 +257,14 @@ func envInt(name string) int {
 		}
 	}
 	return 0
+}
+
+// helper: safe check if a channel is closed
+func isClosed(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
 }

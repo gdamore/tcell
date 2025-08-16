@@ -31,3 +31,15 @@ func NewScreen() (Screen, error) {
 func NewConsoleScreen() (Screen, error) {
 	return NewScreen()
 }
+
+// initialize on Plan 9: if no TTY was provided, use the Plan 9 TTY.
+func (t *tScreen) initialize() error {
+	if t.tty == nil {
+		tty, err := NewDevTty()
+		if err != nil {
+			return err
+		}
+		t.tty = tty
+	}
+	return nil
+}
