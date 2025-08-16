@@ -1,7 +1,7 @@
-//go:build !windows && !plan9
-// +build !windows,!plan9
+//go:build plan9
+// +build plan9
 
-// Copyright 2015 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -17,8 +17,17 @@
 
 package tcell
 
-// NewConsoleScreen returns a console based screen.  This platform
-// doesn't have support for any, so it returns nil and a suitable error.
+// NewScreen returns a terminfo-backed screen using the Plan 9 TTY.
+// TERM should be "vt100" in a vt(1) window; color/mouse support will be limited.
+func NewScreen() (Screen, error) {
+	tty, err := NewDevTty()
+	if err != nil {
+		return nil, err
+	}
+	return NewTerminfoScreenFromTty(tty)
+}
+
+// NewConsoleScreen matches the non-Plan 9 API surface.
 func NewConsoleScreen() (Screen, error) {
-	return nil, ErrNoScreen
+	return NewScreen()
 }

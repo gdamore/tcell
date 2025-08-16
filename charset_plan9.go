@@ -1,7 +1,7 @@
-//go:build !windows && !plan9
-// +build !windows,!plan9
+//go:build plan9
+// +build plan9
 
-// Copyright 2015 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -17,8 +17,7 @@
 
 package tcell
 
-// NewConsoleScreen returns a console based screen.  This platform
-// doesn't have support for any, so it returns nil and a suitable error.
-func NewConsoleScreen() (Screen, error) {
-	return nil, ErrNoScreen
+// Plan 9 uses UTF-8 system-wide, so we return "UTF-8" unconditionally.
+func getCharset() string {
+	return "UTF-8"
 }

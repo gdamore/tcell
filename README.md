@@ -228,13 +228,7 @@ WASM is supported, but needs additional setup detailed in [README-wasm](README-w
 
 ### Plan9 and others
 
-These platforms won't work, but compilation stubs are supplied
-for folks that want to include parts of this in software for those
-platforms. The Simulation screen works, but as _Tcell_ doesn't know how to
-allocate a real screen object on those platforms, `NewScreen()` will fail.
-
-If anyone has wisdom about how to improve support for these,
-please let me know. PRs are especially welcome.
+Plan 9 is supported on a limited basis. The Plan 9 backend opens `/dev/cons` for I/O, enables raw mode by writing `rawon`/`rawoff` to `/dev/consctl`, watches `/dev/wctl` for resize notifications, and then constructs a **terminfo-backed** `Screen` (so `NewScreen` works as on other platforms). Typical usage is inside `vt(1)` with `TERM=vt100`. Expect **monochrome text** and **no mouse reporting** under stock `vt(1)` (it generally does not emit ANSI color or xterm mouse sequences). If a Plan 9 terminal supplies ANSI color escape sequences and xterm-style mouse reporting, color can be picked up via **terminfo** and mouse support could be added by wiring those sequences into the Plan 9 TTY path; contributions that improve terminal detection and broaden feature support are welcome.
 
 ### Commercial Support
 
