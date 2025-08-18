@@ -19,21 +19,12 @@ package tcell
 
 import "os"
 
-// NewConsoleScreen returns a terminfo-backed screen using the Plan 9 TTY.
-// TERM should be "vt100" in a vt(1) window; color/mouse support will be limited.
-func NewConsoleScreen() (Screen, error) {
-    if os.Getenv("TERM") == "" {
-        _ = os.Setenv("TERM", "vt100") // fallback for vt(1)
-    }
-	tty, err := NewDevTty()
-	if err != nil {
-		return nil, err
-	}
-	return NewTerminfoScreenFromTty(tty)
-}
-
 // initialize on Plan 9: if no TTY was provided, use the Plan 9 TTY.
 func (t *tScreen) initialize() error {
+    if os.Getenv("TERM") == "" {
+        // TERM should be "vt100" in a vt(1) window; color/mouse support will be limited.
+        _ = os.Setenv("TERM", "vt100")
+    }
 	if t.tty == nil {
 		tty, err := NewDevTty()
 		if err != nil {
