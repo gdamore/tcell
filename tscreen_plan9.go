@@ -1,7 +1,7 @@
-//go:build windows
-// +build windows
+//go:build plan9
+// +build plan9
 
-// Copyright 2022 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -17,16 +17,20 @@
 
 package tcell
 
-// NB: We might someday wish to move Windows to this model.   However,
-// that would probably mean sacrificing some of the richer key reporting
-// that we can obtain with the console API present on Windows.
+import "os"
 
+// initialize on Plan 9: if no TTY was provided, use the Plan 9 TTY.
 func (t *tScreen) initialize() error {
+    if os.Getenv("TERM") == "" {
+        // TERM should be "vt100" in a vt(1) window; color/mouse support will be limited.
+        _ = os.Setenv("TERM", "vt100")
+    }
 	if t.tty == nil {
-		return ErrNoScreen
+		tty, err := NewDevTty()
+		if err != nil {
+			return err
+		}
+		t.tty = tty
 	}
-	// If a tty was supplied (custom), it should work.
-	// Custom screen implementations will need to provide a TTY
-	// implementation that we can use.
 	return nil
 }
