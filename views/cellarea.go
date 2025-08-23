@@ -33,20 +33,17 @@ type CellModel interface {
 // CellView is a flexible view of a CellModel, offering both cursor
 // management and a panning.
 type CellView struct {
-	port    *ViewPort
-	view    View
-	content Widget
-	style   tcell.Style
-	lines   []string
-	model   CellModel
-	once    sync.Once
+	port  *ViewPort
+	view  View
+	style tcell.Style
+	model CellModel
+	once  sync.Once
 
 	WidgetWatchers
 }
 
 // Draw draws the content.
 func (a *CellView) Draw() {
-
 	port := a.port
 	model := a.model
 	port.Fill(' ', a.style)

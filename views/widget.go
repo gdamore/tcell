@@ -169,7 +169,7 @@ type EventWidgetResize struct {
 	widgetEvent
 }
 
-// EventWidgetMove is fired whenver a widget changes location.
+// EventWidgetMove is fired whenever a widget changes location.
 type EventWidgetMove struct {
 	widgetEvent
 }

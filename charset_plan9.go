@@ -1,7 +1,7 @@
-//go:build windows
-// +build windows
+//go:build plan9
+// +build plan9
 
-// Copyright 2022 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -17,16 +17,7 @@
 
 package tcell
 
-// NB: We might someday wish to move Windows to this model.   However,
-// that would probably mean sacrificing some of the richer key reporting
-// that we can obtain with the console API present on Windows.
-
-func (t *tScreen) initialize() error {
-	if t.tty == nil {
-		return ErrNoScreen
-	}
-	// If a tty was supplied (custom), it should work.
-	// Custom screen implementations will need to provide a TTY
-	// implementation that we can use.
-	return nil
+// Plan 9 uses UTF-8 system-wide, so we return "UTF-8" unconditionally.
+func getCharset() string {
+	return "UTF-8"
 }

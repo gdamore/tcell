@@ -1,4 +1,4 @@
-name: linux
+name: webasm
 on: [push]
 jobs:
   build:
@@ -17,14 +17,8 @@ jobs:
           go-version: ${{ matrix.go }}
         id: go
 
-      - name: Go version
-        run: go version
-
       - name: Get dependencies
         run: go get -v -t -d ./...
 
-      - name: Build
-        run: go build -v .
-
-      - name: Test
-        run: go test ./...
+      - name: Build the web assembly mouse demo
+        run: env GOOS=js GOARCH=wasm go build _demos/mouse.go
