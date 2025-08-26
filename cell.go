@@ -16,7 +16,6 @@ package tcell
 
 import (
 	"os"
-	"reflect"
 
 	runewidth "github.com/mattn/go-runewidth"
 )
@@ -32,6 +31,19 @@ type cell struct {
 	lock      bool
 }
 
+func (c *cell) setDirty(dirty bool) {
+	if dirty {
+		c.lastMain = rune(0)
+	} else {
+		if c.currMain == rune(0) {
+			c.currMain = ' '
+		}
+		c.lastMain = c.currMain
+		c.lastComb = append(c.lastComb[:0], c.currComb...)
+		c.lastStyle = c.currStyle
+	}
+}
+
 // CellBuffer represents a two-dimensional array of character cells.
 // This is primarily intended for use by Screen implementors; it
 // contains much of the common code they need.  To create one, just
@@ -42,6 +54,21 @@ type CellBuffer struct {
 	w     int
 	h     int
 	cells []cell
+}
+
+// we purposefully don't use slices.Equal in order to stay compatible
+// with earlier go versions.
+func runeSliceEqual(a, b []rune) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // SetContent sets the contents (primary rune, combining runes,
@@ -58,13 +85,17 @@ func (cb *CellBuffer) SetContent(x int, y int,
 		// dirty as well as the base cell, to make sure we consider
 		// both cells as dirty together.  We only need to do this
 		// if we're changing content
-		if (c.width > 0) && (mainc != c.currMain || len(combc) != len(c.currComb) || (len(combc) > 0 && !reflect.DeepEqual(combc, c.currComb))) {
-			for i := 0; i < c.width; i++ {
+		if c.width > 0 && (mainc != c.currMain || !runeSliceEqual(combc, c.currComb)) {
+			// Prevent unnecessary boundchecks for first cell, since we already
+			// received that one.
+			c.setDirty(true)
+			for i := 1; i < c.width; i++ {
 				cb.SetDirty(x+i, y, true)
 			}
 		}
 
-		c.currComb = append([]rune{}, combc...)
+		// Reuse slice to prevent allocations
+		c.currComb = append(c.currComb[:0], combc...)
 
 		if c.currMain != mainc {
 			c.width = runewidth.RuneWidth(mainc)
@@ -148,16 +179,7 @@ func (cb *CellBuffer) Dirty(x, y int) bool {
 func (cb *CellBuffer) SetDirty(x, y int, dirty bool) {
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		c := &cb.cells[(y*cb.w)+x]
-		if dirty {
-			c.lastMain = rune(0)
-		} else {
-			if c.currMain == rune(0) {
-				c.currMain = ' '
-			}
-			c.lastMain = c.currMain
-			c.lastComb = c.currComb
-			c.lastStyle = c.currStyle
-		}
+		c.setDirty(dirty)
 	}
 }
 
