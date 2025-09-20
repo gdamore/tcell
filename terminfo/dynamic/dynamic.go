@@ -24,6 +24,7 @@ package dynamic
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -126,7 +127,7 @@ func (tc *termcap) setupterm(name string) error {
 	tc.nums = make(map[string]int)
 
 	if err := cmd.Run(); err != nil {
-		return err
+		return fmt.Errorf("couldn't open terminfo ($TERM) file for %s: %w", name, err)
 	}
 
 	// Now parse the output.
