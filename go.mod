@@ -7,7 +7,7 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.3.0
 	github.com/mattn/go-runewidth v0.0.19
 	golang.org/x/sys v0.38.0
-	golang.org/x/term v0.34.0
+	golang.org/x/term v0.36.0
 	golang.org/x/text v0.30.0
 )
 
