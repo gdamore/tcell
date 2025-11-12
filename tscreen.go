@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"maps"
 	"os"
 	"strconv"
 	"strings"
@@ -88,9 +89,7 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 	t.buildAcsMap()
 	t.resizeQ = make(chan bool, 1)
 	t.fallback = make(map[rune]string)
-	for k, v := range RuneFallbacks {
-		t.fallback[k] = v
-	}
+	maps.Copy(t.fallback, RuneFallbacks)
 
 	return &baseScreen{screenImpl: t}, nil
 }
@@ -177,6 +176,8 @@ type tScreen struct {
 	restoreTitle string
 	title        string
 	setClipboard string
+	startSyncOut string
+	endSyncOut   string
 
 	sync.Mutex
 }
@@ -216,13 +217,11 @@ func (t *tScreen) Init() error {
 	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
 		t.truecolor = false
 	}
-	nColors := t.nColors()
-	if nColors > 256 {
-		nColors = 256 // clip to reasonable limits
-	}
+	// clip to reasonable limits
+	nColors := min(t.nColors(), 256)
 	t.colors = make(map[Color]Color, nColors)
 	t.palette = make([]Color, nColors)
-	for i := 0; i < nColors; i++ {
+	for i := range nColors {
 		t.palette[i] = Color(i) | ColorValid
 		// identity map for our builtin colors
 		t.colors[Color(i)|ColorValid] = Color(i) | ColorValid
@@ -457,6 +456,14 @@ func (t *tScreen) prepareExtendedOSC() {
 		// sent string, when we support that.
 		t.setClipboard = "\x1b]52;c;%p1%s\x1b\\"
 	}
+
+	if t.startSyncOut == "" && t.ti.XTermLike {
+		// this is in theory a queryable private mode, but we just assume it will be ok
+		// The terminals we have been able to test it all either just swallow it, or
+		// handle it.
+		t.startSyncOut = "\x1b[?2026h"
+		t.endSyncOut = "\x1b[?2026l"
+	}
 }
 
 func (t *tScreen) prepareCursorStyles() {
@@ -651,7 +658,7 @@ func (t *tScreen) prepareKeys() {
 
 outer:
 	// Add key mappings for control keys.
-	for i := 0; i < ' '; i++ {
+	for i := range byte(' ') {
 		// Do not insert direct key codes for ambiguous keys.
 		// For example, ESC is used for lots of other keys, so
 		// when parsing this we don't want to fast path handling
@@ -1032,6 +1039,14 @@ func (t *tScreen) clearScreen() {
 	t.clear = false
 }
 
+func (t *tScreen) startBuffering() {
+	t.TPuts(t.startSyncOut)
+}
+
+func (t *tScreen) endBuffering() {
+	t.TPuts(t.endSyncOut)
+}
+
 func (t *tScreen) hideCursor() {
 	// does not update cursor position
 	if t.ti.HideCursor != "" {
@@ -1053,8 +1068,10 @@ func (t *tScreen) draw() {
 
 	t.buf.Reset()
 	t.buffering = true
+	t.startBuffering()
 	defer func() {
 		t.buffering = false
+		t.endBuffering()
 	}()
 
 	// hide the cursor while we move stuff around
@@ -1649,7 +1666,7 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer, evs *[]Event) (bool, bool)
 			default:
 				*evs = append(*evs, NewEventKey(k.key, r, mod))
 			}
-			for i := 0; i < len(esc); i++ {
+			for range esc {
 				_, _ = buf.ReadByte()
 			}
 			return true, true
