@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"os"
+	"slices"
 
 	runewidth "github.com/mattn/go-runewidth"
 )
@@ -56,21 +57,6 @@ type CellBuffer struct {
 	cells []cell
 }
 
-// we purposefully don't use slices.Equal in order to stay compatible
-// with earlier go versions.
-func runeSliceEqual(a, b []rune) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 // SetContent sets the contents (primary rune, combining runes,
 // and style) for a cell at a given location.  If the background or
 // foreground of the style is set to ColorNone, then the respective
@@ -85,7 +71,7 @@ func (cb *CellBuffer) SetContent(x int, y int,
 		// dirty as well as the base cell, to make sure we consider
 		// both cells as dirty together.  We only need to do this
 		// if we're changing content
-		if c.width > 0 && (mainc != c.currMain || !runeSliceEqual(combc, c.currComb)) {
+		if c.width > 0 && (mainc != c.currMain || !slices.Equal(combc, c.currComb)) {
 			// Prevent unnecessary boundchecks for first cell, since we already
 			// received that one.
 			c.setDirty(true)
