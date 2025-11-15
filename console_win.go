@@ -790,6 +790,10 @@ func (s *cScreen) getConsoleInput() error {
 			if krec.ch != 0 {
 				// synthesized key code
 				for krec.repeat > 0 {
+					if krec.ch < ' ' && mod2mask(krec.mod, false) == ModCtrl {
+						krec.ch += '\x60'
+					}
+
 					// convert shift+tab to backtab
 					if mod2mask(krec.mod, false) == ModShift && krec.ch == vkTab {
 						s.postEvent(NewEventKey(KeyBacktab, 0, ModNone))

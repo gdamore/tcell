@@ -1,4 +1,4 @@
-// Copyright 2016 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -171,6 +171,11 @@ var KeyNames = map[Key]string{
 	KeyF62:            "F62",
 	KeyF63:            "F63",
 	KeyF64:            "F64",
+	KeyMenu:           "Menu",
+	KeyCapsLock:       "CapsLock",
+	KeyScrollLock:     "ScrollLock",
+	KeyNumLock:        "NumLock",
+	KeyCtrlSpace:      "Ctrl-Space",
 	KeyCtrlA:          "Ctrl-A",
 	KeyCtrlB:          "Ctrl-B",
 	KeyCtrlC:          "Ctrl-C",
@@ -178,9 +183,12 @@ var KeyNames = map[Key]string{
 	KeyCtrlE:          "Ctrl-E",
 	KeyCtrlF:          "Ctrl-F",
 	KeyCtrlG:          "Ctrl-G",
+	KeyCtrlH:          "Ctrl-H",
+	KeyCtrlI:          "Ctrl-I",
 	KeyCtrlJ:          "Ctrl-J",
 	KeyCtrlK:          "Ctrl-K",
 	KeyCtrlL:          "Ctrl-L",
+	KeyCtrlM:          "Ctrl-M",
 	KeyCtrlN:          "Ctrl-N",
 	KeyCtrlO:          "Ctrl-O",
 	KeyCtrlP:          "Ctrl-P",
@@ -194,11 +202,11 @@ var KeyNames = map[Key]string{
 	KeyCtrlX:          "Ctrl-X",
 	KeyCtrlY:          "Ctrl-Y",
 	KeyCtrlZ:          "Ctrl-Z",
-	KeyCtrlSpace:      "Ctrl-Space",
-	KeyCtrlUnderscore: "Ctrl-_",
-	KeyCtrlRightSq:    "Ctrl-]",
+	KeyCtrlLeftSq:     "Ctrl-[",
+	KeyCtrlRightSq:    "Ctrl-[",
 	KeyCtrlBackslash:  "Ctrl-\\",
 	KeyCtrlCarat:      "Ctrl-^",
+	KeyCtrlUnderscore: "Ctrl-_",
 }
 
 // Name returns a printable value or the key stroke.  This can be used
@@ -217,6 +225,9 @@ func (ev *EventKey) Name() string {
 	}
 	if ev.mod&ModCtrl != 0 {
 		m = append(m, "Ctrl")
+	}
+	if ev.mod&ModHyper != 0 {
+		m = append(m, "Hyper")
 	}
 
 	ok := false
@@ -252,9 +263,27 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 			default:
 				// most likely entered with a CTRL keypress
 				mod = ModCtrl
+				ch = ch + '\x60'
 			}
 		}
 	}
+	if k == KeyRune && ch >= '@' && ch <= '_' && mod == ModCtrl {
+		// We don't do Ctrl-[ or backslash or those specially.
+		k = KeyCtrlA + Key(ch-'@')
+	}
+
+	// Might be lower case
+	if k == KeyRune && ch >= 'a' && ch <= 'z' && mod == ModCtrl {
+		// We don't do Ctrl-[ or backslash or those specially.
+		k = KeyCtrlA + Key(ch-'a')
+	}
+
+	// Windows reports ModShift for shifted keys.  This is inconsistent
+	// with UNIX, lets harmonize this.
+	if k == KeyRune && mod == ModShift && ch != 0 {
+		mod = ModNone
+	}
+
 	return &EventKey{t: time.Now(), key: k, ch: ch, mod: mod}
 }
 
@@ -272,6 +301,7 @@ const (
 	ModCtrl
 	ModAlt
 	ModMeta
+	ModHyper
 	ModNone ModMask = 0
 )
 
@@ -373,6 +403,10 @@ const (
 	KeyF62
 	KeyF63
 	KeyF64
+	KeyMenu
+	KeyCapsLock
+	KeyScrollLock
+	KeyNumLock
 )
 
 const (
@@ -383,8 +417,11 @@ const (
 
 // These are the control keys.  Note that they overlap with other keys,
 // perhaps.  For example, KeyCtrlH is the same as KeyBackspace.
+//
+// Deprecated: Most of these now are reported using KeyRune and modifiers,
+// or other direct mappings.
 const (
-	KeyCtrlSpace Key = iota
+	KeyCtrlSpace Key = iota + 64
 	KeyCtrlA
 	KeyCtrlB
 	KeyCtrlC

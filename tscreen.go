@@ -1,4 +1,4 @@
-// Copyright 2024 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -178,6 +178,8 @@ type tScreen struct {
 	setClipboard string
 	startSyncOut string
 	endSyncOut   string
+	enableCsiU   string
+	disableCsiU  string
 
 	sync.Mutex
 }
@@ -464,6 +466,11 @@ func (t *tScreen) prepareExtendedOSC() {
 		t.startSyncOut = "\x1b[?2026h"
 		t.endSyncOut = "\x1b[?2026l"
 	}
+
+	if t.enableCsiU == "" && t.ti.XTermLike {
+		t.enableCsiU = "\x1b[>1u"
+		t.disableCsiU = "\x1b[<u"
+	}
 }
 
 func (t *tScreen) prepareCursorStyles() {
@@ -670,15 +677,14 @@ outer:
 			}
 		}
 
-		t.keyexist[Key(i)] = true
-
 		mod := ModCtrl
 		switch Key(i) {
 		case KeyBS, KeyTAB, KeyESC, KeyCR:
 			// directly type-able- no control sequence
 			mod = ModNone
+			t.keycodes[string(rune(i))] = &tKeyCode{key: Key(i), mod: mod}
+			t.keyexist[Key(i)] = true
 		}
-		t.keycodes[string(rune(i))] = &tKeyCode{key: Key(i), mod: mod}
 	}
 }
 
@@ -1678,6 +1684,132 @@ func (t *tScreen) parseFunctionKey(buf *bytes.Buffer, evs *[]Event) (bool, bool)
 	return partial, false
 }
 
+var keysCsiU = map[rune]Key{
+	27:    KeyESC,
+	9:     KeyTAB,
+	13:    KeyEnter,
+	127:   KeyBS,
+	57358: KeyNUL, // KeyCapsLock
+	57359: KeyNUL, // KeyScrollLock
+	57360: KeyNUL, // KeyNumLock
+	57361: KeyPrint,
+	57362: KeyPause,
+	57363: KeyNUL, // KeyMenu
+	57376: KeyF13,
+	57377: KeyF14,
+	57378: KeyF15,
+	57379: KeyF16,
+	57380: KeyF17,
+	57381: KeyF18,
+	57382: KeyF19,
+	57383: KeyF20,
+	57384: KeyF21,
+	57385: KeyF22,
+	57386: KeyF23,
+	57387: KeyF24,
+	57388: KeyF25,
+	57389: KeyF26,
+	57390: KeyF27,
+	57391: KeyF28,
+	57392: KeyF29,
+	57393: KeyF30,
+	57394: KeyF31,
+	57395: KeyF32,
+	57396: KeyF33,
+	57397: KeyF34,
+	57398: KeyF35,
+	// TODO: KP keys
+	// TODO: Media keys
+}
+
+func (t *tScreen) parseCsiU(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
+	b := buf.Bytes()
+
+	switch len(b) {
+	case 0:
+		return false, false
+	case 1:
+		return b[0] == '\x1b', false
+	case 2:
+		return b[0] == '\x1b' && b[1] == '[', false // CSI introducer
+	}
+	if b[0] != '\x1b' || b[1] != '[' {
+		return false, false
+	}
+	seq := ""
+	for i := 2; i < len(b); i++ {
+		if b[i] >= 0x20 && b[i] < 0x3F {
+			continue
+		}
+		if b[i] == 'u' {
+			seq = string(b[2:i]) // just the "inner" parts (without CSI or the u)
+			for range i + 1 {    // +1 because zero based
+				_, _ = buf.ReadByte()
+			}
+			break
+		}
+		return false, false
+	}
+
+	// matched a CSI-u
+	parts := strings.Split(seq, ";")
+	var k Key
+	var ch rune
+	var mod ModMask
+	if num, err := strconv.ParseInt(parts[0], 10, 32); err != nil {
+		return false, false
+	} else {
+		ch = rune(num)
+		k = KeyRune
+		if k1, ok := keysCsiU[ch]; ok {
+			k = k1
+			ch = 0
+		}
+	}
+
+	if len(parts) > 1 {
+		// shift     0b1         (1)
+		// alt       0b10        (2)
+		// ctrl      0b100       (4)
+		// super     0b1000      (8)
+		// hyper     0b10000     (16)
+		// meta      0b100000    (32)
+		// caps_lock 0b1000000   (64)
+		// num_lock  0b10000000  (128)
+
+		if mm, err := strconv.Atoi(parts[1]); err != nil {
+			return false, false
+		} else {
+			mm -= 1
+			if mm&0x1 != 0 {
+				mod |= ModShift
+			}
+			if mm&0x2 != 0 {
+				mod |= ModAlt
+			}
+			if mm&0x4 != 0 {
+				mod |= ModCtrl
+			}
+			// NB: Kitty calls this Super, but, we mostly call this Meta everywhere.
+			if mm&0x8 != 0 {
+				mod |= ModMeta
+			}
+			if mm&0x10 != 0 {
+				mod |= ModHyper
+			}
+			if mm&0x20 != 0 {
+				// In theory we might want to disambiguate this, but we don't
+				// want to introduce Super, and it probably doesn't exist in
+				// practice.
+				mod |= ModMeta
+			}
+			// TODO : super = 0x8, hyper = 0x10, caps_lock = 0x40, num_lock = 0x80
+		}
+	}
+	*evs = append(*evs, NewEventKey(k, ch, mod))
+	return false, true
+}
+
 func (t *tScreen) parseRune(buf *bytes.Buffer, evs *[]Event) (bool, bool) {
 	b := buf.Bytes()
 	if b[0] >= ' ' && b[0] <= 0x7F {
@@ -1799,6 +1931,14 @@ func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event
 			}
 		}
 
+		if t.enableCsiU != "" {
+			if part, comp := t.parseCsiU(buf, &res); comp {
+				continue
+			} else if part {
+				partials++
+			}
+		}
+
 		if partials == 0 || expire {
 			if b[0] == '\x1b' {
 				if len(b) == 1 {
@@ -1819,6 +1959,15 @@ func (t *tScreen) collectEventsFromInput(buf *bytes.Buffer, expire bool) []Event
 			if t.escaped {
 				t.escaped = false
 				mod = ModAlt
+			}
+			if by < ' ' {
+				switch by {
+				case byte(KeyTAB), byte(KeyEnter), byte(KeyESC), byte(KeyBS):
+					break
+				default:
+					by += '\x60'
+					mod |= ModCtrl
+				}
 			}
 			res = append(res, NewEventKey(KeyRune, rune(by), mod))
 			continue
@@ -2040,7 +2189,6 @@ func (t *tScreen) engage() error {
 	if t.focusEnabled {
 		t.enableFocusReporting()
 	}
-
 	ti := t.ti
 	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
 		// Technically this may not be right, but every terminal we know about
@@ -2049,9 +2197,7 @@ func (t *tScreen) engage() error {
 		// (In theory there could be terminals that don't support X,Y cursor
 		// positions without a setup command, but we don't support them.)
 		t.TPuts(ti.EnterCA)
-		if t.saveTitle != "" {
-			t.TPuts(t.saveTitle)
-		}
+		t.TPuts(t.saveTitle)
 	}
 	t.TPuts(ti.EnterKeypad)
 	t.TPuts(ti.HideCursor)
@@ -2061,6 +2207,7 @@ func (t *tScreen) engage() error {
 	if t.title != "" && t.setTitle != "" {
 		t.TPuts(t.ti.TParm(t.setTitle, t.title))
 	}
+	t.TPuts(t.enableCsiU)
 
 	t.wg.Add(2)
 	go t.inputLoop(stopQ)
@@ -2079,6 +2226,7 @@ func (t *tScreen) disengage() {
 		t.Unlock()
 		return
 	}
+
 	t.running = false
 	stopQ := t.stopQ
 	close(stopQ)
@@ -2113,6 +2261,7 @@ func (t *tScreen) disengage() {
 	t.enableMouse(0)
 	t.enablePasting(false)
 	t.disableFocusReporting()
+	t.TPuts(t.disableCsiU)
 
 	_ = t.tty.Stop()
 }
