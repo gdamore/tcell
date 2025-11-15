@@ -253,9 +253,9 @@ const (
 	ModifiersXTerm = 1
 )
 
-type stack []interface{}
+type stack []any
 
-func (st stack) Push(v interface{}) stack {
+func (st stack) Push(v any) stack {
 	if b, ok := v.(bool); ok {
 		if b {
 			return append(st, 1)
@@ -337,12 +337,12 @@ func (pb *paramsBuffer) PutString(s string) {
 // TParm takes a terminfo parameterized string, such as setaf or cup, and
 // evaluates the string, and returns the result with the parameter
 // applied.
-func (t *Terminfo) TParm(s string, p ...interface{}) string {
+func (t *Terminfo) TParm(s string, p ...any) string {
 	var stk stack
 	var a string
 	var ai, bi int
 	var dvars [26]string
-	var params [9]interface{}
+	var params [9]any
 	var pb = &paramsBuffer{}
 
 	pb.Start(s)
