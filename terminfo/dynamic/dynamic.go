@@ -145,9 +145,7 @@ func (tc *termcap) setupterm(name string) error {
 		lines = lines[:len(lines)-1]
 	}
 	header := lines[0]
-	if strings.HasSuffix(header, ",") {
-		header = header[:len(header)-1]
-	}
+	header = strings.TrimSuffix(header, ",")
 	names := strings.Split(header, "|")
 	tc.name = names[0]
 	names = names[1:]
