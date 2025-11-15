@@ -1,4 +1,6 @@
 name: webasm
+permissions:
+  contents: read
 on: [push]
 jobs:
   build:
