@@ -16,6 +16,7 @@ package terminfo
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"time"
 )
@@ -142,6 +143,77 @@ func TestStringParameter(t *testing.T) {
 	s = ti.TParm(ti.EnterUrl, "https://example.org/test", "id=1234")
 	if s != "\x1b]8;id=1234;https://example.org/test\x1b\\" {
 		t.Errorf("Result string failed: %s", s)
+	}
+}
+
+func TestAmbiguousKeys(t *testing.T) {
+	keys := make(map[string]string)
+	otrm := make(map[string]string)
+
+	addSeq := func(t *testing.T, seq string, name string, key string) {
+		if seq == "" {
+			println("NO CONTENT")
+			return
+		}
+		switch keys[seq] {
+			case key:
+			case "":
+				keys[seq] = key
+				otrm[name] = name
+				t.Logf("Recording key %s from %s", key, name)
+				println("HERE")
+			default:
+				t.Errorf("Conflicting map for %s %s with %s %s", name, key, otrm[seq], keys[seq])
+		}
+	}
+	for name, term := range terminfos {
+		println("STARTING", name)
+		addSeq(t, term.KeyF1, name, "F1")
+		addSeq(t, term.KeyF2, name, "F2")
+		addSeq(t, term.KeyF3, name, "F3")
+		addSeq(t, term.KeyF4, name, "F4")
+		addSeq(t, term.KeyF5, name, "F5")
+		addSeq(t, term.KeyF6, name, "F6")
+		addSeq(t, term.KeyF7, name, "F7")
+		addSeq(t, term.KeyF8, name, "F8")
+		addSeq(t, term.KeyF9, name, "F9")
+		addSeq(t, term.KeyF1, name, "F10")
+		addSeq(t, term.KeyF10, name, "F11")
+		addSeq(t, term.KeyF10, name, "F12")
+		addSeq(t, term.KeyF10, name, "F13")
+		addSeq(t, term.KeyF10, name, "F14")
+		addSeq(t, term.KeyF10, name, "F15")
+		addSeq(t, term.KeyF10, name, "F16")
+		addSeq(t, term.KeyF10, name, "F17")
+		addSeq(t, term.KeyF10, name, "F18")
+		addSeq(t, term.KeyF10, name, "F19")
+		addSeq(t, term.KeyF10, name, "F20")
+		addSeq(t, term.KeyF10, name, "F21")
+		addSeq(t, term.KeyF10, name, "F22")
+		addSeq(t, term.KeyF10, name, "F23")
+		addSeq(t, term.KeyF10, name, "F24")
+		addSeq(t, term.KeyF10, name, "F25")
+		addSeq(t, term.KeyF10, name, "F26")
+		addSeq(t, term.KeyF10, name, "F27")
+		addSeq(t, term.KeyF10, name, "F28")
+		addSeq(t, term.KeyF10, name, "F29")
+		addSeq(t, term.KeyF10, name, "F30")
+		addSeq(t, term.KeyF10, name, "F31")
+		addSeq(t, term.KeyF10, name, "F32")
+		addSeq(t, term.KeyF10, name, "F33")
+		addSeq(t, term.KeyF10, name, "F34")
+		addSeq(t, term.KeyF10, name, "F35")
+	}
+
+	for seq1 := range keys {
+		for seq2 := range keys {
+			if seq1 == seq2 {
+				continue
+			}
+			if strings.HasPrefix(seq1, seq2) || strings.HasPrefix(seq2, seq1) {
+				t.Errorf("Key %s from %s conflicts with %s from %s", keys[seq1], otrm[seq1], keys[seq2], otrm[seq2])
+			}
+		}
 	}
 }
 
