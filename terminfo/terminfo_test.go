@@ -1,4 +1,4 @@
-// Copyright 2022 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -66,45 +66,45 @@ func TestTerminfoExpansion(t *testing.T) {
 	type testCase struct {
 		expect string
 		format string
-		params []interface{}
+		params []any
 	}
 
 	cases := []testCase{
-		{expect: "0a", format: "%p1%02x", params: []interface{}{10}},
-		{expect: "0A", format: "%p1%02X", params: []interface{}{10}},
-		{expect: "A", format: "%p1%c", params: []interface{}{65}},
-		{expect: "A", format: "%'A'%c", params: []interface{}{}},
-		{expect: "65", format: "%'A'%d", params: []interface{}{}},
-		{expect: "7", format: "%i%p1%p2%+%d", params: []interface{}{2, 3}},
-		{expect: "abc", format: "%p1%s", params: []interface{}{"abc"}},
-		{expect: "1%d", format: "1%%d", params: []interface{}{}},
-		{expect: "abc", format: "%p1%s%", params: []interface{}{"abc"}}, // unterminated %
-		{expect: "  abc", format: "%p1%5s", params: []interface{}{"abc"}},
-		{expect: "abc  ", format: "%p1%:-5s", params: []interface{}{"abc"}},
-		{expect: "15", format: "%{3}%p1%*%d", params: []interface{}{5}},
-		{expect: " A", format: "%p1%2c", params: []interface{}{65}},
-		{expect: "4", format: "%p1%l%d", params: []interface{}{"four"}},
-		{expect: "0", format: "%pA%d", params: []interface{}{}}, // missing/invalid parameter
-		{expect: "5", format: "%p1%p2%/%d", params: []interface{}{15, 3}},
-		{expect: "0", format: "%p1%p2%/%d", params: []interface{}{3, 15}},
-		{expect: "0", format: "%p1%p2%/%d", params: []interface{}{3, 0}},
-		{expect: "3", format: "%p1%p2%m%d", params: []interface{}{15, 4}},
-		{expect: "0", format: "%p1%p2%m%d", params: []interface{}{3, 0}},
-		{expect: "2", format: "%p1%Pa%{4}%{3}%ga%d", params: []interface{}{2}},
-		{expect: "2", format: "%p1%PA%{4}%{3}%gA%d", params: []interface{}{2}},
-		{expect: "0", format: "%p1%PA%{4}%{3}%ga%d", params: []interface{}{2}},
-		{expect: "0", format: "%p1%Pz%{4}%{3}%gZ%d", params: []interface{}{2}},
-		{expect: "0", format: "%d", params: []interface{}{}}, // underflow
-		{expect: "", format: "%s", params: []interface{}{}},  // underflow
-		{expect: "1", format: "%p1%p2%=%d", params: []interface{}{3, 3}},
-		{expect: "0", format: "%p1%p2%=%d", params: []interface{}{3, 4}},
-		{expect: "1", format: "%p1%p2%=%!%d", params: []interface{}{3, 4}},
-		{expect: "1", format: "%p1%p2%>%d", params: []interface{}{4, 3}},
-		{expect: "3", format: "%p1%p2%|%d", params: []interface{}{1, 2}},
-		{expect: "2", format: "%p1%p2%&%d", params: []interface{}{2, 3}},
-		{expect: "1", format: "%p1%p2%^%d", params: []interface{}{2, 3}},
-		{expect: "f", format: "%p1%~%{255}%&%x", params: []interface{}{0xf0}},
-		{expect: "%Z", format: "%Z", params: []interface{}{2, 3}}, // unknown sequence
+		{expect: "0a", format: "%p1%02x", params: []any{10}},
+		{expect: "0A", format: "%p1%02X", params: []any{10}},
+		{expect: "A", format: "%p1%c", params: []any{65}},
+		{expect: "A", format: "%'A'%c", params: []any{}},
+		{expect: "65", format: "%'A'%d", params: []any{}},
+		{expect: "7", format: "%i%p1%p2%+%d", params: []any{2, 3}},
+		{expect: "abc", format: "%p1%s", params: []any{"abc"}},
+		{expect: "1%d", format: "1%%d", params: []any{}},
+		{expect: "abc", format: "%p1%s%", params: []any{"abc"}}, // unterminated %
+		{expect: "  abc", format: "%p1%5s", params: []any{"abc"}},
+		{expect: "abc  ", format: "%p1%:-5s", params: []any{"abc"}},
+		{expect: "15", format: "%{3}%p1%*%d", params: []any{5}},
+		{expect: " A", format: "%p1%2c", params: []any{65}},
+		{expect: "4", format: "%p1%l%d", params: []any{"four"}},
+		{expect: "0", format: "%pA%d", params: []any{}}, // missing/invalid parameter
+		{expect: "5", format: "%p1%p2%/%d", params: []any{15, 3}},
+		{expect: "0", format: "%p1%p2%/%d", params: []any{3, 15}},
+		{expect: "0", format: "%p1%p2%/%d", params: []any{3, 0}},
+		{expect: "3", format: "%p1%p2%m%d", params: []any{15, 4}},
+		{expect: "0", format: "%p1%p2%m%d", params: []any{3, 0}},
+		{expect: "2", format: "%p1%Pa%{4}%{3}%ga%d", params: []any{2}},
+		{expect: "2", format: "%p1%PA%{4}%{3}%gA%d", params: []any{2}},
+		{expect: "0", format: "%p1%PA%{4}%{3}%ga%d", params: []any{2}},
+		{expect: "0", format: "%p1%Pz%{4}%{3}%gZ%d", params: []any{2}},
+		{expect: "0", format: "%d", params: []any{}}, // underflow
+		{expect: "", format: "%s", params: []any{}},  // underflow
+		{expect: "1", format: "%p1%p2%=%d", params: []any{3, 3}},
+		{expect: "0", format: "%p1%p2%=%d", params: []any{3, 4}},
+		{expect: "1", format: "%p1%p2%=%!%d", params: []any{3, 4}},
+		{expect: "1", format: "%p1%p2%>%d", params: []any{4, 3}},
+		{expect: "3", format: "%p1%p2%|%d", params: []any{1, 2}},
+		{expect: "2", format: "%p1%p2%&%d", params: []any{2, 3}},
+		{expect: "1", format: "%p1%p2%^%d", params: []any{2, 3}},
+		{expect: "f", format: "%p1%~%{255}%&%x", params: []any{0xf0}},
+		{expect: "%Z", format: "%Z", params: []any{2, 3}}, // unknown sequence
 	}
 
 	for i := range cases {
@@ -121,7 +121,7 @@ func TestTerminfoDelay(t *testing.T) {
 	now := time.Now()
 	ti.TPuts(buf, ti.Blink)
 	then := time.Now()
-	s := string(buf.Bytes())
+	s := buf.String()
 	if s != "\x1b2mssomething" {
 		t.Errorf("Terminfo delay failed: %s", s)
 	}
@@ -148,7 +148,7 @@ func TestStringParameter(t *testing.T) {
 func BenchmarkSetFgBg(b *testing.B) {
 	ti := testTerminfo
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ti.TParm(ti.SetFg, 100, 200)
 		ti.TParm(ti.SetBg, 100, 200)
 	}
