@@ -24,7 +24,6 @@ import (
 	_ "github.com/gdamore/tcell/v2/terminfo/a/aixterm"
 	_ "github.com/gdamore/tcell/v2/terminfo/a/alacritty"
 	_ "github.com/gdamore/tcell/v2/terminfo/a/ansi"
-	_ "github.com/gdamore/tcell/v2/terminfo/b/beterm"
 	_ "github.com/gdamore/tcell/v2/terminfo/c/cygwin"
 	_ "github.com/gdamore/tcell/v2/terminfo/d/dtterm"
 	_ "github.com/gdamore/tcell/v2/terminfo/e/emacs"

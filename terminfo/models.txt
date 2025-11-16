@@ -1,7 +1,6 @@
 aixterm
 alacritty
 ansi
-beterm
 cygwin
 dtterm
 eterm,eterm-color|emacs
