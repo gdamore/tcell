@@ -1,4 +1,7 @@
-// Generated automatically.  DO NOT HAND-EDIT.
+// This file was originally generated automatically,
+// but it is edited to correct for errors in the VT420
+// terminfo data.  Additionally we have added extended
+// information for the extended F-keys.
 
 package vt420
 
@@ -45,12 +48,21 @@ func init() {
 		KeyF2:             "\x1bOQ",
 		KeyF3:             "\x1bOR",
 		KeyF4:             "\x1bOS",
-		KeyF5:             "\x1b[17~",
-		KeyF6:             "\x1b[18~",
-		KeyF7:             "\x1b[19~",
-		KeyF8:             "\x1b[20~",
-		KeyF9:             "\x1b[21~",
-		KeyF10:            "\x1b[29~",
+		KeyF6:             "\x1b[17~",
+		KeyF7:             "\x1b[18~",
+		KeyF8:             "\x1b[19~",
+		KeyF9:             "\x1b[20~",
+		KeyF10:            "\x1b[21~",
+		KeyF11:            "\x1b[23~",
+		KeyF12:            "\x1b[24~",
+		KeyF13:            "\x1b[25~",
+		KeyF14:            "\x1b[26~",
+		KeyF15:            "\x1b[28~",
+		KeyF16:            "\x1b[29~",
+		KeyF17:            "\x1b[31~",
+		KeyF18:            "\x1b[32~",
+		KeyF19:            "\x1b[33~",
+		KeyF20:            "\x1b[34~",
 		AutoMargin:        true,
 	})
 }
