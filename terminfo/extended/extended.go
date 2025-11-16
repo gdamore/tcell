@@ -29,7 +29,6 @@ import (
 	_ "github.com/gdamore/tcell/v2/terminfo/e/emacs"
 	_ "github.com/gdamore/tcell/v2/terminfo/f/foot"
 	_ "github.com/gdamore/tcell/v2/terminfo/g/gnome"
-	_ "github.com/gdamore/tcell/v2/terminfo/h/hpterm"
 	_ "github.com/gdamore/tcell/v2/terminfo/k/konsole"
 	_ "github.com/gdamore/tcell/v2/terminfo/k/kterm"
 	_ "github.com/gdamore/tcell/v2/terminfo/l/linux"
