@@ -1,7 +1,7 @@
 //go:build ignore
 // +build ignore
 
-// Copyright 2019 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gdamore/tcell/v2/encoding"
-	runewidth "github.com/mattn/go-runewidth"
+	"github.com/rivo/uniseg"
 )
 
 var row = 0
@@ -57,7 +57,7 @@ func puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
 			zwj = false
 			continue
 		}
-		switch runewidth.RuneWidth(r) {
+		switch uniseg.StringWidth(string(r)) {
 		case 0:
 			if len(deferred) == 0 {
 				deferred = append(deferred, ' ')

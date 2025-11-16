@@ -15,10 +15,9 @@
 package tcell
 
 import (
-	"os"
 	"slices"
 
-	runewidth "github.com/mattn/go-runewidth"
+	"github.com/rivo/uniseg"
 )
 
 type cell struct {
@@ -84,7 +83,8 @@ func (cb *CellBuffer) SetContent(x int, y int,
 		c.currComb = append(c.currComb[:0], combc...)
 
 		if c.currMain != mainc {
-			c.width = runewidth.RuneWidth(mainc)
+			s := string(mainc) + string(c.currComb)
+			c.width = uniseg.StringWidth(s)
 		}
 		c.currMain = mainc
 		if style.fg == ColorNone {
@@ -242,16 +242,5 @@ func (cb *CellBuffer) Fill(r rune, style Style) {
 		}
 		c.currStyle = cs
 		c.width = 1
-	}
-}
-
-var runeConfig *runewidth.Condition
-
-func init() {
-	// The defaults for the runewidth package are poorly chosen for terminal
-	// applications.  We however will honor the setting in the environment if
-	// it is set.
-	if os.Getenv("RUNEWIDTH_EASTASIAN") == "" {
-		runewidth.DefaultCondition.EastAsianWidth = false
 	}
 }
