@@ -284,6 +284,11 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 		mod = ModNone
 	}
 
+	// Backspace2 is just another name for backspace.
+	if k == KeyBackspace2 {
+		k = KeyBackspace
+	}
+
 	return &EventKey{t: time.Now(), key: k, ch: ch, mod: mod}
 }
 
@@ -415,11 +420,10 @@ const (
 	keyPasteEnd
 )
 
-// These are the control keys.  Note that they overlap with other keys,
-// perhaps.  For example, KeyCtrlH is the same as KeyBackspace.
-//
-// Deprecated: Most of these now are reported using KeyRune and modifiers,
-// or other direct mappings.
+// These are the control keys, they will also be reported with the
+// rune (lower case) and control modifier.  If the shift key
+// or other modifiers are present then these will *NOT* be reported,
+// but reported instead as KeyRune.
 const (
 	KeyCtrlSpace Key = iota + 64
 	KeyCtrlA
@@ -498,10 +502,12 @@ const (
 
 // These keys are aliases for other names.
 const (
-	KeyBackspace  = KeyBS
-	KeyTab        = KeyTAB
-	KeyEsc        = KeyESC
-	KeyEscape     = KeyESC
-	KeyEnter      = KeyCR
+	KeyBackspace = KeyBS
+	KeyTab       = KeyTAB
+	KeyEsc       = KeyESC
+	KeyEscape    = KeyESC
+	KeyEnter     = KeyCR
+
+	// NB: This key will be translated to KeyBackspace
 	KeyBackspace2 = KeyDEL
 )
