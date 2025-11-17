@@ -8,5 +8,5 @@ require (
 	github.com/rivo/uniseg v0.4.7
 	golang.org/x/sys v0.38.0
 	golang.org/x/term v0.36.0
-	golang.org/x/text v0.30.0
+	golang.org/x/text v0.31.0
 )
