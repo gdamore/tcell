@@ -1337,43 +1337,8 @@ func (s *cScreen) GetClipboard() {
 
 func (s *cScreen) Resize(int, int, int, int) {}
 
-func (s *cScreen) HasKey(k Key) bool {
-	// Microsoft has codes for some keys, but they are unusual,
-	// so we don't include them.  We include all the typical
-	// 101, 105 key layout keys.
-	valid := map[Key]bool{
-		KeyBackspace: true,
-		KeyTab:       true,
-		KeyEscape:    true,
-		KeyPause:     true,
-		KeyPrint:     true,
-		KeyPgUp:      true,
-		KeyPgDn:      true,
-		KeyEnter:     true,
-		KeyEnd:       true,
-		KeyHome:      true,
-		KeyLeft:      true,
-		KeyUp:        true,
-		KeyRight:     true,
-		KeyDown:      true,
-		KeyInsert:    true,
-		KeyDelete:    true,
-		KeyF1:        true,
-		KeyF2:        true,
-		KeyF3:        true,
-		KeyF4:        true,
-		KeyF5:        true,
-		KeyF6:        true,
-		KeyF7:        true,
-		KeyF8:        true,
-		KeyF9:        true,
-		KeyF10:       true,
-		KeyF11:       true,
-		KeyF12:       true,
-		KeyRune:      true,
-	}
-
-	return valid[k]
+func (s *cScreen) HasKey(_ Key) bool {
+	return true
 }
 
 func (s *cScreen) Beep() error {

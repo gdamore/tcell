@@ -122,6 +122,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
 		os.Exit(1)
 	}
+
 	s.SetTitle("Tcell Mouse Demonstration")
 	defStyle = tcell.StyleDefault.
 		Background(tcell.ColorReset).
