@@ -397,7 +397,7 @@ func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
 
 func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 	ti := t.ti
-	if ti.Colors == 0 {
+	if t.Colors() == 0 {
 		// foreground vs background, we calculate luminance
 		// and possibly do a reverse video
 		if !fg.Valid() {
@@ -893,6 +893,9 @@ func (t *tScreen) resize() {
 }
 
 func (t *tScreen) Colors() int {
+	if nc := strings.ToLower(os.Getenv("NO_COLOR")); nc == "1" || nc == "true" || nc == "yes" {
+		return 0
+	}
 	// this doesn't change, no need for lock
 	if t.truecolor {
 		return 1 << 24
@@ -904,6 +907,9 @@ func (t *tScreen) Colors() int {
 // This is distinct from Colors(), as it will generally
 // always be a small number. (<= 256)
 func (t *tScreen) nColors() int {
+	if nc := strings.ToLower(os.Getenv("NO_COLOR")); nc == "1" || nc == "true" || nc == "yes" {
+		return 0
+	}
 	return t.ti.Colors
 }
 
