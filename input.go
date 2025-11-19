@@ -311,6 +311,54 @@ var csiUKeys = map[int]Key{
 	// TODO: Media keys
 }
 
+// windows virtual key codes per microsoft
+var winKeys = map[int]Key{
+	0x03: KeyCancel,    // vkCancel
+	0x08: KeyBackspace, // vkBackspace
+	0x09: KeyTab,       // vkTab
+	0x0d: KeyEnter,     // vkReturn
+	0x12: KeyClear,     // vClear
+	0x13: KeyPause,     // vkPause
+	0x1b: KeyEscape,    // vkEscape
+	0x21: KeyPgUp,      // vkPrior
+	0x22: KeyPgDn,      // vkNext
+	0x23: KeyEnd,       // vkEnd
+	0x24: KeyHome,      // vkHome
+	0x25: KeyLeft,      // vkLeft
+	0x26: KeyUp,        // vkUp
+	0x27: KeyRight,     // vkRight
+	0x28: KeyDown,      // vkDown
+	0x2a: KeyPrint,     // vkPrint
+	0x2c: KeyPrint,     // vkPrtScr
+	0x2d: KeyInsert,    // vkInsert
+	0x2e: KeyDelete,    // vkDelete
+	0x2f: KeyHelp,      // vkHelp
+	0x70: KeyF1,        // vkF1
+	0x71: KeyF2,        // vkF2
+	0x72: KeyF3,        // vkF3
+	0x73: KeyF4,        // vkF4
+	0x74: KeyF5,        // vkF5
+	0x75: KeyF6,        // vkF6
+	0x76: KeyF7,        // vkF7
+	0x77: KeyF8,        // vkF8
+	0x78: KeyF9,        // vkF9
+	0x79: KeyF10,       // vkF10
+	0x7a: KeyF11,       // vkF11
+	0x7b: KeyF12,       // vkF12
+	0x7c: KeyF13,       // vkF13
+	0x7d: KeyF14,       // vkF14
+	0x7e: KeyF15,       // vkF15
+	0x7f: KeyF16,       // vkF16
+	0x80: KeyF17,       // vkF17
+	0x81: KeyF18,       // vkF18
+	0x82: KeyF19,       // vkF19
+	0x83: KeyF20,       // vkF20
+	0x84: KeyF21,       // vkF21
+	0x85: KeyF22,       // vkF22
+	0x86: KeyF23,       // vkF23
+	0x87: KeyF24,       // vkF24
+}
+
 // keys by their SS3 - used in application mode usually (legacy VT-style)
 var ss3Keys = map[rune]Key{
 	'A': KeyUp,
@@ -596,6 +644,54 @@ func (ip *inputProcessor) handleMouse(mode rune, params []int) {
 	ip.post(NewEventMouse(x, y, button, mod))
 }
 
+func (ip *inputProcessor) handleWinKey(P []int) {
+	// win32-input-mode
+	//  ^[ [ Vk ; Sc ; Uc ; Kd ; Cs ; Rc _
+	// Vk: the value of wVirtualKeyCode - any number. If omitted, defaults to '0'.
+	// Sc: the value of wVirtualScanCode - any number. If omitted, defaults to '0'.
+	// Uc: the decimal value of UnicodeChar - for example, NUL is "0", LF is
+	//     "10", the character 'A' is "65". If omitted, defaults to '0'.
+	// Kd: the value of bKeyDown - either a '0' or '1'. If omitted, defaults to '0'.
+	// Cs: the value of dwControlKeyState - any number. If omitted, defaults to '0'.
+	// Rc: the value of wRepeatCount - any number. If omitted, defaults to '1'.
+	P = append(P, 0, 0, 0, 0, 0, 0) // ensure sufficient length
+	if P[3] == 0 {
+		// key up event ignore ignore
+		return
+	}
+	key := KeyRune
+	chr := rune(P[2])
+	mod := ModNone
+	rpt := max(1, P[5])
+	if k1, ok := winKeys[P[0]]; ok {
+		chr = 0
+		key = k1
+	}
+
+	// Modifiers
+	if P[4]&0x010 != 0 {
+		mod |= ModShift
+	}
+	if P[4]&0x000c != 0 {
+		mod |= ModCtrl
+	}
+	if P[4]&0x0003 != 0 {
+		mod |= ModAlt
+	}
+	if mod&ModCtrl|ModAlt == ModCtrl&ModAlt {
+		// Filter out ctrl+alt (it means AltGr)
+		mod = ModNone
+	}
+	if key == KeyRune && chr > ' ' && mod == ModShift {
+		// filter out lone shift for printable chars
+		mod = ModNone
+	}
+
+	for range rpt {
+		ip.post(NewEventKey(key, chr, mod))
+	}
+}
+
 func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byte) {
 
 	// reset state
@@ -618,8 +714,10 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 	if pstr != "" && pstr[0] >= '0' && pstr[0] <= '9' {
 		parts = strings.Split(pstr, ";")
 		for i := range parts {
-			if n, e := strconv.ParseInt(parts[i], 10, 32); e == nil {
-				P = append(P, int(n))
+			if parts[i] != "" {
+				if n, e := strconv.ParseInt(parts[i], 10, 32); e == nil {
+					P = append(P, int(n))
+				}
 			}
 		}
 	}
@@ -664,7 +762,10 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 			ip.post(NewEventKey(key, chr, mod))
 		}
 		return
-
+	case '_':
+		if len(intermediate) == 0 && len(P) > 0 {
+			ip.handleWinKey(P)
+		}
 	}
 
 	if ks, ok := csiAllKeys[csiParamMode{M: mode, P: P0}]; ok && !hasLT {
