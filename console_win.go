@@ -216,14 +216,6 @@ func (s *cScreen) Init() error {
 
 	s.truecolor = true
 
-	// ConEmu handling of colors and scrolling when in VT output mode is extremely poor.
-	// The color palette will scroll even though characters do not, when
-	// emitting stuff for the last character.  In the future we might change this to
-	// look at specific versions of ConEmu if they fix the bug.
-	// We can also try disabling auto margin mode.
-	if os.Getenv("ConEmuPID") != "" {
-		s.truecolor = false
-	}
 	switch os.Getenv("TCELL_TRUECOLOR") {
 	case "disable":
 		s.truecolor = false
