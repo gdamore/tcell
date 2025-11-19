@@ -480,10 +480,9 @@ func (ip *inputProcessor) scan() {
 
 func (ip *inputProcessor) handleOsc(str string) {
 	ip.state = inpStateInit
-	if strings.HasPrefix(str, "52;c;") {
-		str = strings.TrimPrefix(str, "52;c;")
-		decoded := make([]byte, base64.StdEncoding.DecodedLen(len(str)))
-		if count, err := base64.StdEncoding.Decode(decoded, []byte(str)); err == nil {
+	if content, ok := strings.CutPrefix(str, "52;c;"); ok {
+		decoded := make([]byte, base64.StdEncoding.DecodedLen(len(content)))
+		if count, err := base64.StdEncoding.Decode(decoded, []byte(content)); err == nil {
 			ip.post(NewEventClipboard(decoded[:count]))
 			return
 		}
