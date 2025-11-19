@@ -331,21 +331,7 @@ func (t *tScreen) prepareExtendedOSC() {
 }
 
 func (t *tScreen) prepareCursorStyles() {
-	// Another workaround for lack of reporting in terminfo.
-	// We assume if the terminal has a mouse entry, that it
-	// offers bracketed paste.  But we allow specific overrides
-	// via our terminal database.
-	if t.ti.CursorDefault != "" {
-		t.cursorStyles = map[CursorStyle]string{
-			CursorStyleDefault:           t.ti.CursorDefault,
-			CursorStyleBlinkingBlock:     t.ti.CursorBlinkingBlock,
-			CursorStyleSteadyBlock:       t.ti.CursorSteadyBlock,
-			CursorStyleBlinkingUnderline: t.ti.CursorBlinkingUnderline,
-			CursorStyleSteadyUnderline:   t.ti.CursorSteadyUnderline,
-			CursorStyleBlinkingBar:       t.ti.CursorBlinkingBar,
-			CursorStyleSteadyBar:         t.ti.CursorSteadyBar,
-		}
-	} else if t.ti.Mouse != "" || t.ti.XTermLike {
+	if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.cursorStyles = map[CursorStyle]string{
 			CursorStyleDefault:           "\x1b[0 q",
 			CursorStyleBlinkingBlock:     "\x1b[1 q",
@@ -355,21 +341,11 @@ func (t *tScreen) prepareCursorStyles() {
 			CursorStyleBlinkingBar:       "\x1b[5 q",
 			CursorStyleSteadyBar:         "\x1b[6 q",
 		}
+		if t.cursorRGB == "" {
+			t.cursorRGB = "\x1b]12;#%p1%02x%p2%02x%p3%02x\007"
+			t.cursorFg = "\x1b]112\007"
+		}
 	}
-	if t.ti.CursorColorRGB != "" {
-		// if it was X11 style with just a single %p1%s, then convert
-		t.cursorRGB = t.ti.CursorColorRGB
-	}
-	if t.ti.CursorColorReset != "" {
-		t.cursorFg = t.ti.CursorColorReset
-	}
-	if t.cursorRGB == "" {
-		t.cursorRGB = "\x1b]12;%p1%s\007"
-		t.cursorFg = "\x1b]112\007"
-	}
-
-	// convert XTERM style color names to RGB color code.  We have no way to do palette colors
-	t.cursorRGB = strings.Replace(t.cursorRGB, "%p1%s", "#%p1%02x%p2%02x%p3%02x", 1)
 }
 
 func (t *tScreen) prepareKeys() {
