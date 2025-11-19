@@ -85,37 +85,6 @@ type Terminfo struct {
 	SetFgBgRGB              string // setfgbgrgb
 	SetFgRGB                string // setfrgb
 	SetBgRGB                string // setbrgb
-	KeyShfUp                string // shift-up
-	KeyShfDown              string // shift-down
-	KeyShfPgUp              string // shift-kpp
-	KeyShfPgDn              string // shift-knp
-	KeyCtrlUp               string // ctrl-up
-	KeyCtrlDown             string // ctrl-left
-	KeyCtrlRight            string // ctrl-right
-	KeyCtrlHome             string
-	KeyCtrlEnd              string
-	KeyMetaHome             string
-	KeyMetaEnd              string
-	KeyAltHome              string
-	KeyAltEnd               string
-	KeyAltShfUp             string
-	KeyAltShfDown           string
-	KeyAltShfLeft           string
-	KeyAltShfRight          string
-	KeyMetaShfUp            string
-	KeyMetaShfDown          string
-	KeyMetaShfLeft          string
-	KeyMetaShfRight         string
-	KeyCtrlShfUp            string
-	KeyCtrlShfDown          string
-	KeyCtrlShfLeft          string
-	KeyCtrlShfRight         string
-	KeyCtrlShfHome          string
-	KeyCtrlShfEnd           string
-	KeyAltShfHome           string
-	KeyAltShfEnd            string
-	KeyMetaShfHome          string
-	KeyMetaShfEnd           string
 	EnablePaste             string // bracketed paste mode
 	DisablePaste            string
 	PasteStart              string
