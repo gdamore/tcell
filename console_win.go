@@ -1257,18 +1257,18 @@ func (s *cScreen) clearScreen(style Style, vtEnable bool) {
 
 const (
 	// Input modes
-	modeExtendFlg uint32 = 0x0080
-	modeMouseEn          = 0x0010
-	modeResizeEn         = 0x0008
-	// modeCooked          = 0x0001
-	// modeVtInput         = 0x0200
+	modeExtendFlg = uint32(0x0080)
+	modeMouseEn   = uint32(0x0010)
+	modeResizeEn  = uint32(0x0008)
+	// modeCooked    = uint32(0x0001)
+	// modeVtInput   = uint32(0x0200)
 
 	// Output modes
-	modeCookedOut uint32 = 0x0001
-	modeVtOutput         = 0x0004
-	modeNoAutoNL         = 0x0008
-	modeUnderline        = 0x0010 // ENABLE_LVB_GRID_WORLDWIDE, needed for underlines
-	// modeWrapEOL          = 0x0002
+	modeCookedOut = uint32(0x0001)
+	modeVtOutput  = uint32(0x0004)
+	modeNoAutoNL  = uint32(0x0008)
+	modeUnderline = uint32(0x0010) // ENABLE_LVB_GRID_WORLDWIDE, needed for underlines
+	// modeWrapEOL   = uint32(0x0002)
 )
 
 func (s *cScreen) setInMode(mode uint32) {
