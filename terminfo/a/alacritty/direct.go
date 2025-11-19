@@ -38,7 +38,6 @@ func init() {
 		SetCursor:     "\x1b[%i%p1%d;%p2%dH",
 		CursorBack1:   "\b",
 		CursorUp1:     "\x1b[A",
-		Modifiers:     1,
 		TrueColor:     true,
 		AutoMargin:    true,
 	})

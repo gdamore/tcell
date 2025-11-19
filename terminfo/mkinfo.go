@@ -246,8 +246,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.EnableAutoMargin = tc.getstr("smam")
 	t.DisableAutoMargin = tc.getstr("rmam")
 
-	t.Modifiers = terminfo.ModifiersNone
-
 	// Technically the RGB flag that is provided for xterm-direct is not
 	// quite right.  The problem is that the -direct flag that was introduced
 	// with ncurses 6.1 requires a parsing for the parameters that we lack.
@@ -409,9 +407,6 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "SetCursor", t.SetCursor)
 		dotGoAddStr(w, "CursorBack1", t.CursorBack1)
 		dotGoAddStr(w, "CursorUp1", t.CursorUp1)
-		// Extended keys.  We don't report these if they are going to be
-		// handled as if they were XTerm sequences.
-		dotGoAddInt(w, "Modifiers", t.Modifiers)
 		dotGoAddFlag(w, "TrueColor", t.TrueColor)
 		dotGoAddFlag(w, "AutoMargin", t.AutoMargin)
 		dotGoAddStr(w, "InsertChar", t.InsertChar)

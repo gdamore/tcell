@@ -152,11 +152,6 @@ type Terminfo struct {
 	XTermLike               bool   // (XT) has XTerm extensions
 }
 
-const (
-	ModifiersNone  = 0
-	ModifiersXTerm = 1
-)
-
 type stack []any
 
 func (st stack) Push(v any) stack {
