@@ -405,13 +405,7 @@ func (ip *inputProcessor) scan() {
 				ip.state = inpStateInit
 				ip.post(NewEventKey(KeyBacktab, 0, ModNone))
 			default:
-				if r >= 0x30 && r <= 0x3F {
-					// Fp case. We ignore for now (no known uses)
-					ip.state = inpStateInit
-				} else if r >= 0x60 && r <= 0x7E {
-					// Fs case, We ignore for now (no known uses)
-					ip.state = inpStateInit
-				} else if r == '\x1b' {
+				if r == '\x1b' {
 					// leading ESC to capture alt
 					ip.escaped = true
 				} else {
