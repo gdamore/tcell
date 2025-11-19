@@ -1,6 +1,3 @@
-//go:build js || wasm
-// +build js wasm
-
 // Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +14,17 @@
 
 package tcell
 
-import "github.com/rivo/uniseg"
+import (
+	"os"
+	"strings"
+
+	"github.com/rivo/uniseg"
+)
 
 func init() {
-	uniseg.EastAsianAmbiguousWidth = 1
+	if rw := strings.ToLower(os.Getenv("RUNEWIDTH_EASTASIAN")); rw == "1" || rw == "true" || rw == "yes" {
+		uniseg.EastAsianAmbiguousWidth = 2
+	} else {
+		uniseg.EastAsianAmbiguousWidth = 1
+	}
 }
