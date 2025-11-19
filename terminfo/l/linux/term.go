@@ -33,8 +33,6 @@ func init() {
 		DisableAutoMargin: "\x1b[?7l",
 		Mouse:             "\x1b[M",
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
-		CursorBack1:       "\b",
-		CursorUp1:         "\x1b[A",
 		AutoMargin:        true,
 		InsertChar:        "\x1b[@",
 	})

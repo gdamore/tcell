@@ -65,8 +65,6 @@ type Terminfo struct {
 	SetBg       string // setab
 	ResetFgBg   string // op
 	SetCursor   string // cup
-	CursorBack1 string // cub1
-	CursorUp1   string // cuu1
 	PadChar     string // pad
 	Mouse       string // kmous
 	AltChars    string // acsc

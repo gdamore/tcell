@@ -33,8 +33,6 @@ func init() {
 		EnableAutoMargin:  "\x1b[?7h",
 		DisableAutoMargin: "\x1b[?7l",
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH$<10>",
-		CursorBack1:       "\b",
-		CursorUp1:         "\x1b[A",
 		AutoMargin:        true,
 	})
 }

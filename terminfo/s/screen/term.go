@@ -37,8 +37,6 @@ func init() {
 		EnableAcs:   "\x1b(B\x1b)0",
 		Mouse:       "\x1b[M",
 		SetCursor:   "\x1b[%i%p1%d;%p2%dH",
-		CursorBack1: "\b",
-		CursorUp1:   "\x1bM",
 		AutoMargin:  true,
 	})
 
@@ -73,8 +71,6 @@ func init() {
 		EnableAcs:   "\x1b(B\x1b)0",
 		Mouse:       "\x1b[M",
 		SetCursor:   "\x1b[%i%p1%d;%p2%dH",
-		CursorBack1: "\b",
-		CursorUp1:   "\x1bM",
 		AutoMargin:  true,
 	})
 }

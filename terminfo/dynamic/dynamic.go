@@ -210,8 +210,6 @@ func LoadTerminfo(name string) (*terminfo.Terminfo, string, error) {
 	t.SetFg = tc.getstr("setaf")
 	t.SetBg = tc.getstr("setab")
 	t.SetCursor = tc.getstr("cup")
-	t.CursorBack1 = tc.getstr("cub1")
-	t.CursorUp1 = tc.getstr("cuu1")
 	t.AltChars = tc.getstr("acsc")
 	t.EnterAcs = tc.getstr("smacs")
 	t.ExitAcs = tc.getstr("rmacs")

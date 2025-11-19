@@ -39,8 +39,6 @@ func init() {
 		StrikeThrough:     "\x1b[9m",
 		Mouse:             "\x1b[<",
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
-		CursorBack1:       "\b",
-		CursorUp1:         "\x1b[A",
 		AutoMargin:        true,
 		DoubleUnderline:   "\x1b[4:2m",
 		CurlyUnderline:    "\x1b[4:3m",
