@@ -85,8 +85,6 @@ type Terminfo struct {
 	InsertChar        string // string to insert a character (ich1)
 	AutoMargin        bool   // true if writing to last cell in line advances
 	TrueColor         bool   // true if the terminal supports direct color
-	EnterUrl          string
-	ExitUrl           string
 	DisableAutoMargin string // smam
 	EnableAutoMargin  string // rmam
 	XTermLike         bool   // (XT) has XTerm extensions

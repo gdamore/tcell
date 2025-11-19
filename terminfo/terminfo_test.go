@@ -35,7 +35,7 @@ var testTerminfo = &Terminfo{
 	Mouse:     "\x1b[M",
 	SetCursor: "\x1b[%i%p1%d;%p2%dH",
 	PadChar:   "\x00",
-	EnterUrl:  "\x1b]8;%p2%s;%p1%s\x1b\\",
+	XTermLike: true,
 }
 
 func TestTerminfoExpansion(t *testing.T) {
@@ -134,11 +134,13 @@ func TestTerminfoDelay(t *testing.T) {
 
 func TestStringParameter(t *testing.T) {
 	ti := testTerminfo
-	s := ti.TParm(ti.EnterUrl, "https://example.org/test")
+	enterUrl := "\x1b]8;%p2%s;%p1%s\x1b\\"
+
+	s := ti.TParm(enterUrl, "https://example.org/test")
 	if s != "\x1b]8;;https://example.org/test\x1b\\" {
 		t.Errorf("Result string failed: %s", s)
 	}
-	s = ti.TParm(ti.EnterUrl, "https://example.org/test", "id=1234")
+	s = ti.TParm(enterUrl, "https://example.org/test", "id=1234")
 	if s != "\x1b]8;id=1234;https://example.org/test\x1b\\" {
 		t.Errorf("Result string failed: %s", s)
 	}

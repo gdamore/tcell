@@ -275,10 +275,7 @@ func (t *tScreen) prepareExtendedOSC() {
 	// the most common OSC (operating system commands).  Generally
 	// terminals that don't understand these will ignore them.
 	// Again, we condition this based on mouse capabilities.
-	if t.ti.EnterUrl != "" {
-		t.enterUrl = t.ti.EnterUrl
-		t.exitUrl = t.ti.ExitUrl
-	} else if t.ti.Mouse != "" || t.ti.XTermLike {
+	if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.enterUrl = "\x1b]8;%p2%s;%p1%s\x1b\\"
 		t.exitUrl = "\x1b]8;;\x1b\\"
 	}
