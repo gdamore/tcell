@@ -283,26 +283,16 @@ func (t *tScreen) prepareExtendedOSC() {
 		t.exitUrl = "\x1b]8;;\x1b\\"
 	}
 
-	if t.ti.SetWindowSize != "" {
-		t.setWinSize = t.ti.SetWindowSize
-	} else if t.ti.Mouse != "" || t.ti.XTermLike {
+	if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.setWinSize = "\x1b[8;%p1%p2%d;%dt"
 	}
 
-	if t.ti.EnableFocusReporting != "" {
-		t.enableFocus = t.ti.EnableFocusReporting
-	} else if t.ti.Mouse != "" || t.ti.XTermLike {
+	if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.enableFocus = "\x1b[?1004h"
-	}
-	if t.ti.DisableFocusReporting != "" {
-		t.disableFocus = t.ti.DisableFocusReporting
-	} else if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.disableFocus = "\x1b[?1004l"
 	}
 
-	if t.ti.SetWindowTitle != "" {
-		t.setTitle = t.ti.SetWindowTitle
-	} else if t.ti.XTermLike {
+	if t.ti.XTermLike {
 		t.saveTitle = "\x1b[22;2t"
 		t.restoreTitle = "\x1b[23;2t"
 		// this also tries to request that UTF-8 is allowed in the title

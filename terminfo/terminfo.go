@@ -77,23 +77,19 @@ type Terminfo struct {
 	// Terminal support for these are going to vary amongst XTerm
 	// emulations, so don't depend too much on them in your application.
 
-	StrikeThrough         string // smxx
-	SetFgBg               string // setfgbg
-	SetFgBgRGB            string // setfgbgrgb
-	SetFgRGB              string // setfrgb
-	SetBgRGB              string // setbrgb
-	InsertChar            string // string to insert a character (ich1)
-	AutoMargin            bool   // true if writing to last cell in line advances
-	TrueColor             bool   // true if the terminal supports direct color
-	EnterUrl              string
-	ExitUrl               string
-	SetWindowSize         string
-	SetWindowTitle        string // no terminfo extension
-	EnableFocusReporting  string
-	DisableFocusReporting string
-	DisableAutoMargin     string // smam
-	EnableAutoMargin      string // rmam
-	XTermLike             bool   // (XT) has XTerm extensions
+	StrikeThrough     string // smxx
+	SetFgBg           string // setfgbg
+	SetFgBgRGB        string // setfgbgrgb
+	SetFgRGB          string // setfrgb
+	SetBgRGB          string // setbrgb
+	InsertChar        string // string to insert a character (ich1)
+	AutoMargin        bool   // true if writing to last cell in line advances
+	TrueColor         bool   // true if the terminal supports direct color
+	EnterUrl          string
+	ExitUrl           string
+	DisableAutoMargin string // smam
+	EnableAutoMargin  string // rmam
+	XTermLike         bool   // (XT) has XTerm extensions
 }
 
 type stack []any
