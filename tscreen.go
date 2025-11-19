@@ -150,7 +150,7 @@ type tScreen struct {
 	dashedUnder  string
 	underColor   string
 	underRGB     string
-	underFg      string
+	underFg      string // reset underline color to foreground
 	cursorStyles map[CursorStyle]string
 	cursorStyle  CursorStyle
 	cursorColor  Color
@@ -247,59 +247,20 @@ func (t *tScreen) prepareBracketedPaste() {
 	// We assume if the terminal has a mouse entry, that it
 	// offers bracketed paste.  But we allow specific overrides
 	// via our terminal database.
-	if t.ti.EnablePaste != "" {
-		t.enablePaste = t.ti.EnablePaste
-		t.disablePaste = t.ti.DisablePaste
-	} else if t.ti.Mouse != "" || t.ti.XTermLike {
+	if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.enablePaste = "\x1b[?2004h"
 		t.disablePaste = "\x1b[?2004l"
 	}
 }
 
 func (t *tScreen) prepareUnderlines() {
-	if t.ti.DoubleUnderline != "" {
-		t.doubleUnder = t.ti.DoubleUnderline
-	} else if t.ti.XTermLike {
+	if t.ti.XTermLike {
 		t.doubleUnder = "\x1b[4:2m"
-	}
-	if t.ti.CurlyUnderline != "" {
-		t.curlyUnder = t.ti.CurlyUnderline
-	} else if t.ti.XTermLike {
 		t.curlyUnder = "\x1b[4:3m"
-	}
-	if t.ti.DottedUnderline != "" {
-		t.dottedUnder = t.ti.DottedUnderline
-	} else if t.ti.XTermLike {
 		t.dottedUnder = "\x1b[4:4m"
-	}
-	if t.ti.DashedUnderline != "" {
-		t.dashedUnder = t.ti.DashedUnderline
-	} else if t.ti.XTermLike {
 		t.dashedUnder = "\x1b[4:5m"
-	}
-
-	// Underline colors.  We're not going to rely upon terminfo for this
-	// Essentially all terminals that support the curly underlines are
-	// expected to also support coloring them too - which reflects actual
-	// practice since these were introduced at about the same time.
-	if t.ti.UnderlineColor != "" {
-		t.underColor = t.ti.UnderlineColor
-	} else if t.curlyUnder != "" {
 		t.underColor = "\x1b[58:5:%p1%dm"
-	}
-	if t.ti.UnderlineColorRGB != "" {
-		// An interesting wart here is that in order to facilitate
-		// using just a single parameter, the Setulc parameter takes
-		// the 24-bit color as an integer rather than separate bytes.
-		// This matches the "new" style direct color approach that
-		// ncurses took, even though everyone else went another way.
-		t.underRGB = t.ti.UnderlineColorRGB
-	} else if t.underColor != "" {
 		t.underRGB = "\x1b[58:2::%p1%d:%p2%d:%p3%dm"
-	}
-	if t.ti.UnderlineColorReset != "" {
-		t.underFg = t.ti.UnderlineColorReset
-	} else if t.curlyUnder != "" {
 		t.underFg = "\x1b[59m"
 	}
 }

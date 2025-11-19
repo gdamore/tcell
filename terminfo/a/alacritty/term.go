@@ -39,10 +39,6 @@ func init() {
 		Mouse:             "\x1b[<",
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
 		AutoMargin:        true,
-		DoubleUnderline:   "\x1b[4:2m",
-		CurlyUnderline:    "\x1b[4:3m",
-		DottedUnderline:   "\x1b[4:4m",
-		DashedUnderline:   "\x1b[4:5m",
 		XTermLike:         true,
 	})
 }

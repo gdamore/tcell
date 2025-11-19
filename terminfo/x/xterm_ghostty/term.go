@@ -42,10 +42,6 @@ func init() {
 		TrueColor:         true,
 		AutoMargin:        true,
 		InsertChar:        "\x1b[@",
-		DoubleUnderline:   "\x1b[4:2m",
-		CurlyUnderline:    "\x1b[4:3m",
-		DottedUnderline:   "\x1b[4:4m",
-		DashedUnderline:   "\x1b[4:5m",
 		XTermLike:         true,
 	})
 }

@@ -39,9 +39,6 @@ func init() {
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
 		TrueColor:         true,
 		AutoMargin:        true,
-		DoubleUnderline:   "\x1b[4:2m",
-		CurlyUnderline:    "\x1b[4:3m",
-		DottedUnderline:   "\x1b[4:4m",
-		DashedUnderline:   "\x1b[4:5m",
+		XTermLike:         true,
 	})
 }

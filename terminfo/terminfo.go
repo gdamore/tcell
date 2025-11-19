@@ -82,11 +82,6 @@ type Terminfo struct {
 	SetFgBgRGB              string // setfgbgrgb
 	SetFgRGB                string // setfrgb
 	SetBgRGB                string // setbrgb
-	EnablePaste             string // bracketed paste mode
-	DisablePaste            string
-	PasteStart              string
-	PasteEnd                string
-	Modifiers               int
 	InsertChar              string // string to insert a character (ich1)
 	AutoMargin              bool   // true if writing to last cell in line advances
 	TrueColor               bool   // true if the terminal supports direct color
@@ -108,13 +103,6 @@ type Terminfo struct {
 	DisableFocusReporting   string
 	DisableAutoMargin       string // smam
 	EnableAutoMargin        string // rmam
-	DoubleUnderline         string // Smulx with param 2
-	CurlyUnderline          string // Smulx with param 3
-	DottedUnderline         string // Smulx with param 4
-	DashedUnderline         string // Smulx with param 5
-	UnderlineColor          string // Setuc1
-	UnderlineColorRGB       string // Setulc
-	UnderlineColorReset     string // ol
 	XTermLike               bool   // (XT) has XTerm extensions
 }
 
