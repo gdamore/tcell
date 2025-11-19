@@ -41,125 +41,38 @@ var (
 // in Go, but when we write out JSON, we use the same names as terminfo.
 // The name, aliases and smous, rmous fields do not come from terminfo directly.
 type Terminfo struct {
-	Name         string
-	Aliases      []string
-	Columns      int    // cols
-	Lines        int    // lines
-	Colors       int    // colors
-	Bell         string // bell
-	Clear        string // clear
-	EnterCA      string // smcup
-	ExitCA       string // rmcup
-	ShowCursor   string // cnorm
-	HideCursor   string // civis
-	AttrOff      string // sgr0
-	Underline    string // smul
-	Bold         string // bold
-	Blink        string // blink
-	Reverse      string // rev
-	Dim          string // dim
-	Italic       string // sitm
-	EnterKeypad  string // smkx
-	ExitKeypad   string // rmkx
-	SetFg        string // setaf
-	SetBg        string // setab
-	ResetFgBg    string // op
-	SetCursor    string // cup
-	CursorBack1  string // cub1
-	CursorUp1    string // cuu1
-	PadChar      string // pad
-	KeyBackspace string // kbs
-	KeyF1        string // kf1
-	KeyF2        string // kf2
-	KeyF3        string // kf3
-	KeyF4        string // kf4
-	KeyF5        string // kf5
-	KeyF6        string // kf6
-	KeyF7        string // kf7
-	KeyF8        string // kf8
-	KeyF9        string // kf9
-	KeyF10       string // kf10
-	KeyF11       string // kf11
-	KeyF12       string // kf12
-	KeyF13       string // kf13
-	KeyF14       string // kf14
-	KeyF15       string // kf15
-	KeyF16       string // kf16
-	KeyF17       string // kf17
-	KeyF18       string // kf18
-	KeyF19       string // kf19
-	KeyF20       string // kf20
-	KeyF21       string // kf21
-	KeyF22       string // kf22
-	KeyF23       string // kf23
-	KeyF24       string // kf24
-	KeyF25       string // kf25
-	KeyF26       string // kf26
-	KeyF27       string // kf27
-	KeyF28       string // kf28
-	KeyF29       string // kf29
-	KeyF30       string // kf30
-	KeyF31       string // kf31
-	KeyF32       string // kf32
-	KeyF33       string // kf33
-	KeyF34       string // kf34
-	KeyF35       string // kf35
-	KeyF36       string // kf36
-	KeyF37       string // kf37
-	KeyF38       string // kf38
-	KeyF39       string // kf39
-	KeyF40       string // kf40
-	KeyF41       string // kf41
-	KeyF42       string // kf42
-	KeyF43       string // kf43
-	KeyF44       string // kf44
-	KeyF45       string // kf45
-	KeyF46       string // kf46
-	KeyF47       string // kf47
-	KeyF48       string // kf48
-	KeyF49       string // kf49
-	KeyF50       string // kf50
-	KeyF51       string // kf51
-	KeyF52       string // kf52
-	KeyF53       string // kf53
-	KeyF54       string // kf54
-	KeyF55       string // kf55
-	KeyF56       string // kf56
-	KeyF57       string // kf57
-	KeyF58       string // kf58
-	KeyF59       string // kf59
-	KeyF60       string // kf60
-	KeyF61       string // kf61
-	KeyF62       string // kf62
-	KeyF63       string // kf63
-	KeyF64       string // kf64
-	KeyInsert    string // kich1
-	KeyDelete    string // kdch1
-	KeyHome      string // khome
-	KeyEnd       string // kend
-	KeyHelp      string // khlp
-	KeyPgUp      string // kpp
-	KeyPgDn      string // knp
-	KeyUp        string // kcuu1
-	KeyDown      string // kcud1
-	KeyLeft      string // kcub1
-	KeyRight     string // kcuf1
-	KeyBacktab   string // kcbt
-	KeyExit      string // kext
-	KeyClear     string // kclr
-	KeyPrint     string // kprt
-	KeyCancel    string // kcan
-	Mouse        string // kmous
-	AltChars     string // acsc
-	EnterAcs     string // smacs
-	ExitAcs      string // rmacs
-	EnableAcs    string // enacs
-	KeyShfRight  string // kRIT
-	KeyShfLeft   string // kLFT
-	KeyShfHome   string // kHOM
-	KeyShfEnd    string // kEND
-	KeyShfInsert string // kIC
-	KeyShfDelete string // kDC
+	Name        string
+	Aliases     []string
+	Columns     int    // cols
+	Lines       int    // lines
+	Colors      int    // colors
+	Bell        string // bell
+	Clear       string // clear
+	EnterCA     string // smcup
+	ExitCA      string // rmcup
+	ShowCursor  string // cnorm
+	HideCursor  string // civis
+	AttrOff     string // sgr0
+	Underline   string // smul
+	Bold        string // bold
+	Blink       string // blink
+	Reverse     string // rev
+	Dim         string // dim
+	Italic      string // sitm
+	EnterKeypad string // smkx
+	ExitKeypad  string // rmkx
+	SetFg       string // setaf
+	SetBg       string // setab
+	ResetFgBg   string // op
+	SetCursor   string // cup
+	CursorBack1 string // cub1
+	CursorUp1   string // cuu1
+	PadChar     string // pad
+	Mouse       string // kmous
+	AltChars    string // acsc
+	EnterAcs    string // smacs
+	ExitAcs     string // rmacs
+	EnableAcs   string // enacs
 
 	// These are non-standard extensions to terminfo.  This includes
 	// true color support, and some additional keys.  Its kind of bizarre
@@ -179,15 +92,6 @@ type Terminfo struct {
 	KeyCtrlUp               string // ctrl-up
 	KeyCtrlDown             string // ctrl-left
 	KeyCtrlRight            string // ctrl-right
-	KeyCtrlLeft             string // ctrl-left
-	KeyMetaUp               string // meta-up
-	KeyMetaDown             string // meta-left
-	KeyMetaRight            string // meta-right
-	KeyMetaLeft             string // meta-left
-	KeyAltUp                string // alt-up
-	KeyAltDown              string // alt-left
-	KeyAltRight             string // alt-right
-	KeyAltLeft              string // alt-left
 	KeyCtrlHome             string
 	KeyCtrlEnd              string
 	KeyMetaHome             string
@@ -682,19 +586,6 @@ var (
 // AddTerminfo can be called to register a new Terminfo entry.
 func AddTerminfo(t *Terminfo) {
 	dblock.Lock()
-
-	// We intrinisically handle Backspace as either \b or \x7F
-	// We'll probably remove these terminfo definitions in the future
-	// as they just lead to extra pain.
-	if t.KeyBackspace == "\b" || t.KeyBackspace == "\x7F" {
-		t.KeyBackspace = ""
-	}
-
-	// sun mistakenly calls this delete, but it is really
-	// a backspace, not a forward delete.
-	if t.KeyDelete == "\x7F" || t.KeyDelete == "\b" {
-		t.KeyDelete = ""
-	}
 
 	terminfos[t.Name] = t
 	for _, x := range t.Aliases {

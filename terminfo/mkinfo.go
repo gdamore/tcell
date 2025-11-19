@@ -161,9 +161,7 @@ func (tc *termcap) setupterm(name string) error {
 		lines = lines[:len(lines)-1]
 	}
 	header := lines[0]
-	if strings.HasSuffix(header, ",") {
-		header = header[:len(header)-1]
-	}
+	header = strings.TrimSuffix(header, ",")
 	names := strings.Split(header, "|")
 	tc.name = names[0]
 	names = names[1:]
@@ -204,9 +202,7 @@ func (tc *termcap) setupterm(name string) error {
 func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	var tc termcap
 	if err := tc.setupterm(name); err != nil {
-		if err != nil {
-			return nil, "", err
-		}
+		return nil, "", err
 	}
 	t := &terminfo.Terminfo{}
 	// If this is an alias record, then just emit the alias
@@ -241,35 +237,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.CursorUp1 = tc.getstr("cuu1")
 	t.InsertChar = tc.getstr("ich1")
 	t.AutoMargin = tc.getflag("am")
-	t.KeyF1 = tc.getstr("kf1")
-	t.KeyF2 = tc.getstr("kf2")
-	t.KeyF3 = tc.getstr("kf3")
-	t.KeyF4 = tc.getstr("kf4")
-	t.KeyF5 = tc.getstr("kf5")
-	t.KeyF6 = tc.getstr("kf6")
-	t.KeyF7 = tc.getstr("kf7")
-	t.KeyF8 = tc.getstr("kf8")
-	t.KeyF9 = tc.getstr("kf9")
-	t.KeyF10 = tc.getstr("kf10")
-	t.KeyF11 = tc.getstr("kf11")
-	t.KeyF12 = tc.getstr("kf12")
-	t.KeyInsert = tc.getstr("kich1")
-	t.KeyDelete = tc.getstr("kdch1")
-	t.KeyBackspace = tc.getstr("kbs")
-	t.KeyHome = tc.getstr("khome")
-	t.KeyEnd = tc.getstr("kend")
-	t.KeyUp = tc.getstr("kcuu1")
-	t.KeyDown = tc.getstr("kcud1")
-	t.KeyRight = tc.getstr("kcuf1")
-	t.KeyLeft = tc.getstr("kcub1")
-	t.KeyPgDn = tc.getstr("knp")
-	t.KeyPgUp = tc.getstr("kpp")
-	t.KeyBacktab = tc.getstr("kcbt")
-	t.KeyExit = tc.getstr("kext")
-	t.KeyCancel = tc.getstr("kcan")
-	t.KeyPrint = tc.getstr("kprt")
-	t.KeyHelp = tc.getstr("khlp")
-	t.KeyClear = tc.getstr("kclr")
 	t.AltChars = tc.getstr("acsc")
 	t.EnterAcs = tc.getstr("smacs")
 	t.ExitAcs = tc.getstr("rmacs")
@@ -280,94 +247,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.DisableAutoMargin = tc.getstr("rmam")
 
 	t.Modifiers = terminfo.ModifiersNone
-
-	// Terminfo lacks descriptions for a bunch of modified keys,
-	// but modern XTerm and emulators often have them. We detect
-	// this based on compatible definitions for shifted right.
-	// We also choose to use our modifiers for function keys --
-	// the terminfo entries list these all as higher coded escape
-	// keys, but it's nicer to match them to modifiers.
-	if tc.getstr("kRIT") == "\x1b[1;2C" {
-		t.Modifiers = terminfo.ModifiersXTerm
-	} else {
-		// Lookup high level function keys.
-		t.KeyShfInsert = tc.getstr("kIC")
-		t.KeyShfDelete = tc.getstr("kDC")
-		t.KeyShfRight = tc.getstr("kRIT")
-		t.KeyShfLeft = tc.getstr("kLFT")
-		t.KeyShfHome = tc.getstr("kHOM")
-		t.KeyShfEnd = tc.getstr("kEND")
-		t.KeyF13 = tc.getstr("kf13")
-		t.KeyF14 = tc.getstr("kf14")
-		t.KeyF15 = tc.getstr("kf15")
-		t.KeyF16 = tc.getstr("kf16")
-		t.KeyF17 = tc.getstr("kf17")
-		t.KeyF18 = tc.getstr("kf18")
-		t.KeyF19 = tc.getstr("kf19")
-		t.KeyF20 = tc.getstr("kf20")
-		t.KeyF21 = tc.getstr("kf21")
-		t.KeyF22 = tc.getstr("kf22")
-		t.KeyF23 = tc.getstr("kf23")
-		t.KeyF24 = tc.getstr("kf24")
-		t.KeyF25 = tc.getstr("kf25")
-		t.KeyF26 = tc.getstr("kf26")
-		t.KeyF27 = tc.getstr("kf27")
-		t.KeyF28 = tc.getstr("kf28")
-		t.KeyF29 = tc.getstr("kf29")
-		t.KeyF30 = tc.getstr("kf30")
-		t.KeyF31 = tc.getstr("kf31")
-		t.KeyF32 = tc.getstr("kf32")
-		t.KeyF33 = tc.getstr("kf33")
-		t.KeyF34 = tc.getstr("kf34")
-		t.KeyF35 = tc.getstr("kf35")
-		t.KeyF36 = tc.getstr("kf36")
-		t.KeyF37 = tc.getstr("kf37")
-		t.KeyF38 = tc.getstr("kf38")
-		t.KeyF39 = tc.getstr("kf39")
-		t.KeyF40 = tc.getstr("kf40")
-		t.KeyF41 = tc.getstr("kf41")
-		t.KeyF42 = tc.getstr("kf42")
-		t.KeyF43 = tc.getstr("kf43")
-		t.KeyF44 = tc.getstr("kf44")
-		t.KeyF45 = tc.getstr("kf45")
-		t.KeyF46 = tc.getstr("kf46")
-		t.KeyF47 = tc.getstr("kf47")
-		t.KeyF48 = tc.getstr("kf48")
-		t.KeyF49 = tc.getstr("kf49")
-		t.KeyF50 = tc.getstr("kf50")
-		t.KeyF51 = tc.getstr("kf51")
-		t.KeyF52 = tc.getstr("kf52")
-		t.KeyF53 = tc.getstr("kf53")
-		t.KeyF54 = tc.getstr("kf54")
-		t.KeyF55 = tc.getstr("kf55")
-		t.KeyF56 = tc.getstr("kf56")
-		t.KeyF57 = tc.getstr("kf57")
-		t.KeyF58 = tc.getstr("kf58")
-		t.KeyF59 = tc.getstr("kf59")
-		t.KeyF60 = tc.getstr("kf60")
-		t.KeyF61 = tc.getstr("kf61")
-		t.KeyF62 = tc.getstr("kf62")
-		t.KeyF63 = tc.getstr("kf63")
-		t.KeyF64 = tc.getstr("kf64")
-	}
-
-	// And the same thing for rxvt.
-	// It seems that urxvt at least send ESC as ALT prefix for these,
-	// although some places seem to indicate a separate ALT key sequence.
-	// Users are encouraged to update to an emulator that more closely
-	// matches xterm for better functionality.
-	if t.KeyShfRight == "\x1b[c" && t.KeyShfLeft == "\x1b[d" {
-		t.KeyShfUp = "\x1b[a"
-		t.KeyShfDown = "\x1b[b"
-		t.KeyCtrlUp = "\x1b[Oa"
-		t.KeyCtrlDown = "\x1b[Ob"
-		t.KeyCtrlRight = "\x1b[Oc"
-		t.KeyCtrlLeft = "\x1b[Od"
-	}
-	if t.KeyShfHome == "\x1b[7$" && t.KeyShfEnd == "\x1b[8$" {
-		t.KeyCtrlHome = "\x1b[7^"
-		t.KeyCtrlEnd = "\x1b[8^"
-	}
 
 	// Technically the RGB flag that is provided for xterm-direct is not
 	// quite right.  The problem is that the -direct flag that was introduced
@@ -530,103 +409,8 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "SetCursor", t.SetCursor)
 		dotGoAddStr(w, "CursorBack1", t.CursorBack1)
 		dotGoAddStr(w, "CursorUp1", t.CursorUp1)
-		dotGoAddStr(w, "KeyUp", t.KeyUp)
-		dotGoAddStr(w, "KeyDown", t.KeyDown)
-		dotGoAddStr(w, "KeyRight", t.KeyRight)
-		dotGoAddStr(w, "KeyLeft", t.KeyLeft)
-		dotGoAddStr(w, "KeyInsert", t.KeyInsert)
-		dotGoAddStr(w, "KeyDelete", t.KeyDelete)
-		dotGoAddStr(w, "KeyBackspace", t.KeyBackspace)
-		dotGoAddStr(w, "KeyHome", t.KeyHome)
-		dotGoAddStr(w, "KeyEnd", t.KeyEnd)
-		dotGoAddStr(w, "KeyPgUp", t.KeyPgUp)
-		dotGoAddStr(w, "KeyPgDn", t.KeyPgDn)
-		dotGoAddStr(w, "KeyF1", t.KeyF1)
-		dotGoAddStr(w, "KeyF2", t.KeyF2)
-		dotGoAddStr(w, "KeyF3", t.KeyF3)
-		dotGoAddStr(w, "KeyF4", t.KeyF4)
-		dotGoAddStr(w, "KeyF5", t.KeyF5)
-		dotGoAddStr(w, "KeyF6", t.KeyF6)
-		dotGoAddStr(w, "KeyF7", t.KeyF7)
-		dotGoAddStr(w, "KeyF8", t.KeyF8)
-		dotGoAddStr(w, "KeyF9", t.KeyF9)
-		dotGoAddStr(w, "KeyF10", t.KeyF10)
-		dotGoAddStr(w, "KeyF11", t.KeyF11)
-		dotGoAddStr(w, "KeyF12", t.KeyF12)
 		// Extended keys.  We don't report these if they are going to be
 		// handled as if they were XTerm sequences.
-		dotGoAddStr(w, "KeyF13", t.KeyF13)
-		dotGoAddStr(w, "KeyF14", t.KeyF14)
-		dotGoAddStr(w, "KeyF15", t.KeyF15)
-		dotGoAddStr(w, "KeyF16", t.KeyF16)
-		dotGoAddStr(w, "KeyF17", t.KeyF17)
-		dotGoAddStr(w, "KeyF18", t.KeyF18)
-		dotGoAddStr(w, "KeyF19", t.KeyF19)
-		dotGoAddStr(w, "KeyF20", t.KeyF20)
-		dotGoAddStr(w, "KeyF21", t.KeyF21)
-		dotGoAddStr(w, "KeyF22", t.KeyF22)
-		dotGoAddStr(w, "KeyF23", t.KeyF23)
-		dotGoAddStr(w, "KeyF24", t.KeyF24)
-		dotGoAddStr(w, "KeyF25", t.KeyF25)
-		dotGoAddStr(w, "KeyF26", t.KeyF26)
-		dotGoAddStr(w, "KeyF27", t.KeyF27)
-		dotGoAddStr(w, "KeyF28", t.KeyF28)
-		dotGoAddStr(w, "KeyF29", t.KeyF29)
-		dotGoAddStr(w, "KeyF30", t.KeyF30)
-		dotGoAddStr(w, "KeyF31", t.KeyF31)
-		dotGoAddStr(w, "KeyF32", t.KeyF32)
-		dotGoAddStr(w, "KeyF33", t.KeyF33)
-		dotGoAddStr(w, "KeyF34", t.KeyF34)
-		dotGoAddStr(w, "KeyF35", t.KeyF35)
-		dotGoAddStr(w, "KeyF36", t.KeyF36)
-		dotGoAddStr(w, "KeyF37", t.KeyF37)
-		dotGoAddStr(w, "KeyF38", t.KeyF38)
-		dotGoAddStr(w, "KeyF39", t.KeyF39)
-		dotGoAddStr(w, "KeyF40", t.KeyF40)
-		dotGoAddStr(w, "KeyF41", t.KeyF41)
-		dotGoAddStr(w, "KeyF42", t.KeyF42)
-		dotGoAddStr(w, "KeyF43", t.KeyF43)
-		dotGoAddStr(w, "KeyF44", t.KeyF44)
-		dotGoAddStr(w, "KeyF45", t.KeyF45)
-		dotGoAddStr(w, "KeyF46", t.KeyF46)
-		dotGoAddStr(w, "KeyF47", t.KeyF47)
-		dotGoAddStr(w, "KeyF48", t.KeyF48)
-		dotGoAddStr(w, "KeyF49", t.KeyF49)
-		dotGoAddStr(w, "KeyF50", t.KeyF50)
-		dotGoAddStr(w, "KeyF51", t.KeyF51)
-		dotGoAddStr(w, "KeyF52", t.KeyF52)
-		dotGoAddStr(w, "KeyF53", t.KeyF53)
-		dotGoAddStr(w, "KeyF54", t.KeyF54)
-		dotGoAddStr(w, "KeyF55", t.KeyF55)
-		dotGoAddStr(w, "KeyF56", t.KeyF56)
-		dotGoAddStr(w, "KeyF57", t.KeyF57)
-		dotGoAddStr(w, "KeyF58", t.KeyF58)
-		dotGoAddStr(w, "KeyF59", t.KeyF59)
-		dotGoAddStr(w, "KeyF60", t.KeyF60)
-		dotGoAddStr(w, "KeyF61", t.KeyF61)
-		dotGoAddStr(w, "KeyF62", t.KeyF62)
-		dotGoAddStr(w, "KeyF63", t.KeyF63)
-		dotGoAddStr(w, "KeyF64", t.KeyF64)
-		dotGoAddStr(w, "KeyCancel", t.KeyCancel)
-		dotGoAddStr(w, "KeyPrint", t.KeyPrint)
-		dotGoAddStr(w, "KeyExit", t.KeyExit)
-		dotGoAddStr(w, "KeyHelp", t.KeyHelp)
-		dotGoAddStr(w, "KeyClear", t.KeyClear)
-		dotGoAddStr(w, "KeyBacktab", t.KeyBacktab)
-		dotGoAddStr(w, "KeyShfLeft", t.KeyShfLeft)
-		dotGoAddStr(w, "KeyShfRight", t.KeyShfRight)
-		dotGoAddStr(w, "KeyShfUp", t.KeyShfUp)
-		dotGoAddStr(w, "KeyShfDown", t.KeyShfDown)
-		dotGoAddStr(w, "KeyShfHome", t.KeyShfHome)
-		dotGoAddStr(w, "KeyShfEnd", t.KeyShfEnd)
-		dotGoAddStr(w, "KeyShfInsert", t.KeyShfInsert)
-		dotGoAddStr(w, "KeyShfDelete", t.KeyShfDelete)
-		dotGoAddStr(w, "KeyCtrlUp", t.KeyCtrlUp)
-		dotGoAddStr(w, "KeyCtrlDown", t.KeyCtrlDown)
-		dotGoAddStr(w, "KeyCtrlRight", t.KeyCtrlRight)
-		dotGoAddStr(w, "KeyCtrlLeft", t.KeyCtrlLeft)
-		dotGoAddStr(w, "KeyCtrlHome", t.KeyCtrlHome)
-		dotGoAddStr(w, "KeyCtrlEnd", t.KeyCtrlEnd)
 		dotGoAddInt(w, "Modifiers", t.Modifiers)
 		dotGoAddFlag(w, "TrueColor", t.TrueColor)
 		dotGoAddFlag(w, "AutoMargin", t.AutoMargin)
