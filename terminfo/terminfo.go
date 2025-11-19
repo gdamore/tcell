@@ -46,7 +46,6 @@ type Terminfo struct {
 	Columns     int    // cols
 	Lines       int    // lines
 	Colors      int    // colors
-	Bell        string // bell
 	Clear       string // clear
 	EnterCA     string // smcup
 	ExitCA      string // rmcup

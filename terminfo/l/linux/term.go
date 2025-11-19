@@ -10,7 +10,6 @@ func init() {
 	terminfo.AddTerminfo(&terminfo.Terminfo{
 		Name:              "linux",
 		Colors:            8,
-		Bell:              "\a",
 		Clear:             "\x1b[H\x1b[J",
 		ShowCursor:        "\x1b[?25h\x1b[?0c",
 		HideCursor:        "\x1b[?25l\x1b[?1c",

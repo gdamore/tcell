@@ -192,7 +192,6 @@ func LoadTerminfo(name string) (*terminfo.Terminfo, string, error) {
 	t.Colors = tc.getnum("colors")
 	t.Columns = tc.getnum("cols")
 	t.Lines = tc.getnum("lines")
-	t.Bell = tc.getstr("bel")
 	t.Clear = tc.getstr("clear")
 	t.EnterCA = tc.getstr("smcup")
 	t.ExitCA = tc.getstr("rmcup")

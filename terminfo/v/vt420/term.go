@@ -14,7 +14,6 @@ func init() {
 		Name:              "vt420",
 		Columns:           80,
 		Lines:             24,
-		Bell:              "\a",
 		Clear:             "\x1b[H\x1b[2J$<50>",
 		ShowCursor:        "\x1b[?25h",
 		HideCursor:        "\x1b[?25l",

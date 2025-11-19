@@ -10,7 +10,6 @@ func init() {
 	terminfo.AddTerminfo(&terminfo.Terminfo{
 		Name:       "cygwin",
 		Colors:     8,
-		Bell:       "\a",
 		Clear:      "\x1b[H\x1b[J",
 		EnterCA:    "\x1b7\x1b[?47h",
 		ExitCA:     "\x1b[2J\x1b[?47l\x1b8",

@@ -31,7 +31,6 @@ func init() {
 		Columns:       80,
 		Lines:         24,
 		Colors:        256,
-		Bell:          "\a",
 		Clear:         "\x1b[H\x1b[2J",
 		EnterCA:       "\x1b[?1049h\x1b[22;0;0t",
 		ExitCA:        "\x1b[?1049l\x1b[23;0;0t",

@@ -12,7 +12,6 @@ func init() {
 		Aliases:           []string{"vt200"},
 		Columns:           80,
 		Lines:             24,
-		Bell:              "\a",
 		Clear:             "\x1b[H\x1b[J",
 		ShowCursor:        "\x1b[?25h",
 		HideCursor:        "\x1b[?25l",

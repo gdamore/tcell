@@ -12,7 +12,6 @@ func init() {
 		Columns:    80,
 		Lines:      24,
 		Colors:     8,
-		Bell:       "\a",
 		Clear:      "\x1b[H\x1b[J",
 		AttrOff:    "\x1b[0;10m",
 		Underline:  "\x1b[4m",

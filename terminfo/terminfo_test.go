@@ -27,7 +27,6 @@ var testTerminfo = &Terminfo{
 	Columns:   80,
 	Lines:     24,
 	Colors:    256,
-	Bell:      "\a",
 	Blink:     "\x1b2ms$<20>something",
 	Reverse:   "\x1b[7m",
 	SetFg:     "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",

@@ -12,7 +12,6 @@ func init() {
 		Columns:           80,
 		Lines:             24,
 		Colors:            8,
-		Bell:              "\a",
 		Clear:             "\x1b[H\x1b[J",
 		ShowCursor:        "\x1b[?25h",
 		HideCursor:        "\x1b[?25l",

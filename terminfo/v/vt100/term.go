@@ -12,7 +12,6 @@ func init() {
 		Aliases:           []string{"vt100-am"},
 		Columns:           80,
 		Lines:             24,
-		Bell:              "\a",
 		Clear:             "\x1b[H\x1b[J$<50>",
 		AttrOff:           "\x1b[m\x0f$<2>",
 		Underline:         "\x1b[4m$<2>",
