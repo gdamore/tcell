@@ -38,7 +38,6 @@ type cScreen struct {
 	cury       int
 	style      Style
 	fini       bool
-	vten       bool
 	truecolor  bool
 	running    bool
 	disableAlt bool // disable the alternate screen
@@ -222,17 +221,14 @@ func (s *cScreen) Init() error {
 	// emitting stuff for the last character.  In the future we might change this to
 	// look at specific versions of ConEmu if they fix the bug.
 	// We can also try disabling auto margin mode.
-	tryVt := true
 	if os.Getenv("ConEmuPID") != "" {
 		s.truecolor = false
-		tryVt = false
 	}
 	switch os.Getenv("TCELL_TRUECOLOR") {
 	case "disable":
 		s.truecolor = false
 	case "enable":
 		s.truecolor = true
-		tryVt = true
 	}
 
 	s.Lock()
@@ -249,33 +245,17 @@ func (s *cScreen) Init() error {
 	s.fini = false
 	s.setInMode(modeResizeEn | modeExtendFlg)
 
-	// If a user needs to force old style console, they may do so
-	// by setting TCELL_VTMODE to disable.  This is an undocumented safety net for now.
-	// It may be removed in the future.  (This mostly exists because of ConEmu.)
-	switch os.Getenv("TCELL_VTMODE") {
-	case "disable":
-		tryVt = false
-	case "enable":
-		tryVt = true
-	}
 	switch os.Getenv("TCELL_ALTSCREEN") {
 	case "enable":
 		s.disableAlt = false // also the default
 	case "disable":
 		s.disableAlt = true
 	}
-	if tryVt {
-		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
-		var om uint32
-		s.getOutMode(&om)
-		if om&modeVtOutput == modeVtOutput {
-			s.vten = true
-		} else {
-			s.truecolor = false
-			s.setOutMode(0)
-		}
-	} else {
-		s.setOutMode(0)
+	s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
+	var om uint32
+	s.getOutMode(&om)
+	if om&modeVtOutput != modeVtOutput {
+		return errors.New("failed to initialize: VT output not supported?")
 	}
 
 	s.Unlock()
@@ -349,17 +329,12 @@ func (s *cScreen) disengage() {
 
 	s.wg.Wait()
 
-	if s.vten {
-		s.emitVtString(vtCursorStyles[CursorStyleDefault])
-		s.emitVtString(vtCursorColorReset)
-		s.emitVtString(vtEnableAm)
-		if !s.disableAlt {
-			s.emitVtString(vtRestoreTitle)
-			s.emitVtString(vtExitCA)
-		}
-	} else if !s.disableAlt {
-		s.clearScreen(StyleDefault, s.vten)
-		s.setCursorPos(0, 0, false)
+	s.emitVtString(vtCursorStyles[CursorStyleDefault])
+	s.emitVtString(vtCursorColorReset)
+	s.emitVtString(vtEnableAm)
+	if !s.disableAlt {
+		s.emitVtString(vtRestoreTitle)
+		s.emitVtString(vtExitCA)
 	}
 	s.setCursorInfo(&s.ocursor)
 	s.setBufferSize(int(s.oscreen.size.x), int(s.oscreen.size.y))
@@ -389,21 +364,17 @@ func (s *cScreen) engage() error {
 	s.cancelflag = syscall.Handle(cf)
 	s.enableMouse(s.mouseEnabled)
 
-	if s.vten {
-		s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
-		if !s.disableAlt {
-			s.emitVtString(vtSaveTitle)
-			s.emitVtString(vtEnterCA)
-		}
-		s.emitVtString(vtDisableAm)
-		if s.title != "" {
-			s.emitVtString(fmt.Sprintf(vtSetTitle, s.title))
-		}
-	} else {
-		s.setOutMode(0)
+	s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
+	if !s.disableAlt {
+		s.emitVtString(vtSaveTitle)
+		s.emitVtString(vtEnterCA)
+	}
+	s.emitVtString(vtDisableAm)
+	if s.title != "" {
+		s.emitVtString(fmt.Sprintf(vtSetTitle, s.title))
 	}
 
-	s.clearScreen(s.style, s.vten)
+	s.clearScreen(s.style)
 	s.hideCursor()
 
 	s.cells.Invalidate()
@@ -445,26 +416,18 @@ func (s *cScreen) emitVtString(vs string) {
 }
 
 func (s *cScreen) showCursor() {
-	if s.vten {
-		s.emitVtString(vtShowCursor)
-		s.emitVtString(vtCursorStyles[s.cursorStyle])
-		if s.cursorColor == ColorReset {
-			s.emitVtString(vtCursorColorReset)
-		} else if s.cursorColor.Valid() {
-			r, g, b := s.cursorColor.RGB()
-			s.emitVtString(fmt.Sprintf(vtCursorColorRGB, r, g, b))
-		}
-	} else {
-		s.setCursorInfo(&cursorInfo{size: 100, visible: 1})
+	s.emitVtString(vtShowCursor)
+	s.emitVtString(vtCursorStyles[s.cursorStyle])
+	if s.cursorColor == ColorReset {
+		s.emitVtString(vtCursorColorReset)
+	} else if s.cursorColor.Valid() {
+		r, g, b := s.cursorColor.RGB()
+		s.emitVtString(fmt.Sprintf(vtCursorColorRGB, r, g, b))
 	}
 }
 
 func (s *cScreen) hideCursor() {
-	if s.vten {
-		s.emitVtString(vtHideCursor)
-	} else {
-		s.setCursorInfo(&cursorInfo{size: 1, visible: 0})
-	}
+	s.emitVtString(vtHideCursor)
 }
 
 func (s *cScreen) ShowCursor(x, y int) {
@@ -495,7 +458,7 @@ func (s *cScreen) doCursor() {
 	if x < 0 || y < 0 || x >= s.w || y >= s.h {
 		s.hideCursor()
 	} else {
-		s.setCursorPos(x, y, s.vten)
+		s.setCursorPos(x, y)
 		s.showCursor()
 	}
 }
@@ -865,11 +828,10 @@ func (s *cScreen) scanInput(stopQ chan struct{}) {
 }
 
 func (s *cScreen) Colors() int {
-	if s.vten {
-		return 1 << 24
+	if !s.truecolor {
+		return 16
 	}
-	// Windows console can display 8 colors, in either low or high intensity
-	return 16
+	return 1 << 24
 }
 
 var vgaColors = map[Color]uint16{
@@ -1018,20 +980,12 @@ func (s *cScreen) writeString(x, y int, style Style, vtBuf, ch []uint16) {
 		return
 	}
 
-	if s.vten {
-		vtBuf = append(vtBuf, utf16.Encode([]rune(fmt.Sprintf(vtCursorPos, y+1, x+1)))...)
-		styleStr := s.makeVtStyle(style)
-		vtBuf = append(vtBuf, utf16.Encode([]rune(styleStr))...)
-		vtBuf = append(vtBuf, ch...)
-		_ = syscall.WriteConsole(s.out, &vtBuf[0], uint32(len(vtBuf)), nil, nil)
-		vtBuf = vtBuf[:0]
-	} else {
-		s.setCursorPos(x, y, s.vten)
-		_, _, _ = procSetConsoleTextAttribute.Call(
-			uintptr(s.out),
-			uintptr(s.mapStyle(style)))
-		_ = syscall.WriteConsole(s.out, &ch[0], uint32(len(ch)), nil, nil)
-	}
+	vtBuf = append(vtBuf, utf16.Encode([]rune(fmt.Sprintf(vtCursorPos, y+1, x+1)))...)
+	styleStr := s.makeVtStyle(style)
+	vtBuf = append(vtBuf, utf16.Encode([]rune(styleStr))...)
+	vtBuf = append(vtBuf, ch...)
+	_ = syscall.WriteConsole(s.out, &vtBuf[0], uint32(len(vtBuf)), nil, nil)
+	vtBuf = vtBuf[:0]
 }
 
 func (s *cScreen) draw() {
@@ -1139,15 +1093,9 @@ func (s *cScreen) setCursorInfo(info *cursorInfo) {
 		uintptr(unsafe.Pointer(info)))
 }
 
-func (s *cScreen) setCursorPos(x, y int, vtEnable bool) {
-	if vtEnable {
-		// Note that the string is Y first.  Origin is 1,1.
-		s.emitVtString(fmt.Sprintf(vtCursorPos, y+1, x+1))
-	} else {
-		_, _, _ = procSetConsoleCursorPosition.Call(
-			uintptr(s.out),
-			coord{int16(x), int16(y)}.uintptr())
-	}
+func (s *cScreen) setCursorPos(x, y int) {
+	// Note that the string is Y first.  Origin is 1,1.
+	s.emitVtString(fmt.Sprintf(vtCursorPos, y+1, x+1))
 }
 
 func (s *cScreen) setBufferSize(x, y int) {
@@ -1223,36 +1171,14 @@ func (s *cScreen) resize() {
 	}
 }
 
-func (s *cScreen) clearScreen(style Style, vtEnable bool) {
-	if vtEnable {
-		s.sendVtStyle(style)
-		row := strings.Repeat(" ", s.w)
-		for y := 0; y < s.h; y++ {
-			s.setCursorPos(0, y, vtEnable)
-			s.emitVtString(row)
-		}
-		s.setCursorPos(0, 0, vtEnable)
-
-	} else {
-		pos := coord{0, 0}
-		attr := s.mapStyle(style)
-		x, y := s.w, s.h
-		scratch := uint32(0)
-		count := uint32(x * y)
-
-		_, _, _ = procFillConsoleOutputAttribute.Call(
-			uintptr(s.out),
-			uintptr(attr),
-			uintptr(count),
-			pos.uintptr(),
-			uintptr(unsafe.Pointer(&scratch)))
-		_, _, _ = procFillConsoleOutputCharacter.Call(
-			uintptr(s.out),
-			uintptr(' '),
-			uintptr(count),
-			pos.uintptr(),
-			uintptr(unsafe.Pointer(&scratch)))
+func (s *cScreen) clearScreen(style Style) {
+	s.sendVtStyle(style)
+	row := strings.Repeat(" ", s.w)
+	for y := 0; y < s.h; y++ {
+		s.setCursorPos(0, y)
+		s.emitVtString(row)
 	}
+	s.setCursorPos(0, 0)
 }
 
 const (
@@ -1304,9 +1230,7 @@ func (s *cScreen) SetStyle(style Style) {
 func (s *cScreen) SetTitle(title string) {
 	s.Lock()
 	s.title = title
-	if s.vten {
-		s.emitVtString(fmt.Sprintf(vtSetTitle, title))
-	}
+	s.emitVtString(fmt.Sprintf(vtSetTitle, title))
 	s.Unlock()
 }
 
