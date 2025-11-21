@@ -1227,6 +1227,7 @@ func (t *tScreen) disengage() {
 	t.TPuts(ti.AttrOff)
 	t.TPuts(ti.ExitKeypad)
 	t.TPuts(ti.EnableAutoMargin)
+	t.TPuts(t.disableCsiU)
 	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
 		if t.restoreTitle != "" {
 			t.TPuts(t.restoreTitle)
@@ -1237,7 +1238,6 @@ func (t *tScreen) disengage() {
 	t.enableMouse(0)
 	t.enablePasting(false)
 	t.disableFocusReporting()
-	t.TPuts(t.disableCsiU)
 
 	_ = t.tty.Stop()
 }
