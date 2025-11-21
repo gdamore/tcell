@@ -24,6 +24,7 @@ import (
 	"io"
 	"maps"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -62,6 +63,8 @@ func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
 	return
 }
 
+var defaultTerm string
+
 // NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
 // implementation  and custom terminfo specification.
 // If the passed in tty is nil, then a reasonable default (typically /dev/tty)
@@ -70,10 +73,14 @@ func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
 // If passed terminfo is nil, then TERM environment variable is queried for
 // terminal specification.
 func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen, e error) {
+	term := defaultTerm
+	if term == "" {
+		term = os.Getenv("TERM")
+	}
 	if ti == nil {
-		ti, e = LookupTerminfo(os.Getenv("TERM"))
+		ti, e = LookupTerminfo(term)
 		if e != nil {
-			return
+			return nil, e
 		}
 	}
 
@@ -312,8 +319,13 @@ func (t *tScreen) prepareExtendedOSC() {
 	}
 
 	if t.enableCsiU == "" && t.ti.XTermLike {
-		t.enableCsiU = "\x1b[>1u"
-		t.disableCsiU = "\x1b[<u"
+		if runtime.GOOS == "windows" {
+			t.enableCsiU = "\x1b[?9001h"
+			t.disableCsiU = "\x1b[?9001l"
+		} else {
+			t.enableCsiU = "\x1b[>1u"
+			t.disableCsiU = "\x1b[<u"
+		}
 	}
 }
 

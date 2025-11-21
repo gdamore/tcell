@@ -257,7 +257,7 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 		// control characters and the DEL.
 		k = Key(ch)
 		if mod == ModNone && ch < ' ' {
-			switch Key(ch) {
+			switch k {
 			case KeyBackspace, KeyTab, KeyEsc, KeyEnter:
 				// these keys are directly typeable without CTRL
 			default:

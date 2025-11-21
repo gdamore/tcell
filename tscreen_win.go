@@ -1,7 +1,4 @@
-//go:build windows
-// +build windows
-
-// Copyright 2022 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -15,18 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build windows
+// +build windows
+
 package tcell
 
-// NB: We might someday wish to move Windows to this model.   However,
-// that would probably mean sacrificing some of the richer key reporting
-// that we can obtain with the console API present on Windows.
+import (
+	// import the stock terminals
+	_ "github.com/gdamore/tcell/v2/terminfo/base"
+)
 
+// initialize is used at application startup, and sets up the initial values
+// including file descriptors used for terminals and saving the initial state
+// so that it can be restored when the application terminates.
 func (t *tScreen) initialize() error {
+	var err error
 	if t.tty == nil {
-		return ErrNoScreen
+		t.tty, err = NewDevTty()
+		if err != nil {
+			return err
+		}
 	}
-	// If a tty was supplied (custom), it should work.
-	// Custom screen implementations will need to provide a TTY
-	// implementation that we can use.
 	return nil
+}
+
+func init() {
+	defaultTerm = "xterm-truecolor"
 }

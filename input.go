@@ -80,6 +80,8 @@ type inputProcessor struct {
 	timer     *time.Timer
 	expire    time.Time
 	l         sync.Mutex
+	reencode  bool // bug with win32-input-mode on older terms
+	encBuf    []rune
 	evch      chan<- Event
 	rows      int // used for clipping mouse coordinates
 	cols      int // used for clipping mouse coordinates
@@ -654,11 +656,38 @@ func (ip *inputProcessor) handleWinKey(P []int) {
 	// Kd: the value of bKeyDown - either a '0' or '1'. If omitted, defaults to '0'.
 	// Cs: the value of dwControlKeyState - any number. If omitted, defaults to '0'.
 	// Rc: the value of wRepeatCount - any number. If omitted, defaults to '1'.
-	P = append(P, 0, 0, 0, 0, 0, 0) // ensure sufficient length
+	//
+	// Note that some 3rd party terminal emulators (not Terminal) suffer from a bug
+	// where other events, such as mouse events, are doubly encoded, using Vk 0
+	// for each character.  (So a CSI-M sequence is encoded as a series of CSI-_
+	// sequences.)  We consider this a bug in those terminal emulators -- Windows 11
+	// Terminal does not suffer this brain damage. (We've observed this with both Alacritty
+	// and WezTerm.)
+	for len(P) < 6 {
+		P = append(P, 0) // ensure sufficient length
+	}
 	if P[3] == 0 {
 		// key up event ignore ignore
 		return
 	}
+	if P[0] == 0 {
+		if P[2] == 27 && !ip.reencode {
+			ip.reencode = true
+		}
+	}
+	if ip.reencode {
+		ip.encBuf = append(ip.encBuf, rune(P[2]))
+		// embedded content will itself be a CSI, so terminated by a CSI terminator
+		if len(ip.encBuf) > 2 && P[2] >= 0x40 && P[2] < 0x7F {
+			eb := ip.encBuf
+			ip.encBuf = nil
+			ip.reencode = false
+			ip.buf = append(eb, ip.buf...)
+			go ip.ScanUTF8(nil)
+		}
+		return
+	}
+
 	key := KeyRune
 	chr := rune(P[2])
 	mod := ModNone
@@ -666,6 +695,14 @@ func (ip *inputProcessor) handleWinKey(P []int) {
 	if k1, ok := winKeys[P[0]]; ok {
 		chr = 0
 		key = k1
+	} else if chr == 0 && P[0] >= 0x30 && P[0] <= 0x39 {
+		chr = rune(P[0])
+	} else if chr < ' ' && P[0] >= 0x41 && P[0] <= 0x5a {
+		key = Key(P[0])
+		chr = 0
+	} else if key == 0x11 || key == 0x13 || key == 0x14 {
+		// lone modifiers
+		return
 	}
 
 	// Modifiers
@@ -678,17 +715,19 @@ func (ip *inputProcessor) handleWinKey(P []int) {
 	if P[4]&0x0003 != 0 {
 		mod |= ModAlt
 	}
-	if mod&ModCtrl|ModAlt == ModCtrl&ModAlt {
-		// Filter out ctrl+alt (it means AltGr)
-		mod = ModNone
-	}
 	if key == KeyRune && chr > ' ' && mod == ModShift {
 		// filter out lone shift for printable chars
 		mod = ModNone
 	}
+	if chr != 0 && mod&(ModCtrl|ModAlt) == ModCtrl|ModAlt {
+		// Filter out ctrl+alt (it means AltGr)
+		mod = ModNone
+	}
 
 	for range rpt {
-		ip.post(NewEventKey(key, chr, mod))
+		if key != KeyRune || chr != 0 {
+			ip.post(NewEventKey(key, chr, mod))
+		}
 	}
 }
 

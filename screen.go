@@ -287,10 +287,9 @@ type Screen interface {
 // NewScreen returns a default Screen suitable for the user's terminal
 // environment.
 func NewScreen() (Screen, error) {
-	// Windows is happier if we try for a console screen first.
-	if s, _ := NewConsoleScreen(); s != nil {
+	if s, e := NewTerminfoScreen(); s != nil {
 		return s, nil
-	} else if s, e := NewTerminfoScreen(); s != nil {
+	} else if s, _ := NewConsoleScreen(); s != nil {
 		return s, nil
 	} else {
 		return nil, e

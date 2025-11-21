@@ -105,7 +105,6 @@ var winColors = map[Color]Color{
 }
 
 var (
-	k32 = syscall.NewLazyDLL("kernel32.dll")
 	u32 = syscall.NewLazyDLL("user32.dll")
 )
 
@@ -116,15 +115,8 @@ var (
 // characters (Unicode) are in use.  The documentation refers to them
 // without this suffix, as the resolution is made via preprocessor.
 var (
-	procReadConsoleInput            = k32.NewProc("ReadConsoleInputW")
-	procWaitForMultipleObjects      = k32.NewProc("WaitForMultipleObjects")
-	procCreateEvent                 = k32.NewProc("CreateEventW")
-	procSetEvent                    = k32.NewProc("SetEvent")
 	procGetConsoleCursorInfo        = k32.NewProc("GetConsoleCursorInfo")
 	procSetConsoleCursorInfo        = k32.NewProc("SetConsoleCursorInfo")
-	procSetConsoleMode              = k32.NewProc("SetConsoleMode")
-	procGetConsoleMode              = k32.NewProc("GetConsoleMode")
-	procGetConsoleScreenBufferInfo  = k32.NewProc("GetConsoleScreenBufferInfo")
 	procSetConsoleWindowInfo        = k32.NewProc("SetConsoleWindowInfo")
 	procSetConsoleScreenBufferSize  = k32.NewProc("SetConsoleScreenBufferSize")
 	procSetConsoleTextAttribute     = k32.NewProc("SetConsoleTextAttribute")
@@ -352,7 +344,7 @@ func (s *cScreen) engage() error {
 	s.running = true
 	s.cancelflag = syscall.Handle(cf)
 	s.enableMouse(s.mouseEnabled)
-
+	s.setInMode(modeVtInput | modeResizeEn | modeExtendFlg)
 	s.setOutMode(modeVtOutput | modeNoAutoNL | modeCookedOut | modeUnderline)
 	if !s.disableAlt {
 		s.emitVtString(vtSaveTitle)
@@ -455,20 +447,6 @@ func (s *cScreen) doCursor() {
 func (s *cScreen) HideCursor() {
 	s.ShowCursor(-1, -1)
 }
-
-type inputRecord struct {
-	typ  uint16
-	_    uint16
-	data [16]byte
-}
-
-const (
-	keyEvent    uint16 = 1
-	mouseEvent  uint16 = 2
-	resizeEvent uint16 = 4
-	menuEvent   uint16 = 8 // don't use
-	focusEvent  uint16 = 16
-)
 
 type mouseRecord struct {
 	x     int16
@@ -1175,8 +1153,8 @@ const (
 	modeExtendFlg = uint32(0x0080)
 	modeMouseEn   = uint32(0x0010)
 	modeResizeEn  = uint32(0x0008)
+	modeVtInput   = uint32(0x0200)
 	// modeCooked    = uint32(0x0001)
-	// modeVtInput   = uint32(0x0200)
 
 	// Output modes
 	modeCookedOut = uint32(0x0001)
