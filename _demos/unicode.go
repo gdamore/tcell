@@ -22,11 +22,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gdamore/tcell/v2/encoding"
-	"github.com/rivo/uniseg"
 )
 
 var row = 0
@@ -34,27 +32,8 @@ var style = tcell.StyleDefault
 
 func putln(s tcell.Screen, str string) {
 
-	puts(s, style, 1, row, str)
+	s.PutStrStyled(1, row, str, style)
 	row++
-}
-
-func puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
-	i := 0
-	state := -1
-	var grapheme string
-	var width int
-
-	for str != "" {
-		grapheme, str, width, state = uniseg.FirstGraphemeClusterInString(str, state)
-		var runes []rune
-		for grapheme != "" {
-			r, rlen := utf8.DecodeRuneInString(grapheme)
-			runes = append(runes, r)
-			grapheme = grapheme[rlen:]
-		}
-		s.SetContent(x+i, y, runes[0], runes[1:], style)
-		i += width
-	}
 }
 
 func main() {
@@ -107,41 +86,15 @@ func main() {
 	putln(s, "Region:    \U0001f1fa\U0001f1f8 (USA! USA!)\n")
 	putln(s, "")
 	putln(s, "Box:")
-	putln(s, string([]rune{
-		tcell.RuneULCorner,
-		tcell.RuneHLine,
-		tcell.RuneTTee,
-		tcell.RuneHLine,
-		tcell.RuneURCorner,
-	}))
-	putln(s, string([]rune{
-		tcell.RuneVLine,
-		tcell.RuneBullet,
-		tcell.RuneVLine,
-		tcell.RuneLantern,
-		tcell.RuneVLine,
-	})+"  (bullet, lantern/section)")
-	putln(s, string([]rune{
-		tcell.RuneLTee,
-		tcell.RuneHLine,
-		tcell.RunePlus,
-		tcell.RuneHLine,
-		tcell.RuneRTee,
-	}))
-	putln(s, string([]rune{
-		tcell.RuneVLine,
-		tcell.RuneDiamond,
-		tcell.RuneVLine,
-		tcell.RuneUArrow,
-		tcell.RuneVLine,
-	})+"  (diamond, up arrow)")
-	putln(s, string([]rune{
-		tcell.RuneLLCorner,
-		tcell.RuneHLine,
-		tcell.RuneBTee,
-		tcell.RuneHLine,
-		tcell.RuneLRCorner,
-	}))
+	putln(s, "┌─┬─┬──┐")
+	putln(s, "│·│§│月│ (bullet, lantern, Swiss)")
+	putln(s, "├─┼─┼──┤")
+	putln(s, "│A│1│😘│ (A, 1, Kiss)")
+	putln(s, "├─┼─┼──┤")
+	putln(s, "│·│§│🇨🇭│ (bullet, lantern, Swiss)")
+	putln(s, "├─┼─┼──┤")
+	putln(s, "│◆│↑│  │ (diamond, up arrow, empty)")
+	putln(s, "└─┴─┴──┘")
 
 	s.Show()
 	go func() {

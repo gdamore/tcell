@@ -23,22 +23,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gdamore/tcell/v2/encoding"
-	"github.com/rivo/uniseg"
 )
-
-func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
-	for _, c := range str {
-		var comb []rune
-		w := uniseg.StringWidth(string(c))
-		if w == 0 {
-			comb = []rune{c}
-			c = ' '
-			w = 1
-		}
-		s.SetContent(x, y, c, comb, style)
-		x += w
-	}
-}
 
 func displayDemo(s tcell.Screen) {
 	w, h := s.Size()
@@ -46,8 +31,8 @@ func displayDemo(s tcell.Screen) {
 	style := tcell.StyleDefault.Foreground(tcell.ColorCadetBlue.TrueColor()).Background(tcell.ColorWhite)
 	sizeStr := fmt.Sprintf("%d x %d", w, h)
 	helpStr := "Use cursors to resize, ESC to exit."
-	emitStr(s, (w-len(sizeStr))/2, h/2, style, sizeStr)
-	emitStr(s, (w-len(helpStr))/2, h/2+1, tcell.StyleDefault, helpStr)
+	s.PutStrStyled((w-len(sizeStr))/2, h/2, sizeStr, style)
+	s.PutStr((w-len(helpStr))/2, h/2+1, helpStr)
 	s.Show()
 }
 

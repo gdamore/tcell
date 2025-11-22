@@ -40,12 +40,12 @@ func main() {
 	var frames int
 
 	type cell struct {
-		c     rune
+		c     string
 		style tcell.Style
 	}
 
 	width, height := screen.Size()
-	glyphs := []rune{'@', '#', '&', '*', '=', '%', 'Z', 'A'}
+	glyphs := []string{"@", "#", "&", "*", "=", "%", "Z", "A"}
 	attrs := []tcell.AttrMask{tcell.AttrBold, tcell.AttrReverse, tcell.AttrItalic, tcell.AttrNone}
 
 	// Pre-Generate 100 different frame patterns, so we stress the terminal as
@@ -98,7 +98,7 @@ loop:
 		for h := 0; h < height; h++ {
 			for w := 0; w < width; w++ {
 				c := pattern[h][w]
-				screen.SetContent(w, h, c.c, nil, c.style)
+				screen.Put(w, h, c.c, c.style)
 			}
 		}
 		screen.Show()

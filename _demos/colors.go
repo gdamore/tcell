@@ -1,7 +1,7 @@
 //go:build ignore
 // +build ignore
 
-// Copyright 2019 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -47,14 +47,14 @@ func makebox(s tcell.Screen) {
 		return
 	}
 
-	glyphs := []rune{'@', '#', '&', '*', '=', '%', 'Z', 'A'}
+	glyphs := []string{"@", "#", "&", "*", "=", "%", "Z", "A"}
 
 	lh := h / 2
 	lw := w / 2
 	lx := w / 4
 	ly := h / 4
 	st := tcell.StyleDefault
-	gl := ' '
+	gl := " "
 
 	if s.Colors() == 0 {
 		st = st.Reverse(rand.Int()%2 == 0)
@@ -81,7 +81,7 @@ func makebox(s tcell.Screen) {
 	}
 	for row := 0; row < lh; row++ {
 		for col := 0; col < lw; col++ {
-			s.SetCell(lx+col, ly+row, st, gl)
+			s.Put(lx+col, ly+row, gl, st)
 		}
 	}
 	s.Show()

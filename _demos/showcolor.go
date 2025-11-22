@@ -31,7 +31,6 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/uniseg"
 )
 
 var red = int32(rand.Int() % 256)
@@ -41,20 +40,6 @@ var inc = int32(8) // rate of color change
 var redi = int32(inc)
 var grni = int32(inc)
 var blui = int32(inc)
-
-func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
-	for _, c := range str {
-		var comb []rune
-		w := uniseg.StringWidth(string(c))
-		if w == 0 {
-			comb = []rune{c}
-			c = ' '
-			w = 1
-		}
-		s.SetContent(x, y, c, comb, style)
-		x += w
-	}
-}
 
 func makebox(s tcell.Screen, name string, color tcell.Color) {
 	w, h := s.Size()
@@ -68,13 +53,12 @@ func makebox(s tcell.Screen, name string, color tcell.Color) {
 	lx := 0
 	ly := 0
 	st := tcell.StyleDefault
-	gl := ' '
 
 	s.Fill(' ', st)
 	bg := st.Background(color)
 	for row := 0; row < lh; row++ {
 		for col := 0; col < lw; col++ {
-			s.SetCell(lx+col, ly+row, bg, gl)
+			s.Put(lx+col, ly+row, " ", bg)
 		}
 	}
 	cn := color.Name()
@@ -87,7 +71,7 @@ func makebox(s tcell.Screen, name string, color tcell.Color) {
 	} else {
 		lx = 0
 	}
-	emitStr(s, lx, lh+1, st, msg)
+	s.PutStrStyled(lx, lh+1, msg, st)
 	s.Show()
 }
 

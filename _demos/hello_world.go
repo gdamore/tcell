@@ -22,36 +22,19 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/gdamore/tcell/v2/encoding"
-	"github.com/rivo/uniseg"
 )
-
-func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
-	for _, c := range str {
-		var comb []rune
-		w := uniseg.StringWidth(string(c))
-		if w == 0 {
-			comb = []rune{c}
-			c = ' '
-			w = 1
-		}
-		s.SetContent(x, y, c, comb, style)
-		x += w
-	}
-}
 
 func displayHelloWorld(s tcell.Screen) {
 	w, h := s.Size()
 	s.Clear()
 	style := tcell.StyleDefault.Foreground(tcell.ColorCadetBlue.TrueColor()).Background(tcell.ColorWhite)
-	emitStr(s, w/2-7, h/2, style, "Hello, World!")
-	emitStr(s, w/2-9, h/2+1, tcell.StyleDefault, "Press ESC to exit.")
+	s.PutStrStyled(w/2-7, h/2, "Hello, World!", style)
+	s.PutStr(w/2-9, h/2+1, "Press ESC to exit.")
 	s.Show()
 }
 
 // This program just prints "Hello, World!".  Press ESC to exit.
 func main() {
-	encoding.Register()
 
 	s, e := tcell.NewScreen()
 	if e != nil {

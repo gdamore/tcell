@@ -24,61 +24,10 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/gdamore/tcell/v2/encoding"
-	"github.com/rivo/uniseg"
 )
 
 var row = 0
 var style = tcell.StyleDefault
-
-func puts(s tcell.Screen, style tcell.Style, x, y int, str string) {
-	i := 0
-	var deferred []rune
-	dwidth := 0
-	zwj := false
-	for _, r := range str {
-		if r == '\u200d' {
-			if len(deferred) == 0 {
-				deferred = append(deferred, ' ')
-				dwidth = 1
-			}
-			deferred = append(deferred, r)
-			zwj = true
-			continue
-		}
-		if zwj {
-			deferred = append(deferred, r)
-			zwj = false
-			continue
-		}
-		switch uniseg.StringWidth(string(r)) {
-		case 0:
-			if len(deferred) == 0 {
-				deferred = append(deferred, ' ')
-				dwidth = 1
-			}
-		case 1:
-			if len(deferred) != 0 {
-				s.SetContent(x+i, y, deferred[0], deferred[1:], style)
-				i += dwidth
-			}
-			deferred = nil
-			dwidth = 1
-		case 2:
-			if len(deferred) != 0 {
-				s.SetContent(x+i, y, deferred[0], deferred[1:], style)
-				i += dwidth
-			}
-			deferred = nil
-			dwidth = 2
-		}
-		deferred = append(deferred, r)
-	}
-	if len(deferred) != 0 {
-		s.SetContent(x+i, y, deferred[0], deferred[1:], style)
-		i += dwidth
-	}
-}
 
 func main() {
 
@@ -87,8 +36,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
 		os.Exit(1)
 	}
-
-	encoding.Register()
 
 	if e = s.Init(); e != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
@@ -108,91 +55,91 @@ func main() {
 	style = bold.Foreground(tcell.ColorBlue).Background(tcell.ColorSilver)
 
 	row = 2
-	puts(s, style, 2, row, "Press ESC to Exit")
+	s.PutStrStyled(2, row, "Press ESC to Exit", style)
 	row = 4
-	puts(s, plain, 2, row, "Note: Style support is dependent on your terminal.")
+	s.PutStrStyled(2, row, "Note: Style support is dependent on your terminal.", plain)
 	row = 6
 
 	plain = tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(tcell.ColorWhite)
 
 	style = plain
-	puts(s, style, 2, row, "Plain")
+	s.PutStrStyled(2, row, "Plain", style)
 	row++
 
 	style = plain.Blink(true)
-	puts(s, style, 2, row, "Blink")
+	s.PutStrStyled(2, row, "Blink", style)
 	row++
 
 	style = plain.Reverse(true)
-	puts(s, style, 2, row, "Reverse")
+	s.PutStrStyled(2, row, "Reverse", style)
 	row++
 
 	style = plain.Dim(true)
-	puts(s, style, 2, row, "Dim")
+	s.PutStrStyled(2, row, "Dim", style)
 	row++
 
 	style = plain.Underline(true)
-	puts(s, style, 2, row, "Underline")
+	s.PutStrStyled(2, row, "Underline", style)
 	row++
 
 	style = plain.Italic(true)
-	puts(s, style, 2, row, "Italic")
+	s.PutStrStyled(2, row, "Italic", style)
 	row++
 
 	style = plain.Bold(true)
-	puts(s, style, 2, row, "Bold")
+	s.PutStrStyled(2, row, "Bold", style)
 	row++
 
 	style = plain.Bold(true).Italic(true)
-	puts(s, style, 2, row, "Bold Italic")
+	s.PutStrStyled(2, row, "Bold Italic", style)
 	row++
 
 	style = plain.Bold(true).Italic(true).Underline(true)
-	puts(s, style, 2, row, "Bold Italic Underline")
+	s.PutStrStyled(2, row, "Bold Italic Underline", style)
 	row++
 
 	style = plain.StrikeThrough(true)
-	puts(s, style, 2, row, "Strikethrough")
+	s.PutStrStyled(2, row, "Strikethrough", style)
 	row++
 
 	style = plain.Underline(tcell.UnderlineStyleDouble)
-	puts(s, style, 2, row, "Double Underline")
+	s.PutStrStyled(2, row, "Double Underline", style)
 	row++
 
 	style = plain.Underline(tcell.UnderlineStyleCurly)
-	puts(s, style, 2, row, "Curly Underline")
+	s.PutStrStyled(2, row, "Curly Underline", style)
 	row++
 
 	style = plain.Underline(tcell.UnderlineStyleDotted)
-	puts(s, style, 2, row, "Dotted Underline")
+	s.PutStrStyled(2, row, "Dotted Underline", style)
 	row++
 
 	style = plain.Underline(tcell.UnderlineStyleDashed)
-	puts(s, style, 2, row, "Dashed Underline")
+	s.PutStrStyled(2, row, "Dashed Underline", style)
 	row++
 
 	style = plain.Underline(true, tcell.ColorBlue)
-	puts(s, style, 2, row, "Blue Underline")
+	s.PutStrStyled(2, row, "Blue Underline", style)
 	row++
 
 	style = plain.Underline(tcell.UnderlineStyleSolid, tcell.ColorFireBrick)
-	puts(s, style, 2, row, "Firebrick Underline")
+	s.PutStrStyled(2, row, "Firebrick Underline", style)
 	row++
 
 	style = plain.Underline(tcell.UnderlineStyleCurly, tcell.NewRGBColor(0xc5, 0x8a, 0xf9))
-	puts(s, style, 2, row, "Pink Curly Underline")
+	s.PutStrStyled(2, row, "Pink Curly Underline", style)
 	row++
 
 	style = plain.Url("http://github.com/gdamore/tcell")
-	puts(s, style, 2, row, "HyperLink")
+	s.PutStrStyled(2, row, "HyperLink", style)
 	row++
 
 	style = plain.Foreground(tcell.ColorRed)
-	puts(s, style, 2, row, "Red Foreground")
+	s.PutStrStyled(2, row, "Red Foreground", style)
 	row++
 
 	style = plain.Background(tcell.ColorRed)
-	puts(s, style, 2, row, "Red Background")
+	s.PutStrStyled(2, row, "Red Background", style)
 	row++
 
 	s.Show()

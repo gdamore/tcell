@@ -83,12 +83,15 @@ If you're lazy, and want them all anyway, see the `encoding` sub-directory.
 
 ## Wide & Combining Characters
 
-The `SetContent()` API takes a primary rune, and an optional list of combining runes.
-If any of the runes is a wide (East Asian, Emoji, etc.) rune occupying two cells,
-then the library will skip output from the following cell. Care must be
-taken in the application to avoid explicitly attempting to set content in the
-next cell, otherwise the results are undefined. (Normally the wide character
-is displayed, and the other character is not; do not depend on that behavior.)
+The `Put()` API takes a string, which should be legal UTF-8, and displays
+the first grapheme (which may composed of multiple runes). It returns the
+actual width displayed, which can be used to advance the column positiion
+for the next display grapheme.  Alternatively, `PutStr()` or `PutStrStyled()`
+can be used to display a single line of text (which will be clipped at the
+edge of the screen).
+
+If a second character is displayed immediately in the cell adjacent to a
+wide character (offset by one instead of by two), then the results are undefined.
 
 ## Colors
 

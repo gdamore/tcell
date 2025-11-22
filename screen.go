@@ -35,9 +35,25 @@ type Screen interface {
 	// is called (or Sync).
 	Fill(rune, Style)
 
+	// Put writes the first graphme of the given string with th
+	// given style at the given coordinates. (Only the first grapheme
+	// occupying either one or two cells is stored.) It returns the
+	// remainder of the string, and the width displayed.
+	Put(x int, y int, str string, style Style) (string, int)
+
+	// PutStr writes a string starting at the given position, using the
+	// default style. The content is clipped to the screen dimensions.
+	PutStr(x int, y int, str string)
+
+	// PutStrStyled writes a string starting at the given position, using
+	// the given style. The cont4ent is clipped to the screen dimensions.
+	PutStrStyled(x int, y int, str string, style Style)
+
 	// SetCell is an older API, and will be removed.  Please use
 	// SetContent instead; SetCell is implemented in terms of SetContent.
 	SetCell(x int, y int, style Style, ch ...rune)
+
+	Get(x, y int) (str string, style Style, width int)
 
 	// GetContent returns the contents at the given location.  If the
 	// coordinates are out of range, then the values will be 0, nil,
@@ -380,6 +396,32 @@ type baseScreen struct {
 	screenImpl
 }
 
+func (b *baseScreen) Put(x int, y int, str string, style Style) (remain string, width int) {
+	cells := b.GetCells()
+	b.Lock()
+	defer b.Unlock()
+	return cells.Put(x, y, str, style)
+}
+
+func (b *baseScreen) PutStrStyled(x int, y int, str string, style Style) {
+	cells := b.GetCells()
+	b.Lock()
+	cols, rows := cells.Size()
+	width := 0
+	for str != "" && x < cols && y < rows {
+		str, width = cells.Put(x, y, str, style)
+		if width == 0 {
+			break
+		}
+		x += width
+	}
+	defer b.Unlock()
+}
+
+func (b *baseScreen) PutStr(x, y int, str string) {
+	b.PutStrStyled(x, y, str, StyleDefault)
+}
+
 func (b *baseScreen) SetCell(x int, y int, style Style, ch ...rune) {
 	if len(ch) > 0 {
 		b.SetContent(x, y, ch[0], ch[1:], style)
@@ -399,12 +441,15 @@ func (b *baseScreen) Fill(r rune, style Style) {
 	b.Unlock()
 }
 
-func (b *baseScreen) SetContent(x, y int, mainc rune, combc []rune, st Style) {
+func (b *baseScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
+	b.Put(x, y, string(append([]rune{mainc}, combc...)), style)
+}
 
+func (b *baseScreen) Get(x, y int) (string, Style, int) {
 	cells := b.GetCells()
 	b.Lock()
-	cells.SetContent(x, y, mainc, combc, st)
-	b.Unlock()
+	defer b.Unlock()
+	return cells.Get(x, y)
 }
 
 func (b *baseScreen) GetContent(x, y int) (rune, []rune, Style, int) {

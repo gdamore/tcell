@@ -114,73 +114,74 @@ type tKeyCode struct {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	ti           *terminfo.Terminfo
-	tty          Tty
-	h            int
-	w            int
-	fini         bool
-	cells        CellBuffer
-	buffering    bool // true if we are collecting writes to buf instead of sending directly to out
-	buf          bytes.Buffer
-	curstyle     Style
-	style        Style
-	resizeQ      chan bool
-	quit         chan struct{}
-	keychan      chan []byte
-	cx           int
-	cy           int
-	mouse        []byte
-	clear        bool
-	cursorx      int
-	cursory      int
-	acs          map[rune]string
-	charset      string
-	encoder      transform.Transformer
-	decoder      transform.Transformer
-	fallback     map[rune]string
-	colors       map[Color]Color
-	palette      []Color
-	truecolor    bool
-	escaped      bool
-	buttondn     bool
-	finiOnce     sync.Once
-	enablePaste  string
-	disablePaste string
-	enterUrl     string
-	exitUrl      string
-	setWinSize   string
-	enableFocus  string
-	disableFocus string
-	doubleUnder  string
-	curlyUnder   string
-	dottedUnder  string
-	dashedUnder  string
-	underColor   string
-	underRGB     string
-	underFg      string // reset underline color to foreground
-	cursorStyles map[CursorStyle]string
-	cursorStyle  CursorStyle
-	cursorColor  Color
-	cursorRGB    string
-	cursorFg     string
-	saved        *term.State
-	stopQ        chan struct{}
-	eventQ       chan Event
-	running      bool
-	wg           sync.WaitGroup
-	mouseFlags   MouseFlags
-	pasteEnabled bool
-	focusEnabled bool
-	setTitle     string
-	saveTitle    string
-	restoreTitle string
-	title        string
-	setClipboard string
-	startSyncOut string
-	endSyncOut   string
-	enableCsiU   string
-	disableCsiU  string
-	input        InputProcessor
+	ti             *terminfo.Terminfo
+	tty            Tty
+	h              int
+	w              int
+	fini           bool
+	cells          CellBuffer
+	buffering      bool // true if we are collecting writes to buf instead of sending directly to out
+	buf            bytes.Buffer
+	curstyle       Style
+	style          Style
+	resizeQ        chan bool
+	quit           chan struct{}
+	keychan        chan []byte
+	cx             int
+	cy             int
+	mouse          []byte
+	clear          bool
+	cursorx        int
+	cursory        int
+	acs            map[rune]string
+	charset        string
+	encoder        transform.Transformer
+	decoder        transform.Transformer
+	fallback       map[rune]string
+	colors         map[Color]Color
+	palette        []Color
+	truecolor      bool
+	escaped        bool
+	buttondn       bool
+	finiOnce       sync.Once
+	enablePaste    string
+	disablePaste   string
+	enterUrl       string
+	exitUrl        string
+	setWinSize     string
+	enableFocus    string
+	disableFocus   string
+	doubleUnder    string
+	curlyUnder     string
+	dottedUnder    string
+	dashedUnder    string
+	underColor     string
+	underRGB       string
+	underFg        string // reset underline color to foreground
+	cursorStyles   map[CursorStyle]string
+	cursorStyle    CursorStyle
+	cursorColor    Color
+	cursorRGB      string
+	cursorFg       string
+	saved          *term.State
+	stopQ          chan struct{}
+	eventQ         chan Event
+	running        bool
+	wg             sync.WaitGroup
+	mouseFlags     MouseFlags
+	pasteEnabled   bool
+	focusEnabled   bool
+	setTitle       string
+	saveTitle      string
+	restoreTitle   string
+	title          string
+	setClipboard   string
+	startSyncOut   string
+	endSyncOut     string
+	enableCsiU     string
+	disableCsiU    string
+	disableEmojiWA bool // if true don't try to workaround emoji bugs
+	input          InputProcessor
 
 	sync.Mutex
 }
@@ -377,20 +378,19 @@ func (t *tScreen) SetStyle(style Style) {
 	t.Unlock()
 }
 
-func (t *tScreen) encodeRune(r rune, buf []byte) []byte {
+func (t *tScreen) encodeStr(s string, buf []byte) []byte {
 
-	nb := make([]byte, 6)
-	ob := make([]byte, 6)
-	num := utf8.EncodeRune(ob, r)
-	ob = ob[:num]
+	var dstBuf [20]byte
+	nb := dstBuf[:]
 	dst := 0
 	var err error
 	if enc := t.encoder; enc != nil {
 		enc.Reset()
-		dst, _, err = enc.Transform(nb, ob, true)
+		dst, _, err = enc.Transform(nb, []byte(s), true)
 	}
 	if err != nil || dst == 0 || nb[0] == '\x1a' {
 		// Combining characters are elided
+		r, _ := utf8.DecodeRuneInString(s)
 		if len(buf) == 0 {
 			if acs, ok := t.acs[r]; ok {
 				buf = append(buf, []byte(acs)...)
@@ -492,7 +492,7 @@ func (t *tScreen) drawCell(x, y int) int {
 
 	ti := t.ti
 
-	mainc, combc, style, width := t.cells.GetContent(x, y)
+	str, style, width := t.cells.Get(x, y)
 	if !t.cells.Dirty(x, y) {
 		return width
 	}
@@ -602,16 +602,10 @@ func (t *tScreen) drawCell(x, y int) int {
 		width = 1
 	}
 
-	var str string
-
-	buf := make([]byte, 0, 6)
-
-	buf = t.encodeRune(mainc, buf)
-	for _, r := range combc {
-		buf = t.encodeRune(r, buf)
-	}
-
+	buf := make([]byte, 20)
+	buf = t.encodeStr(str, buf)
 	str = string(buf)
+
 	if width > 1 && str == "?" {
 		// No FullWidth character support
 		str = "? "
@@ -1090,11 +1084,9 @@ func (t *tScreen) CanDisplay(r rune, checkFallbacks bool) bool {
 
 	if enc := t.encoder; enc != nil {
 		nb := make([]byte, 6)
-		ob := make([]byte, 6)
-		num := utf8.EncodeRune(ob, r)
 
 		enc.Reset()
-		dst, _, err := enc.Transform(nb, ob[:num], true)
+		dst, _, err := enc.Transform(nb, []byte(string(r)), true)
 		if dst != 0 && err == nil && nb[0] != '\x1A' {
 			return true
 		}

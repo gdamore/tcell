@@ -35,14 +35,14 @@ func makebox(s tcell.Screen) {
 		return
 	}
 
-	glyphs := []rune{'@', '#', '&', '*', '=', '%', 'Z', 'A'}
+	glyphs := []string{"@", "#", "&", "*", "=", "%", "Z", "A"}
 
 	lx := rand.Int() % w
 	ly := rand.Int() % h
 	lw := rand.Int() % (w - lx)
 	lh := rand.Int() % (h - ly)
 	st := tcell.StyleDefault
-	gl := ' '
+	gl := " "
 	if s.Colors() > 256 {
 		rgb := tcell.NewHexColor(int32(rand.Int() & 0xffffff))
 		st = st.Background(rgb)
@@ -55,7 +55,7 @@ func makebox(s tcell.Screen) {
 
 	for row := 0; row < lh; row++ {
 		for col := 0; col < lw; col++ {
-			s.SetCell(lx+col, ly+row, st, gl)
+			s.PutStrStyled(lx+col, ly+row, gl, st)
 		}
 	}
 	s.Show()

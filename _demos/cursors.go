@@ -19,8 +19,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/gdamore/tcell/v2"
 	"os"
+
+	"github.com/gdamore/tcell/v2"
 )
 
 func main() {
@@ -39,16 +40,12 @@ func main() {
 	s.Clear()
 
 	text := "This demonstrates cursor styles.  Press 0 through 6 to change the style."
-	x := 1
-	for _, r := range text {
-		s.SetCell(x, 1, tcell.StyleDefault, r)
-		x++
-	}
-	s.SetCell(2, 2, tcell.StyleDefault, '0')
+	s.PutStr(1, 1, text)
+
+	s.Put(2, 2, "0", tcell.StyleDefault)
 	s.SetCursorStyle(tcell.CursorStyleDefault)
 	s.ShowCursor(3, 2)
 	quit := make(chan struct{})
-	style := tcell.StyleDefault
 	go func() {
 		for {
 			s.Show()
@@ -59,25 +56,25 @@ func main() {
 				case tcell.KeyRune:
 					switch ev.Rune() {
 					case '0':
-						s.SetContent(2, 2, '0', nil, style)
+						s.Put(2, 2, "0", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleDefault, tcell.ColorReset)
 					case '1':
-						s.SetContent(2, 2, '1', nil, style)
+						s.Put(2, 2, "1", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleBlinkingBlock, tcell.ColorGreen)
 					case '2':
-						s.SetCell(2, 2, tcell.StyleDefault, '2')
+						s.Put(2, 2, "2", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleSteadyBlock, tcell.ColorBlue)
 					case '3':
-						s.SetCell(2, 2, tcell.StyleDefault, '3')
+						s.Put(2, 2, "3", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleBlinkingUnderline, tcell.ColorRed)
 					case '4':
-						s.SetCell(2, 2, tcell.StyleDefault, '4')
+						s.Put(2, 2, "4", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleSteadyUnderline, tcell.ColorOrange)
 					case '5':
-						s.SetCell(2, 2, tcell.StyleDefault, '5')
+						s.Put(2, 2, "5", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleBlinkingBar, tcell.ColorYellow)
 					case '6':
-						s.SetCell(2, 2, tcell.StyleDefault, '6')
+						s.Put(2, 2, "6", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleSteadyBar, tcell.ColorPink)
 					}
 
