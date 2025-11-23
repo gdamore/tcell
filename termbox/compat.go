@@ -134,9 +134,9 @@ func mkStyle(fg, bg Attribute) tcell.Style {
 func Clear(fg, bg Attribute) {
 	st := mkStyle(fg, bg)
 	w, h := screen.Size()
-	for row := 0; row < h; row++ {
-		for col := 0; col < w; col++ {
-			screen.SetContent(col, row, ' ', nil, st)
+	for row := range h {
+		for col := range w {
+			screen.Put(col, row, " ", st)
 		}
 	}
 }
