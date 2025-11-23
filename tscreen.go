@@ -899,7 +899,7 @@ func (t *tScreen) resize() {
 }
 
 func (t *tScreen) Colors() int {
-	if nc := strings.ToLower(os.Getenv("NO_COLOR")); nc == "1" || nc == "true" || nc == "yes" {
+	if os.Getenv("NO_COLOR") != "" {
 		return 0
 	}
 	// this doesn't change, no need for lock
@@ -913,7 +913,7 @@ func (t *tScreen) Colors() int {
 // This is distinct from Colors(), as it will generally
 // always be a small number. (<= 256)
 func (t *tScreen) nColors() int {
-	if nc := strings.ToLower(os.Getenv("NO_COLOR")); nc == "1" || nc == "true" || nc == "yes" {
+	if os.Getenv("NO_COLOR") != "" {
 		return 0
 	}
 	return t.ti.Colors
