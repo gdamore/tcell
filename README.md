@@ -16,8 +16,10 @@ It was inspired by _termbox_, but includes many additional improvements.
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdamore/tcell/v2)](https://goreportcard.com/report/github.com/gdamore/tcell/v2)
 [![Latest Release](https://img.shields.io/github/v/release/gdamore/tcell.svg?logo=github&label=)](https://github.com/gdamore/tcell/releases)
 
-NOTE: This is version 2 of _Tcell_. There are breaking changes relative to version 1.
+NOTE: This is a development branch intended to be version 3 of _Tcell_.
+There are breaking changes relative to versions 1 and 2.
 Version 1.x remains available using the import `github.com/gdamore/tcell`.
+Version 2.x remains available using the import `github.com/gdamore/tcell/v2`.
 
 ## Tutorial
 
@@ -62,12 +64,6 @@ terminals can send.
 
 _Tcell_ supports enhanced mouse tracking mode, so your application can receive
 regular mouse motion events, and wheel events, if your terminal supports it.
-
-## _Termbox_ Compatibility
-
-A compatibility layer for _termbox_ is provided in the `compat` directory.
-To use it, try importing `github.com/gdamore/tcell/termbox` instead.
-Most _termbox-go_ programs will probably work without further modification.
 
 ## Working With Unicode
 
@@ -150,6 +146,10 @@ There is a `SimulationScreen`, that can be used to simulate a real screen
 for automated testing. The supplied tests do this. The simulation contains
 event delivery, screen resizing support, and capabilities to inject events
 and examine "`physical`" screen contents.
+
+## Breaking Changes in v3
+
+* `termbox` compatibility package is removed - no longer useful (keep using v2 if needed)
 
 ## Platforms
 
