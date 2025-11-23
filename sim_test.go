@@ -63,11 +63,11 @@ func TestClearScreen(t *testing.T) {
 	}
 }
 
-func TestSetCell(t *testing.T) {
+func TestPut(t *testing.T) {
 	st := StyleDefault.Background(ColorRed).Blink(true)
 	s := mkTestScreen(t, "")
 	defer s.Fini()
-	s.SetCell(2, 5, st, '@')
+	s.Put(2, 5, "@", st)
 	b, _, _ := s.GetContents()
 	s.Show()
 	if len(b) != 80*25 {
@@ -85,7 +85,7 @@ func TestResize(t *testing.T) {
 	st := StyleDefault.Background(ColorYellow).Underline(true)
 	s := mkTestScreen(t, "")
 	defer s.Fini()
-	s.SetCell(2, 5, st, '&')
+	s.Put(2, 5, "&", st)
 	b, x, y := s.GetContents()
 	s.Show()
 
