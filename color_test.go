@@ -167,7 +167,7 @@ func TestColorNone(t *testing.T) {
 		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
 	}
 	pink := st.Background(ColorPink).Foreground(ColorNone)
-	s.SetContent(1, 0, ' ', nil, pink)
+	s.Put(1, 0, " ", pink)
 	combined := pink.Foreground(ColorRed)
 
 	if _, s1, _ := s.Get(1, 0); s1 != combined {
