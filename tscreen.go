@@ -1118,11 +1118,6 @@ func (t *tScreen) HasMouse() bool {
 	return len(t.mouse) != 0
 }
 
-func (t *tScreen) HasKey(_ Key) bool {
-	// We always return true
-	return true
-}
-
 func (t *tScreen) SetSize(w, h int) {
 	if t.setWinSize != "" {
 		t.TPuts(t.ti.TParm(t.setWinSize, w, h))

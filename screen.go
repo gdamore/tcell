@@ -251,15 +251,6 @@ type Screen interface {
 	// the View interface.
 	Resize(int, int, int, int)
 
-	// HasKey always returns true.
-	//
-	// Deprecated: This function always returns true.  Applications
-	// cannot reliably detect whether a key is supported or not with
-	// modern terminal emulators. (The intended use here was to help
-	// applications determine whether a given key stroke was supported
-	// by the terminal, but it was never reliable.)
-	HasKey(Key) bool
-
 	// Suspend pauses input and output processing.  It also restores the
 	// terminal settings to what they were when the application started.
 	// This can be used to, for example, run a sub-shell.
@@ -366,7 +357,6 @@ type screenImpl interface {
 	UnregisterRuneFallback(r rune)
 	CanDisplay(r rune, checkFallbacks bool) bool
 	Resize(int, int, int, int)
-	HasKey(Key) bool
 	Suspend() error
 	Resume() error
 	Beep() error
