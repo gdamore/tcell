@@ -55,14 +55,6 @@ func (s Style) Background(c Color) Style {
 	return s2
 }
 
-// Decompose breaks a style up, returning the foreground, background,
-// and other attributes.  The URL if set is not included.
-// Deprecated: Applications should not attempt to decompose style,
-// as this content is not sufficient to describe the actual style.
-func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
-	return s.fg, s.bg, s.attrs
-}
-
 func (s Style) setAttrs(attrs AttrMask, on bool) Style {
 	s2 := s
 	if on {
