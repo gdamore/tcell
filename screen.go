@@ -431,9 +431,9 @@ func (b *baseScreen) PutStr(x, y int, str string) {
 
 func (b *baseScreen) SetCell(x int, y int, style Style, ch ...rune) {
 	if len(ch) > 0 {
-		b.SetContent(x, y, ch[0], ch[1:], style)
+		b.Put(x, y, string(ch), style)
 	} else {
-		b.SetContent(x, y, ' ', nil, style)
+		b.Put(x, y, " ", style)
 	}
 }
 
