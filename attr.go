@@ -25,7 +25,6 @@ const (
 	AttrBold AttrMask = 1 << iota
 	AttrBlink
 	AttrReverse
-	AttrUnderline // Deprecated: Use UnderlineStyle
 	AttrDim
 	AttrItalic
 	AttrStrikeThrough
