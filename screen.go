@@ -232,20 +232,6 @@ type Screen interface {
 	// by your terminal except by changing the terminal database.
 	UnregisterRuneFallback(r rune)
 
-	// CanDisplay returns true if the given rune can be displayed on
-	// this screen.  Note that this is a best-guess effort -- whether
-	// your fonts support the character or not may be questionable.
-	// Mostly this is for folks who work outside of Unicode.
-	//
-	// If checkFallbacks is true, then if any (possibly imperfect)
-	// fallbacks are registered, this will return true.  This will
-	// also return true if the terminal can replace the glyph with
-	// one that is visually indistinguishable from the one requested.
-	//
-	// Deprecated: This is not a particularly useful or reliable function,
-	// due to limitations in fonts, etc.  It will be removed in the future.
-	CanDisplay(r rune, checkFallbacks bool) bool
-
 	// Resize does nothing, since it's generally not possible to
 	// ask a screen to resize, but it allows the Screen to implement
 	// the View interface.
@@ -355,7 +341,6 @@ type screenImpl interface {
 	CharacterSet() string
 	RegisterRuneFallback(r rune, subst string)
 	UnregisterRuneFallback(r rune)
-	CanDisplay(r rune, checkFallbacks bool) bool
 	Resize(int, int, int, int)
 	Suspend() error
 	Resume() error

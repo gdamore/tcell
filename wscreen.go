@@ -426,19 +426,6 @@ func (t *wScreen) UnregisterRuneFallback(orig rune) {
 	t.Unlock()
 }
 
-func (t *wScreen) CanDisplay(r rune, checkFallbacks bool) bool {
-	if utf8.ValidRune(r) {
-		return true
-	}
-	if !checkFallbacks {
-		return false
-	}
-	if _, ok := t.fallback[r]; ok {
-		return true
-	}
-	return false
-}
-
 func (t *wScreen) HasMouse() bool {
 	return true
 }
