@@ -120,7 +120,7 @@ func paletteColor(c Color) int32 {
 }
 
 func (t *wScreen) drawCell(x, y int) int {
-	mainc, combc, style, width := t.cells.GetContent(x, y)
+	str, style, width := t.cells.Get(x, y)
 
 	if !t.cells.Dirty(x, y) {
 		return width
@@ -142,18 +142,8 @@ func (t *wScreen) drawCell(x, y int) int {
 		uc = 0x000000
 	}
 
-	s := ""
-	if len(combc) > 0 {
-		b := make([]rune, 0, 1+len(combc))
-		b = append(b, mainc)
-		b = append(b, combc...)
-		s = string(b)
-	} else {
-		s = string(mainc)
-	}
-
 	t.cells.SetDirty(x, y, false)
-	js.Global().Call("drawCell", x, y, s, fg, bg, int(style.attrs), int(us), int(uc))
+	js.Global().Call("drawCell", x, y, str, fg, bg, int(style.attrs), int(us), int(uc))
 
 	return width
 }
