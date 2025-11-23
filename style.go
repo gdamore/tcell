@@ -1,4 +1,4 @@
-// Copyright 2024 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -128,24 +128,17 @@ const (
 // bool: on / off - enables just a simple underline
 // UnderlineStyle: sets a specific style (should not coexist with the bool)
 // Color: the color to use
-func (s Style) Underline(params ...interface{}) Style {
+func (s Style) Underline(params ...any) Style {
 	s2 := s
 	for _, param := range params {
 		switch v := param.(type) {
 		case bool:
 			if v {
 				s2.ulStyle = UnderlineStyleSolid
-				s2.attrs |= AttrUnderline
 			} else {
 				s2.ulStyle = UnderlineStyleNone
-				s2.attrs &^= AttrUnderline
 			}
 		case UnderlineStyle:
-			if v == UnderlineStyleNone {
-				s2.attrs &^= AttrUnderline
-			} else {
-				s2.attrs |= AttrUnderline
-			}
 			s2.ulStyle = v
 		case Color:
 			s2.ulColor = v
