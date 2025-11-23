@@ -312,8 +312,6 @@ type Screen interface {
 func NewScreen() (Screen, error) {
 	if s, e := NewTerminfoScreen(); s != nil {
 		return s, nil
-	} else if s, _ := NewConsoleScreen(); s != nil {
-		return s, nil
 	} else {
 		return nil, e
 	}
