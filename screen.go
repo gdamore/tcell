@@ -135,19 +135,6 @@ type Screen interface {
 	// is dropped, and ErrEventQFull is returned.
 	PostEvent(ev Event) error
 
-	// Deprecated: PostEventWait is unsafe, and will be removed
-	// in the future.
-	//
-	// PostEventWait is like PostEvent, but if the queue is full, it
-	// blocks until there is space in the queue, making delivery
-	// reliable.  However, it is VERY important that this function
-	// never be called from within whatever event loop is polling
-	// with PollEvent(), otherwise a deadlock may arise.
-	//
-	// For this reason, when using this function, the use of a
-	// Goroutine is recommended to ensure no deadlock can occur.
-	PostEventWait(ev Event)
-
 	// EnableMouse enables the mouse.  (If your terminal supports it.)
 	// If no flags are specified, then all events are reported, if the
 	// terminal supports them.
@@ -491,13 +478,6 @@ func (b *baseScreen) PollEvent() Event {
 
 func (b *baseScreen) HasPendingEvent() bool {
 	return len(b.EventQ()) > 0
-}
-
-func (b *baseScreen) PostEventWait(ev Event) {
-	select {
-	case b.EventQ() <- ev:
-	case <-b.StopQ():
-	}
 }
 
 func (b *baseScreen) PostEvent(ev Event) error {

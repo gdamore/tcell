@@ -1,4 +1,4 @@
-// Copyright 2024 The Tcell Authors
+// Copyright 2025 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -81,13 +81,15 @@ func (app *Application) Update() {
 
 // PostFunc posts a function to be executed in the context of the
 // application's event loop.  Functions that need to update displayed
-// state, etc. can do this to avoid holding locks.
-func (app *Application) PostFunc(fn func()) {
+// state, etc. can do this to avoid holding locks.  This can return an
+// error if the event queue is full or if the screen is not initialized yet.
+func (app *Application) PostFunc(fn func()) error {
 	ev := &eventAppFunc{fn: fn}
 	ev.SetEventNow()
 	if scr := app.screen; scr != nil {
-		go func() { scr.PostEventWait(ev) }()
+		return scr.PostEvent(ev)
 	}
+	return tcell.ErrNoScreen
 }
 
 // SetScreen sets the screen to use for the application.  This must be
