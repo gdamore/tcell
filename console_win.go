@@ -183,6 +183,10 @@ var vtCursorStyles = map[CursorStyle]string{
 // NewConsoleScreen returns a Screen for the Windows console associated
 // with the current process.  The Screen makes use of the Windows Console
 // API to display content and read events.
+//
+// Deprecated: The console API based implementation will be fully replaced
+// with the VT based model.  Use NewScreen() to get a reasonable screen
+// by default.
 func NewConsoleScreen() (Screen, error) {
 	return &baseScreen{screenImpl: &cScreen{}}, nil
 }
