@@ -49,11 +49,6 @@ type Screen interface {
 	// the given style. The cont4ent is clipped to the screen dimensions.
 	PutStrStyled(x int, y int, str string, style Style)
 
-	// SetCell is an older API, and will be removed.
-	//jj
-	// Deprecated: Please use Put instead.
-	SetCell(x int, y int, style Style, ch ...rune)
-
 	// Get the contents at the given location.  If the
 	// coordinates are out of range, then the values will be 0, nil,
 	// StyleDefault.  Note that the contents returned are logical contents
@@ -387,14 +382,6 @@ func (b *baseScreen) PutStrStyled(x int, y int, str string, style Style) {
 
 func (b *baseScreen) PutStr(x, y int, str string) {
 	b.PutStrStyled(x, y, str, StyleDefault)
-}
-
-func (b *baseScreen) SetCell(x int, y int, style Style, ch ...rune) {
-	if len(ch) > 0 {
-		b.Put(x, y, string(ch), style)
-	} else {
-		b.Put(x, y, " ", style)
-	}
 }
 
 func (b *baseScreen) Clear() {
