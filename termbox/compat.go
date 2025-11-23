@@ -1,4 +1,4 @@
-// Copyright 2020 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -14,6 +14,8 @@
 
 // Package termbox is a compatibility layer to allow tcell to emulate
 // the github.com/nsf/termbox package.
+//
+// Deprecated: This package will likely be removed in the next major version of tcell.
 package termbox
 
 import (
@@ -195,7 +197,7 @@ func Sync() error {
 // content (rune) and attributes.
 func SetCell(x, y int, ch rune, fg, bg Attribute) {
 	st := mkStyle(fg, bg)
-	screen.SetContent(x, y, ch, nil, st)
+	screen.Put(x, y, string(ch), st)
 }
 
 // EventType represents the type of event.
