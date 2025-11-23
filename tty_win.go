@@ -32,13 +32,15 @@ var (
 )
 
 var (
-	procReadConsoleInput           = k32.NewProc("ReadConsoleInputW")
-	procWaitForMultipleObjects     = k32.NewProc("WaitForMultipleObjects")
-	procSetConsoleMode             = k32.NewProc("SetConsoleMode")
-	procGetConsoleMode             = k32.NewProc("GetConsoleMode")
-	procGetConsoleScreenBufferInfo = k32.NewProc("GetConsoleScreenBufferInfo")
-	procCreateEvent                = k32.NewProc("CreateEventW")
-	procSetEvent                   = k32.NewProc("SetEvent")
+	procReadConsoleInput              = k32.NewProc("ReadConsoleInputW")
+	procGetNumberOfConsoleInputEvents = k32.NewProc("GetNumberOfConsoleInputEvents")
+	procFlushConsoleInputBuffer       = k32.NewProc("FlushConsoleInputBuffer")
+	procWaitForMultipleObjects        = k32.NewProc("WaitForMultipleObjects")
+	procSetConsoleMode                = k32.NewProc("SetConsoleMode")
+	procGetConsoleMode                = k32.NewProc("GetConsoleMode")
+	procGetConsoleScreenBufferInfo    = k32.NewProc("GetConsoleScreenBufferInfo")
+	procCreateEvent                   = k32.NewProc("CreateEventW")
+	procSetEvent                      = k32.NewProc("SetEvent")
 )
 
 const (
@@ -142,52 +144,52 @@ func (w *winTty) getConsoleInput() error {
 	case w32WaitObject0: // w.cancelFlag
 		return errors.New("cancelled")
 	case w32WaitObject0 + 1: // w.in
-		rec := &inputRecord{}
+		// rec := &inputRecord{}
 		var nrec int32
-		rv, _, er := procReadConsoleInput.Call(
+		rv, _, er := procGetNumberOfConsoleInputEvents.Call(
 			uintptr(w.in),
-			uintptr(unsafe.Pointer(rec)),
-			uintptr(1),
+			uintptr(unsafe.Pointer(&nrec)))
+		rec := make([]inputRecord, nrec)
+		rv, _, er = procReadConsoleInput.Call(
+			uintptr(w.in),
+			uintptr(unsafe.Pointer(&rec[0])),
+			uintptr(nrec),
 			uintptr(unsafe.Pointer(&nrec)))
 		if rv == 0 {
 			return er
 		}
-		if nrec != 1 {
-			return nil
-		}
-		switch rec.typ {
-		case keyEvent:
-			chr := rec.data[10] // we only see ASCII, key down events in VT mode
+		for i := range nrec {
+			ir := rec[i]
+			switch ir.typ {
+			case keyEvent:
+				chr := ir.data[10] // we only see ASCII, key down events in VT mode
 
-			// because we use win32-input-mode, we will only
-			// see US-ASCII characters - (Q: will they be
-			// 16-bit values with possible surrogate pairs?)
-			select {
-			case w.buf <- chr:
-			case <-w.stopQ:
-				break
+				// because we use win32-input-mode, we will only
+				// see US-ASCII characters - (Q: will they be
+				// 16-bit values with possible surrogate pairs?)
+				select {
+				case w.buf <- chr:
+				case <-w.stopQ:
+					break
+				}
+
+			case resizeEvent:
+				w.Lock()
+				w.cols = binary.LittleEndian.Uint16(ir.data[0:]) + 1
+				w.rows = binary.LittleEndian.Uint16(ir.data[2:]) + 1
+				cb := w.resizeCb
+				w.Unlock()
+				if cb != nil {
+					cb()
+				}
+
+			default:
 			}
-			return nil
-
-		case resizeEvent:
-			w.Lock()
-			w.cols = binary.LittleEndian.Uint16(rec.data[0:]) + 1
-			w.rows = binary.LittleEndian.Uint16(rec.data[2:]) + 1
-			cb := w.resizeCb
-			w.Unlock()
-			if cb != nil {
-				cb()
-			}
-			return nil
-
-		default:
 		}
+		return nil
 	default:
 		return er
 	}
-
-	return nil
-
 }
 
 func (w *winTty) scanInput() {
@@ -204,23 +206,10 @@ func (w *winTty) Start() error {
 	w.Lock()
 	defer w.Unlock()
 
-	// drain the console (some keys may still be in the input buffer)
-	var nrec int32 = 1
-	for nrec > 0 {
-		rec := &inputRecord{}
-		rv, _, er := procReadConsoleInput.Call(
-			uintptr(w.in),
-			uintptr(unsafe.Pointer(rec)),
-			uintptr(1),
-			uintptr(unsafe.Pointer(&nrec)))
-		if rv == 0 || er != nil {
-			break
-		}
-	}
-
 	if w.running {
 		return errors.New("already engaged")
 	}
+	_, _, _ = procFlushConsoleInputBuffer.Call(uintptr(w.in))
 	w.stopQ = make(chan struct{})
 	cf, _, err := procCreateEvent.Call(
 		uintptr(0),
@@ -238,7 +227,6 @@ func (w *winTty) Start() error {
 	_, _, _ = procSetConsoleMode.Call(uintptr(w.out),
 		uintptr(modeVtOutput|modeNoAutoNL|modeCookedOut|modeUnderline))
 
-	// w.Write([]byte("\x1b[?9001h")) // win32 input mode
 	w.wg.Add(1)
 	go w.scanInput()
 	return nil
@@ -250,6 +238,7 @@ func (w *winTty) Stop() error {
 	defer w.Unlock()
 	_, _, _ = procSetConsoleMode.Call(uintptr(w.in), uintptr(w.oimode))
 	_, _, _ = procSetConsoleMode.Call(uintptr(w.out), uintptr(w.oomode))
+	_, _, _ = procFlushConsoleInputBuffer.Call(uintptr(w.in))
 	w.running = false
 
 	return nil
