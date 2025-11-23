@@ -51,6 +51,47 @@ const (
 	focusEvent  uint16 = 16
 )
 
+const (
+	w32Infinite    = ^uintptr(0)
+	w32WaitObject0 = uintptr(0)
+)
+
+const (
+	// Input modes
+	modeExtendFlg = uint32(0x0080)
+	modeMouseEn   = uint32(0x0010)
+	modeResizeEn  = uint32(0x0008)
+	modeVtInput   = uint32(0x0200)
+	// modeCooked    = uint32(0x0001)
+
+	// Output modes
+	modeCookedOut = uint32(0x0001)
+	modeVtOutput  = uint32(0x0004)
+	modeNoAutoNL  = uint32(0x0008)
+	modeUnderline = uint32(0x0010) // ENABLE_LVB_GRID_WORLDWIDE, needed for underlines
+	// modeWrapEOL   = uint32(0x0002)
+)
+
+type coord struct {
+	x int16
+	y int16
+}
+
+type rect struct {
+	left   int16
+	top    int16
+	right  int16
+	bottom int16
+}
+
+type consoleInfo struct {
+	size  coord
+	pos   coord
+	attrs uint16
+	win   rect
+	maxsz coord
+}
+
 type inputRecord struct {
 	typ  uint16
 	_    uint16
