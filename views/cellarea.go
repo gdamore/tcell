@@ -30,13 +30,21 @@ type CellModel interface {
 	MoveCursor(offx, offy int)
 }
 
+type CellModelNew interface {
+	Get(x, y int) (string, tcell.Style, int)
+	GetBounds() (int, int)
+	SetCursor(int, int)
+	GetCursor() (int, int, bool, bool)
+	MoveCursor(offx, offy int)
+}
+
 // CellView is a flexible view of a CellModel, offering both cursor
 // management and a panning.
 type CellView struct {
 	port  *ViewPort
 	view  View
 	style tcell.Style
-	model CellModel
+	model CellModelNew
 	once  sync.Once
 
 	WidgetWatchers
@@ -73,15 +81,15 @@ func (a *CellView) Draw() {
 	cx, cy, en, sh := a.model.GetCursor()
 	for y := range ey {
 		for x := range ex {
-			ch, style, comb, wid := model.GetCell(x, y)
-			if ch == 0 {
-				ch = ' '
+			str, style, wid := model.Get(x, y)
+			if str == "" {
+				str = " "
 				style = a.style
 			}
 			if en && x == cx && y == cy && sh {
 				style = style.Reverse(true)
 			}
-			port.SetContent(x, y, ch, comb, style)
+			port.Put(x, y, str, style)
 			x += wid - 1
 		}
 	}
@@ -230,14 +238,32 @@ func (a *CellView) Size() (int, int) {
 }
 
 // GetModel gets the model for this CellView
-func (a *CellView) GetModel() CellModel {
+// It may be a wrapped version of the model passed in.
+func (a *CellView) GetModel() any {
 	return a.model
 }
 
+type cellModelNewAdapter struct {
+	CellModel
+}
+
+func (ca *cellModelNewAdapter) Get(x, y int) (string, tcell.Style, int) {
+	ch0, style, comb, width := ca.GetCell(x, y)
+	str := string(append([]rune{ch0}, comb...))
+	return str, style, width
+}
+
 // SetModel sets the model for this CellView.
-func (a *CellView) SetModel(model CellModel) {
-	w, h := model.GetBounds()
-	a.model = model
+func (a *CellView) SetModel(model any) {
+	switch m := model.(type) {
+	case CellModelNew:
+		a.model = m
+	case CellModel:
+		a.model = &cellModelNewAdapter{m}
+	default:
+		panic("Model does not implement CellModel or CellModelNew")
+	}
+	w, h := a.model.GetBounds()
 	a.port.SetContentSize(w, h, true)
 	a.port.ValidateView()
 	a.PostEventWidgetContent(a)

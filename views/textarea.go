@@ -1,4 +1,4 @@
-// Copyright 2016 The Tcell Authors
+// Copyright 2025 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/uniseg"
 )
 
 // TextArea is a pannable 2 dimensional text widget. It wraps both
@@ -33,22 +34,37 @@ type TextArea struct {
 }
 
 type linesModel struct {
-	runes  [][]rune
-	width  int
-	height int
-	x      int
-	y      int
-	hide   bool
-	cursor bool
-	style  tcell.Style
+	strings [][]string
+	widths  [][]int
+	width   int
+	height  int
+	x       int
+	y       int
+	hide    bool
+	cursor  bool
+	style   tcell.Style
+}
+
+func (m *linesModel) Get(x, y int) (string, tcell.Style, int) {
+	if x < 0 || y < 0 || y >= m.height || y >= len(m.strings) || x >= len(m.strings[y]) {
+		return "", m.style, 1
+	}
+	return m.strings[y][x], m.style, m.widths[y][x]
 }
 
 func (m *linesModel) GetCell(x, y int) (rune, tcell.Style, []rune, int) {
-	if x < 0 || y < 0 || y >= m.height || x >= len(m.runes[y]) {
+	if x < 0 || y < 0 || y >= m.height || y >= len(m.strings) || x >= len(m.strings[y]) {
 		return 0, m.style, nil, 1
 	}
-	// XXX: extend this to support combining and full width chars
-	return m.runes[y][x], m.style, nil, 1
+	var runes = []rune(m.strings[y][x])
+	switch len(runes) {
+	case 0:
+		return 0, m.style, nil, m.widths[y][x]
+	case 1:
+		return runes[0], m.style, nil, m.widths[y][x]
+	default:
+		return runes[0], m.style, runes[1:], m.widths[y][x]
+	}
 }
 
 func (m *linesModel) GetBounds() (int, int) {
@@ -93,19 +109,25 @@ func (ta *TextArea) SetLines(lines []string) {
 	m.width = 0
 
 	// extend slice before using m.runes[row] to avoid panic
-	slice := make([][]rune, len(lines))
-	m.runes = slice
+	slice := make([][]string, len(lines))
+	m.strings = slice
+	m.widths = make([][]int, len(lines))
 
 	for row, line := range lines {
-		for _, ch := range line {
-			m.runes[row] = append(m.runes[row], ch)
-		}
-		if len(m.runes[row]) > m.width {
-			m.width = len(m.runes[row])
+		state := -1
+		var cl string
+		var w int
+		rw := 0
+		for line != "" {
+			cl, line, w, state = uniseg.FirstGraphemeClusterInString(line, state)
+			m.strings[row] = append(m.strings[row], cl)
+			m.widths[row] = append(m.widths[row], w)
+			rw += w
+			m.width = max(rw, m.width)
 		}
 	}
 
-	m.height = len(m.runes)
+	m.height = len(m.strings)
 
 	ta.CellView.SetModel(m)
 }
@@ -140,7 +162,7 @@ func (ta *TextArea) SetContent(text string) {
 // Init initializes the TextArea.
 func (ta *TextArea) Init() {
 	ta.once.Do(func() {
-		lm := &linesModel{runes: [][]rune{}, width: 0}
+		lm := &linesModel{strings: [][]string{}, widths: [][]int{}}
 		ta.model = lm
 		ta.CellView.Init()
 		ta.CellView.SetModel(lm)
