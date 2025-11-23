@@ -150,27 +150,27 @@ func TestColorNone(t *testing.T) {
 	s.SetSize(80, 24)
 	st := StyleDefault.Foreground(ColorBlack).Background(ColorWhite)
 	s.Fill(' ', st)
-	if _, _, s1, _ := s.GetContent(0, 0); s1 != st {
+	if _, s1, _ := s.Get(0, 0); s1 != st {
 		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
 	}
 	st2 := st.Foreground(ColorNone).Background(ColorNone)
 	s.Fill('X', st2)
-	if _, _, s1, _ := s.GetContent(0, 0); s1 != st {
+	if _, s1, _ := s.Get(0, 0); s1 != st {
 		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
 	}
 	red := st.Foreground(ColorRed).Background(ColorNone)
-	s.SetContent(1, 0, ' ', nil, red)
-	if _, _, s1, _ := s.GetContent(1, 0); s1 != red.Background(st.bg) {
+	s.Put(1, 0, " ", red)
+	if _, s1, _ := s.Get(1, 0); s1 != red.Background(st.bg) {
 		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
 	}
-	if _, _, s1, _ := s.GetContent(0, 0); s1 != st {
+	if _, s1, _ := s.Get(0, 0); s1 != st {
 		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
 	}
 	pink := st.Background(ColorPink).Foreground(ColorNone)
 	s.SetContent(1, 0, ' ', nil, pink)
 	combined := pink.Foreground(ColorRed)
 
-	if _, _, s1, _ := s.GetContent(1, 0); s1 != combined {
+	if _, s1, _ := s.Get(1, 0); s1 != combined {
 		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
 	}
 }
