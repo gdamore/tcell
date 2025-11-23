@@ -1,4 +1,4 @@
-// Copyright 2024 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -49,19 +49,23 @@ type Screen interface {
 	// the given style. The cont4ent is clipped to the screen dimensions.
 	PutStrStyled(x int, y int, str string, style Style)
 
-	// SetCell is an older API, and will be removed.  Please use
-	// SetContent instead; SetCell is implemented in terms of SetContent.
+	// SetCell is an older API, and will be removed.
+	//jj
+	// Deprecated: Please use Put instead.
 	SetCell(x int, y int, style Style, ch ...rune)
 
-	Get(x, y int) (str string, style Style, width int)
-
-	// GetContent returns the contents at the given location.  If the
+	// Get the contents at the given location.  If the
 	// coordinates are out of range, then the values will be 0, nil,
 	// StyleDefault.  Note that the contents returned are logical contents
 	// and may not actually be what is displayed, but rather are what will
 	// be displayed if Show() or Sync() is called.  The width is the width
 	// in screen cells; most often this will be 1, but some East Asian
 	// characters and emoji require two cells.
+	Get(x, y int) (str string, style Style, width int)
+
+	// GetContent is the old way to get cell contents.
+	//
+	// Deprecated: Use Get() instead.
 	GetContent(x, y int) (primary rune, combining []rune, style Style, width int)
 
 	// SetContent sets the contents of the given cell location.  If
@@ -237,6 +241,9 @@ type Screen interface {
 	// fallbacks are registered, this will return true.  This will
 	// also return true if the terminal can replace the glyph with
 	// one that is visually indistinguishable from the one requested.
+	//
+	// Deprecated: This is not a particularly useful or reliable function,
+	// due to limitations in fonts, etc.  It will be removed in the future.
 	CanDisplay(r rune, checkFallbacks bool) bool
 
 	// Resize does nothing, since it's generally not possible to
@@ -246,7 +253,7 @@ type Screen interface {
 
 	// HasKey always returns true.
 	//
-	// Deprecated: This function alwasys returns true.  Applications
+	// Deprecated: This function always returns true.  Applications
 	// cannot reliably detect whether a key is supported or not with
 	// modern terminal emulators. (The intended use here was to help
 	// applications determine whether a given key stroke was supported
