@@ -21,9 +21,19 @@ import (
 // View represents a logical view on an area.  It will have some underlying
 // physical area as well, generally.  Views are operated on by Widgets.
 type View interface {
+
+	// Put content in the View at the given location.
+	// Only a single grapheme cluster is drawn.
+	// This will generally be called by the Draw() method of a Widget.
+	// It returns the remaining string (after removing the first grapheme cluster),
+	// and the width (number of cells) displayed
+	Put(x int, y int, str string, style tcell.Style) (string, int)
+
 	// SetContent is used to update the content of the View at the given
 	// location.  This will generally be called by the Draw() method of
 	// a Widget.
+	//
+	// Deprecated: Use Put instead.
 	SetContent(x int, y int, ch rune, comb []rune, style tcell.Style)
 
 	// Size represents the visible size.  The actual content may be
@@ -71,10 +81,11 @@ func (v *ViewPort) Clear() {
 
 // Fill fills the displayed view port with the given character and style.
 func (v *ViewPort) Fill(ch rune, style tcell.Style) {
+	str := string(ch)
 	if v.v != nil {
-		for y := 0; y < v.height; y++ {
-			for x := 0; x < v.width; x++ {
-				v.v.SetContent(x+v.physx, y+v.physy, ch, nil, style)
+		for y := range v.height {
+			for x := range v.width {
+				v.v.Put(x+v.physx, y+v.physy, str, style)
 			}
 		}
 	}
@@ -101,9 +112,21 @@ func (v *ViewPort) Reset() {
 //
 // Generally, this is called during the Draw() phase by the object that
 // represents the content.
+//
+// Deprecated: Use Put instead.
 func (v *ViewPort) SetContent(x, y int, ch rune, comb []rune, s tcell.Style) {
+	v.Put(x, y, string(append([]rune{ch}, comb...)), s)
+}
+
+// Put is used to place data at the given cell location.  Note that
+// since the ViewPort doesn't retain this data, if the location is outside
+// of the visible area, it is simply discarded.
+//
+// Generally, this is called during the Draw() phase by the object that
+// represents the content.
+func (v *ViewPort) Put(x, y int, str string, style tcell.Style) (string, int) {
 	if v.v == nil {
-		return
+		return "", 0
 	}
 	if x > v.limx && !v.locked {
 		v.limx = x
@@ -112,15 +135,15 @@ func (v *ViewPort) SetContent(x, y int, ch rune, comb []rune, s tcell.Style) {
 		v.limy = y
 	}
 	if x < v.viewx || y < v.viewy {
-		return
+		return "", 0
 	}
 	if x >= (v.viewx + v.width) {
-		return
+		return "", 0
 	}
 	if y >= (v.viewy + v.height) {
-		return
+		return "", 0
 	}
-	v.v.SetContent(x-v.viewx+v.physx, y-v.viewy+v.physy, ch, comb, s)
+	return v.v.Put(x-v.viewx+v.physx, y-v.viewy+v.physy, str, style)
 }
 
 // MakeVisible moves the ViewPort the minimum necessary to make the given

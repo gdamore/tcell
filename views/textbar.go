@@ -1,4 +1,4 @@
-// Copyright 2015 The Tcell Authors
+// Copyright 2025 The Tcell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -124,9 +124,9 @@ func (t *TextBar) Draw() {
 		t.layout()
 	}
 	w, h := t.view.Size()
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			t.view.SetContent(x, y, ' ', nil, t.style)
+	for y := range h {
+		for x := range w {
+			t.view.Put(x, y, " ", t.style)
 		}
 	}
 

@@ -55,9 +55,9 @@ func (a *CellView) Draw() {
 		return
 	}
 	vw, vh := a.view.Size()
-	for y := 0; y < vh; y++ {
-		for x := 0; x < vw; x++ {
-			a.view.SetContent(x, y, ' ', nil, a.style)
+	for y := range vh {
+		for x := range vw {
+			a.view.Put(x, y, " ", a.style)
 		}
 	}
 
@@ -71,8 +71,8 @@ func (a *CellView) Draw() {
 	}
 
 	cx, cy, en, sh := a.model.GetCursor()
-	for y := 0; y < ey; y++ {
-		for x := 0; x < ex; x++ {
+	for y := range ey {
+		for x := range ex {
 			ch, style, comb, wid := model.GetCell(x, y)
 			if ch == 0 {
 				ch = ' '

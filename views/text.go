@@ -39,9 +39,9 @@ func (t *Text) clear() {
 	v := t.view
 	w, h := v.Size()
 	v.Clear()
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			v.SetContent(x, y, ' ', nil, t.style)
+	for y := range h {
+		for x := range w {
+			v.Put(x, y, " ", t.style)
 		}
 	}
 }
