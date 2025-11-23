@@ -29,7 +29,6 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gdamore/tcell/v2/encoding"
-	"github.com/rivo/uniseg"
 
 	"github.com/mattn/go-sixel"
 )
@@ -40,27 +39,13 @@ type imageData struct {
 	data   *bytes.Buffer
 }
 
-func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
-	for _, c := range str {
-		var comb []rune
-		w := uniseg.StringWidth(string(c))
-		if w == 0 {
-			comb = []rune{c}
-			c = ' '
-			w = 1
-		}
-		s.SetContent(x, y, c, comb, style)
-		x += w
-	}
-}
-
 func displayHelloWorld(s tcell.Screen) {
 	w, h := s.Size()
 	s.Clear()
 	style := tcell.StyleDefault.Foreground(tcell.ColorCadetBlue.TrueColor()).Background(tcell.ColorWhite)
-	emitStr(s, w/2-7, h/2, style, "Hello, World!")
-	emitStr(s, w/2-9, h/2+1, tcell.StyleDefault, "Press ESC to exit.")
-	emitStr(s, w/2-18, h/2+2, tcell.StyleDefault, "Press Enter to toggle sixel lock.")
+	s.PutStrStyled(w/2-7, h/2, "Hello, World!", style)
+	s.PutStr(w/2-9, h/2+1, "Press ESC to exit.")
+	s.PutStr(w/2-18, h/2+2, "Press Enter to toggle sixel lock.")
 	s.Show()
 }
 
@@ -104,8 +89,8 @@ func displaySixel(s tcell.Screen, img *imageData, lock bool) {
 		log.Fatal(err)
 	}
 
-	emitStr(s, sixelX, sixelY, tcell.StyleDefault, "This text is behind")
-	emitStr(s, sixelX, sixelY+1, tcell.StyleDefault, "     the sixel")
+	s.PutStr(sixelX, sixelY, "This text is behind")
+	s.PutStr(sixelX, sixelY+1, "     the sixel")
 
 	// Move the cursor to our draw position
 	ti.TPuts(tty, ti.TGoto(sixelX, sixelY))
