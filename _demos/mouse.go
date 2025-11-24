@@ -26,8 +26,8 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/gdamore/tcell/v2/encoding"
+	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/encoding"
 )
 
 var defStyle tcell.Style

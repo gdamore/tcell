@@ -15,8 +15,9 @@
 package views
 
 import (
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/uniseg"
+
+	"github.com/gdamore/tcell/v3"
 )
 
 // Text is a Widget with containing a block of text, which can optionally
