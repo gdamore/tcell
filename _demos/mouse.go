@@ -178,11 +178,11 @@ func main() {
 			s.Sync()
 			s.Put(w-1, h-1, "R", st)
 		case *tcell.EventKey:
-			s.Put(w-2, h-2, string(ev.Rune()), st)
+			s.Put(w-2, h-2, ev.Str(), st)
 			if pasting {
 				s.Put(w-1, h-1, "P", st)
 				if ev.Key() == tcell.KeyRune {
-					pstr = pstr + string(ev.Rune())
+					pstr = pstr + ev.Str()
 				} else {
 					pstr = pstr + "\ufffd" // replacement for now
 				}
@@ -215,7 +215,7 @@ func main() {
 				}
 			} else {
 				ecnt = 0
-				if ev.Rune() == 'C' || ev.Rune() == 'c' {
+				if ev.Str() == "C" || ev.Str() == "c" {
 					s.Clear()
 				}
 			}

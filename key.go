@@ -46,7 +46,7 @@ type EventKey struct {
 	t   time.Time
 	mod ModMask
 	key Key
-	ch  rune
+	str string // string for key, usually just one character, but may be composed sequence
 }
 
 // When returns the time when this Event was created, which should closely
@@ -55,10 +55,11 @@ func (ev *EventKey) When() time.Time {
 	return ev.t
 }
 
-// Rune returns the rune corresponding to the key press, if it makes sense.
-// The result is only defined if the value of Key() is KeyRune.
-func (ev *EventKey) Rune() rune {
-	return ev.ch
+// Str returns the string corresponding to the key press, if it makes sense.
+// The result is only defined if the value of Key() is KeyRune.  It will be
+// either one key (e.g. 'A'), or could be a composed sequence.
+func (ev *EventKey) Str() string {
+	return ev.str
 }
 
 // Key returns a virtual key code.  We use this to identify specific key
@@ -233,9 +234,9 @@ func (ev *EventKey) Name() string {
 	ok := false
 	if s, ok = KeyNames[ev.key]; !ok {
 		if ev.key == KeyRune {
-			s = "Rune[" + string(ev.ch) + "]"
+			s = "Rune[" + ev.str + "]"
 		} else {
-			s = fmt.Sprintf("Key[%d,%d]", ev.key, int(ev.ch))
+			s = fmt.Sprintf("Key[%d,%s]", ev.key, ev.str)
 		}
 	}
 	if len(m) != 0 {
@@ -251,8 +252,12 @@ func (ev *EventKey) Name() string {
 // ASCII control sequences if KeyRune is passed for Key, but if the caller
 // has more precise information it should set that specifically.  Callers
 // that aren't sure about modifier state (most) should just pass ModNone.
-func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
-	if k == KeyRune && (ch < ' ' || ch == 0x7f) {
+func NewEventKey(k Key, str string, mod ModMask) *EventKey {
+	ch := rune(0)
+	if len(str) == 1 {
+		ch = []rune(str)[0]
+	}
+	if k == KeyRune && ch != 0 && (ch < ' ' || ch == 0x7f) {
 		// Turn specials into proper key codes.  This is for
 		// control characters and the DEL.
 		k = Key(ch)
@@ -260,27 +265,30 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 			switch k {
 			case KeyBackspace, KeyTab, KeyEsc, KeyEnter:
 				// these keys are directly typeable without CTRL
+				str = ""
 			default:
 				// most likely entered with a CTRL keypress
 				mod = ModCtrl
-				ch = ch + '\x60'
+				str = string(ch + '\x60')
 			}
 		}
 	}
 	if k == KeyRune && ch >= '@' && ch <= '_' && mod == ModCtrl {
 		// We don't do Ctrl-[ or backslash or those specially.
 		k = KeyCtrlA + Key(ch-'@')
+		str = ""
 	}
 
 	// Might be lower case
 	if k == KeyRune && ch >= 'a' && ch <= 'z' && mod == ModCtrl {
 		// We don't do Ctrl-[ or backslash or those specially.
 		k = KeyCtrlA + Key(ch-'a')
+		str = ""
 	}
 
 	// Windows reports ModShift for shifted keys.  This is inconsistent
 	// with UNIX, lets harmonize this.
-	if k == KeyRune && mod == ModShift && ch != 0 {
+	if k == KeyRune && mod == ModShift && str != "" {
 		mod = ModNone
 	}
 
@@ -289,7 +297,7 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 		k = KeyBackspace
 	}
 
-	return &EventKey{t: time.Now(), key: k, ch: ch, mod: mod}
+	return &EventKey{t: time.Now(), key: k, str: str, mod: mod}
 }
 
 // ModMask is a mask of modifier keys.  Note that it will not always be

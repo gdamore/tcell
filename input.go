@@ -100,7 +100,7 @@ func (ip *inputProcessor) post(ev Event) {
 	if ip.escaped {
 		ip.escaped = false
 		if ke, ok := ev.(*EventKey); ok {
-			ev = NewEventKey(ke.Key(), ke.Rune(), ke.Modifiers()|ModAlt)
+			ev = NewEventKey(ke.Key(), ke.Str(), ke.Modifiers()|ModAlt)
 		}
 	} else if ke, ok := ev.(*EventKey); ok {
 		switch ke.Key() {
@@ -121,7 +121,7 @@ func (ip *inputProcessor) escTimeout() {
 		// post it
 		ip.state = inpStateInit
 		ip.escaped = false
-		ip.post(NewEventKey(KeyEsc, 0, ModNone))
+		ip.post(NewEventKey(KeyEsc, "", ModNone))
 	}
 }
 
@@ -392,7 +392,7 @@ func (ip *inputProcessor) scan() {
 		if r > 0x7F {
 			// 8-bit extended Unicode we just treat as such - this will swallow anything else queued up
 			ip.state = inpStateInit
-			ip.post(NewEventKey(KeyRune, r, ModNone))
+			ip.post(NewEventKey(KeyRune, string(r), ModNone))
 			continue
 		}
 		switch ip.state {
@@ -406,17 +406,17 @@ func (ip *inputProcessor) scan() {
 					ip.timer = time.AfterFunc(time.Millisecond*60, ip.escTimeout)
 				}
 			case '\t':
-				ip.post(NewEventKey(KeyTab, 0, ModNone))
+				ip.post(NewEventKey(KeyTab, "", ModNone))
 			case '\b', '\x7F':
-				ip.post(NewEventKey(KeyBackspace, 0, ModNone))
+				ip.post(NewEventKey(KeyBackspace, "", ModNone))
 			case '\n', '\r':
-				ip.post(NewEventKey(KeyEnter, 0, ModNone))
+				ip.post(NewEventKey(KeyEnter, "", ModNone))
 			default:
 				// Control keys - legacy handling
 				if r < ' ' {
-					ip.post(NewEventKey(KeyCtrlSpace+Key(r), 0, ModCtrl))
+					ip.post(NewEventKey(KeyCtrlSpace+Key(r), "", ModCtrl))
 				} else {
-					ip.post(NewEventKey(KeyRune, r, ModNone))
+					ip.post(NewEventKey(KeyRune, string(r), ModNone))
 				}
 			}
 		case inpStateEsc:
@@ -449,7 +449,7 @@ func (ip *inputProcessor) scan() {
 			case '\t':
 				// Linux console only, does not conform to ECMA
 				ip.state = inpStateInit
-				ip.post(NewEventKey(KeyBacktab, 0, ModNone))
+				ip.post(NewEventKey(KeyBacktab, "", ModNone))
 			default:
 				if r == '\x1b' {
 					// leading ESC to capture alt
@@ -462,7 +462,7 @@ func (ip *inputProcessor) scan() {
 						mod |= ModCtrl
 						r += 0x60
 					}
-					ip.post(NewEventKey(KeyRune, r, mod))
+					ip.post(NewEventKey(KeyRune, string(r), mod))
 				}
 			}
 		case inpStateCsi:
@@ -484,7 +484,7 @@ func (ip *inputProcessor) scan() {
 		case inpStateSs3: // typically application mode keys or older terminals
 			ip.state = inpStateInit
 			if k, ok := ss3Keys[r]; ok {
-				ip.post(NewEventKey(k, 0, ModNone))
+				ip.post(NewEventKey(k, "", ModNone))
 			}
 
 		case inpStatePm, inpStateApc, inpStateSos, inpStateDcs: // these we just eat
@@ -522,7 +522,7 @@ func (ip *inputProcessor) scan() {
 		case inpStateLFK:
 			// linux console does not follow ECMA
 			if k, ok := linuxFKeys[r]; ok {
-				ip.post(NewEventKey(k, 0, ModNone))
+				ip.post(NewEventKey(k, "", ModNone))
 			}
 			ip.state = inpStateInit
 		}
@@ -727,7 +727,7 @@ func (ip *inputProcessor) handleWinKey(P []int) {
 
 	for range rpt {
 		if key != KeyRune || chr != 0 {
-			ip.post(NewEventKey(key, chr, mod))
+			ip.post(NewEventKey(key, string(chr), mod))
 		}
 	}
 }
@@ -799,7 +799,7 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 			if len(P) > 1 {
 				mod = calcModifier(P[1])
 			}
-			ip.post(NewEventKey(key, chr, mod))
+			ip.post(NewEventKey(key, string(chr), mod))
 		}
 		return
 	case '_':
@@ -815,13 +815,13 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 		} else if mode == 'P' && os.Getenv("TERM") == "aixterm" {
 			ks.Key = KeyDelete // aixterm hack - conflicts with kitty protocol
 		}
-		ip.post(NewEventKey(ks.Key, 0, ks.Mod))
+		ip.post(NewEventKey(ks.Key, "", ks.Mod))
 		return
 	}
 
 	// this might have been an SS3 style key with modifiers applied
 	if k, ok := ss3Keys[mode]; ok && P0 == 1 && len(P) > 1 {
-		ip.post(NewEventKey(k, 0, calcModifier(P[1])))
+		ip.post(NewEventKey(k, "", calcModifier(P[1])))
 		return
 	}
 
