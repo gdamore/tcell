@@ -54,26 +54,26 @@ func main() {
 			case *tcell.EventKey:
 				switch ev.Key() {
 				case tcell.KeyRune:
-					switch ev.Rune() {
-					case '0':
+					switch ev.Str() {
+					case "0":
 						s.Put(2, 2, "0", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleDefault, tcell.ColorReset)
-					case '1':
+					case "1":
 						s.Put(2, 2, "1", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleBlinkingBlock, tcell.ColorGreen)
-					case '2':
+					case "2":
 						s.Put(2, 2, "2", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleSteadyBlock, tcell.ColorBlue)
-					case '3':
+					case "3":
 						s.Put(2, 2, "3", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleBlinkingUnderline, tcell.ColorRed)
-					case '4':
+					case "4":
 						s.Put(2, 2, "4", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleSteadyUnderline, tcell.ColorOrange)
-					case '5':
+					case "5":
 						s.Put(2, 2, "5", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleBlinkingBar, tcell.ColorYellow)
-					case '6':
+					case "6":
 						s.Put(2, 2, "6", tcell.StyleDefault)
 						s.SetCursorStyle(tcell.CursorStyleSteadyBar, tcell.ColorPink)
 					}
