@@ -1,6 +1,5 @@
 aixterm
 ansi
-cygwin
 dtterm
 eterm,eterm-color|emacs
 linux
