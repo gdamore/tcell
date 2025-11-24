@@ -23,7 +23,6 @@ import (
 	// these are the terminal types we aggregate in this package.
 	_ "github.com/gdamore/tcell/v3/terminfo/a/aixterm"
 	_ "github.com/gdamore/tcell/v3/terminfo/a/ansi"
-	_ "github.com/gdamore/tcell/v3/terminfo/c/cygwin"
 	_ "github.com/gdamore/tcell/v3/terminfo/d/dtterm"
 	_ "github.com/gdamore/tcell/v3/terminfo/e/emacs"
 	_ "github.com/gdamore/tcell/v3/terminfo/l/linux"
