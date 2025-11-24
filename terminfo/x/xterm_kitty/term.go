@@ -2,7 +2,7 @@
 
 package xterm_kitty
 
-import "github.com/gdamore/tcell/v2/terminfo"
+import "github.com/gdamore/tcell/v3/terminfo"
 
 func init() {
 

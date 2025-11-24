@@ -33,7 +33,7 @@ import (
 	"golang.org/x/term"
 	"golang.org/x/text/transform"
 
-	"github.com/gdamore/tcell/v2/terminfo"
+	"github.com/gdamore/tcell/v3/terminfo"
 )
 
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
