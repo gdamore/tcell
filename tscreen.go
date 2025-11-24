@@ -78,7 +78,25 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 		term = os.Getenv("TERM")
 	}
 	if ti == nil {
+		// As a default, we assume XTerm like semantics, which works for the *vast*
+		// majority of terminals.
 		ti, e = LookupTerminfo(term)
+		if e != nil {
+			switch os.Getenv("COLORTERM") {
+			case "truecolor", "24bit", "24-bit":
+				term = "xterm-direct"
+			}
+			switch {
+			case term == "xterm-direct":
+			case strings.Contains(term, "direct"), strings.Contains(term, "truecolor"), strings.Contains(term, "24bit"):
+				term = "xterm-direct"
+			case strings.Contains(term, "256color"):
+				term = "xterm-256color"
+			default:
+				term = "xterm"
+			}
+			ti, e = LookupTerminfo(term)
+		}
 		if e != nil {
 			return nil, e
 		}
