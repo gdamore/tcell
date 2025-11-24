@@ -51,16 +51,6 @@ type CellBuffer struct {
 	cells []cell
 }
 
-// SetContent sets the contents (primary rune, combining runes,
-// and style) for a cell at a given location.  If the background or
-// foreground of the style is set to ColorNone, then the respective
-// color is left un changed.
-//
-// Deprecated: Use Put instead, which this is implemented in terms of.
-func (cb *CellBuffer) SetContent(x int, y int, mainc rune, combc []rune, style Style) {
-	cb.Put(x, y, string(append([]rune{mainc}, combc...)), style)
-}
-
 // Put a single styled grapheme using the given string and style
 // at the same location.  Note that only the first grapheme in the string
 // will bre displayed, using only the 1 or 2 (depending on width) cells
@@ -124,28 +114,6 @@ func (cb *CellBuffer) Get(x, y int) (string, Style, int) {
 		}
 	}
 	return str, style, width
-}
-
-// GetContent returns the contents of a character cell, including the
-// primary rune, any combining character runes (which will usually be
-// nil), the style, and the display width in cells.  (The width can be
-// either 1, normally, or 2 for East Asian full-width characters.)
-//
-// Deprecated: Use Get, which this implemented in terms of.
-func (cb *CellBuffer) GetContent(x, y int) (rune, []rune, Style, int) {
-	var style Style
-	var width int
-	var mainc rune
-	var combc []rune
-	str, style, width := cb.Get(x, y)
-	for i, r := range str {
-		if i == 0 {
-			mainc = r
-		} else {
-			combc = append(combc, r)
-		}
-	}
-	return mainc, combc, style, width
 }
 
 // Size returns the (width, height) in cells of the buffer.

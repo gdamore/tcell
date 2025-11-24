@@ -162,7 +162,7 @@ func (s *simscreen) SetStyle(style Style) {
 
 func (s *simscreen) drawCell(x, y int) int {
 
-	mainc, combc, style, width := s.back.GetContent(x, y)
+	str, style, width := s.back.Get(x, y)
 	if !s.back.Dirty(x, y) {
 		return width
 	}
@@ -175,7 +175,7 @@ func (s *simscreen) drawCell(x, y int) int {
 		style = s.style
 	}
 	simc.Style = style
-	simc.Runes = append([]rune{mainc}, combc...)
+	simc.Runes = []rune(str)
 
 	// now emit runes - taking care to not overrun width with a
 	// wide character, and to ensure that we emit exactly one regular

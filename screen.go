@@ -58,11 +58,6 @@ type Screen interface {
 	// characters and emoji require two cells.
 	Get(x, y int) (str string, style Style, width int)
 
-	// GetContent is the old way to get cell contents.
-	//
-	// Deprecated: Use Get() instead.
-	GetContent(x, y int) (primary rune, combining []rune, style Style, width int)
-
 	// SetContent sets the contents of the given cell location.  If
 	// the coordinates are out of range, then the operation is ignored.
 	//
@@ -404,18 +399,6 @@ func (b *baseScreen) Get(x, y int) (string, Style, int) {
 	b.Lock()
 	defer b.Unlock()
 	return cells.Get(x, y)
-}
-
-func (b *baseScreen) GetContent(x, y int) (rune, []rune, Style, int) {
-	var primary rune
-	var combining []rune
-	var style Style
-	var width int
-	cells := b.GetCells()
-	b.Lock()
-	primary, combining, style, width = cells.GetContent(x, y)
-	b.Unlock()
-	return primary, combining, style, width
 }
 
 func (b *baseScreen) LockRegion(x, y, width, height int, lock bool) {
