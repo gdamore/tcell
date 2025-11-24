@@ -41,7 +41,6 @@ import (
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt320"
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt400"
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt420"
-	_ "github.com/gdamore/tcell/v3/terminfo/x/xfce"
 	_ "github.com/gdamore/tcell/v3/terminfo/x/xterm"
 	_ "github.com/gdamore/tcell/v3/terminfo/x/xterm_ghostty"
 	_ "github.com/gdamore/tcell/v3/terminfo/x/xterm_kitty"
