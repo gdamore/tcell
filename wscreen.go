@@ -346,7 +346,7 @@ func (t *wScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func (t *wScreen) onKeyEvent(this js.Value, args []js.Value) interface{} {
+func (t *wScreen) onKeyEvent(this js.Value, args []js.Value) any {
 	key := args[0].String()
 
 	// don't accept any modifier keys as their own
@@ -373,13 +373,13 @@ func (t *wScreen) onKeyEvent(this js.Value, args []js.Value) interface{} {
 
 	// next try function keys
 	if k, ok := WebKeyNames[key]; ok {
-		t.postEvent(NewEventKey(k, 0, mod))
+		t.postEvent(NewEventKey(k, "", mod))
 		return nil
 	}
 
 	// finally try normal, printable chars
 	r, _ := utf8.DecodeRuneInString(key)
-	t.postEvent(NewEventKey(KeyRune, r, mod))
+	t.postEvent(NewEventKey(KeyRune, string(r), mod))
 	return nil
 }
 

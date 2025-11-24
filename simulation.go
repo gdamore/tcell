@@ -338,7 +338,7 @@ func (s *simscreen) InjectMouse(x, y int, buttons ButtonMask, mod ModMask) {
 }
 
 func (s *simscreen) InjectKey(key Key, r rune, mod ModMask) {
-	ev := NewEventKey(key, r, mod)
+	ev := NewEventKey(key, string(r), mod)
 	s.postEvent(ev)
 }
 
@@ -349,7 +349,7 @@ outer:
 	for len(b) > 0 {
 		if b[0] >= ' ' && b[0] <= 0x7F {
 			// printable ASCII easy to deal with -- no encodings
-			ev := NewEventKey(KeyRune, rune(b[0]), ModNone)
+			ev := NewEventKey(KeyRune, string(b[0]), ModNone)
 			s.postEvent(ev)
 			b = b[1:]
 			continue
@@ -360,15 +360,15 @@ outer:
 			if b[0] > 0 && b[0] < ' ' { // control keys
 				switch Key(b[0]) {
 				case KeyESC, KeyEnter, KeyTAB:
-					s.postEvent(NewEventKey(Key(b[0]), 0, 0))
+					s.postEvent(NewEventKey(Key(b[0]), "", 0))
 					continue
 				default:
-					s.postEvent(NewEventKey(Key(b[0]), rune(b[0])+'\x60', ModCtrl))
+					s.postEvent(NewEventKey(Key(b[0]), string(rune(b[0])+'\x60'), ModCtrl))
 					continue
 				}
 			}
 			mod := ModNone
-			ev := NewEventKey(Key(b[0]), 0, mod)
+			ev := NewEventKey(Key(b[0]), "", mod)
 			s.postEvent(ev)
 			b = b[1:]
 			continue
@@ -382,7 +382,7 @@ outer:
 			if nout != 0 {
 				r, _ := utf8.DecodeRune(utfb[:nout])
 				if r != utf8.RuneError {
-					ev := NewEventKey(KeyRune, r, ModNone)
+					ev := NewEventKey(KeyRune, string(r), ModNone)
 					s.postEvent(ev)
 				}
 				b = b[nin:]
