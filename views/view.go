@@ -256,7 +256,7 @@ func (v *ViewPort) GetPhysical() (int, int, int, int) {
 // SetContentSize sets the size of the content area; this is used to limit
 // scrolling and view moment.  If locked is true, then the content size will
 // not automatically grow even if content is placed outside of this area
-// with the SetContent() method.  If false, and content is drawn outside
+// with the Put() method.  If false, and content is drawn outside
 // of the existing size, then the size will automatically grow to include
 // the new content.
 func (v *ViewPort) SetContentSize(width, height int, locked bool) {
