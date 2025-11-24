@@ -10,8 +10,3 @@ require (
 	golang.org/x/term v0.37.0
 	golang.org/x/text v0.31.0
 )
-
-require (
-	github.com/mattn/go-sixel v0.0.5 // indirect
-	github.com/soniakeys/quant v1.0.0 // indirect
-)
