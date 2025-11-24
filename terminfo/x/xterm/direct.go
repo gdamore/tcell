@@ -27,7 +27,7 @@ func init() {
 	// derived from xterm-256color, but adds full RGB support
 	terminfo.AddTerminfo(&terminfo.Terminfo{
 		Name:          "xterm-direct",
-		Aliases:       []string{"xterm-truecolor"},
+		Aliases:       []string{"alacritty-direct", "xterm-truecolor"},
 		Columns:       80,
 		Lines:         24,
 		Colors:        256,
