@@ -17,14 +17,8 @@
 
 package tcell
 
-import "os"
-
 // initialize on Plan 9: if no TTY was provided, use the Plan 9 TTY.
 func (t *tScreen) initialize() error {
-    if os.Getenv("TERM") == "" {
-        // TERM should be "vt100" in a vt(1) window; color/mouse support will be limited.
-        _ = os.Setenv("TERM", "vt100")
-    }
 	if t.tty == nil {
 		tty, err := NewDevTty()
 		if err != nil {
@@ -33,4 +27,9 @@ func (t *tScreen) initialize() error {
 		t.tty = tty
 	}
 	return nil
+}
+
+func init() {
+	// TERM should be "vt100" in a vt(1) window; color/mouse support will be limited.
+	defaultTerm = "vt100"
 }
