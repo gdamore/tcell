@@ -31,7 +31,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf16"
 	"unicode/utf8"
 )
 
@@ -55,7 +54,6 @@ const (
 
 type InputProcessor interface {
 	ScanUTF8([]byte)
-	ScanUTF16([]uint16)
 	SetSize(rows, cols int)
 }
 
@@ -865,21 +863,4 @@ func (ip *inputProcessor) ScanUTF8(b []byte) {
 	}
 
 	ip.scan()
-}
-
-func (ip *inputProcessor) ScanUTF16(u []uint16) {
-	ip.l.Lock()
-	defer ip.l.Unlock()
-	ip.ut16 = append(ip.ut16, u...)
-	for len(ip.ut16) > 0 {
-		if !utf16.IsSurrogate(rune(ip.ut16[0])) {
-			ip.buf = append(ip.buf, rune(ip.ut16[0]))
-			ip.ut16 = ip.ut16[1:]
-		} else if len(ip.ut16) > 1 {
-			ip.buf = append(ip.buf, utf16.DecodeRune(rune(ip.ut16[0]), rune(ip.ut16[1])))
-			ip.ut16 = ip.ut16[2:]
-		} else {
-			break
-		}
-	}
 }
