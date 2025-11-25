@@ -28,7 +28,6 @@ import (
 	_ "github.com/gdamore/tcell/v3/terminfo/l/linux"
 	_ "github.com/gdamore/tcell/v3/terminfo/r/rxvt"
 	_ "github.com/gdamore/tcell/v3/terminfo/s/screen"
-	_ "github.com/gdamore/tcell/v3/terminfo/s/simpleterm"
 	_ "github.com/gdamore/tcell/v3/terminfo/s/sun"
 	_ "github.com/gdamore/tcell/v3/terminfo/t/tmux"
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt100"
