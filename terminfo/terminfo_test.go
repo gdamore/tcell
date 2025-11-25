@@ -15,9 +15,7 @@
 package terminfo
 
 import (
-	"bytes"
 	"testing"
-	"time"
 )
 
 // This terminfo entry is a stripped down version from
@@ -34,7 +32,6 @@ var testTerminfo = &Terminfo{
 	AltChars:  "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
 	Mouse:     "\x1b[M",
 	SetCursor: "\x1b[%i%p1%d;%p2%dH",
-	PadChar:   "\x00",
 	XTermLike: true,
 }
 
@@ -112,24 +109,6 @@ func TestTerminfoExpansion(t *testing.T) {
 		}
 	}
 	t.Logf("Tested %d cases", len(cases))
-}
-
-func TestTerminfoDelay(t *testing.T) {
-	ti := testTerminfo
-	buf := bytes.NewBuffer(nil)
-	now := time.Now()
-	ti.TPuts(buf, ti.Blink)
-	then := time.Now()
-	s := buf.String()
-	if s != "\x1b2mssomething" {
-		t.Errorf("Terminfo delay failed: %s", s)
-	}
-	if then.Sub(now) < time.Millisecond*20 {
-		t.Error("Too short delay")
-	}
-	if then.Sub(now) > time.Millisecond*50 {
-		t.Error("Too late delay")
-	}
 }
 
 func TestStringParameter(t *testing.T) {
