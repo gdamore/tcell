@@ -60,5 +60,6 @@ func init() {
 		SetCursor:     "\x1b[%i%p1%d;%p2%dH",
 		AutoMargin:    true,
 		TrueColor:     true,
+		XTermLike:     true,
 	})
 }
