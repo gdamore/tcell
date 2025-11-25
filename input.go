@@ -461,7 +461,12 @@ func (ip *inputProcessor) scan() {
 				} else {
 					// treat as alt-key ... legacy emulators only (no CSI-u or other)
 					ip.state = inpStateInit
-					ip.post(NewEventKey(KeyRune, r, ModAlt))
+					mod := ModAlt
+					if r < ' ' {
+						mod |= ModCtrl
+						r += 0x60
+					}
+					ip.post(NewEventKey(KeyRune, r, mod))
 				}
 			}
 		case inpStateCsi:
