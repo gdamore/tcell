@@ -28,7 +28,6 @@ import (
 	_ "github.com/gdamore/tcell/v3/terminfo/l/linux"
 	_ "github.com/gdamore/tcell/v3/terminfo/s/sun"
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt100"
-	_ "github.com/gdamore/tcell/v3/terminfo/v/vt102"
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt220"
 	_ "github.com/gdamore/tcell/v3/terminfo/x/xterm"
 )
