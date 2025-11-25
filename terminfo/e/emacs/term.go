@@ -18,7 +18,6 @@ func init() {
 		Underline:  "\x1b[4m",
 		Bold:       "\x1b[1m",
 		Reverse:    "\x1b[7m",
-		PadChar:    "\x00",
 		SetCursor:  "\x1b[%i%p1%d;%p2%dH",
 		AutoMargin: true,
 	})
@@ -41,7 +40,6 @@ func init() {
 		SetBg:      "\x1b[%p1%'('%+%dm",
 		SetFgBg:    "\x1b[%p1%{30}%+%d;%p2%'('%+%dm",
 		ResetFgBg:  "\x1b[39;49m",
-		PadChar:    "\x00",
 		SetCursor:  "\x1b[%i%p1%d;%p2%dH",
 		AutoMargin: true,
 	})

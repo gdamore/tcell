@@ -64,7 +64,6 @@ type Terminfo struct {
 	SetBg       string // setab
 	ResetFgBg   string // op
 	SetCursor   string // cup
-	PadChar     string // pad
 	Mouse       string // kmous
 	AltChars    string // acsc
 	EnterAcs    string // smacs
@@ -469,13 +468,6 @@ func (t *Terminfo) TPuts(w io.Writer, s string) {
 			default:
 				break loop
 			}
-		}
-
-		// Curses historically uses padding to achieve "fine grained"
-		// delays. We have much better clocks these days, and so we
-		// do not rely on padding but simply sleep a bit.
-		if len(t.PadChar) > 0 {
-			time.Sleep(unit * time.Duration(padus))
 		}
 	}
 }

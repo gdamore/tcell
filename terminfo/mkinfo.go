@@ -269,15 +269,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		return nil, "", notAddressable
 	}
 
-	// For padding, we lookup the pad char.  If that isn't present,
-	// and npc is *not* set, then we assume a null byte.
-	t.PadChar = tc.getstr("pad")
-	if t.PadChar == "" {
-		if !tc.getflag("npc") {
-			t.PadChar = "\u0000"
-		}
-	}
-
 	// For terminals that use "standard" SGR sequences, lets combine the
 	// foreground and background together.
 	if strings.HasPrefix(t.SetFg, "\x1b[") &&
@@ -374,7 +365,6 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "SetBg", t.SetBg)
 		dotGoAddStr(w, "SetFgBg", t.SetFgBg)
 		dotGoAddStr(w, "ResetFgBg", t.ResetFgBg)
-		dotGoAddStr(w, "PadChar", t.PadChar)
 		dotGoAddStr(w, "AltChars", t.AltChars)
 		dotGoAddStr(w, "EnterAcs", t.EnterAcs)
 		dotGoAddStr(w, "ExitAcs", t.ExitAcs)
