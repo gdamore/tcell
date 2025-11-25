@@ -170,6 +170,12 @@ loop:
 // until Quit is called.
 func (app *Application) Start() {
 	app.wg.Add(1)
+	if app.screen == nil {
+		if e := app.initialize(); e != nil {
+			app.wg.Done()
+			return
+		}
+	}
 	go app.run()
 }
 
