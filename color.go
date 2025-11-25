@@ -25,14 +25,11 @@ import (
 // adding in the ColorIsRGB flag.  For Color names we use the W3C approved
 // color names.
 //
-// We use a 64-bit integer to allow future expansion if we want to add an
-// 8-bit alpha, while still leaving us some room for extra options.
-//
 // Note that on various terminals colors may be approximated however, or
 // not supported at all.  If no suitable representation for a color is known,
 // the library will simply not set any color, deferring to whatever default
 // attributes the terminal uses.
-type Color uint64
+type Color uint32
 
 const (
 	// ColorDefault is used to leave the Color unchanged from whatever
@@ -42,16 +39,16 @@ const (
 	// ColorValid is used to indicate the color value is actually
 	// valid (initialized).  This is useful to permit the zero value
 	// to be treated as the default.
-	ColorValid Color = 1 << 32
+	ColorValid Color = 1 << 31
 
 	// ColorIsRGB is used to indicate that the numeric value is not
 	// a known color constant, but rather an RGB value.  The lower
 	// order 3 bytes are RGB.
-	ColorIsRGB Color = 1 << 33
+	ColorIsRGB Color = 1 << 30
 
 	// ColorSpecial is a flag used to indicate that the values have
 	// special meaning, and live outside of the color space(s).
-	ColorSpecial Color = 1 << 34
+	ColorSpecial Color = 1 << 29
 )
 
 // Note that the order of these options is important -- it follows the
