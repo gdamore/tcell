@@ -121,23 +121,23 @@ func (a *mainWindow) HandleEvent(ev tcell.Event) bool {
 			app.Refresh()
 			return true
 		case tcell.KeyRune:
-			switch ev.Rune() {
-			case 'Q', 'q':
+			switch ev.Str() {
+			case "Q", "q":
 				app.Quit()
 				return true
-			case 'S', 's':
+			case "S", "s":
 				a.model.hide = false
 				a.updateKeys()
 				return true
-			case 'H', 'h':
+			case "H", "h":
 				a.model.hide = true
 				a.updateKeys()
 				return true
-			case 'E', 'e':
+			case "E", "e":
 				a.model.enab = true
 				a.updateKeys()
 				return true
-			case 'D', 'd':
+			case "D", "d":
 				a.model.enab = false
 				a.updateKeys()
 				return true
