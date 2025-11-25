@@ -94,7 +94,7 @@ func init() {
 	// xterm with 256 colors
 	terminfo.AddTerminfo(&terminfo.Terminfo{
 		Name:              "xterm-256color",
-		Aliases:           []string{"alacritty", "ghostty", "xterm-ghostty", "xterm-kitty"},
+		Aliases:           []string{"alacritty", "ghostty", "rio", "xterm-ghostty", "xterm-kitty"},
 		Columns:           80,
 		Lines:             24,
 		Colors:            256,
