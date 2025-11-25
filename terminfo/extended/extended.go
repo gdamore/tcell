@@ -26,7 +26,6 @@ import (
 	_ "github.com/gdamore/tcell/v3/terminfo/d/dtterm"
 	_ "github.com/gdamore/tcell/v3/terminfo/e/emacs"
 	_ "github.com/gdamore/tcell/v3/terminfo/l/linux"
-	_ "github.com/gdamore/tcell/v3/terminfo/p/pcansi"
 	_ "github.com/gdamore/tcell/v3/terminfo/r/rxvt"
 	_ "github.com/gdamore/tcell/v3/terminfo/s/screen"
 	_ "github.com/gdamore/tcell/v3/terminfo/s/simpleterm"

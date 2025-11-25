@@ -9,6 +9,7 @@ func init() {
 	// ansi/pc-term compatible with color
 	terminfo.AddTerminfo(&terminfo.Terminfo{
 		Name:       "ansi",
+		Aliases:    []string{"pcansi"},
 		Columns:    80,
 		Lines:      24,
 		Colors:     8,
