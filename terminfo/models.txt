@@ -4,5 +4,4 @@ dtterm
 eterm,eterm-color|emacs
 linux
 vt100
-vt102
 vt220
