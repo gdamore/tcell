@@ -203,7 +203,7 @@ var KeyNames = map[Key]string{
 	KeyCtrlY:          "Ctrl-Y",
 	KeyCtrlZ:          "Ctrl-Z",
 	KeyCtrlLeftSq:     "Ctrl-[",
-	KeyCtrlRightSq:    "Ctrl-[",
+	KeyCtrlRightSq:    "Ctrl-]",
 	KeyCtrlBackslash:  "Ctrl-\\",
 	KeyCtrlCarat:      "Ctrl-^",
 	KeyCtrlUnderscore: "Ctrl-_",
