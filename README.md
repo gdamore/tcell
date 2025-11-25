@@ -18,7 +18,7 @@ It was inspired by _termbox_, but includes many additional improvements.
 
 Please see [here](UKRAINE.md) for an important message for the people of Russia.
 
-NOTE: This is a development branch intended to be version 3 of _Tcell_.
+NOTE: This is a development branch intended to become version 3 of _Tcell_.
 There are breaking changes relative to versions 1 and 2.
 Version 1.x remains available using the import `github.com/gdamore/tcell`.
 Version 2.x remains available using the import `github.com/gdamore/tcell/v2`.
@@ -142,30 +142,30 @@ emulators, as well as Windows.
 Terminals that appear to support the XTerm mouse model also can support
 bracketed paste, for applications that opt-in. See `EnablePaste()` for details.
 
-## Testability
-
-There is a `SimulationScreen`, that can be used to simulate a real screen
-for automated testing. The supplied tests do this. The simulation contains
-event delivery, screen resizing support, and capabilities to inject events
-and examine "`physical`" screen contents.
-
 ## Breaking Changes in v3
 
-* `termbox` compatibility package is removed - no longer useful (keep using v2 if needed)
+There are a number of changes in _Tcell_ version 3, which break compatibility with
+version 2 and version 1. 
+
+Your application will almost certainly need some minor updates to work with version 3.
+
+Please see the [CHANGESv3](CHANGESv3.md) document for a list.
 
 ## Platforms
 
 ### POSIX (Linux, FreeBSD, macOS, Solaris, etc.)
 
-Everything works using pure Go on mainstream platforms. Some more esoteric
-platforms (e.g., AIX) may need to be added. Pull requests are welcome!
+Everything works using pure Go on mainstream platforms.
+Esoteric platforms (e.g. zOS or AIX) are supported on a best-effort
+only basis. Pull requests to fix any issues found are welcome!
 
 ### Windows
 
-Windows console mode applications are supported.
-
-Modern console applications like ConEmu and the Windows Terminal,
-support all the good features (resize, mouse tracking, etc.)
+Windows console mode applications are supported, on Windows versions after
+Windows 10 1703. The modern Windows 11 Terminal is particularly well supported.
+(Note: 3rd party terminal emulators work, and some work very well.  Unfortunately
+the once popular ConEmu is unlikely to work well, and we do not recommend it given
+the existence of superior alternatives like [Rio](https://rioterm.com).)
 
 ### WASM
 
