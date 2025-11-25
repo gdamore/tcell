@@ -3,7 +3,6 @@ ansi
 dtterm
 eterm,eterm-color|emacs
 linux
-rxvt,rxvt-256color,rxvt-88color,rxvt-unicode,rxvt-unicode-256color
 vt100
 vt102
 vt220
