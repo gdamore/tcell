@@ -1,4 +1,4 @@
-// Copyright 2024 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -34,8 +34,5 @@ import (
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt100"
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt102"
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt220"
-	_ "github.com/gdamore/tcell/v3/terminfo/v/vt320"
-	_ "github.com/gdamore/tcell/v3/terminfo/v/vt400"
-	_ "github.com/gdamore/tcell/v3/terminfo/v/vt420"
 	_ "github.com/gdamore/tcell/v3/terminfo/x/xterm"
 )
