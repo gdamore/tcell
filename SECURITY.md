@@ -3,7 +3,7 @@
 It's somewhat unlikely that tcell is in a security sensitive path,
 but we do take security seriously.
 
-## Vulnerabilityu Response
+## Vulnerability Response
 
 If you report a vulnerability, we will respond within 2 business days.
 
