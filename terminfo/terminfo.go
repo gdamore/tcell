@@ -81,7 +81,6 @@ type Terminfo struct {
 	SetFgBgRGB        string // setfgbgrgb
 	SetFgRGB          string // setfrgb
 	SetBgRGB          string // setbrgb
-	AutoMargin        bool   // true if writing to last cell in line advances
 	TrueColor         bool   // true if the terminal supports direct color
 	DisableAutoMargin string // smam
 	EnableAutoMargin  string // rmam

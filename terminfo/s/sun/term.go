@@ -36,7 +36,6 @@ func init() {
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
 		EnableAutoMargin:  "\x1b[?7h",
 		DisableAutoMargin: "\x1b[?7l",
-		AutoMargin:        true,
 	})
 
 	// Sun Microsystems Workstation console with color support (IA systems)
@@ -55,6 +54,5 @@ func init() {
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
 		EnableAutoMargin:  "\x1b[?7h",
 		DisableAutoMargin: "\x1b[?7l",
-		AutoMargin:        true,
 	})
 }
