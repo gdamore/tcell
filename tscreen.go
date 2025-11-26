@@ -30,7 +30,6 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"golang.org/x/term"
 	"golang.org/x/text/transform"
 
 	"github.com/gdamore/tcell/v3/terminfo"
@@ -115,12 +114,6 @@ func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
 	return NewTerminfoScreenFromTtyTerminfo(tty, nil)
 }
 
-// tKeyCode represents a combination of a key code and modifiers.
-type tKeyCode struct {
-	key Key
-	mod ModMask
-}
-
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
 	ti             *terminfo.Terminfo
@@ -150,8 +143,6 @@ type tScreen struct {
 	colors         map[Color]Color
 	palette        []Color
 	truecolor      bool
-	escaped        bool
-	buttondn       bool
 	finiOnce       sync.Once
 	enablePaste    string
 	disablePaste   string
@@ -172,7 +163,6 @@ type tScreen struct {
 	cursorColor    Color
 	cursorRGB      string
 	cursorFg       string
-	saved          *term.State
 	stopQ          chan struct{}
 	eventQ         chan Event
 	running        bool
@@ -189,7 +179,6 @@ type tScreen struct {
 	endSyncOut     string
 	enableCsiU     string
 	disableCsiU    string
-	disableEmojiWA bool // if true don't try to workaround emoji bugs
 	input          InputProcessor
 
 	sync.Mutex

@@ -36,7 +36,6 @@ type Panel struct {
 	menu    Widget
 	content Widget
 	status  Widget
-	inited  bool
 	BoxLayout
 }
 
