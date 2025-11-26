@@ -24,7 +24,6 @@ import (
 	_ "github.com/gdamore/tcell/v3/terminfo/a/aixterm"
 	_ "github.com/gdamore/tcell/v3/terminfo/a/ansi"
 	_ "github.com/gdamore/tcell/v3/terminfo/d/dtterm"
-	_ "github.com/gdamore/tcell/v3/terminfo/e/emacs"
 	_ "github.com/gdamore/tcell/v3/terminfo/l/linux"
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt100"
 	_ "github.com/gdamore/tcell/v3/terminfo/v/vt220"
