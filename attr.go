@@ -16,7 +16,7 @@ package tcell
 
 // AttrMask represents a mask of text attributes, apart from color.
 // Note that support for attributes may vary widely across terminals.
-type AttrMask uint
+type AttrMask uint16
 
 // Attributes are not colors, but affect the display of text.  They can
 // be combined, in some cases, but not others. (E.g. you can have Dim Italic,
@@ -28,6 +28,6 @@ const (
 	AttrDim
 	AttrItalic
 	AttrStrikeThrough
-	AttrInvalid AttrMask = 1 << 31 // Mark the style or attributes invalid
+	AttrInvalid AttrMask = 1 << 15 // Mark the style or attributes invalid
 	AttrNone    AttrMask = 0       // Just normal text.
 )
