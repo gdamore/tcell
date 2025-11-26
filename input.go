@@ -66,7 +66,6 @@ func NewInputProcessor(eq chan<- Event) InputProcessor {
 
 type inputProcessor struct {
 	ut8       []byte
-	ut16      []uint16
 	buf       []rune
 	scratch   []byte
 	csiParams []byte
