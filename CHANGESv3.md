@@ -57,9 +57,11 @@ Note that we still examine `$TERM` when appropriate, but if the value is not one
 then we will assume something reasonably capable and compatible at some level with _xterm_ or
 at least ECMA-48.
 
-### Color Bit Size
+### Color, Attributes, Etc. Bit Sizes
 
 The `Color` type is now only 32-bits, which should save some memory on large terminal windows.
+The `AttrMask` type is now only 16-bits, and the `UnderlineStyle` is now 8 bits.  All these lead
+to further savings in the memory per-cell.
 
 ### Underline
 
@@ -84,3 +86,8 @@ Instead this uses the more modern Windows VT modes.
 As a consequence, this means that _Tcell_ on Windows requires at least Winows 10 build 1703 (the Creators Update).
 If you are using a version of Windows 10 older than that, you should really upgrade for _many_ reasons, not just
 because _Tcell_ doesn't support it anymore.
+
+### InputProcessor is no longer Public
+
+This structure, and the associated `NewInputProcessor` function, were made public incorrectly.
+They are not part of our public API going forward, and are now private symbols.
