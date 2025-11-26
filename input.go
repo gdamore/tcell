@@ -52,12 +52,7 @@ const (
 	inpStateLFK // linux F-key (not ECMA-48 compliant - bogus CSI)
 )
 
-type InputProcessor interface {
-	ScanUTF8([]byte)
-	SetSize(rows, cols int)
-}
-
-func NewInputProcessor(eq chan<- Event) InputProcessor {
+func newInputProcessor(eq chan<- Event) *inputProcessor {
 	return &inputProcessor{
 		evch: eq,
 		buf:  make([]rune, 0, 128),

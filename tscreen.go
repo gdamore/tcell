@@ -116,70 +116,70 @@ func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	ti             *terminfo.Terminfo
-	tty            Tty
-	h              int
-	w              int
-	fini           bool
-	cells          CellBuffer
-	buffering      bool // true if we are collecting writes to buf instead of sending directly to out
-	buf            bytes.Buffer
-	curstyle       Style
-	style          Style
-	resizeQ        chan bool
-	quit           chan struct{}
-	keychan        chan []byte
-	cx             int
-	cy             int
-	mouse          []byte
-	clear          bool
-	cursorx        int
-	cursory        int
-	acs            map[rune]string
-	charset        string
-	encoder        transform.Transformer
-	decoder        transform.Transformer
-	fallback       map[rune]string
-	colors         map[Color]Color
-	palette        []Color
-	truecolor      bool
-	finiOnce       sync.Once
-	enablePaste    string
-	disablePaste   string
-	enterUrl       string
-	exitUrl        string
-	setWinSize     string
-	enableFocus    string
-	disableFocus   string
-	doubleUnder    string
-	curlyUnder     string
-	dottedUnder    string
-	dashedUnder    string
-	underColor     string
-	underRGB       string
-	underFg        string // reset underline color to foreground
-	cursorStyles   map[CursorStyle]string
-	cursorStyle    CursorStyle
-	cursorColor    Color
-	cursorRGB      string
-	cursorFg       string
-	stopQ          chan struct{}
-	eventQ         chan Event
-	running        bool
-	wg             sync.WaitGroup
-	mouseFlags     MouseFlags
-	pasteEnabled   bool
-	focusEnabled   bool
-	setTitle       string
-	saveTitle      string
-	restoreTitle   string
-	title          string
-	setClipboard   string
-	startSyncOut   string
-	endSyncOut     string
-	enableCsiU     string
-	disableCsiU    string
-	input          InputProcessor
+	ti           *terminfo.Terminfo
+	tty          Tty
+	h            int
+	w            int
+	fini         bool
+	cells        CellBuffer
+	buffering    bool // true if we are collecting writes to buf instead of sending directly to out
+	buf          bytes.Buffer
+	curstyle     Style
+	style        Style
+	resizeQ      chan bool
+	quit         chan struct{}
+	keychan      chan []byte
+	cx           int
+	cy           int
+	mouse        []byte
+	clear        bool
+	cursorx      int
+	cursory      int
+	acs          map[rune]string
+	charset      string
+	encoder      transform.Transformer
+	decoder      transform.Transformer
+	fallback     map[rune]string
+	colors       map[Color]Color
+	palette      []Color
+	truecolor    bool
+	finiOnce     sync.Once
+	enablePaste  string
+	disablePaste string
+	enterUrl     string
+	exitUrl      string
+	setWinSize   string
+	enableFocus  string
+	disableFocus string
+	doubleUnder  string
+	curlyUnder   string
+	dottedUnder  string
+	dashedUnder  string
+	underColor   string
+	underRGB     string
+	underFg      string // reset underline color to foreground
+	cursorStyles map[CursorStyle]string
+	cursorStyle  CursorStyle
+	cursorColor  Color
+	cursorRGB    string
+	cursorFg     string
+	stopQ        chan struct{}
+	eventQ       chan Event
+	running      bool
+	wg           sync.WaitGroup
+	mouseFlags   MouseFlags
+	pasteEnabled bool
+	focusEnabled bool
+	setTitle     string
+	saveTitle    string
+	restoreTitle string
+	title        string
+	setClipboard string
+	startSyncOut string
+	endSyncOut   string
+	enableCsiU   string
+	disableCsiU  string
+	input        *inputProcessor
 
 	sync.Mutex
 }
@@ -229,7 +229,7 @@ func (t *tScreen) Init() error {
 
 	t.quit = make(chan struct{})
 	t.eventQ = make(chan Event, 256)
-	t.input = NewInputProcessor(t.eventQ)
+	t.input = newInputProcessor(t.eventQ)
 
 	t.Lock()
 	t.cx = -1
