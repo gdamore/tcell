@@ -573,10 +573,18 @@ func (t *tScreen) drawCell(x, y int) int {
 			t.TPuts(ti.StrikeThrough)
 		}
 
+		var newUrl urlInfo
+		var oldUrl urlInfo
+		if t.curstyle.url != nil {
+			oldUrl = *t.curstyle.url
+		}
+		if style.url != nil {
+			newUrl = *style.url
+		}
 		// URL string can be long, so don't send it unless we really need to
-		if t.enterUrl != "" && t.curstyle.url != style.url {
-			if style.url != "" {
-				t.TPuts(ti.TParm(t.enterUrl, style.url, style.urlId))
+		if t.enterUrl != "" && newUrl != oldUrl {
+			if newUrl.url != "" {
+				t.TPuts(ti.TParm(t.enterUrl, newUrl.url, newUrl.id))
 			} else {
 				t.TPuts(t.exitUrl)
 			}
