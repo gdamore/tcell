@@ -32,6 +32,5 @@ func init() {
 		Mouse:             "\x1b[M",
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
 		AutoMargin:        true,
-		InsertChar:        "\x1b[@",
 	})
 }
