@@ -26,7 +26,6 @@ import (
 type EventPaste struct {
 	start bool
 	t     time.Time
-	data  []byte
 }
 
 // When returns the time when this EventPaste was created.
