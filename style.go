@@ -28,8 +28,12 @@ type Style struct {
 	ulColor Color
 	attrs   AttrMask
 	ulStyle UnderlineStyle
-	url     string
-	urlId   string
+	url     *urlInfo
+}
+
+type urlInfo struct {
+	url string
+	id  string
 }
 
 // StyleDefault represents a default style, based upon the context.
@@ -171,8 +175,12 @@ func (s Style) Attributes(attrs AttrMask) Style {
 // and the terminal supports it, text will typically be marked up as a clickable
 // link to that Url.  If the Url is empty, then this mode is turned off.
 func (s Style) Url(url string) Style {
+
 	s2 := s
-	s2.url = url
+	s2.url = &urlInfo{url: url}
+	if s.url != nil {
+		s2.url.id = s.url.id
+	}
 	return s2
 }
 
@@ -182,6 +190,11 @@ func (s Style) Url(url string) Style {
 // were one Url, even if it spans multiple lines.
 func (s Style) UrlId(id string) Style {
 	s2 := s
-	s2.urlId = "id=" + id
+	s2.url = &urlInfo{
+		id: "id=" + id,
+	}
+	if s.url != nil {
+		s2.url.url = s.url.url
+	}
 	return s2
 }
