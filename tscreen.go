@@ -55,6 +55,31 @@ func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
 
 var defaultTerm string
 
+// Some terminal escapes that are basically universal.
+// We would really like to be able to use private mode queries for some of
+// these but generally we've found that support for queries is not always present,
+// even when the private modes can be controlled. It appears that *all* terminals
+// will happily swallow the escapes that they do not recognize, with the small annoyance
+// in "st" where it prints error messages to its stderr (which is usually not visible
+// to the user unless they started it from another terminal session).  But apart from
+// the complaint to stderr from "st", everything else is fine.
+const (
+	enableAutoMargin  = "\x1b[?7h" // dec private mode 7
+	disableAutoMargin = "\x1b[?7l"
+	setCursorPosition = "\x1b[%i%p1%d;%p2%dH"
+	sgr0              = "\x1b[m" // attrOff
+	bold              = "\x1b[1m"
+	dim               = "\x1b[2m"
+	italic            = "\x1b[3m"
+	underline         = "\x1b[4m"
+	blink             = "\x1b[5m"
+	reverse           = "\x1b[7m"
+	strikeThrough     = "\x1b[8m"
+	showCursor        = "\x1b[?25h"
+	hideCursor        = "\x1b[?25l"
+	clear             = "\x1b[H\x1b[J" // NB: sun uses \f
+)
+
 // NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
 // implementation  and custom terminfo specification.
 // If the passed in tty is nil, then a reasonable default (typically /dev/tty)
@@ -497,7 +522,7 @@ func (t *tScreen) drawCell(x, y int) int {
 	}
 
 	if t.cy != y || t.cx != x {
-		t.TPuts(ti.TGoto(x, y))
+		t.TPuts(ti.TParm(setCursorPosition, y, x))
 		t.cx = x
 		t.cy = y
 	}
@@ -508,11 +533,11 @@ func (t *tScreen) drawCell(x, y int) int {
 	if style != t.curstyle {
 		fg, bg, attrs := style.fg, style.bg, style.attrs
 
-		t.TPuts(ti.AttrOff)
+		t.TPuts(sgr0)
 
 		attrs = t.sendFgBg(fg, bg, attrs)
 		if attrs&AttrBold != 0 {
-			t.TPuts(ti.Bold)
+			t.TPuts(bold)
 		}
 		if us, uc := style.ulStyle, style.ulColor; us != UnderlineStyleNone {
 			if t.underColor != "" || t.underRGB != "" {
@@ -536,7 +561,7 @@ func (t *tScreen) drawCell(x, y int) int {
 					t.TPuts(ti.TParm(t.underColor, int(uc&0xff)))
 				}
 			}
-			t.TPuts(ti.Underline) // to ensure everyone gets at least a basic underline
+			t.TPuts(underline) // to ensure everyone gets at least a basic underline
 			switch us {
 			case UnderlineStyleDouble:
 				t.TPuts(t.doubleUnder)
@@ -549,19 +574,19 @@ func (t *tScreen) drawCell(x, y int) int {
 			}
 		}
 		if attrs&AttrReverse != 0 {
-			t.TPuts(ti.Reverse)
+			t.TPuts(reverse)
 		}
 		if attrs&AttrBlink != 0 {
-			t.TPuts(ti.Blink)
+			t.TPuts(blink)
 		}
 		if attrs&AttrDim != 0 {
-			t.TPuts(ti.Dim)
+			t.TPuts(dim)
 		}
 		if attrs&AttrItalic != 0 {
-			t.TPuts(ti.Italic)
+			t.TPuts(italic)
 		}
 		if attrs&AttrStrikeThrough != 0 {
-			t.TPuts(ti.StrikeThrough)
+			t.TPuts(strikeThrough)
 		}
 
 		var newUrl urlInfo
@@ -642,8 +667,8 @@ func (t *tScreen) showCursor() {
 		t.hideCursor()
 		return
 	}
-	t.TPuts(t.ti.TGoto(x, y))
-	t.TPuts(t.ti.ShowCursor)
+	t.TPuts(t.ti.TParm(setCursorPosition, x, y))
+	t.TPuts(showCursor)
 	if t.cursorStyles != nil {
 		if esc, ok := t.cursorStyles[t.cursorStyle]; ok {
 			t.TPuts(esc)
@@ -693,10 +718,12 @@ func (t *tScreen) Show() {
 }
 
 func (t *tScreen) clearScreen() {
-	t.TPuts(t.ti.AttrOff)
+	t.TPuts(sgr0)
 	t.TPuts(t.exitUrl)
 	_ = t.sendFgBg(t.style.fg, t.style.bg, AttrNone)
-	t.TPuts(t.ti.Clear)
+
+	t.TPuts(clear)
+
 	t.clear = false
 }
 
@@ -709,15 +736,11 @@ func (t *tScreen) endBuffering() {
 }
 
 func (t *tScreen) hideCursor() {
-	// does not update cursor position
-	if t.ti.HideCursor != "" {
-		t.TPuts(t.ti.HideCursor)
-	} else {
-		// No way to hide cursor, stick it
-		// at bottom right of screen
-		t.cx, t.cy = t.cells.Size()
-		t.TPuts(t.ti.TGoto(t.cx, t.cy))
-	}
+	// just in case we cannot hide it, move it to the end
+	t.cx, t.cy = t.cells.Size()
+	t.TPuts(t.ti.TParm(setCursorPosition, t.cx, t.cy))
+	// then hide it
+	t.TPuts(hideCursor)
 }
 
 func (t *tScreen) draw() {
@@ -1139,10 +1162,10 @@ func (t *tScreen) engage() error {
 		t.TPuts(t.saveTitle)
 	}
 	t.TPuts(ti.EnterKeypad)
-	t.TPuts(ti.HideCursor)
+	t.TPuts(hideCursor)
 	t.TPuts(ti.EnableAcs)
-	t.TPuts(ti.DisableAutoMargin)
-	t.TPuts(ti.Clear)
+	t.TPuts(disableAutoMargin)
+	t.TPuts(clear)
 	if t.title != "" && t.setTitle != "" {
 		t.TPuts(t.ti.TParm(t.setTitle, t.title))
 	}
@@ -1179,23 +1202,23 @@ func (t *tScreen) disengage() {
 	// shutdown the screen and disable special modes (e.g. mouse and bracketed paste)
 	ti := t.ti
 	t.cells.Resize(0, 0)
-	t.TPuts(ti.ShowCursor)
+	t.TPuts(showCursor)
 	if t.cursorStyles != nil && t.cursorStyle != CursorStyleDefault {
 		t.TPuts(t.cursorStyles[CursorStyleDefault])
 	}
 	if t.cursorFg != "" && t.cursorColor.Valid() {
 		t.TPuts(t.cursorFg)
 	}
-	t.TPuts(ti.ResetFgBg)
-	t.TPuts(ti.AttrOff)
 	t.TPuts(ti.ExitKeypad)
-	t.TPuts(ti.EnableAutoMargin)
+	t.TPuts(ti.ResetFgBg)
+	t.TPuts(sgr0)
+	t.TPuts(enableAutoMargin)
 	t.TPuts(t.disableCsiU)
 	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
 		if t.restoreTitle != "" {
 			t.TPuts(t.restoreTitle)
 		}
-		t.TPuts(ti.Clear) // only needed if ExitCA is empty
+		t.TPuts(clear)
 		t.TPuts(ti.ExitCA)
 	}
 	t.enableMouse(0)

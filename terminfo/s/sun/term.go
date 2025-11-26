@@ -27,32 +27,19 @@ func init() {
 
 	// Sun Microsystems Inc. workstation console
 	terminfo.AddTerminfo(&terminfo.Terminfo{
-		Name:              "sun",
-		Columns:           80,
-		Lines:             34,
-		Clear:             "\f",
-		AttrOff:           "\x1b[m",
-		Reverse:           "\x1b[7m",
-		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
-		EnableAutoMargin:  "\x1b[?7h",
-		DisableAutoMargin: "\x1b[?7l",
+		Name:    "sun",
+		Columns: 80,
+		Lines:   34,
 	})
 
 	// Sun Microsystems Workstation console with color support (IA systems)
 	terminfo.AddTerminfo(&terminfo.Terminfo{
-		Name:              "sun-color",
-		Columns:           80,
-		Lines:             34,
-		Colors:            256,
-		Clear:             "\f",
-		AttrOff:           "\x1b[m",
-		Bold:              "\x1b[1m",
-		Reverse:           "\x1b[7m",
-		SetFg:             "\x1b[38;5;%p1%dm",
-		SetBg:             "\x1b[48;5;%p1%dm",
-		ResetFgBg:         "\x1b[0m",
-		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
-		EnableAutoMargin:  "\x1b[?7h",
-		DisableAutoMargin: "\x1b[?7l",
+		Name:      "sun-color",
+		Columns:   80,
+		Lines:     34,
+		Colors:    256,
+		SetFg:     "\x1b[38;5;%p1%dm",
+		SetBg:     "\x1b[48;5;%p1%dm",
+		ResetFgBg: "\x1b[0m",
 	})
 }
