@@ -40,7 +40,6 @@ type stdIoTty struct {
 	sig   chan os.Signal
 	cb    func()
 	stopQ chan struct{}
-	dev   string
 	wg    sync.WaitGroup
 	l     sync.Mutex
 }
