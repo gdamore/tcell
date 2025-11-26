@@ -92,8 +92,10 @@ func displaySixel(s tcell.Screen, img *imageData, lock bool) {
 	s.PutStr(sixelX, sixelY, "This text is behind")
 	s.PutStr(sixelX, sixelY+1, "     the sixel")
 
+	setCursorPosition = "\x1b[%i%p1%d;%p2%dH"
+
 	// Move the cursor to our draw position
-	ti.TPuts(tty, ti.TGoto(sixelX, sixelY))
+	ti.TPuts(tty, ti.TParm(setCursorPosition, sixelX, sixelY))
 	// Draw the sixel data
 	ti.TPuts(tty, img.data.String())
 

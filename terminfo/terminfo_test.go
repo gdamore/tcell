@@ -25,23 +25,15 @@ var testTerminfo = &Terminfo{
 	Columns:   80,
 	Lines:     24,
 	Colors:    256,
-	Blink:     "\x1b2ms$<20>something",
-	Reverse:   "\x1b[7m",
 	SetFg:     "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
 	SetBg:     "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
 	AltChars:  "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
 	Mouse:     "\x1b[M",
-	SetCursor: "\x1b[%i%p1%d;%p2%dH",
 	XTermLike: true,
 }
 
 func TestTerminfoExpansion(t *testing.T) {
 	ti := testTerminfo
-
-	// Tests %i and basic parameter strings too
-	if ti.TGoto(7, 9) != "\x1b[10;8H" {
-		t.Error("TGoto expansion failed")
-	}
 
 	// This tests some conditionals
 	if ti.TParm("A[%p1%2.2X]B", 47) != "A[2F]B" {
