@@ -1,7 +1,6 @@
 aixterm
 ansi
 dtterm
-eterm,eterm-color|emacs
 linux
 vt100
 vt220
