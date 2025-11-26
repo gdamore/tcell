@@ -25,9 +25,9 @@ package tcell
 type Style struct {
 	fg      Color
 	bg      Color
-	ulStyle UnderlineStyle
 	ulColor Color
 	attrs   AttrMask
+	ulStyle UnderlineStyle
 	url     string
 	urlId   string
 }
@@ -111,7 +111,7 @@ func (s Style) StrikeThrough(on bool) Style {
 
 // Underline style.  Modern terminals have the option of rendering the
 // underline using different styles, and even different colors.
-type UnderlineStyle int
+type UnderlineStyle uint8
 
 const (
 	UnderlineStyleNone = UnderlineStyle(iota)
