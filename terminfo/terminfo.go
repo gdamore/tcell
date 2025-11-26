@@ -46,24 +46,13 @@ type Terminfo struct {
 	Columns     int    // cols
 	Lines       int    // lines
 	Colors      int    // colors
-	Clear       string // clear
 	EnterCA     string // smcup
 	ExitCA      string // rmcup
-	ShowCursor  string // cnorm
-	HideCursor  string // civis
-	AttrOff     string // sgr0
-	Underline   string // smul
-	Bold        string // bold
-	Blink       string // blink
-	Reverse     string // rev
-	Dim         string // dim
-	Italic      string // sitm
 	EnterKeypad string // smkx
 	ExitKeypad  string // rmkx
 	SetFg       string // setaf
 	SetBg       string // setab
 	ResetFgBg   string // op
-	SetCursor   string // cup
 	Mouse       string // kmous
 	AltChars    string // acsc
 	EnterAcs    string // smacs
@@ -76,15 +65,12 @@ type Terminfo struct {
 	// Terminal support for these are going to vary amongst XTerm
 	// emulations, so don't depend too much on them in your application.
 
-	StrikeThrough     string // smxx
-	SetFgBg           string // setfgbg
-	SetFgBgRGB        string // setfgbgrgb
-	SetFgRGB          string // setfrgb
-	SetBgRGB          string // setbrgb
-	TrueColor         bool   // true if the terminal supports direct color
-	DisableAutoMargin string // smam
-	EnableAutoMargin  string // rmam
-	XTermLike         bool   // (XT) has XTerm extensions
+	SetFgBg    string // setfgbg
+	SetFgBgRGB string // setfgbgrgb
+	SetFgRGB   string // setfrgb
+	SetBgRGB   string // setbrgb
+	TrueColor  bool   // true if the terminal supports direct color
+	XTermLike  bool   // (XT) has XTerm extensions
 }
 
 type stack []any
@@ -468,12 +454,6 @@ func (t *Terminfo) TPuts(w io.Writer, s string) {
 			}
 		}
 	}
-}
-
-// TGoto returns a string suitable for addressing the cursor at the given
-// row and column.  The origin 0, 0 is in the upper left corner of the screen.
-func (t *Terminfo) TGoto(col, row int) string {
-	return t.TParm(t.SetCursor, row, col)
 }
 
 // TColor returns a string corresponding to the given foreground and background

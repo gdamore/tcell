@@ -1,7 +1,7 @@
 //go:build ignore
 // +build ignore
 
-// Copyright 2024 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -214,32 +214,18 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.Colors = tc.getnum("colors")
 	t.Columns = tc.getnum("cols")
 	t.Lines = tc.getnum("lines")
-	t.Clear = tc.getstr("clear")
 	t.EnterCA = tc.getstr("smcup")
 	t.ExitCA = tc.getstr("rmcup")
-	t.ShowCursor = tc.getstr("cnorm")
-	t.HideCursor = tc.getstr("civis")
-	t.AttrOff = tc.getstr("sgr0")
-	t.Underline = tc.getstr("smul")
-	t.Bold = tc.getstr("bold")
-	t.Blink = tc.getstr("blink")
-	t.Dim = tc.getstr("dim")
-	t.Italic = tc.getstr("sitm")
-	t.Reverse = tc.getstr("rev")
 	t.EnterKeypad = tc.getstr("smkx")
 	t.ExitKeypad = tc.getstr("rmkx")
 	t.SetFg = tc.getstr("setaf")
 	t.SetBg = tc.getstr("setab")
 	t.ResetFgBg = tc.getstr("op")
-	t.SetCursor = tc.getstr("cup")
 	t.AltChars = tc.getstr("acsc")
 	t.EnterAcs = tc.getstr("smacs")
 	t.ExitAcs = tc.getstr("rmacs")
 	t.EnableAcs = tc.getstr("enacs")
-	t.StrikeThrough = tc.getstr("smxx")
 	t.Mouse = tc.getstr("kmous")
-	t.EnableAutoMargin = tc.getstr("smam")
-	t.DisableAutoMargin = tc.getstr("rmam")
 
 	// Technically the RGB flag that is provided for xterm-direct is not
 	// quite right.  The problem is that the -direct flag that was introduced
@@ -262,9 +248,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	// We only support colors in ANSI 8 or 256 color mode.
 	if t.Colors < 8 || t.SetFg == "" {
 		t.Colors = 0
-	}
-	if t.SetCursor == "" {
-		return nil, "", notAddressable
 	}
 
 	// For terminals that use "standard" SGR sequences, lets combine the
@@ -345,18 +328,8 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddInt(w, "Columns", t.Columns)
 		dotGoAddInt(w, "Lines", t.Lines)
 		dotGoAddInt(w, "Colors", t.Colors)
-		dotGoAddStr(w, "Clear", t.Clear)
 		dotGoAddStr(w, "EnterCA", t.EnterCA)
 		dotGoAddStr(w, "ExitCA", t.ExitCA)
-		dotGoAddStr(w, "ShowCursor", t.ShowCursor)
-		dotGoAddStr(w, "HideCursor", t.HideCursor)
-		dotGoAddStr(w, "AttrOff", t.AttrOff)
-		dotGoAddStr(w, "Underline", t.Underline)
-		dotGoAddStr(w, "Bold", t.Bold)
-		dotGoAddStr(w, "Dim", t.Dim)
-		dotGoAddStr(w, "Italic", t.Italic)
-		dotGoAddStr(w, "Blink", t.Blink)
-		dotGoAddStr(w, "Reverse", t.Reverse)
 		dotGoAddStr(w, "EnterKeypad", t.EnterKeypad)
 		dotGoAddStr(w, "ExitKeypad", t.ExitKeypad)
 		dotGoAddStr(w, "SetFg", t.SetFg)
@@ -367,14 +340,10 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "EnterAcs", t.EnterAcs)
 		dotGoAddStr(w, "ExitAcs", t.ExitAcs)
 		dotGoAddStr(w, "EnableAcs", t.EnableAcs)
-		dotGoAddStr(w, "EnableAutoMargin", t.EnableAutoMargin)
-		dotGoAddStr(w, "DisableAutoMargin", t.DisableAutoMargin)
 		dotGoAddStr(w, "SetFgRGB", t.SetFgRGB)
 		dotGoAddStr(w, "SetBgRGB", t.SetBgRGB)
 		dotGoAddStr(w, "SetFgBgRGB", t.SetFgBgRGB)
-		dotGoAddStr(w, "StrikeThrough", t.StrikeThrough)
 		dotGoAddStr(w, "Mouse", t.Mouse)
-		dotGoAddStr(w, "SetCursor", t.SetCursor)
 		dotGoAddFlag(w, "TrueColor", t.TrueColor)
 		dotGoAddFlag(w, "XTermLike", t.XTermLike)
 		fmt.Fprintln(w, "\t})")
