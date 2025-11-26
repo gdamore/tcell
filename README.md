@@ -16,8 +16,6 @@ It was inspired by _termbox_, but includes many additional improvements.
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdamore/tcell/v2)](https://goreportcard.com/report/github.com/gdamore/tcell/v2)
 [![Latest Release](https://img.shields.io/github/v/release/gdamore/tcell.svg?logo=github&label=)](https://github.com/gdamore/tcell/releases)
 
-Please see [here](UKRAINE.md) for an important message for the people of Russia.
-
 NOTE: This is version 2 of _Tcell_. There are breaking changes relative to version 1.
 Version 1.x remains available using the import `github.com/gdamore/tcell`.
 
