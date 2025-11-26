@@ -81,7 +81,6 @@ type Terminfo struct {
 	SetFgBgRGB        string // setfgbgrgb
 	SetFgRGB          string // setfrgb
 	SetBgRGB          string // setbrgb
-	InsertChar        string // string to insert a character (ich1)
 	AutoMargin        bool   // true if writing to last cell in line advances
 	TrueColor         bool   // true if the terminal supports direct color
 	DisableAutoMargin string // smam

@@ -37,7 +37,6 @@ func init() {
 		EnableAutoMargin:  "\x1b[?7h",
 		DisableAutoMargin: "\x1b[?7l",
 		AutoMargin:        true,
-		InsertChar:        "\x1b[@",
 	})
 
 	// Sun Microsystems Workstation console with color support (IA systems)
@@ -57,6 +56,5 @@ func init() {
 		EnableAutoMargin:  "\x1b[?7h",
 		DisableAutoMargin: "\x1b[?7l",
 		AutoMargin:        true,
-		InsertChar:        "\x1b[@",
 	})
 }
