@@ -111,11 +111,7 @@ func (ip *inputProcessor) post(ev Event) {
 		}
 	}
 
-	// this tries to post, will drop events that overflow
-	select {
-	case ip.evch <- ev:
-	default:
-	}
+	ip.evch <- ev
 }
 
 func (ip *inputProcessor) escTimeout() {

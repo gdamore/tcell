@@ -230,7 +230,7 @@ func (t *tScreen) Init() error {
 	}
 
 	t.quit = make(chan struct{})
-	t.eventQ = make(chan Event, 32)
+	t.eventQ = make(chan Event, 256)
 	t.input = NewInputProcessor(t.eventQ)
 
 	t.Lock()
