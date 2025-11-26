@@ -838,7 +838,7 @@ func (ip *inputProcessor) ScanUTF8(b []byte) {
 		} else {
 			r, len := utf8.DecodeRune(ip.ut8)
 			if r == utf8.RuneError {
-				r = rune(ip.ut8[1])
+				r = rune(ip.ut8[0])
 				len = 1
 			}
 			ip.buf = append(ip.buf, r)
