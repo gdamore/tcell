@@ -51,7 +51,6 @@ func init() {
 		StrikeThrough:     "\x1b[9m",
 		Mouse:             "\x1b[<",
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
-		AutoMargin:        true,
 		XTermLike:         true,
 	})
 
@@ -87,7 +86,6 @@ func init() {
 		StrikeThrough:     "\x1b[9m",
 		Mouse:             "\x1b[<",
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
-		AutoMargin:        true,
 		XTermLike:         true,
 	})
 
@@ -124,7 +122,6 @@ func init() {
 		StrikeThrough:     "\x1b[9m",
 		Mouse:             "\x1b[<",
 		SetCursor:         "\x1b[%i%p1%d;%p2%dH",
-		AutoMargin:        true,
 		XTermLike:         true,
 		TrueColor:         true,
 	})

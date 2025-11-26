@@ -232,7 +232,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.SetBg = tc.getstr("setab")
 	t.ResetFgBg = tc.getstr("op")
 	t.SetCursor = tc.getstr("cup")
-	t.AutoMargin = tc.getflag("am")
 	t.AltChars = tc.getstr("acsc")
 	t.EnterAcs = tc.getstr("smacs")
 	t.ExitAcs = tc.getstr("rmacs")
@@ -377,7 +376,6 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "Mouse", t.Mouse)
 		dotGoAddStr(w, "SetCursor", t.SetCursor)
 		dotGoAddFlag(w, "TrueColor", t.TrueColor)
-		dotGoAddFlag(w, "AutoMargin", t.AutoMargin)
 		dotGoAddFlag(w, "XTermLike", t.XTermLike)
 		fmt.Fprintln(w, "\t})")
 	}
