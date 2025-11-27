@@ -42,11 +42,9 @@ func init() {
 		SetBgRGB:    "\x1b[48;2;%p1%d;%p2%d;%p3%dm",
 		SetFgBgRGB:  "\x1b[38;2;%p1%d;%p2%d;%p3%d;48;2;%p4%d;%p5%d;%p6%dm",
 		ResetFgBg:   "\x1b[39;49m",
-		AltChars:    "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-		EnterAcs:    "\x1b(0",
-		ExitAcs:     "\x1b(B",
-		Mouse:       "\x1b[M",
-		TrueColor:   true,
-		XTermLike:   true,
+
+		Mouse:     "\x1b[M",
+		TrueColor: true,
+		XTermLike: true,
 	})
 }
