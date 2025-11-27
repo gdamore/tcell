@@ -956,10 +956,6 @@ var vtACSNames = map[byte]rune{
 	'0': RuneBlock,
 	'`': RuneDiamond,
 	'a': RuneCkBoard,
-	'b': '␉', // VT100, Not defined by terminfo
-	'c': '␌', // VT100, Not defined by terminfo
-	'd': '␋', // VT100, Not defined by terminfo
-	'e': '␊', // VT100, Not defined by terminfo
 	'f': RuneDegree,
 	'g': RunePlMinus,
 	'h': RuneBoard,
