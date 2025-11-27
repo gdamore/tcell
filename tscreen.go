@@ -84,6 +84,13 @@ const (
 	disableFocus      = "\x1b[?1004l"
 	startSyncOut      = "\x1b[?2026h"
 	endSyncOut        = "\x1b[?2026l"
+	doubleUnder       = "\x1b[4:2m"
+	curlyUnder        = "\x1b[4:3m"
+	dottedUnder       = "\x1b[4:4m"
+	dashedUnder       = "\x1b[4:5m"
+	underColor        = "\x1b[58:5:%p1%dm"
+	underRGB          = "\x1b[58:2::%p1%d:%p2%d:%p3%dm"
+	underFg           = "\x1b[59m"
 )
 
 // NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
@@ -178,13 +185,6 @@ type tScreen struct {
 	enterUrl     string
 	exitUrl      string
 	setWinSize   string
-	doubleUnder  string
-	curlyUnder   string
-	dottedUnder  string
-	dashedUnder  string
-	underColor   string
-	underRGB     string
-	underFg      string // reset underline color to foreground
 	cursorStyles map[CursorStyle]string
 	cursorStyle  CursorStyle
 	cursorColor  Color
@@ -273,18 +273,6 @@ func (t *tScreen) Init() error {
 	return nil
 }
 
-func (t *tScreen) prepareUnderlines() {
-	if t.ti.XTermLike {
-		t.doubleUnder = "\x1b[4:2m"
-		t.curlyUnder = "\x1b[4:3m"
-		t.dottedUnder = "\x1b[4:4m"
-		t.dashedUnder = "\x1b[4:5m"
-		t.underColor = "\x1b[58:5:%p1%dm"
-		t.underRGB = "\x1b[58:2::%p1%d:%p2%d:%p3%dm"
-		t.underFg = "\x1b[59m"
-	}
-}
-
 func (t *tScreen) prepareExtendedOSC() {
 	// Linux is a special beast - because it has a mouse entry, but does
 	// not swallow these OSC commands properly.
@@ -364,7 +352,6 @@ func (t *tScreen) prepareKeys() {
 		ti.XTermLike = true
 	}
 	t.prepareCursorStyles()
-	t.prepareUnderlines()
 	t.prepareExtendedOSC()
 }
 
@@ -524,37 +511,33 @@ func (t *tScreen) drawCell(x, y int) int {
 			t.TPuts(bold)
 		}
 		if us, uc := style.ulStyle, style.ulColor; us != UnderlineStyleNone {
-			if t.underColor != "" || t.underRGB != "" {
-				if uc == ColorReset {
-					t.TPuts(t.underFg)
-				} else if uc.IsRGB() {
-					if t.underRGB != "" {
-						r, g, b := uc.RGB()
-						t.TPuts(ti.TParm(t.underRGB, int(r), int(g), int(b)))
-					} else {
-						if v, ok := t.colors[uc]; ok {
-							uc = v
-						} else {
-							v = FindColor(uc, t.palette)
-							t.colors[uc] = v
-							uc = v
-						}
-						t.TPuts(ti.TParm(t.underColor, int(uc&0xff)))
-					}
-				} else if uc.Valid() {
-					t.TPuts(ti.TParm(t.underColor, int(uc&0xff)))
+			if uc == ColorReset {
+				t.TPuts(underFg)
+			} else if uc.IsRGB() {
+				if v, ok := t.colors[uc]; ok {
+					uc = v
+				} else {
+					v = FindColor(uc, t.palette)
+					t.colors[uc] = v
+					uc = v
 				}
+				t.TPuts(ti.TParm(underColor, int(uc&0xff)))
+				r, g, b := uc.RGB()
+				t.TPuts(ti.TParm(underRGB, int(r), int(g), int(b)))
+			} else if uc.Valid() {
+				t.TPuts(ti.TParm(underColor, int(uc&0xff)))
 			}
+
 			t.TPuts(underline) // to ensure everyone gets at least a basic underline
 			switch us {
 			case UnderlineStyleDouble:
-				t.TPuts(t.doubleUnder)
+				t.TPuts(doubleUnder)
 			case UnderlineStyleCurly:
-				t.TPuts(t.curlyUnder)
+				t.TPuts(curlyUnder)
 			case UnderlineStyleDotted:
-				t.TPuts(t.dottedUnder)
+				t.TPuts(dottedUnder)
 			case UnderlineStyleDashed:
-				t.TPuts(t.dashedUnder)
+				t.TPuts(dashedUnder)
 			}
 		}
 		if attrs&AttrReverse != 0 {
