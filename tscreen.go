@@ -91,6 +91,9 @@ const (
 	underColor        = "\x1b[58:5:%p1%dm"
 	underRGB          = "\x1b[58:2::%p1%d:%p2%d:%p3%dm"
 	underFg           = "\x1b[59m"
+	enableAltChars    = "\x1b(B\x1b)0" // set G0 as US-ASCII, G1 as DEC line drawing
+	startAltChars     = "\x0e"         // aka Shift-Out
+	endAltChars       = "\x0f"         // aka Shift-In
 )
 
 // NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
@@ -901,13 +904,9 @@ func (t *tScreen) nColors() int {
 // It's not quite that simple, since the "l" is the terminfo name,
 // and it may be necessary to use a different character based on
 // the terminal implementation (or the terminal may lack support for
-// this altogether).  See buildAcsMap below for detail.
+// this altogether).  These values are from the DEC VT100, and all
+// modern terminal emulators support this as charset 0.
 var vtACSNames = map[byte]rune{
-	'+': RuneRArrow,
-	',': RuneLArrow,
-	'-': RuneUArrow,
-	'.': RuneDArrow,
-	'0': RuneBlock,
 	'`': RuneDiamond,
 	'a': RuneCkBoard,
 	'f': RuneDegree,
@@ -942,15 +941,11 @@ var vtACSNames = map[byte]rune{
 // maps.  This is only done if the terminal lacks support for Unicode; we
 // always prefer to emit Unicode glyphs when we are able.
 func (t *tScreen) buildAcsMap() {
-	acsstr := t.ti.AltChars
+	const acsstr = "``aaffggjjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~"
+
 	t.acs = make(map[rune]string)
-	for len(acsstr) > 2 {
-		srcv := acsstr[0]
-		dstv := string(acsstr[1])
-		if r, ok := vtACSNames[srcv]; ok {
-			t.acs[r] = t.ti.EnterAcs + dstv + t.ti.ExitAcs
-		}
-		acsstr = acsstr[2:]
+	for b, r := range vtACSNames {
+		t.acs[r] = startAltChars + string(b) + endAltChars
 	}
 }
 
@@ -1122,7 +1117,7 @@ func (t *tScreen) engage() error {
 	}
 	t.TPuts(ti.EnterKeypad)
 	t.TPuts(hideCursor)
-	t.TPuts(ti.EnableAcs)
+	t.TPuts(enableAltChars)
 	t.TPuts(disableAutoMargin)
 	t.TPuts(clear)
 	if t.title != "" && t.setTitle != "" {

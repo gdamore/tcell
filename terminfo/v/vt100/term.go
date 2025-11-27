@@ -14,9 +14,5 @@ func init() {
 		Lines:       24,
 		EnterKeypad: "\x1b[?1h\x1b=",
 		ExitKeypad:  "\x1b[?1l\x1b>",
-		AltChars:    "``aaffggjjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-		EnterAcs:    "\x0e",
-		ExitAcs:     "\x0f",
-		EnableAcs:   "\x1b(B\x1b)0",
 	})
 }

@@ -20,13 +20,9 @@ func init() {
 
 	// DEC VT220 and later (through VT420)
 	terminfo.AddTerminfo(&terminfo.Terminfo{
-		Name:      "vt220",
-		Aliases:   []string{"vt200", "vt320", "vt400", "vt400-24", "dec-vt400", "vt420"},
-		Columns:   80,
-		Lines:     24,
-		AltChars:  "``aaffggjjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-		EnterAcs:  "\x1b(0",
-		ExitAcs:   "\x1b(B",
-		EnableAcs: "\x1b)0",
+		Name:    "vt220",
+		Aliases: []string{"vt200", "vt320", "vt400", "vt400-24", "dec-vt400", "vt420"},
+		Columns: 80,
+		Lines:   24,
 	})
 }

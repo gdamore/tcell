@@ -221,10 +221,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.SetFg = tc.getstr("setaf")
 	t.SetBg = tc.getstr("setab")
 	t.ResetFgBg = tc.getstr("op")
-	t.AltChars = tc.getstr("acsc")
-	t.EnterAcs = tc.getstr("smacs")
-	t.ExitAcs = tc.getstr("rmacs")
-	t.EnableAcs = tc.getstr("enacs")
 	t.Mouse = tc.getstr("kmous")
 
 	// Technically the RGB flag that is provided for xterm-direct is not
@@ -336,10 +332,6 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "SetBg", t.SetBg)
 		dotGoAddStr(w, "SetFgBg", t.SetFgBg)
 		dotGoAddStr(w, "ResetFgBg", t.ResetFgBg)
-		dotGoAddStr(w, "AltChars", t.AltChars)
-		dotGoAddStr(w, "EnterAcs", t.EnterAcs)
-		dotGoAddStr(w, "ExitAcs", t.ExitAcs)
-		dotGoAddStr(w, "EnableAcs", t.EnableAcs)
 		dotGoAddStr(w, "SetFgRGB", t.SetFgRGB)
 		dotGoAddStr(w, "SetBgRGB", t.SetBgRGB)
 		dotGoAddStr(w, "SetFgBgRGB", t.SetFgBgRGB)

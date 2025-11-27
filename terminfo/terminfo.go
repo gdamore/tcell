@@ -54,10 +54,6 @@ type Terminfo struct {
 	SetBg       string // setab
 	ResetFgBg   string // op
 	Mouse       string // kmous
-	AltChars    string // acsc
-	EnterAcs    string // smacs
-	ExitAcs     string // rmacs
-	EnableAcs   string // enacs
 
 	// These are non-standard extensions to terminfo.  This includes
 	// true color support, and some additional keys.  Its kind of bizarre
