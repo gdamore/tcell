@@ -82,6 +82,8 @@ const (
 	disablePaste      = "\x1b[?2004l"
 	enableFocus       = "\x1b[?1004h"
 	disableFocus      = "\x1b[?1004l"
+	startSyncOut      = "\x1b[?2026h"
+	endSyncOut        = "\x1b[?2026l"
 )
 
 // NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
@@ -200,8 +202,6 @@ type tScreen struct {
 	restoreTitle string
 	title        string
 	setClipboard string
-	startSyncOut string
-	endSyncOut   string
 	enableCsiU   string
 	disableCsiU  string
 	input        *inputProcessor
@@ -316,14 +316,6 @@ func (t *tScreen) prepareExtendedOSC() {
 		// it will also be able to retrieve the clipboard using "?" as the
 		// sent string, when we support that.
 		t.setClipboard = "\x1b]52;c;%p1%s\x1b\\"
-	}
-
-	if t.startSyncOut == "" && t.ti.XTermLike {
-		// this is in theory a queryable private mode, but we just assume it will be ok
-		// The terminals we have been able to test it all either just swallow it, or
-		// handle it.
-		t.startSyncOut = "\x1b[?2026h"
-		t.endSyncOut = "\x1b[?2026l"
 	}
 
 	if t.enableCsiU == "" && t.ti.XTermLike {
@@ -711,11 +703,11 @@ func (t *tScreen) clearScreen() {
 }
 
 func (t *tScreen) startBuffering() {
-	t.TPuts(t.startSyncOut)
+	t.TPuts(startSyncOut)
 }
 
 func (t *tScreen) endBuffering() {
-	t.TPuts(t.endSyncOut)
+	t.TPuts(endSyncOut)
 }
 
 func (t *tScreen) hideCursor() {
