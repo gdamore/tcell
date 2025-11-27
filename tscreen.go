@@ -78,6 +78,10 @@ const (
 	showCursor        = "\x1b[?25h"
 	hideCursor        = "\x1b[?25l"
 	clear             = "\x1b[H\x1b[J" // NB: sun uses \f
+	enablePaste       = "\x1b[?2004h"
+	disablePaste      = "\x1b[?2004l"
+	enableFocus       = "\x1b[?1004h"
+	disableFocus      = "\x1b[?1004l"
 )
 
 // NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
@@ -169,13 +173,9 @@ type tScreen struct {
 	palette      []Color
 	truecolor    bool
 	finiOnce     sync.Once
-	enablePaste  string
-	disablePaste string
 	enterUrl     string
 	exitUrl      string
 	setWinSize   string
-	enableFocus  string
-	disableFocus string
 	doubleUnder  string
 	curlyUnder   string
 	dottedUnder  string
@@ -273,17 +273,6 @@ func (t *tScreen) Init() error {
 	return nil
 }
 
-func (t *tScreen) prepareBracketedPaste() {
-	// Another workaround for lack of reporting in terminfo.
-	// We assume if the terminal has a mouse entry, that it
-	// offers bracketed paste.  But we allow specific overrides
-	// via our terminal database.
-	if t.ti.Mouse != "" || t.ti.XTermLike {
-		t.enablePaste = "\x1b[?2004h"
-		t.disablePaste = "\x1b[?2004l"
-	}
-}
-
 func (t *tScreen) prepareUnderlines() {
 	if t.ti.XTermLike {
 		t.doubleUnder = "\x1b[4:2m"
@@ -313,11 +302,6 @@ func (t *tScreen) prepareExtendedOSC() {
 
 	if t.ti.Mouse != "" || t.ti.XTermLike {
 		t.setWinSize = "\x1b[8;%p1%p2%d;%dt"
-	}
-
-	if t.ti.Mouse != "" || t.ti.XTermLike {
-		t.enableFocus = "\x1b[?1004h"
-		t.disableFocus = "\x1b[?1004l"
 	}
 
 	if t.ti.XTermLike {
@@ -387,7 +371,6 @@ func (t *tScreen) prepareKeys() {
 		t.ti.XTermLike = true
 		ti.XTermLike = true
 	}
-	t.prepareBracketedPaste()
 	t.prepareCursorStyles()
 	t.prepareUnderlines()
 	t.prepareExtendedOSC()
@@ -859,9 +842,9 @@ func (t *tScreen) DisablePaste() {
 func (t *tScreen) enablePasting(on bool) {
 	var s string
 	if on {
-		s = t.enablePaste
+		s = enablePaste
 	} else {
-		s = t.disablePaste
+		s = disablePaste
 	}
 	if s != "" {
 		t.TPuts(s)
@@ -883,15 +866,11 @@ func (t *tScreen) DisableFocus() {
 }
 
 func (t *tScreen) enableFocusReporting() {
-	if t.enableFocus != "" {
-		t.TPuts(t.enableFocus)
-	}
+	t.TPuts(enableFocus)
 }
 
 func (t *tScreen) disableFocusReporting() {
-	if t.disableFocus != "" {
-		t.TPuts(t.disableFocus)
-	}
+	t.TPuts(disableFocus)
 }
 
 func (t *tScreen) Size() (int, int) {
