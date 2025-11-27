@@ -363,7 +363,7 @@ func dotGoFile(fname string, terms []*TData) error {
 		}
 	}
 	if packname == "" {
-		packname = strings.Replace(terms[0].Name, "-", "_", -1)
+		packname = strings.ReplaceAll(terms[0].Name, "-", "_")
 	}
 	dotGoHeader(w, packname, tipackname)
 	dotGoInfo(w, terms)
