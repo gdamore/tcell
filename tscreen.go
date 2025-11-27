@@ -376,9 +376,10 @@ func (t *tScreen) SetStyle(style Style) {
 	t.Unlock()
 }
 
-func (t *tScreen) encodeStr(s string, buf []byte) []byte {
+func (t *tScreen) encodeStr(s string) []byte {
 
-	var dstBuf [20]byte
+	var dstBuf [128]byte
+	var buf []byte
 	nb := dstBuf[:]
 	dst := 0
 	var err error
@@ -591,8 +592,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		width = 1
 	}
 
-	buf := make([]byte, 20)
-	buf = t.encodeStr(str, buf)
+	buf := t.encodeStr(str)
 	str = string(buf)
 
 	if width > 1 && str == "?" {
