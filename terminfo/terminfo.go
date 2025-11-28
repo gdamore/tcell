@@ -40,21 +40,12 @@ var (
 // in Go, but when we write out JSON, we use the same names as terminfo.
 // The name, aliases and smous, rmous fields do not come from terminfo directly.
 type Terminfo struct {
-	Name        string
-	Aliases     []string
-	Columns     int    // cols
-	Lines       int    // lines
-	EnterKeypad string // smkx
-	ExitKeypad  string // rmkx
-	Mouse       string // kmous
-
-	// These are non-standard extensions to terminfo.  This includes
-	// true color support, and some additional keys.  Its kind of bizarre
-	// that shifted variants of left and right exist, but not up and down.
-	// Terminal support for these are going to vary amongst XTerm
-	// emulations, so don't depend too much on them in your application.
-
-	XTermLike bool // (XT) has XTerm extensions
+	Name      string
+	Aliases   []string
+	Columns   int    // cols
+	Lines     int    // lines
+	Mouse     string // kmous
+	XTermLike bool   // (XT) has XTerm extensions
 }
 
 type stack []any
