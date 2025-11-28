@@ -54,7 +54,6 @@ type Terminfo struct {
 	// Terminal support for these are going to vary amongst XTerm
 	// emulations, so don't depend too much on them in your application.
 
-	TrueColor bool // true if the terminal supports direct color
 	XTermLike bool // (XT) has XTerm extensions
 }
 

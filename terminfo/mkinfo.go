@@ -216,22 +216,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.ExitKeypad = tc.getstr("rmkx")
 	t.Mouse = tc.getstr("kmous")
 
-	// Technically the RGB flag that is provided for xterm-direct is not
-	// quite right.  The problem is that the -direct flag that was introduced
-	// with ncurses 6.1 requires a parsing for the parameters that we lack.
-	// For this case we'll just assume it's XTerm compatible.  Someday this
-	// may be incorrect, but right now it is correct, and nobody uses it
-	// anyway.
-	if tc.getflag("Tc") {
-		// This presumes XTerm 24-bit true color.
-		t.TrueColor = true
-	} else if tc.getflag("RGB") {
-		// This is for xterm-direct, which uses a different scheme entirely.
-		// (ncurses went a very different direction from everyone else, and
-		// so it's unlikely anything is using this definition.)
-		t.TrueColor = true
-	}
-
 	if tc.getflag("XT") {
 		t.XTermLike = true
 	}
@@ -300,7 +284,6 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "EnterKeypad", t.EnterKeypad)
 		dotGoAddStr(w, "ExitKeypad", t.ExitKeypad)
 		dotGoAddStr(w, "Mouse", t.Mouse)
-		dotGoAddFlag(w, "TrueColor", t.TrueColor)
 		dotGoAddFlag(w, "XTermLike", t.XTermLike)
 		fmt.Fprintln(w, "\t})")
 	}
