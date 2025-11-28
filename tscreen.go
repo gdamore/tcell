@@ -104,9 +104,11 @@ const (
 	setBgRgb          = "\x1b[48;2;%d;%d;%dm"                // for RGB
 	setFgBg256        = "\x1b[38;5;%d;;48;5;%dm"             // for colors less than 256, in one shot
 	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;;48;2;%d;%d;%dm" // for colors less than 256, in one shot
-	resetFgBg         = "\x1b[39;49m"
-	enterCA           = "\x1b[?1049h" // alternate screen
-	exitCA            = "\x1b[?1049l" // alternate screen
+	resetFgBg         = "\x1b[39;49m"                        // ECMA defined
+	enterCA           = "\x1b[?1049h"                        // alternate screen
+	exitCA            = "\x1b[?1049l"                        // alternate screen
+	enterKeypad       = "\x1b[?1h\x1b="                      // Note mode 1 might not be supported everywhere
+	exitKeypad        = "\x1b[?1l\x1b>"                      // Also mode 1
 )
 
 // NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
@@ -1140,7 +1142,7 @@ func (t *tScreen) engage() error {
 		t.TPuts(enterCA)
 		t.TPuts(t.saveTitle)
 	}
-	t.TPuts(ti.EnterKeypad)
+	t.TPuts(enterKeypad)
 	t.TPuts(hideCursor)
 	t.TPuts(enableAltChars)
 	t.TPuts(disableAutoMargin)
@@ -1188,7 +1190,7 @@ func (t *tScreen) disengage() {
 	if t.cursorFg != "" && t.cursorColor.Valid() {
 		t.TPuts(t.cursorFg)
 	}
-	t.TPuts(ti.ExitKeypad)
+	t.TPuts(exitKeypad)
 	t.TPuts(resetFgBg)
 	t.TPuts(sgr0)
 	t.TPuts(enableAutoMargin)

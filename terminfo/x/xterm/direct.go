@@ -26,13 +26,11 @@ func init() {
 
 	// derived from xterm-256color, but adds full RGB support
 	terminfo.AddTerminfo(&terminfo.Terminfo{
-		Name:        "xterm-direct",
-		Aliases:     []string{"alacritty-direct", "xterm-truecolor"},
-		Columns:     80,
-		Lines:       24,
-		EnterKeypad: "\x1b[?1h\x1b=",
-		ExitKeypad:  "\x1b[?1l\x1b>",
-		Mouse:       "\x1b[M",
-		XTermLike:   true,
+		Name:      "xterm-direct",
+		Aliases:   []string{"alacritty-direct", "xterm-truecolor"},
+		Columns:   80,
+		Lines:     24,
+		Mouse:     "\x1b[M",
+		XTermLike: true,
 	})
 }

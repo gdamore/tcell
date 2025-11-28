@@ -212,8 +212,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.Aliases = tc.aliases
 	t.Columns = tc.getnum("cols")
 	t.Lines = tc.getnum("lines")
-	t.EnterKeypad = tc.getstr("smkx")
-	t.ExitKeypad = tc.getstr("rmkx")
 	t.Mouse = tc.getstr("kmous")
 
 	if tc.getflag("XT") {
@@ -281,8 +279,6 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddArr(w, "Aliases", t.Aliases)
 		dotGoAddInt(w, "Columns", t.Columns)
 		dotGoAddInt(w, "Lines", t.Lines)
-		dotGoAddStr(w, "EnterKeypad", t.EnterKeypad)
-		dotGoAddStr(w, "ExitKeypad", t.ExitKeypad)
 		dotGoAddStr(w, "Mouse", t.Mouse)
 		dotGoAddFlag(w, "XTermLike", t.XTermLike)
 		fmt.Fprintln(w, "\t})")
