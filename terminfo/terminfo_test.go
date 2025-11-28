@@ -21,10 +21,9 @@ import (
 // This terminfo entry is a stripped down version from
 // xterm-256color, but I've added some of my own entries.
 var testTerminfo = &Terminfo{
-	Name:      "simulation_test",
-	Columns:   80,
-	Lines:     24,
-	XTermLike: true,
+	Name:    "simulation_test",
+	Columns: 80,
+	Lines:   24,
 }
 
 func TestTerminfoExpansion(t *testing.T) {
