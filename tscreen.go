@@ -637,7 +637,7 @@ func (t *tScreen) showCursor() {
 		t.hideCursor()
 		return
 	}
-	t.TPuts(t.ti.TParm(setCursorPosition, x, y))
+	t.TPuts(t.ti.TParm(setCursorPosition, y, x))
 	t.TPuts(showCursor)
 	if t.cursorStyles != nil {
 		if esc, ok := t.cursorStyles[t.cursorStyle]; ok {
@@ -708,7 +708,7 @@ func (t *tScreen) endBuffering() {
 func (t *tScreen) hideCursor() {
 	// just in case we cannot hide it, move it to the end
 	t.cx, t.cy = t.cells.Size()
-	t.TPuts(t.ti.TParm(setCursorPosition, t.cx, t.cy))
+	t.TPuts(t.ti.TParm(setCursorPosition, t.cy, t.cx))
 	// then hide it
 	t.TPuts(hideCursor)
 }
