@@ -805,24 +805,24 @@ func (t *tScreen) EnableMouse(flags ...MouseFlags) {
 func (t *tScreen) enableMouse(f MouseFlags) {
 	// Rather than using terminfo to find mouse escape sequences, we rely on the fact that
 	// pretty much *every* terminal that supports mouse tracking follows the
-	// XTerm standards (the modern ones).
-	if len(t.mouse) != 0 {
-		// start by disabling all tracking.
-		t.TPuts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l")
-		if f&MouseButtonEvents != 0 {
-			t.TPuts("\x1b[?1000h")
-		}
-		if f&MouseDragEvents != 0 {
-			t.TPuts("\x1b[?1002h")
-		}
-		if f&MouseMotionEvents != 0 {
-			t.TPuts("\x1b[?1003h")
-		}
-		if f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) != 0 {
-			t.TPuts("\x1b[?1006h")
-		}
-	}
+	// XTerm standards (the modern ones).  It is expected that all terminals understand
+	// the same DEC private modes.  Note that the SGR mode is required for the mouse sequences
+	// to be understood.
 
+	// start by disabling all tracking.
+	t.TPuts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l")
+	if f&MouseButtonEvents != 0 {
+		t.TPuts("\x1b[?1000h")
+	}
+	if f&MouseDragEvents != 0 {
+		t.TPuts("\x1b[?1002h")
+	}
+	if f&MouseMotionEvents != 0 {
+		t.TPuts("\x1b[?1003h")
+	}
+	if f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) != 0 {
+		t.TPuts("\x1b[?1006h")
+	}
 }
 
 func (t *tScreen) DisableMouse() {
