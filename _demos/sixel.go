@@ -95,7 +95,7 @@ func displaySixel(s tcell.Screen, img *imageData, lock bool) {
 	setCursorPosition = "\x1b[%i%p1%d;%p2%dH"
 
 	// Move the cursor to our draw position
-	ti.TPuts(tty, ti.TParm(setCursorPosition, sixelX, sixelY))
+	ti.TPuts(tty, ti.TParm(setCursorPosition, sixelY, sixelX))
 	// Draw the sixel data
 	ti.TPuts(tty, img.data.String())
 
