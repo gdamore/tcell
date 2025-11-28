@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"maps"
 	"os"
@@ -91,9 +92,18 @@ const (
 	underColor        = "\x1b[58:5:%p1%dm"
 	underRGB          = "\x1b[58:2::%p1%d:%p2%d:%p3%dm"
 	underFg           = "\x1b[59m"
-	enableAltChars    = "\x1b(B\x1b)0" // set G0 as US-ASCII, G1 as DEC line drawing
-	startAltChars     = "\x0e"         // aka Shift-Out
-	endAltChars       = "\x0f"         // aka Shift-In
+	enableAltChars    = "\x1b(B\x1b)0"                       // set G0 as US-ASCII, G1 as DEC line drawing
+	startAltChars     = "\x0e"                               // aka Shift-Out
+	endAltChars       = "\x0f"                               // aka Shift-In
+	setFg8            = "\x1b[3%dm"                          // for colors less than 8
+	setFg256          = "\x1b[38;5;%dm"                      // for colors less than 256
+	setFgRgb          = "\x1b[38;2;%d;%d;%dm"                // for RGB
+	setBg8            = "\x1b[4%dm"                          // color colors less than 8
+	setBg256          = "\x1b[48;5;%dm"                      // for colors less than 256
+	setBgRgb          = "\x1b[48;2;%d;%d;%dm"                // for RGB
+	setFgBg256        = "\x1b[38;5;%d;;48;5;%dm"             // for colors less than 256, in one shot
+	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;;48;2;%d;%d;%dm" // for colors less than 256, in one shot
+	resetFgBg         = "\x1b[39;49m"
 )
 
 // NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
@@ -108,6 +118,12 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 	if term == "" {
 		term = os.Getenv("TERM")
 	}
+	addTrueColor := false
+	switch os.Getenv("COLORTERM") {
+	case "truecolor", "24bit", "24-bit":
+		addTrueColor = true
+	}
+
 	if ti == nil {
 		// As a default, we assume XTerm like semantics, which works for the *vast*
 		// majority of terminals.
@@ -120,6 +136,7 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 			switch {
 			case term == "xterm-direct":
 			case strings.Contains(term, "direct"), strings.Contains(term, "truecolor"), strings.Contains(term, "24bit"):
+				addTrueColor = true
 				term = "xterm-direct"
 			case strings.Contains(term, "256color"):
 				term = "xterm-256color"
@@ -134,6 +151,9 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 	}
 
 	t := &tScreen{ti: ti, tty: tty}
+	if addTrueColor {
+		t.truecolor = true
+	}
 
 	if len(ti.Mouse) > 0 {
 		t.mouse = []byte(ti.Mouse)
@@ -237,7 +257,7 @@ func (t *tScreen) Init() error {
 	if i, _ := strconv.Atoi(os.Getenv("COLUMNS")); i != 0 {
 		w = i
 	}
-	if t.ti.SetFgBgRGB != "" || t.ti.SetFgRGB != "" || t.ti.SetBgRGB != "" {
+	if t.nColors() > 256 {
 		t.truecolor = true
 	}
 	// A user who wants to have his themes honored can
@@ -406,7 +426,6 @@ func (t *tScreen) encodeStr(s string) []byte {
 }
 
 func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
-	ti := t.ti
 	if t.Colors() == 0 {
 		// foreground vs background, we calculate luminance
 		// and possibly do a reverse video
@@ -427,28 +446,25 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 	}
 
 	if fg == ColorReset || bg == ColorReset {
-		t.TPuts(ti.ResetFgBg)
+		t.TPuts(resetFgBg)
 	}
 	if t.truecolor {
-		if ti.SetFgBgRGB != "" && fg.IsRGB() && bg.IsRGB() {
+		if fg.IsRGB() && bg.IsRGB() {
 			r1, g1, b1 := fg.RGB()
 			r2, g2, b2 := bg.RGB()
-			t.TPuts(ti.TParm(ti.SetFgBgRGB,
-				int(r1), int(g1), int(b1),
-				int(r2), int(g2), int(b2)))
+			t.TPuts(fmt.Sprintf(setFgBgRgb, r1, g1, b1, r2, g2, b2))
 			return attr
 		}
 
-		if fg.IsRGB() && ti.SetFgRGB != "" {
+		if fg.IsRGB() {
 			r, g, b := fg.RGB()
-			t.TPuts(ti.TParm(ti.SetFgRGB, int(r), int(g), int(b)))
+			t.TPuts(fmt.Sprintf(setFgRgb, r, g, b))
 			fg = ColorDefault
 		}
 
-		if bg.IsRGB() && ti.SetBgRGB != "" {
+		if bg.IsRGB() {
 			r, g, b := bg.RGB()
-			t.TPuts(ti.TParm(ti.SetBgRGB,
-				int(r), int(g), int(b)))
+			t.TPuts(fmt.Sprintf(setBgRgb, r, g, b))
 			bg = ColorDefault
 		}
 	}
@@ -473,14 +489,21 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 		}
 	}
 
-	if fg.Valid() && bg.Valid() && ti.SetFgBg != "" {
-		t.TPuts(ti.TParm(ti.SetFgBg, int(fg&0xff), int(bg&0xff)))
-	} else {
-		if fg.Valid() && ti.SetFg != "" {
-			t.TPuts(ti.TParm(ti.SetFg, int(fg&0xff)))
+	if fg.Valid() && bg.Valid() && t.nColors() > 8 {
+		t.TPuts(fmt.Sprintf(setFgBg256, fg&0xff, bg&0xff))
+	} else if t.nColors() > 8 {
+		if fg.Valid() {
+			t.TPuts(fmt.Sprintf(setFg256, fg&0xff))
 		}
-		if bg.Valid() && ti.SetBg != "" {
-			t.TPuts(ti.TParm(ti.SetBg, int(bg&0xff)))
+		if bg.Valid() {
+			t.TPuts(fmt.Sprintf(setBg256, bg&0xff))
+		}
+	} else if t.nColors() > 0 {
+		if fg.Valid() {
+			t.TPuts(fmt.Sprintf(setFg8, fg&0x7))
+		}
+		if bg.Valid() {
+			t.TPuts(fmt.Sprintf(setBg8, bg&0x7))
 		}
 	}
 	return attr
@@ -1164,7 +1187,7 @@ func (t *tScreen) disengage() {
 		t.TPuts(t.cursorFg)
 	}
 	t.TPuts(ti.ExitKeypad)
-	t.TPuts(ti.ResetFgBg)
+	t.TPuts(resetFgBg)
 	t.TPuts(sgr0)
 	t.TPuts(enableAutoMargin)
 	t.TPuts(t.disableCsiU)

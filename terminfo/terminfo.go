@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -50,9 +49,6 @@ type Terminfo struct {
 	ExitCA      string // rmcup
 	EnterKeypad string // smkx
 	ExitKeypad  string // rmkx
-	SetFg       string // setaf
-	SetBg       string // setab
-	ResetFgBg   string // op
 	Mouse       string // kmous
 
 	// These are non-standard extensions to terminfo.  This includes
@@ -61,12 +57,8 @@ type Terminfo struct {
 	// Terminal support for these are going to vary amongst XTerm
 	// emulations, so don't depend too much on them in your application.
 
-	SetFgBg    string // setfgbg
-	SetFgBgRGB string // setfgbgrgb
-	SetFgRGB   string // setfrgb
-	SetBgRGB   string // setbrgb
-	TrueColor  bool   // true if the terminal supports direct color
-	XTermLike  bool   // (XT) has XTerm extensions
+	TrueColor bool // true if the terminal supports direct color
+	XTermLike bool // (XT) has XTerm extensions
 }
 
 type stack []any
@@ -452,31 +444,6 @@ func (t *Terminfo) TPuts(w io.Writer, s string) {
 	}
 }
 
-// TColor returns a string corresponding to the given foreground and background
-// colors.  Either fg or bg can be set to -1 to elide.
-func (t *Terminfo) TColor(fi, bi int) string {
-	rv := ""
-	// As a special case, we map bright colors to lower versions if the
-	// color table only holds 8.  For the remaining 240 colors, the user
-	// is out of luck.  Someday we could create a mapping table, but its
-	// not worth it.
-	if t.Colors == 8 {
-		if fi > 7 && fi < 16 {
-			fi -= 8
-		}
-		if bi > 7 && bi < 16 {
-			bi -= 8
-		}
-	}
-	if t.Colors > fi && fi >= 0 {
-		rv += t.TParm(t.SetFg, fi)
-	}
-	if t.Colors > bi && bi >= 0 {
-		rv += t.TParm(t.SetBg, bi)
-	}
-	return rv
-}
-
 var (
 	dblock    sync.Mutex
 	terminfos = make(map[string]*Terminfo)
@@ -501,85 +468,12 @@ func LookupTerminfo(name string) (*Terminfo, error) {
 		return nil, ErrTermNotFound
 	}
 
-	addtruecolor := false
-	add256color := false
-	switch os.Getenv("COLORTERM") {
-	case "truecolor", "24bit", "24-bit":
-		addtruecolor = true
-	}
 	dblock.Lock()
 	t := terminfos[name]
 	dblock.Unlock()
 
-	// If the name ends in -truecolor, then fabricate an entry
-	// from the corresponding -256color, -color, or bare terminal.
-	if t != nil && t.TrueColor {
-		addtruecolor = true
-	} else if t == nil && strings.HasSuffix(name, "-truecolor") {
-
-		suffixes := []string{
-			"-256color",
-			"-88color",
-			"-color",
-			"",
-		}
-		base := name[:len(name)-len("-truecolor")]
-		for _, s := range suffixes {
-			if t, _ = LookupTerminfo(base + s); t != nil {
-				addtruecolor = true
-				break
-			}
-		}
-	}
-
-	// If the name ends in -256color, maybe fabricate using the xterm 256 color sequences
-	if t == nil && strings.HasSuffix(name, "-256color") {
-		suffixes := []string{
-			"-88color",
-			"-color",
-		}
-		base := name[:len(name)-len("-256color")]
-		for _, s := range suffixes {
-			if t, _ = LookupTerminfo(base + s); t != nil {
-				add256color = true
-				break
-			}
-		}
-	}
-
 	if t == nil {
 		return nil, ErrTermNotFound
-	}
-
-	switch os.Getenv("TCELL_TRUECOLOR") {
-	case "":
-	case "disable":
-		addtruecolor = false
-	default:
-		addtruecolor = true
-	}
-
-	// If the user has requested 24-bit color with $COLORTERM, then
-	// amend the value (unless already present).  This means we don't
-	// need to have a value present.
-	if addtruecolor &&
-		t.SetFgBgRGB == "" &&
-		t.SetFgRGB == "" &&
-		t.SetBgRGB == "" {
-
-		// Supply vanilla ISO 8613-6:1994 24-bit color sequences.
-		t.SetFgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%dm"
-		t.SetBgRGB = "\x1b[48;2;%p1%d;%p2%d;%p3%dm"
-		t.SetFgBgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%d;" +
-			"48;2;%p4%d;%p5%d;%p6%dm"
-	}
-
-	if add256color {
-		t.Colors = 256
-		t.SetFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"
-		t.SetBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m"
-		t.SetFgBg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;;%?%p2%{8}%<%t4%p2%d%e%p2%{16}%<%t10%p2%{8}%-%d%e48;5;%p2%d%;m"
-		t.ResetFgBg = "\x1b[39;49m"
 	}
 
 	return t, nil

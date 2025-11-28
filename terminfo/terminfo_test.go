@@ -25,8 +25,6 @@ var testTerminfo = &Terminfo{
 	Columns:   80,
 	Lines:     24,
 	Colors:    256,
-	SetFg:     "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
-	SetBg:     "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
 	Mouse:     "\x1b[M",
 	XTermLike: true,
 }
@@ -40,15 +38,6 @@ func TestTerminfoExpansion(t *testing.T) {
 	}
 
 	// Color tests.
-	if ti.TParm(ti.SetFg, 7) != "\x1b[37m" {
-		t.Error("SetFg(7) failed")
-	}
-	if ti.TParm(ti.SetFg, 15) != "\x1b[97m" {
-		t.Error("SetFg(15) failed")
-	}
-	if ti.TParm(ti.SetFg, 200) != "\x1b[38;5;200m" {
-		t.Error("SetFg(200) failed")
-	}
 
 	type testCase struct {
 		expect string
@@ -113,14 +102,5 @@ func TestStringParameter(t *testing.T) {
 	s = ti.TParm(enterUrl, "https://example.org/test", "id=1234")
 	if s != "\x1b]8;id=1234;https://example.org/test\x1b\\" {
 		t.Errorf("Result string failed: %s", s)
-	}
-}
-
-func BenchmarkSetFgBg(b *testing.B) {
-	ti := testTerminfo
-
-	for b.Loop() {
-		ti.TParm(ti.SetFg, 100, 200)
-		ti.TParm(ti.SetBg, 100, 200)
 	}
 }
