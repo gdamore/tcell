@@ -138,9 +138,6 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 
 	t := &tScreen{ti: ti, tty: tty}
 
-	if len(ti.Mouse) > 0 {
-		t.mouse = []byte(ti.Mouse)
-	}
 	t.prepareKeys()
 	t.buildAcsMap()
 	t.resizeQ = make(chan bool, 1)
@@ -175,7 +172,6 @@ type tScreen struct {
 	keychan      chan []byte
 	cx           int
 	cy           int
-	mouse        []byte
 	clear        bool
 	cursorx      int
 	cursory      int
@@ -188,6 +184,7 @@ type tScreen struct {
 	colors       map[Color]Color
 	palette      []Color
 	truecolor    bool
+	legacy       bool
 	finiOnce     sync.Once
 	enterUrl     string
 	exitUrl      string
@@ -270,6 +267,11 @@ func (t *tScreen) Init() error {
 		t.ncolor = 0
 	}
 
+	if strings.HasPrefix(nterm, "vt") || strings.Contains(nterm, "ansi") || nterm == "linux" || nterm == "sun" || nterm == "sun-color" {
+		// these terminals are "legacy" and not expected to support most OSC functions
+		t.legacy = true
+	}
+
 	// A user who wants to have his themes honored can
 	// set this environment variable.
 	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
@@ -307,39 +309,28 @@ func (t *tScreen) Init() error {
 }
 
 func (t *tScreen) prepareExtendedOSC() {
-	// Linux is a special beast - because it has a mouse entry, but does
-	// not swallow these OSC commands properly.
-	if strings.Contains(t.ti.Name, "linux") {
+	if t.legacy {
 		return
 	}
-	// More stuff for limits in terminfo.  This time we are applying
-	// the most common OSC (operating system commands).  Generally
-	// terminals that don't understand these will ignore them.
-	// Again, we condition this based on mouse capabilities.
-	if t.ti.Mouse != "" || t.ti.XTermLike {
-		t.enterUrl = "\x1b]8;%p2%s;%p1%s\x1b\\"
-		t.exitUrl = "\x1b]8;;\x1b\\"
-	}
 
-	if t.ti.Mouse != "" || t.ti.XTermLike {
-		t.setWinSize = "\x1b[8;%p1%p2%d;%dt"
-	}
+	// OSC 8 is for enter/exit URL.
+	t.enterUrl = "\x1b]8;%p2%s;%p1%s\x1b\\"
+	t.exitUrl = "\x1b]8;;\x1b\\"
 
-	if t.ti.XTermLike {
-		t.saveTitle = "\x1b[22;2t"
-		t.restoreTitle = "\x1b[23;2t"
-		// this also tries to request that UTF-8 is allowed in the title
-		t.setTitle = "\x1b[>2t\x1b]2;%p1%s\x1b\\"
-	}
+	// CSI .. t is for window operations.
+	t.setWinSize = "\x1b[8;%p1%p2%d;%dt"
+	t.saveTitle = "\x1b[22;2t"
+	t.restoreTitle = "\x1b[23;2t"
+	// this also tries to request that UTF-8 is allowed in the title
+	t.setTitle = "\x1b[>2t\x1b]2;%p1%s\x1b\\"
 
-	if t.setClipboard == "" && t.ti.XTermLike {
-		// this string takes a base64 string and sends it to the clipboard.
-		// it will also be able to retrieve the clipboard using "?" as the
-		// sent string, when we support that.
-		t.setClipboard = "\x1b]52;c;%p1%s\x1b\\"
-	}
+	// OSC 52 is for saving to the clipboard.
+	// this string takes a base64 string and sends it to the clipboard.
+	// it will also be able to retrieve the clipboard using "?" as the
+	// sent string, when we support that.
+	t.setClipboard = "\x1b]52;c;%p1%s\x1b\\"
 
-	if t.enableCsiU == "" && t.ti.XTermLike {
+	if t.enableCsiU == "" {
 		if runtime.GOOS == "windows" {
 			t.enableCsiU = "\x1b[?9001h"
 			t.disableCsiU = "\x1b[?9001l"
@@ -351,20 +342,21 @@ func (t *tScreen) prepareExtendedOSC() {
 }
 
 func (t *tScreen) prepareCursorStyles() {
-	if t.ti.Mouse != "" || t.ti.XTermLike {
-		t.cursorStyles = map[CursorStyle]string{
-			CursorStyleDefault:           "\x1b[0 q",
-			CursorStyleBlinkingBlock:     "\x1b[1 q",
-			CursorStyleSteadyBlock:       "\x1b[2 q",
-			CursorStyleBlinkingUnderline: "\x1b[3 q",
-			CursorStyleSteadyUnderline:   "\x1b[4 q",
-			CursorStyleBlinkingBar:       "\x1b[5 q",
-			CursorStyleSteadyBar:         "\x1b[6 q",
-		}
-		if t.cursorRGB == "" {
-			t.cursorRGB = "\x1b]12;#%p1%02x%p2%02x%p3%02x\007"
-			t.cursorFg = "\x1b]112\007"
-		}
+	if t.legacy {
+		return
+	}
+	t.cursorStyles = map[CursorStyle]string{
+		CursorStyleDefault:           "\x1b[0 q",
+		CursorStyleBlinkingBlock:     "\x1b[1 q",
+		CursorStyleSteadyBlock:       "\x1b[2 q",
+		CursorStyleBlinkingUnderline: "\x1b[3 q",
+		CursorStyleSteadyUnderline:   "\x1b[4 q",
+		CursorStyleBlinkingBar:       "\x1b[5 q",
+		CursorStyleSteadyBar:         "\x1b[6 q",
+	}
+	if t.cursorRGB == "" {
+		t.cursorRGB = "\x1b]12;#%p1%02x%p2%02x%p3%02x\007"
+		t.cursorFg = "\x1b]112\007"
 	}
 }
 
@@ -1064,10 +1056,6 @@ func (t *tScreen) UnregisterRuneFallback(orig rune) {
 	t.Unlock()
 }
 
-func (t *tScreen) HasMouse() bool {
-	return len(t.mouse) != 0
-}
-
 func (t *tScreen) SetSize(w, h int) {
 	if t.setWinSize != "" {
 		t.TPuts(t.ti.TParm(t.setWinSize, w, h))
@@ -1123,7 +1111,6 @@ func (t *tScreen) engage() error {
 	if t.focusEnabled {
 		t.enableFocusReporting()
 	}
-	ti := t.ti
 	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
 		// Technically this may not be right, but every terminal we know about
 		// (even Wyse 60) uses this to enter the alternate screen buffer, and
@@ -1172,7 +1159,6 @@ func (t *tScreen) disengage() {
 	t.wg.Wait()
 
 	// shutdown the screen and disable special modes (e.g. mouse and bracketed paste)
-	ti := t.ti
 	t.cells.Resize(0, 0)
 	t.TPuts(showCursor)
 	if t.cursorStyles != nil && t.cursorStyle != CursorStyleDefault {

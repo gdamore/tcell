@@ -24,7 +24,6 @@ var testTerminfo = &Terminfo{
 	Name:      "simulation_test",
 	Columns:   80,
 	Lines:     24,
-	Mouse:     "\x1b[M",
 	XTermLike: true,
 }
 

@@ -24,7 +24,6 @@ func init() {
 		Aliases:   []string{"xterm-debian"},
 		Columns:   80,
 		Lines:     24,
-		Mouse:     "\x1b[<",
 		XTermLike: true,
 	})
 
@@ -34,7 +33,6 @@ func init() {
 		Aliases:   []string{"alacritty", "ghostty", "rio", "st", "xterm-ghostty", "xterm-kitty"},
 		Columns:   80,
 		Lines:     24,
-		Mouse:     "\x1b[<",
 		XTermLike: true,
 	})
 }

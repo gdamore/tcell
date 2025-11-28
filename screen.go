@@ -145,12 +145,6 @@ type Screen interface {
 	// DisableFocus disables reporting of focus events.
 	DisableFocus()
 
-	// HasMouse returns true if the terminal (apparently) supports a
-	// mouse.  Note that the return value of true doesn't guarantee that
-	// a mouse/pointing device is present; a false return definitely
-	// indicates no mouse support is available.
-	HasMouse() bool
-
 	// Colors returns the number of colors.  All colors are assumed to
 	// use the ANSI color map.  If a terminal is monochrome, it will
 	// return 0.
@@ -311,7 +305,6 @@ type screenImpl interface {
 	DisablePaste()
 	EnableFocus()
 	DisableFocus()
-	HasMouse() bool
 	Colors() int
 	Show()
 	Sync()

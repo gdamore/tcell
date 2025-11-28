@@ -30,7 +30,6 @@ func init() {
 		Aliases:   []string{"alacritty-direct", "xterm-truecolor"},
 		Columns:   80,
 		Lines:     24,
-		Mouse:     "\x1b[M",
 		XTermLike: true,
 	})
 }
