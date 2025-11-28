@@ -26,6 +26,7 @@ import (
 	"maps"
 	"os"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -118,31 +119,12 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 	if term == "" {
 		term = os.Getenv("TERM")
 	}
-	addTrueColor := false
-	switch os.Getenv("COLORTERM") {
-	case "truecolor", "24bit", "24-bit":
-		addTrueColor = true
-	}
-
 	if ti == nil {
 		// As a default, we assume XTerm like semantics, which works for the *vast*
 		// majority of terminals.
 		ti, e = LookupTerminfo(term)
 		if e != nil {
-			switch os.Getenv("COLORTERM") {
-			case "truecolor", "24bit", "24-bit":
-				term = "xterm-direct"
-			}
-			switch {
-			case term == "xterm-direct":
-			case strings.Contains(term, "direct"), strings.Contains(term, "truecolor"), strings.Contains(term, "24bit"):
-				addTrueColor = true
-				term = "xterm-direct"
-			case strings.Contains(term, "256color"):
-				term = "xterm-256color"
-			default:
-				term = "xterm"
-			}
+			term = "xterm-256color"
 			ti, e = LookupTerminfo(term)
 		}
 		if e != nil {
@@ -151,9 +133,6 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 	}
 
 	t := &tScreen{ti: ti, tty: tty}
-	if addTrueColor {
-		t.truecolor = true
-	}
 
 	if len(ti.Mouse) > 0 {
 		t.mouse = []byte(ti.Mouse)
@@ -201,6 +180,7 @@ type tScreen struct {
 	encoder      transform.Transformer
 	decoder      transform.Transformer
 	fallback     map[rune]string
+	ncolor       int
 	colors       map[Color]Color
 	palette      []Color
 	truecolor    bool
@@ -257,16 +237,42 @@ func (t *tScreen) Init() error {
 	if i, _ := strconv.Atoi(os.Getenv("COLUMNS")); i != 0 {
 		w = i
 	}
-	if t.nColors() > 256 {
+	cterm := os.Getenv("COLORTERM")
+	nterm := os.Getenv("TERM")
+
+	if slices.Contains([]string{"truecolor", "direct", "24bit"}, cterm) || strings.HasSuffix(nterm, "-direct") || strings.HasSuffix(nterm, "-truecolor") {
 		t.truecolor = true
+		t.ncolor = 256 // base 8-bit palette
+	} else if strings.HasSuffix("-256color", nterm) || strings.Contains(cterm, "256") {
+		t.ncolor = 256
+	} else if strings.HasSuffix("-88color", nterm) {
+		t.ncolor = 88
+	} else if strings.Contains(nterm, "color") || cterm != "" {
+		t.ncolor = 8
+	} else if strings.Contains(nterm, "mono") || strings.HasSuffix(nterm, "-m") { // monochrome variants
+		t.ncolor = 0
+	} else if strings.Contains(nterm, "ansi") || slices.Contains([]string{"dtterm", "xterm", "aixterm", "linux"}, nterm) {
+		t.ncolor = 8
+	} else if strings.HasPrefix(nterm, "vt") || nterm == "sun" {
+		// legacy DEC VT 100/220 etc. family.  (technically the VT525 can do ANSI, but they should set to ansi)
+		t.ncolor = 0
+	} else {
+		// best guess - this covers all the modern variants like ghostty,
+		t.ncolor = 256
 	}
+
+	if os.Getenv("NO_COLOR") != "" {
+		t.truecolor = false
+		t.ncolor = 0
+	}
+
 	// A user who wants to have his themes honored can
 	// set this environment variable.
 	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
 		t.truecolor = false
 	}
 	// clip to reasonable limits
-	nColors := min(t.nColors(), 256)
+	nColors := min(t.ncolor, 256)
 	t.colors = make(map[Color]Color, nColors)
 	t.palette = make([]Color, nColors)
 	for i := range nColors {
@@ -891,24 +897,18 @@ func (t *tScreen) resize() {
 }
 
 func (t *tScreen) Colors() int {
-	if os.Getenv("NO_COLOR") != "" {
-		return 0
-	}
 	// this doesn't change, no need for lock
 	if t.truecolor {
 		return 1 << 24
 	}
-	return t.ti.Colors
+	return t.ncolor
 }
 
 // nColors returns the size of the built-in palette.
 // This is distinct from Colors(), as it will generally
 // always be a small number. (<= 256)
 func (t *tScreen) nColors() int {
-	if os.Getenv("NO_COLOR") != "" {
-		return 0
-	}
-	return t.ti.Colors
+	return t.ncolor
 }
 
 // vtACSNames is a map of bytes defined by terminfo that are used in
