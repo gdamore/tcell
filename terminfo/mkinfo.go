@@ -210,7 +210,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		return t, "", nil
 	}
 	t.Aliases = tc.aliases
-	t.Colors = tc.getnum("colors")
 	t.Columns = tc.getnum("cols")
 	t.Lines = tc.getnum("lines")
 	t.EnterCA = tc.getstr("smcup")
@@ -233,11 +232,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		// (ncurses went a very different direction from everyone else, and
 		// so it's unlikely anything is using this definition.)
 		t.TrueColor = true
-	}
-
-	// We only support colors in ANSI 8 or 256 color mode.
-	if t.Colors < 8 {
-		t.Colors = 0
 	}
 
 	if tc.getflag("XT") {
@@ -305,7 +299,6 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddArr(w, "Aliases", t.Aliases)
 		dotGoAddInt(w, "Columns", t.Columns)
 		dotGoAddInt(w, "Lines", t.Lines)
-		dotGoAddInt(w, "Colors", t.Colors)
 		dotGoAddStr(w, "EnterCA", t.EnterCA)
 		dotGoAddStr(w, "ExitCA", t.ExitCA)
 		dotGoAddStr(w, "EnterKeypad", t.EnterKeypad)

@@ -11,6 +11,5 @@ func init() {
 		Name:    "dtterm",
 		Columns: 80,
 		Lines:   24,
-		Colors:  8,
 	})
 }

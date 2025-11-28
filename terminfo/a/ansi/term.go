@@ -12,6 +12,5 @@ func init() {
 		Aliases: []string{"pcansi"},
 		Columns: 80,
 		Lines:   24,
-		Colors:  8,
 	})
 }
