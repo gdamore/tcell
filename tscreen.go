@@ -138,7 +138,8 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 
 	t := &tScreen{ti: ti, tty: tty}
 
-	t.prepareKeys()
+	t.prepareCursorStyles()
+	t.prepareExtendedOSC()
 	t.buildAcsMap()
 	t.resizeQ = make(chan bool, 1)
 	t.fallback = make(map[rune]string)
@@ -366,17 +367,6 @@ func (t *tScreen) prepareCursorStyles() {
 		t.cursorRGB = "\x1b]12;#%p1%02x%p2%02x%p3%02x\007"
 		t.cursorFg = "\x1b]112\007"
 	}
-}
-
-func (t *tScreen) prepareKeys() {
-	ti := t.ti
-	if strings.HasPrefix(ti.Name, "xterm") {
-		// assume its some form of XTerm clone
-		t.ti.XTermLike = true
-		ti.XTermLike = true
-	}
-	t.prepareCursorStyles()
-	t.prepareExtendedOSC()
 }
 
 func (t *tScreen) Fini() {

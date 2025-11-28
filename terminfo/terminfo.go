@@ -44,8 +44,6 @@ type Terminfo struct {
 	Aliases []string
 	Columns int // cols
 	Lines   int // lines
-
-	XTermLike bool // (XT) has XTerm extensions
 }
 
 type stack []any

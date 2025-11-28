@@ -20,19 +20,17 @@ func init() {
 
 	// xterm terminal emulator (X Window System)
 	terminfo.AddTerminfo(&terminfo.Terminfo{
-		Name:      "xterm",
-		Aliases:   []string{"xterm-debian"},
-		Columns:   80,
-		Lines:     24,
-		XTermLike: true,
+		Name:    "xterm",
+		Aliases: []string{"xterm-debian"},
+		Columns: 80,
+		Lines:   24,
 	})
 
 	// xterm with 256 colors
 	terminfo.AddTerminfo(&terminfo.Terminfo{
-		Name:      "xterm-256color",
-		Aliases:   []string{"alacritty", "ghostty", "rio", "st", "xterm-ghostty", "xterm-kitty"},
-		Columns:   80,
-		Lines:     24,
-		XTermLike: true,
+		Name:    "xterm-256color",
+		Aliases: []string{"alacritty", "ghostty", "rio", "st", "xterm-ghostty", "xterm-kitty"},
+		Columns: 80,
+		Lines:   24,
 	})
 }
