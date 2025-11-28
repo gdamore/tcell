@@ -11,6 +11,5 @@ func init() {
 		Name:    "aixterm",
 		Columns: 80,
 		Lines:   25,
-		Colors:  8,
 	})
 }

@@ -8,8 +8,7 @@ func init() {
 
 	// Linux console
 	terminfo.AddTerminfo(&terminfo.Terminfo{
-		Name:   "linux",
-		Colors: 8,
-		Mouse:  "\x1b[M",
+		Name:  "linux",
+		Mouse: "\x1b[M",
 	})
 }
