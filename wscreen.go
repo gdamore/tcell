@@ -426,10 +426,6 @@ func (t *wScreen) UnregisterRuneFallback(orig rune) {
 	t.Unlock()
 }
 
-func (t *wScreen) HasMouse() bool {
-	return true
-}
-
 func (t *wScreen) SetSize(w, h int) {
 	if w == t.w && h == t.h {
 		return

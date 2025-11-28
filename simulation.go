@@ -451,10 +451,6 @@ func (s *simscreen) UnregisterRuneFallback(r rune) {
 	s.Unlock()
 }
 
-func (s *simscreen) HasMouse() bool {
-	return false
-}
-
 func (s *simscreen) Resize(int, int, int, int) {}
 
 func (s *simscreen) Beep() error {

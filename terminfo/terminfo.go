@@ -40,12 +40,12 @@ var (
 // in Go, but when we write out JSON, we use the same names as terminfo.
 // The name, aliases and smous, rmous fields do not come from terminfo directly.
 type Terminfo struct {
-	Name      string
-	Aliases   []string
-	Columns   int    // cols
-	Lines     int    // lines
-	Mouse     string // kmous
-	XTermLike bool   // (XT) has XTerm extensions
+	Name    string
+	Aliases []string
+	Columns int // cols
+	Lines   int // lines
+
+	XTermLike bool // (XT) has XTerm extensions
 }
 
 type stack []any

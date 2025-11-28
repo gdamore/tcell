@@ -8,7 +8,6 @@ func init() {
 
 	// Linux console
 	terminfo.AddTerminfo(&terminfo.Terminfo{
-		Name:  "linux",
-		Mouse: "\x1b[M",
+		Name: "linux",
 	})
 }
