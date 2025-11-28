@@ -35,16 +35,8 @@ func init() {
 		ExitCA:      "\x1b[?1049l\x1b[23;0;0t",
 		EnterKeypad: "\x1b[?1h\x1b=",
 		ExitKeypad:  "\x1b[?1l\x1b>",
-		SetFg:       "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
-		SetBg:       "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
-		SetFgBg:     "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;;%?%p2%{8}%<%t4%p2%d%e%p2%{16}%<%t10%p2%{8}%-%d%e48;5;%p2%d%;m",
-		SetFgRGB:    "\x1b[38;2;%p1%d;%p2%d;%p3%dm",
-		SetBgRGB:    "\x1b[48;2;%p1%d;%p2%d;%p3%dm",
-		SetFgBgRGB:  "\x1b[38;2;%p1%d;%p2%d;%p3%d;48;2;%p4%d;%p5%d;%p6%dm",
-		ResetFgBg:   "\x1b[39;49m",
-
-		Mouse:     "\x1b[M",
-		TrueColor: true,
-		XTermLike: true,
+		Mouse:       "\x1b[M",
+		TrueColor:   true,
+		XTermLike:   true,
 	})
 }

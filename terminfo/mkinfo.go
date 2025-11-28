@@ -39,7 +39,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -218,9 +217,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.ExitCA = tc.getstr("rmcup")
 	t.EnterKeypad = tc.getstr("smkx")
 	t.ExitKeypad = tc.getstr("rmkx")
-	t.SetFg = tc.getstr("setaf")
-	t.SetBg = tc.getstr("setab")
-	t.ResetFgBg = tc.getstr("op")
 	t.Mouse = tc.getstr("kmous")
 
 	// Technically the RGB flag that is provided for xterm-direct is not
@@ -237,25 +233,11 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		// (ncurses went a very different direction from everyone else, and
 		// so it's unlikely anything is using this definition.)
 		t.TrueColor = true
-		t.SetBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m"
-		t.SetFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"
 	}
 
 	// We only support colors in ANSI 8 or 256 color mode.
-	if t.Colors < 8 || t.SetFg == "" {
+	if t.Colors < 8 {
 		t.Colors = 0
-	}
-
-	// For terminals that use "standard" SGR sequences, lets combine the
-	// foreground and background together.
-	if strings.HasPrefix(t.SetFg, "\x1b[") &&
-		strings.HasPrefix(t.SetBg, "\x1b[") &&
-		strings.HasSuffix(t.SetFg, "m") &&
-		strings.HasSuffix(t.SetBg, "m") {
-		fg := t.SetFg[:len(t.SetFg)-1]
-		r := regexp.MustCompile("%p1")
-		bg := r.ReplaceAllString(t.SetBg[2:], "%p2")
-		t.SetFgBg = fg + ";" + bg
 	}
 
 	if tc.getflag("XT") {
@@ -328,13 +310,6 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "ExitCA", t.ExitCA)
 		dotGoAddStr(w, "EnterKeypad", t.EnterKeypad)
 		dotGoAddStr(w, "ExitKeypad", t.ExitKeypad)
-		dotGoAddStr(w, "SetFg", t.SetFg)
-		dotGoAddStr(w, "SetBg", t.SetBg)
-		dotGoAddStr(w, "SetFgBg", t.SetFgBg)
-		dotGoAddStr(w, "ResetFgBg", t.ResetFgBg)
-		dotGoAddStr(w, "SetFgRGB", t.SetFgRGB)
-		dotGoAddStr(w, "SetBgRGB", t.SetBgRGB)
-		dotGoAddStr(w, "SetFgBgRGB", t.SetFgBgRGB)
 		dotGoAddStr(w, "Mouse", t.Mouse)
 		dotGoAddFlag(w, "TrueColor", t.TrueColor)
 		dotGoAddFlag(w, "XTermLike", t.XTermLike)
