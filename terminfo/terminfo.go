@@ -44,8 +44,6 @@ type Terminfo struct {
 	Aliases     []string
 	Columns     int    // cols
 	Lines       int    // lines
-	EnterCA     string // smcup
-	ExitCA      string // rmcup
 	EnterKeypad string // smkx
 	ExitKeypad  string // rmkx
 	Mouse       string // kmous

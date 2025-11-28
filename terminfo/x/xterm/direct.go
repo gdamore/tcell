@@ -30,8 +30,6 @@ func init() {
 		Aliases:     []string{"alacritty-direct", "xterm-truecolor"},
 		Columns:     80,
 		Lines:       24,
-		EnterCA:     "\x1b[?1049h\x1b[22;0;0t",
-		ExitCA:      "\x1b[?1049l\x1b[23;0;0t",
 		EnterKeypad: "\x1b[?1h\x1b=",
 		ExitKeypad:  "\x1b[?1l\x1b>",
 		Mouse:       "\x1b[M",

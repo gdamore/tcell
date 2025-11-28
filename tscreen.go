@@ -105,6 +105,8 @@ const (
 	setFgBg256        = "\x1b[38;5;%d;;48;5;%dm"             // for colors less than 256, in one shot
 	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;;48;2;%d;%d;%dm" // for colors less than 256, in one shot
 	resetFgBg         = "\x1b[39;49m"
+	enterCA           = "\x1b[?1049h" // alternate screen
+	exitCA            = "\x1b[?1049l" // alternate screen
 )
 
 // NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
@@ -1126,7 +1128,7 @@ func (t *tScreen) engage() error {
 		// possibly save and restore the window title and/or icon.
 		// (In theory there could be terminals that don't support X,Y cursor
 		// positions without a setup command, but we don't support them.)
-		t.TPuts(ti.EnterCA)
+		t.TPuts(enterCA)
 		t.TPuts(t.saveTitle)
 	}
 	t.TPuts(ti.EnterKeypad)
@@ -1183,11 +1185,9 @@ func (t *tScreen) disengage() {
 	t.TPuts(enableAutoMargin)
 	t.TPuts(t.disableCsiU)
 	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
-		if t.restoreTitle != "" {
-			t.TPuts(t.restoreTitle)
-		}
+		t.TPuts(t.restoreTitle)
 		t.TPuts(clear)
-		t.TPuts(ti.ExitCA)
+		t.TPuts(exitCA)
 	}
 	t.enableMouse(0)
 	t.enablePasting(false)
