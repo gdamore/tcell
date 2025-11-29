@@ -381,12 +381,12 @@ func (t *wScreen) onKeyEvent(this js.Value, args []js.Value) any {
 	return nil
 }
 
-func (t *wScreen) onPaste(this js.Value, args []js.Value) interface{} {
+func (t *wScreen) onPaste(this js.Value, args []js.Value) any {
 	t.postEvent(NewEventPaste(args[0].Bool()))
 	return nil
 }
 
-func (t *wScreen) onFocus(this js.Value, args []js.Value) interface{} {
+func (t *wScreen) onFocus(this js.Value, args []js.Value) any {
 	t.postEvent(NewEventFocus(args[0].Bool()))
 	return nil
 }
