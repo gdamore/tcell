@@ -29,28 +29,24 @@ The main difference for most users will be that `Str` returns a string, and most
 of the time that string will consist of only a single rune. However, it is possible
 now to inject synthetic key strokes consisting of multi-rune grapheme clusters.
 
-### Terminfo Redesign
+### Terminfo Removed
 
-The Terminfo subsystem is being replaced entirely.  This is currently still a work in progress.
+The Terminfo subsystem has been removed entirely.
 Essentially the old terminfo based design has long proved to be inferior for modern terminal
 applications, and has not kept up with newer terminal features such as 24-bit color,
 different mouse reporting modes, bracketed paste, advanced text styling, and so forth.
 
-As part of this, we're removing the parsed terminfo logic entirely.  Most of the terminal
-descriptions are being consolidated into a set that resemble either _xterm_ or legacy Digital
-VT100 and successors. There may be some outliers remaining like _aixterm_ and certain FOSS
-consoles, but we hope even those will be consolidated into a some basic few based on ECMA-48.
+As part of this, we're removing the parsed terminfo logic entirely.  It turns out that pretty much
+all of the terminal logic can be consolidated to just a few classes of terminals with substantial
+overlap.
 
-A consequence of this is that the Terminfo libraries and descriptions are subject to removal entirely.
-Do not depend on Terminfo.
-
-A further consequence of this is that support for some legacy terminals that are either functionally
+A consequence of this is that support for some legacy terminals that are either functionally
 extinct (such as _hpterm_) or unlikely to be found outside of a museum (such as VT52, Wyse50, or
 anything produced more than 40 years ago.)
 
 Note that VT100 and later will work in emulation, and VT220 and later physical terminals should still work. 
-VT100 physical terminals may or may not work, as we are removing the special padding delays
-that hurt emulations that do not need them, and existed only to accommodate limitations found on the
+VT100 physical terminals may not work, as the padding delays that existed for them are removed.
+Those delays hurt emulations that do not need them, and existed only to accommodate limitations found on the
 physical hardware from the 1970s.
 
 Note that we still examine `$TERM` when appropriate, but if the value is not one we recognize,
