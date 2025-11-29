@@ -28,5 +28,7 @@ func (t *tScreen) initialize() error {
 			return err
 		}
 	}
+	t.truecolor = true
+	t.ncolor = 256
 	return nil
 }
