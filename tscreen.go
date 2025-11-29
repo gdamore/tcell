@@ -68,7 +68,7 @@ var defaultTerm string
 const (
 	enableAutoMargin  = "\x1b[?7h" // dec private mode 7
 	disableAutoMargin = "\x1b[?7l"
-	setCursorPosition = "\x1b[%i%p1%d;%p2%dH"
+	setCursorPosition = "\x1b[%[1]d;%[2]dH"
 	sgr0              = "\x1b[m" // attrOff
 	bold              = "\x1b[1m"
 	dim               = "\x1b[2m"
@@ -90,8 +90,8 @@ const (
 	curlyUnder        = "\x1b[4:3m"
 	dottedUnder       = "\x1b[4:4m"
 	dashedUnder       = "\x1b[4:5m"
-	underColor        = "\x1b[58:5:%p1%dm"
-	underRGB          = "\x1b[58:2::%p1%d:%p2%d:%p3%dm"
+	underColor        = "\x1b[58:5:%dm"
+	underRGB          = "\x1b[58:2::%d:%d:%dm"
 	underFg           = "\x1b[59m"
 	enableAltChars    = "\x1b(B\x1b)0"                       // set G0 as US-ASCII, G1 as DEC line drawing
 	startAltChars     = "\x0e"                               // aka Shift-Out
@@ -102,7 +102,6 @@ const (
 	setBg8            = "\x1b[4%dm"                          // color colors less than 8
 	setBg256          = "\x1b[48;5;%dm"                      // for colors less than 256
 	setBgRgb          = "\x1b[48;2;%d;%d;%dm"                // for RGB
-	setFgBg256        = "\x1b[38;5;%d;;48;5;%dm"             // for colors less than 256, in one shot
 	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;;48;2;%d;%d;%dm" // for colors less than 256, in one shot
 	resetFgBg         = "\x1b[39;49m"                        // ECMA defined
 	enterCA           = "\x1b[?1049h"                        // alternate screen
@@ -111,32 +110,12 @@ const (
 	exitKeypad        = "\x1b[?1l\x1b>"                      // Also mode 1
 )
 
-// NewTerminfoScreenFromTtyTerminfo returns a Screen using a custom Tty
-// implementation  and custom terminfo specification.
+// NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
 // If the passed in tty is nil, then a reasonable default (typically /dev/tty)
 // is presumed, at least on UNIX hosts. (Windows hosts will typically fail this
 // call altogether.)
-// If passed terminfo is nil, then TERM environment variable is queried for
-// terminal specification.
-func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen, e error) {
-	term := defaultTerm
-	if term == "" {
-		term = os.Getenv("TERM")
-	}
-	if ti == nil {
-		// As a default, we assume XTerm like semantics, which works for the *vast*
-		// majority of terminals.
-		ti, e = LookupTerminfo(term)
-		if e != nil {
-			term = "xterm-256color"
-			ti, e = LookupTerminfo(term)
-		}
-		if e != nil {
-			return nil, e
-		}
-	}
-
-	t := &tScreen{ti: ti, tty: tty}
+func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
+	t := &tScreen{tty: tty}
 
 	t.prepareCursorStyles()
 	t.prepareExtendedOSC()
@@ -148,17 +127,8 @@ func NewTerminfoScreenFromTtyTerminfo(tty Tty, ti *terminfo.Terminfo) (s Screen,
 	return &baseScreen{screenImpl: t}, nil
 }
 
-// NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
-// If the passed in tty is nil, then a reasonable default (typically /dev/tty)
-// is presumed, at least on UNIX hosts. (Windows hosts will typically fail this
-// call altogether.)
-func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
-	return NewTerminfoScreenFromTtyTerminfo(tty, nil)
-}
-
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	ti           *terminfo.Terminfo
 	tty          Tty
 	h            int
 	w            int
@@ -228,11 +198,10 @@ func (t *tScreen) Init() error {
 	} else {
 		return ErrNoCharset
 	}
-	ti := t.ti
 
 	// environment overrides
-	w := ti.Columns
-	h := ti.Lines
+	w := 80
+	h := 24
 	if i, _ := strconv.Atoi(os.Getenv("LINES")); i != 0 {
 		h = i
 	}
@@ -319,7 +288,7 @@ func (t *tScreen) prepareExtendedOSC() {
 	t.exitUrl = "\x1b]8;;\x1b\\"
 
 	// CSI .. t is for window operations.
-	t.setWinSize = "\x1b[8;%p1%p2%d;%dt"
+	t.setWinSize = "\x1b[8;%[2]d;%[1]dt"
 	t.saveTitle = "\x1b[22;2t"
 	t.restoreTitle = "\x1b[23;2t"
 	// this also tries to request that UTF-8 is allowed in the title
@@ -364,7 +333,7 @@ func (t *tScreen) prepareCursorStyles() {
 		CursorStyleSteadyBar:         "\x1b[6 q",
 	}
 	if t.cursorRGB == "" {
-		t.cursorRGB = "\x1b]12;#%p1%02x%p2%02x%p3%02x\007"
+		t.cursorRGB = "\x1b]12;#%02x%02x%02x\007"
 		t.cursorFg = "\x1b]112\007"
 	}
 }
@@ -468,6 +437,12 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 			t.colors[fg] = v
 			fg = v
 		}
+		fgc := fg & 0xffffff
+		if fgc < 8 {
+			t.TPuts(fmt.Sprintf(setFg8, fgc))
+		} else if fgc < 256 {
+			t.TPuts(fmt.Sprintf(setFg256, fgc))
+		}
 	}
 
 	if bg.Valid() {
@@ -478,31 +453,19 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 			t.colors[bg] = v
 			bg = v
 		}
+		bgc := bg & 0xffffff
+		if bgc < 8 {
+			t.TPuts(fmt.Sprintf(setBg8, bgc))
+		} else if bgc < 256 {
+			t.TPuts(fmt.Sprintf(setBg256, bgc))
+		}
+
 	}
 
-	if fg.Valid() && bg.Valid() && t.nColors() > 8 {
-		t.TPuts(fmt.Sprintf(setFgBg256, fg&0xff, bg&0xff))
-	} else if t.nColors() > 8 {
-		if fg.Valid() {
-			t.TPuts(fmt.Sprintf(setFg256, fg&0xff))
-		}
-		if bg.Valid() {
-			t.TPuts(fmt.Sprintf(setBg256, bg&0xff))
-		}
-	} else if t.nColors() > 0 {
-		if fg.Valid() {
-			t.TPuts(fmt.Sprintf(setFg8, fg&0x7))
-		}
-		if bg.Valid() {
-			t.TPuts(fmt.Sprintf(setBg8, bg&0x7))
-		}
-	}
 	return attr
 }
 
 func (t *tScreen) drawCell(x, y int) int {
-
-	ti := t.ti
 
 	str, style, width := t.cells.Get(x, y)
 	if !t.cells.Dirty(x, y) {
@@ -510,7 +473,7 @@ func (t *tScreen) drawCell(x, y int) int {
 	}
 
 	if t.cy != y || t.cx != x {
-		t.TPuts(ti.TParm(setCursorPosition, y, x))
+		t.TPuts(fmt.Sprintf(setCursorPosition, y+1, x+1))
 		t.cx = x
 		t.cy = y
 	}
@@ -538,11 +501,11 @@ func (t *tScreen) drawCell(x, y int) int {
 					t.colors[uc] = v
 					uc = v
 				}
-				t.TPuts(ti.TParm(underColor, int(uc&0xff)))
+				t.TPuts(fmt.Sprintf(underColor, uc&0xff))
 				r, g, b := uc.RGB()
-				t.TPuts(ti.TParm(underRGB, int(r), int(g), int(b)))
+				t.TPuts(fmt.Sprintf(underRGB, r, g, b))
 			} else if uc.Valid() {
-				t.TPuts(ti.TParm(underColor, int(uc&0xff)))
+				t.TPuts(fmt.Sprintf(underColor, uc&0xff))
 			}
 
 			t.TPuts(underline) // to ensure everyone gets at least a basic underline
@@ -651,7 +614,7 @@ func (t *tScreen) showCursor() {
 		t.hideCursor()
 		return
 	}
-	t.TPuts(t.ti.TParm(setCursorPosition, y, x))
+	t.TPuts(fmt.Sprintf(setCursorPosition, y+1, x+1))
 	t.TPuts(showCursor)
 	if t.cursorStyles != nil {
 		if esc, ok := t.cursorStyles[t.cursorStyle]; ok {
@@ -663,7 +626,7 @@ func (t *tScreen) showCursor() {
 			t.TPuts(t.cursorFg)
 		} else if t.cursorColor.Valid() {
 			r, g, b := t.cursorColor.RGB()
-			t.TPuts(t.ti.TParm(t.cursorRGB, int(r), int(g), int(b)))
+			t.TPuts(fmt.Sprintf(t.cursorRGB, r, g, b))
 		}
 	}
 	t.cx = x
@@ -685,11 +648,7 @@ func (t *tScreen) writeString(s string) {
 }
 
 func (t *tScreen) TPuts(s string) {
-	if t.buffering {
-		t.ti.TPuts(&t.buf, s)
-	} else {
-		t.ti.TPuts(t.tty, s)
-	}
+	t.writeString(s)
 }
 
 func (t *tScreen) Show() {
@@ -722,7 +681,7 @@ func (t *tScreen) endBuffering() {
 func (t *tScreen) hideCursor() {
 	// just in case we cannot hide it, move it to the end
 	t.cx, t.cy = t.cells.Size()
-	t.TPuts(t.ti.TParm(setCursorPosition, t.cy, t.cx))
+	t.TPuts(fmt.Sprintf(setCursorPosition, t.cy+1, t.cx+1))
 	// then hide it
 	t.TPuts(hideCursor)
 }
@@ -1056,7 +1015,7 @@ func (t *tScreen) UnregisterRuneFallback(orig rune) {
 
 func (t *tScreen) SetSize(w, h int) {
 	if t.setWinSize != "" {
-		t.TPuts(t.ti.TParm(t.setWinSize, w, h))
+		t.TPuts(fmt.Sprintf(t.setWinSize, w, h))
 	}
 	t.cells.Invalidate()
 	t.resize()
