@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 // to request a redraw.  It can carry an arbitrary payload, as well.
 type EventInterrupt struct {
 	t time.Time
-	v interface{}
+	v any
 }
 
 // When returns the time when this event was created.
@@ -31,11 +31,11 @@ func (ev *EventInterrupt) When() time.Time {
 }
 
 // Data is used to obtain the opaque event payload.
-func (ev *EventInterrupt) Data() interface{} {
+func (ev *EventInterrupt) Data() any {
 	return ev.v
 }
 
 // NewEventInterrupt creates an EventInterrupt with the given payload.
-func NewEventInterrupt(data interface{}) *EventInterrupt {
+func NewEventInterrupt(data any) *EventInterrupt {
 	return &EventInterrupt{t: time.Now(), v: data}
 }
