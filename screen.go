@@ -105,11 +105,6 @@ type Screen interface {
 	// channel after Fini() is called.
 	EventQ() chan Event
 
-	// PollEvent waits for events to arrive.  Main application loops
-	// must spin on this to prevent the application from stalling.
-	// Furthermore, this will return nil if the Screen is finalized.
-	PollEvent() Event
-
 	// EnableMouse enables the mouse.  (If your terminal supports it.)
 	// If no flags are specified, then all events are reported, if the
 	// terminal supports them.
@@ -393,15 +388,6 @@ func (b *baseScreen) LockRegion(x, y, width, height int, lock bool) {
 		}
 	}
 	b.Unlock()
-}
-
-func (b *baseScreen) PollEvent() Event {
-	select {
-	case <-b.StopQ():
-		return nil
-	case ev := <-b.EventQ():
-		return ev
-	}
 }
 
 func (b *baseScreen) SetCursorStyle(cs CursorStyle, ccs ...Color) {

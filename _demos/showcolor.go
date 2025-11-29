@@ -137,7 +137,7 @@ func main() {
 	quit := make(chan struct{})
 	go func() {
 		for {
-			ev := s.PollEvent()
+			ev := <-s.EventQ()
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Key() {

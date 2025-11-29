@@ -1,7 +1,7 @@
 //go:build ignore
 // +build ignore
 
-// Copyright 2015 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -82,7 +82,7 @@ func main() {
 	quit := make(chan struct{})
 	go func() {
 		for {
-			ev := s.PollEvent()
+			ev := <-s.EventQ()
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Key() {

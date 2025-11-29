@@ -49,7 +49,7 @@ func main() {
 	go func() {
 		for {
 			s.Show()
-			ev := s.PollEvent()
+			ev := <-s.EventQ()
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Key() {

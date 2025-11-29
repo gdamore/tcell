@@ -58,7 +58,8 @@ func main() {
 	displayDemo(s)
 
 	for {
-		switch ev := s.PollEvent().(type) {
+		ev := <-s.EventQ()
+		switch ev := ev.(type) {
 		case *tcell.EventResize:
 			s.Sync()
 			displayDemo(s)
