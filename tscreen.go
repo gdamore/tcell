@@ -83,21 +83,21 @@ const (
 	underColor        = "\x1b[58:5:%dm"
 	underRGB          = "\x1b[58:2::%d:%d:%dm"
 	underFg           = "\x1b[59m"
-	enableAltChars    = "\x1b(B\x1b)0"                       // set G0 as US-ASCII, G1 as DEC line drawing
-	startAltChars     = "\x0e"                               // aka Shift-Out
-	endAltChars       = "\x0f"                               // aka Shift-In
-	setFg8            = "\x1b[3%dm"                          // for colors less than 8
-	setFg256          = "\x1b[38;5;%dm"                      // for colors less than 256
-	setFgRgb          = "\x1b[38;2;%d;%d;%dm"                // for RGB
-	setBg8            = "\x1b[4%dm"                          // color colors less than 8
-	setBg256          = "\x1b[48;5;%dm"                      // for colors less than 256
-	setBgRgb          = "\x1b[48;2;%d;%d;%dm"                // for RGB
-	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm"  // for RGB, in one shot
-	resetFgBg         = "\x1b[39;49m"                        // ECMA defined
-	enterCA           = "\x1b[?1049h"                        // alternate screen
-	exitCA            = "\x1b[?1049l"                        // alternate screen
-	enterKeypad       = "\x1b[?1h\x1b="                      // Note mode 1 might not be supported everywhere
-	exitKeypad        = "\x1b[?1l\x1b>"                      // Also mode 1
+	enableAltChars    = "\x1b(B\x1b)0"                      // set G0 as US-ASCII, G1 as DEC line drawing
+	startAltChars     = "\x0e"                              // aka Shift-Out
+	endAltChars       = "\x0f"                              // aka Shift-In
+	setFg8            = "\x1b[3%dm"                         // for colors less than 8
+	setFg256          = "\x1b[38;5;%dm"                     // for colors less than 256
+	setFgRgb          = "\x1b[38;2;%d;%d;%dm"               // for RGB
+	setBg8            = "\x1b[4%dm"                         // color colors less than 8
+	setBg256          = "\x1b[48;5;%dm"                     // for colors less than 256
+	setBgRgb          = "\x1b[48;2;%d;%d;%dm"               // for RGB
+	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm" // for RGB, in one shot
+	resetFgBg         = "\x1b[39;49m"                       // ECMA defined
+	enterCA           = "\x1b[?1049h"                       // alternate screen
+	exitCA            = "\x1b[?1049l"                       // alternate screen
+	enterKeypad       = "\x1b[?1h\x1b="                     // Note mode 1 might not be supported everywhere
+	exitKeypad        = "\x1b[?1l\x1b>"                     // Also mode 1
 )
 
 // NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
@@ -1145,6 +1145,7 @@ func (t *tScreen) Beep() error {
 func (t *tScreen) finalize() {
 	t.disengage()
 	_ = t.tty.Close()
+	close(t.eventQ)
 }
 
 func (t *tScreen) StopQ() <-chan struct{} {
