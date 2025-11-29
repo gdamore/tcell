@@ -201,25 +201,27 @@ func (t *tScreen) Init() error {
 	cterm := os.Getenv("COLORTERM")
 	nterm := os.Getenv("TERM")
 
-	if slices.Contains([]string{"truecolor", "direct", "24bit"}, cterm) || strings.HasSuffix(nterm, "-direct") || strings.HasSuffix(nterm, "-truecolor") {
-		t.truecolor = true
-		t.ncolor = 256 // base 8-bit palette
-	} else if strings.HasSuffix("-256color", nterm) || strings.Contains(cterm, "256") {
-		t.ncolor = 256
-	} else if strings.HasSuffix("-88color", nterm) {
-		t.ncolor = 88
-	} else if strings.Contains(nterm, "color") || cterm != "" {
-		t.ncolor = 8
-	} else if strings.Contains(nterm, "mono") || strings.HasSuffix(nterm, "-m") { // monochrome variants
-		t.ncolor = 0
-	} else if strings.Contains(nterm, "ansi") || slices.Contains([]string{"dtterm", "xterm", "aixterm", "linux"}, nterm) {
-		t.ncolor = 8
-	} else if strings.HasPrefix(nterm, "vt") || nterm == "sun" {
-		// legacy DEC VT 100/220 etc. family.  (technically the VT525 can do ANSI, but they should set to ansi)
-		t.ncolor = 0
-	} else {
-		// best guess - this covers all the modern variants like ghostty,
-		t.ncolor = 256
+	if t.ncolor == 0 {
+		if slices.Contains([]string{"truecolor", "direct", "24bit"}, cterm) || strings.HasSuffix(nterm, "-direct") || strings.HasSuffix(nterm, "-truecolor") {
+			t.truecolor = true
+			t.ncolor = 256 // base 8-bit palette
+		} else if strings.HasSuffix("-256color", nterm) || strings.Contains(cterm, "256") {
+			t.ncolor = 256
+		} else if strings.HasSuffix("-88color", nterm) {
+			t.ncolor = 88
+		} else if strings.Contains(nterm, "color") || cterm != "" {
+			t.ncolor = 8
+		} else if strings.Contains(nterm, "mono") || strings.HasSuffix(nterm, "-m") { // monochrome variants
+			t.ncolor = 0
+		} else if strings.Contains(nterm, "ansi") || slices.Contains([]string{"dtterm", "xterm", "aixterm", "linux"}, nterm) {
+			t.ncolor = 8
+		} else if strings.HasPrefix(nterm, "vt") || nterm == "sun" {
+			// legacy DEC VT 100/220 etc. family.  (technically the VT525 can do ANSI, but they should set to ansi)
+			t.ncolor = 0
+		} else {
+			// best guess - this covers all the modern variants like ghostty,
+			t.ncolor = 256
+		}
 	}
 
 	if os.Getenv("NO_COLOR") != "" {
