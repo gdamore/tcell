@@ -53,6 +53,7 @@ func (app *Application) initialize() error {
 		}
 		app.screen.SetStyle(app.style)
 	}
+	app.stopQ = make(chan struct{})
 	return nil
 }
 
@@ -86,8 +87,14 @@ func (app *Application) Update() {
 func (app *Application) PostFunc(fn func()) error {
 	ev := &eventAppFunc{fn: fn}
 	ev.SetEventNow()
+	eq := app.screen.EventQ()
 	if scr := app.screen; scr != nil {
-		return scr.PostEvent(ev)
+		select {
+		case eq <- ev:
+			return nil
+		default:
+			return tcell.ErrEventQFull
+		}
 	}
 	return tcell.ErrNoScreen
 }
@@ -138,9 +145,7 @@ func (app *Application) run() {
 	screen.Clear()
 	widget.SetView(screen)
 
-	app.eventQ = make(chan tcell.Event, 16)
-	app.stopQ = make(chan struct{})
-	go screen.ChannelEvents(app.eventQ, app.stopQ)
+	app.eventQ = screen.EventQ()
 
 loop:
 	for {
@@ -149,8 +154,13 @@ loop:
 		}
 		widget.Draw()
 		screen.Show()
+		var ev tcell.Event
 
-		ev := <-app.eventQ
+		select {
+		case ev = <-app.eventQ:
+		case <-app.stopQ:
+			break loop
+		}
 		if ev == nil {
 			screen.Fini()
 			break loop
