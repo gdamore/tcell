@@ -92,7 +92,7 @@ const (
 	setBg8            = "\x1b[4%dm"                          // color colors less than 8
 	setBg256          = "\x1b[48;5;%dm"                      // for colors less than 256
 	setBgRgb          = "\x1b[48;2;%d;%d;%dm"                // for RGB
-	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;;48;2;%d;%d;%dm" // for colors less than 256, in one shot
+	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm"  // for RGB, in one shot
 	resetFgBg         = "\x1b[39;49m"                        // ECMA defined
 	enterCA           = "\x1b[?1049h"                        // alternate screen
 	exitCA            = "\x1b[?1049l"                        // alternate screen
