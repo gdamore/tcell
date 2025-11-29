@@ -23,8 +23,6 @@ import (
 	"sync"
 	"syscall/js"
 	"unicode/utf8"
-
-	"github.com/gdamore/tcell/v3/terminfo"
 )
 
 func NewTerminfoScreen() (Screen, error) {
@@ -601,8 +599,4 @@ var curStyleClasses = map[CursorStyle]string{
 	CursorStyleSteadyUnderline:   "cursor-steady-underline",
 	CursorStyleBlinkingBar:       "cursor-blinking-bar",
 	CursorStyleSteadyBar:         "cursor-steady-bar",
-}
-
-func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
-	return nil, errors.New("LookupTermInfo not supported")
 }

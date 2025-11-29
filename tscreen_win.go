@@ -17,11 +17,6 @@
 
 package tcell
 
-import (
-	// import the stock terminals
-	_ "github.com/gdamore/tcell/v3/terminfo/base"
-)
-
 // initialize is used at application startup, and sets up the initial values
 // including file descriptors used for terminals and saving the initial state
 // so that it can be restored when the application terminates.
@@ -34,8 +29,4 @@ func (t *tScreen) initialize() error {
 		}
 	}
 	return nil
-}
-
-func init() {
-	defaultTerm = "xterm-truecolor"
 }

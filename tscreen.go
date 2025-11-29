@@ -33,8 +33,6 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/text/transform"
-
-	"github.com/gdamore/tcell/v3/terminfo"
 )
 
 // NewTerminfoScreen returns a Screen that uses the stock TTY interface
@@ -48,14 +46,6 @@ import (
 func NewTerminfoScreen() (Screen, error) {
 	return NewTerminfoScreenFromTty(nil)
 }
-
-// LookupTerminfo attempts to find a definition for the named $TERM falling
-// back to attempting to parse the output from infocmp.
-func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
-	return terminfo.LookupTerminfo(name)
-}
-
-var defaultTerm string
 
 // Some terminal escapes that are basically universal.
 // We would really like to be able to use private mode queries for some of

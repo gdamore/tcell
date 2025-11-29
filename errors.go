@@ -17,20 +17,9 @@ package tcell
 import (
 	"errors"
 	"time"
-
-	"github.com/gdamore/tcell/v3/terminfo"
 )
 
 var (
-	// ErrTermNotFound indicates that a suitable terminal entry could
-	// not be found.  This can result from either not having TERM set,
-	// or from the TERM failing to support certain minimal functionality,
-	// in particular absolute cursor addressability (the cup capability)
-	// is required.  For example, legacy "adm3" lacks this capability,
-	// whereas the slightly newer "adm3a" supports it.  This failure
-	// occurs most often with "dumb".
-	ErrTermNotFound = terminfo.ErrTermNotFound
-
 	// ErrNoScreen indicates that no suitable screen could be found.
 	// This may result from attempting to run on a platform where there
 	// is no support for either termios or console I/O (such as nacl),
