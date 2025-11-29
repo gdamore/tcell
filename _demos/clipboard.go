@@ -79,10 +79,10 @@ func main() {
 		case *tcell.EventKey:
 			switch ev.Key() {
 			case tcell.KeyRune:
-				switch ev.Rune() {
-				case '1':
+				switch ev.Str() {
+				case "1":
 					s.SetClipboard([]byte("Enjoy your new clipboard content!"))
-				case '2':
+				case "2":
 					s.GetClipboard()
 				}
 			case tcell.KeyEscape:
