@@ -4,12 +4,14 @@
 > _Tcell_ v3 is currently in development, and these details are subject to change
 > before we release.
 
-### Termbox Compatibility Removed
+### Events (PostEvent, PollEvent, ChannelEvents)
 
-The `termbox` compatibility package is removed. Few applications were using it,
-and the compatibility was imperfect. Also the package had limited support for many
-newer features. Further, _Termbox_ itself is no longer being maintained.
-Applications that still need this should keep using _Tcell_ v2.
+The event channel is now directly exposed via `EventQ`, and events may be read from or written
+directly to the queue.  This should help applications that want to integrate into `select`
+statements (e.g. for timed key presses).
+
+The `ChannelEvents`, `PollEvent`, `PostEvent`, and `PostEventWait` functions are removed.
+Most simple applications can just change to read from the screen `EventQ` directly.
 
 ### Cell and Contents APIs
 
@@ -20,6 +22,14 @@ newer APIs exist in their place.
 - `SetCell` is removed.  Use `Put` instead.
 - `SetContents` is deprecated and may be removed before release.  Use `Put` instead.
 - `GetContents` is removed. Use `Get` instead.
+
+### Termbox Compatibility Removed
+
+The `termbox` compatibility package is removed. Few applications were using it,
+and the compatibility was imperfect. Also the package had limited support for many
+newer features. Further, _Termbox_ itself is no longer being maintained.
+Applications that still need this should keep using _Tcell_ v2.
+
 
 ### Support for Grapheme Clusters in EventKey
 
@@ -63,15 +73,9 @@ to further savings in the memory per-cell.
 
 `AttrUnderline` is gone.  It was not sufficient to describe styled and colored underlines.
 
-### Blocking PostEvent
-
-The `PostEventWait` function is gone. Use `PostEvent` instead, and check the error status
-to determine if the event queue was too full.  (Unless your application is buggy or you
-are overwhelming it with events, the event queue should never fill up.)
-
 ### Removed Capability Queries
 
-Deprecated APIs `HasKey` and `CanDisplay` are removed.
+Deprecated APIs `HasKey`, `HasMouse`, and `CanDisplay` are removed.
 These functions weren't reliable and served no useful purpose.
 
 ### Windows Console API
