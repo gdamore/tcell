@@ -805,6 +805,23 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 	case '_':
 		if len(intermediate) == 0 && len(P) > 0 {
 			ip.handleWinKey(P)
+			return
+		}
+	case '~':
+		if len(intermediate) == 0 && len(P) >= 2 {
+			mod := calcModifier(P[1])
+			if ks, ok := csiAllKeys[csiParamMode{M: mode, P: P0}]; ok {
+				ip.post(NewEventKey(ks.Key, 0, mod))
+				return
+			}
+			if P0 == 27 && len(P) > 2 {
+				if P[2] < ' ' || P[2] == 0x7F {
+					ip.post(NewEventKey(Key(P[2]), 0, mod))
+				} else {
+					ip.post(NewEventKey(KeyRune, rune(P[2]), mod))
+				}
+				return
+			}
 		}
 	}
 
@@ -824,7 +841,6 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 		ip.post(NewEventKey(k, 0, calcModifier(P[1])))
 		return
 	}
-
 	// if we got here we just swallow the unknown sequence
 }
 

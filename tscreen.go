@@ -24,7 +24,6 @@ import (
 	"io"
 	"maps"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -320,13 +319,12 @@ func (t *tScreen) prepareExtendedOSC() {
 	}
 
 	if t.enableCsiU == "" && t.ti.XTermLike {
-		if runtime.GOOS == "windows" {
-			t.enableCsiU = "\x1b[?9001h"
-			t.disableCsiU = "\x1b[?9001l"
-		} else {
-			t.enableCsiU = "\x1b[>1u"
-			t.disableCsiU = "\x1b[<u"
-		}
+		// three advanced keyboard protocols:
+		// - xterm modifyOtherKeys (uses CSI 27 ~ )
+		// - kitty csi-u (uses CSI u)
+		// - win32-input-mode (uses CSI _)
+		t.enableCsiU = "\x1b[>4;2m" + "\x1b[>1u" + "\x1b[9001h"
+		t.disableCsiU = "\x1b[9001l" + "\x1b[<u" + "\x1b[>4;0m"
 	}
 }
 
