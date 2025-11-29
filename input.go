@@ -802,14 +802,14 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 		if len(intermediate) == 0 && len(P) >= 2 {
 			mod := calcModifier(P[1])
 			if ks, ok := csiAllKeys[csiParamMode{M: mode, P: P0}]; ok {
-				ip.post(NewEventKey(ks.Key, 0, mod))
+				ip.post(NewEventKey(ks.Key, "", mod))
 				return
 			}
 			if P0 == 27 && len(P) > 2 && P[2] > 0 && P[2] <= 0xff {
 				if P[2] < ' ' || P[2] == 0x7F {
-					ip.post(NewEventKey(Key(P[2]), 0, mod))
+					ip.post(NewEventKey(Key(P[2]), "", mod))
 				} else {
-					ip.post(NewEventKey(KeyRune, rune(P[2]), mod))
+					ip.post(NewEventKey(KeyRune, string(rune(P[2])), mod))
 				}
 				return
 			}

@@ -25,11 +25,8 @@ import (
 	"io"
 	"maps"
 	"os"
-<<<<<<< HEAD
 	"runtime"
 	"slices"
-=======
->>>>>>> cbb8618 (feat: enable XTerm modifyOtherKeys protocol)
 	"strconv"
 	"strings"
 	"sync"
@@ -294,7 +291,8 @@ func (t *tScreen) prepareExtendedOSC() {
 	t.setClipboard = "\x1b]52;c;%s\x1b\\"
 
 	if t.enableCsiU == "" {
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == "windows" && (os.Getenv("TERM") == "" || os.Getenv("TERM_PROGRAM") == "WezTerm") {
+			// on Windows, if we don't have a TERM, use only win32-input-mode
 			t.enableCsiU = "\x1b[?9001h"
 			t.disableCsiU = "\x1b[?9001l"
 		} else if os.Getenv("TERM_PROGRAM") == "WezTerm" {
