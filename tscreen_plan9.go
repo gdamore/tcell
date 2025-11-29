@@ -28,8 +28,3 @@ func (t *tScreen) initialize() error {
 	}
 	return nil
 }
-
-func init() {
-	// TERM should be "vt100" in a vt(1) window; color/mouse support will be limited.
-	defaultTerm = "vt100"
-}

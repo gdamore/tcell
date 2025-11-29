@@ -1,6 +1,0 @@
-aixterm
-ansi
-dtterm
-linux
-vt100
-vt220
