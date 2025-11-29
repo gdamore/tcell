@@ -80,14 +80,18 @@ type inputProcessor struct {
 	timer     *time.Timer
 	expire    time.Time
 	l         sync.Mutex
-	reencode  bool // bug with win32-input-mode on older terms
 	encBuf    []rune
 	evch      chan<- Event
 	rows      int // used for clipping mouse coordinates
 	cols      int // used for clipping mouse coordinates
+	nested    *inputProcessor
 }
 
 func (ip *inputProcessor) SetSize(w, h int) {
+	if ip.nested != nil {
+		ip.nested.SetSize(w, h)
+		return
+	}
 	go func() {
 		ip.l.Lock()
 		ip.rows = h
@@ -401,7 +405,7 @@ func (ip *inputProcessor) scan() {
 			case '\x1b':
 				// escape.. pending
 				ip.state = inpStateEsc
-				if len(ip.buf) == 0 {
+				if len(ip.buf) == 0 && ip.nested == nil {
 					ip.expire = time.Now().Add(time.Millisecond * 50)
 					ip.timer = time.AfterFunc(time.Millisecond*60, ip.escTimeout)
 				}
@@ -671,21 +675,16 @@ func (ip *inputProcessor) handleWinKey(P []int) {
 		// key up event ignore ignore
 		return
 	}
-	if P[0] == 0 {
-		if P[2] == 27 && !ip.reencode {
-			ip.reencode = true
+	if P[0] == 0 && P[2] == 27 && ip.nested == nil {
+		ip.nested = &inputProcessor{
+			evch: ip.evch,
+			rows: ip.rows,
+			cols: ip.cols,
 		}
 	}
-	if ip.reencode {
-		ip.encBuf = append(ip.encBuf, rune(P[2]))
-		// embedded content will itself be a CSI, so terminated by a CSI terminator
-		if len(ip.encBuf) > 2 && P[2] >= 0x40 && P[2] < 0x7F {
-			eb := ip.encBuf
-			ip.encBuf = nil
-			ip.reencode = false
-			ip.buf = append(eb, ip.buf...)
-			go ip.ScanUTF8(nil)
-		}
+
+	if ip.nested != nil && P[2] > 0 && P[2] < 0x80 { // only ASCII in win32-input-mode
+		ip.nested.ScanUTF8([]byte{byte(P[2])})
 		return
 	}
 
@@ -814,7 +813,7 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 				ip.post(NewEventKey(ks.Key, 0, mod))
 				return
 			}
-			if P0 == 27 && len(P) > 2 {
+			if P0 == 27 && len(P) > 2 && P[2] > 0 && P[2] <= 0xff {
 				if P[2] < ' ' || P[2] == 0x7F {
 					ip.post(NewEventKey(Key(P[2]), 0, mod))
 				} else {
