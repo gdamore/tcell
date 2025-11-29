@@ -323,7 +323,7 @@ func (t *tScreen) prepareExtendedOSC() {
 	t.saveTitle = "\x1b[22;2t"
 	t.restoreTitle = "\x1b[23;2t"
 	// this also tries to request that UTF-8 is allowed in the title
-	t.setTitle = "\x1b[>2t\x1b]2;%p1%s\x1b\\"
+	t.setTitle = "\x1b[>2t\x1b]2;%s\x1b\\"
 
 	// OSC 52 is for saving to the clipboard.
 	// this string takes a base64 string and sends it to the clipboard.
@@ -1116,7 +1116,7 @@ func (t *tScreen) engage() error {
 	t.TPuts(disableAutoMargin)
 	t.TPuts(clear)
 	if t.title != "" && t.setTitle != "" {
-		t.TPuts(t.ti.TParm(t.setTitle, t.title))
+		t.TPuts(fmt.Sprintf(t.setTitle, t.title))
 	}
 	t.TPuts(t.enableCsiU)
 
@@ -1203,7 +1203,7 @@ func (t *tScreen) SetTitle(title string) {
 	t.Lock()
 	t.title = title
 	if t.setTitle != "" && t.running {
-		t.TPuts(t.ti.TParm(t.setTitle, title))
+		t.TPuts(fmt.Sprintf(t.setTitle, title))
 	}
 	t.Unlock()
 }
