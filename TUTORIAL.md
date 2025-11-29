@@ -157,8 +157,8 @@ for {
     // Update screen
     s.Show()
 
-    // Poll event
-    ev := s.PollEvent()
+    // Poll event (can be used in select statement as well)
+    ev := <-s.EventQ()
 
     // Process event
     switch ev := ev.(type) {
@@ -280,10 +280,11 @@ func main() {
 	// xmax, ymax := s.Size()
 
 	// Here's an example of how to inject a keystroke where it will
-	// be picked up by the next PollEvent call.  Note that the
-	// queue is LIFO, it has a limited length, and PostEvent() can
-	// return an error.
-	// s.PostEvent(tcell.NewEventKey(tcell.KeyRune, rune('a'), 0))
+	// be picked up by a future read of the event queue.  Note that
+	// care should be used to avoid blocking writes to the queue if
+	// this is done from the same thread that is responsible for reading
+	// the queue, or else a single-party deadlock might occur.
+	// s.EventQ() <- tcell.NewEventKey(tcell.KeyRune, rune('a'), 0)
 
 	// Event loop
 	ox, oy := -1, -1
@@ -291,8 +292,8 @@ func main() {
 		// Update screen
 		s.Show()
 
-		// Poll event
-		ev := s.PollEvent()
+		// Poll event (this can be in a select statement as well)
+		ev := <-s.EventQ()
 
 		// Process event
 		switch ev := ev.(type) {

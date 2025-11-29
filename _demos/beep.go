@@ -1,7 +1,7 @@
 //go:build ignore
 // +build ignore
 
-// Copyright 2019 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -15,7 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// beep makes a beep every second until you press ESC
+// beep makes a beep for every keypress, until you press ESC.
 package main
 
 import (
@@ -44,7 +44,7 @@ func main() {
 	quit := make(chan struct{})
 	go func() {
 		for {
-			ev := s.PollEvent()
+			ev := <-s.EventQ()
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Key() {

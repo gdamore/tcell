@@ -151,7 +151,8 @@ func main() {
 	displaySixel(s, img, lock)
 
 	for {
-		switch ev := s.PollEvent().(type) {
+		ev := <-s.EventQ()
+		switch ev := ev.(type) {
 		case *tcell.EventResize:
 			s.Sync()
 			displayHelloWorld(s)
