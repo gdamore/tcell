@@ -315,7 +315,7 @@ func (t *tScreen) prepareExtendedOSC() {
 	}
 
 	// OSC 8 is for enter/exit URL.
-	t.enterUrl = "\x1b]8;%p2%s;%p1%s\x1b\\"
+	t.enterUrl = "\x1b]8;%[2]s;%[1]s\x1b\\"
 	t.exitUrl = "\x1b]8;;\x1b\\"
 
 	// CSI .. t is for window operations.
@@ -329,7 +329,7 @@ func (t *tScreen) prepareExtendedOSC() {
 	// this string takes a base64 string and sends it to the clipboard.
 	// it will also be able to retrieve the clipboard using "?" as the
 	// sent string, when we support that.
-	t.setClipboard = "\x1b]52;c;%p1%s\x1b\\"
+	t.setClipboard = "\x1b]52;c;%s\x1b\\"
 
 	if t.enableCsiU == "" {
 		if runtime.GOOS == "windows" {
@@ -576,7 +576,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		// URL string can be long, so don't send it unless we really need to
 		if t.enterUrl != "" && newUrl != oldUrl {
 			if newUrl.url != "" {
-				t.TPuts(ti.TParm(t.enterUrl, newUrl.url, newUrl.id))
+				t.TPuts(fmt.Sprintf(t.enterUrl, newUrl.url, newUrl.id))
 			} else {
 				t.TPuts(t.exitUrl)
 			}
@@ -1213,7 +1213,7 @@ func (t *tScreen) SetClipboard(data []byte) {
 	t.Lock()
 	if t.setClipboard != "" {
 		encoded := base64.StdEncoding.EncodeToString(data)
-		t.TPuts(t.ti.TParm(t.setClipboard, encoded))
+		t.TPuts(fmt.Sprintf(t.setClipboard, encoded))
 	}
 	t.Unlock()
 }
@@ -1221,7 +1221,7 @@ func (t *tScreen) SetClipboard(data []byte) {
 func (t *tScreen) GetClipboard() {
 	t.Lock()
 	if t.setClipboard != "" {
-		t.TPuts(t.ti.TParm(t.setClipboard, "?"))
+		t.TPuts(fmt.Sprintf(t.setClipboard, "?"))
 	}
 	t.Unlock()
 }
