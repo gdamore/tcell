@@ -25,8 +25,11 @@ import (
 	"io"
 	"maps"
 	"os"
+<<<<<<< HEAD
 	"runtime"
 	"slices"
+=======
+>>>>>>> cbb8618 (feat: enable XTerm modifyOtherKeys protocol)
 	"strconv"
 	"strings"
 	"sync"
