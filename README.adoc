@@ -17,6 +17,10 @@ a|[.right]
 image::logos/tcell.png[float="right"]
 |===
 
+IMPORTANT: This is version 1 of _Tcell_, which is no longer receiving any updates.  Please update to tcell version 2 or version 3,
+which are available as github.com/gdamore/tcell/v2 or github.com/gdamore/tcell/v3.  (Some changes to your application will be
+necessary.)
+
 ## Examples
 
 * https://github.com/gdamore/proxima5[proxima5] - space shooter (https://youtu.be/jNxKTCmY_bQ[video])
