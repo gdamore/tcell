@@ -1,4 +1,4 @@
-// Copyright 2024 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -15,6 +15,7 @@
 package tcell
 
 import (
+	"maps"
 	"sync"
 	"unicode/utf8"
 
@@ -135,9 +136,7 @@ func (s *simscreen) Init() error {
 
 	// default fallbacks
 	s.fallback = make(map[rune]string)
-	for k, v := range RuneFallbacks {
-		s.fallback[k] = v
-	}
+	maps.Copy(s.fallback, RuneFallbacks)
 	return nil
 }
 
@@ -273,8 +272,8 @@ func (s *simscreen) draw() {
 	}
 
 	w, h := s.back.Size()
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			width := s.drawCell(x, y)
 			x += width - 1
 		}
