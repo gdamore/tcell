@@ -502,3 +502,5 @@ func (s *simscreen) GetClipboard() {
 func (s *simscreen) GetClipboardData() []byte {
 	return s.clipboard
 }
+
+func (s *simscreen) ShowNotification(_ string, _ string) {}

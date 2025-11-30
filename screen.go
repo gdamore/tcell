@@ -233,6 +233,10 @@ type Screen interface {
 	// EventPaste with the clipboard content as the Data() field.  Terminals may
 	// prevent this for security reasons.
 	GetClipboard()
+
+	// ShowNotification is used to show a desktop notification, when the terminal
+	// supports it.  Right now only terminals supporting OSC 777 support this.
+	ShowNotification(title string, body string)
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
@@ -300,6 +304,7 @@ type screenImpl interface {
 	Tty() (Tty, bool)
 	SetClipboard([]byte)
 	GetClipboard()
+	ShowNotification(string, string)
 
 	// Following methods are not part of the Screen api, but are used for interaction with
 	// the common layer code.

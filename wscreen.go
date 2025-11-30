@@ -309,7 +309,7 @@ func (t *wScreen) postEvent(ev Event) {
 	}
 }
 
-func (t *wScreen) onMouseEvent(this js.Value, args []js.Value) interface{} {
+func (t *wScreen) onMouseEvent(this js.Value, args []js.Value) any {
 	mod := ModNone
 	button := ButtonNone
 
@@ -395,7 +395,7 @@ func (t *wScreen) onFocus(this js.Value, args []js.Value) any {
 // happen when javascript calls a function (for example, when
 // mouse input is disabled, when onMouseEvent() is called from
 // js, it redirects here and does nothing).
-func (t *wScreen) unset(this js.Value, args []js.Value) interface{} {
+func (t *wScreen) unset(this js.Value, args []js.Value) any {
 	return nil
 }
 
@@ -495,6 +495,8 @@ func (t *wScreen) StopQ() <-chan struct{} {
 func (t *wScreen) SetTitle(title string) {
 	js.Global().Call("setTitle", title)
 }
+
+func (*wScreen) ShowNotification(title string, body string) {}
 
 // WebKeyNames maps string names reported from HTML
 // (KeyboardEvent.key) to tcell accepted keys.
