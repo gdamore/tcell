@@ -83,13 +83,6 @@ func displaySixel(s tcell.Screen, img *imageData, lock bool) {
 	// from drawing over this area
 	s.LockRegion(sixelX, sixelY, sixelWidth, sixelHeight, lock)
 
-	// Get the terminfo for our current terminal
-	ti, err := tcell.LookupTerminfo(os.Getenv("TERM"))
-	if err != nil {
-		s.Fini()
-		log.Fatal(err)
-	}
-
 	s.PutStr(sixelX, sixelY, "This text is behind")
 	s.PutStr(sixelX, sixelY+1, "     the sixel")
 
