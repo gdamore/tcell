@@ -29,13 +29,11 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 ## Examples
 
 A number of example are posted up on our [Gallery](https://github.com/gdamore/tcell/wikis/Gallery/).
-
-Let us know if you want to add your masterpiece to the list!
+That's a wiki, and please do submit updates if you have something you want to showcase.
 
 ## More Portable
 
-_Tcell_ is portable to a wide variety of systems, and is pure Go, without
-any need for CGO.
+_Tcell_ is portable to a wide variety of systems, and is pure Go, without any need for CGO.
 _Tcell_ is believed to work with mainstream systems officially supported by golang.
 
 Following the Go support policy, _Tcell_ officially only supports the current ("stable") version of go,
@@ -47,8 +45,6 @@ update dependencies to pick up security fixes and new features, and it allows us
 
 _Tcell_ includes enhanced support for Unicode, including wide characters and
 combining characters, provided your terminal can support them.
-Note that
-Windows terminals generally don't support the full Unicode repertoire.
 
 It will also convert to and from Unicode locales, so that the program
 can work with UTF-8 internally, and get reasonable output in other locales.
@@ -79,8 +75,8 @@ If you're lazy, and want them all anyway, see the `encoding` sub-directory.
 ## Wide & Combining Characters
 
 The `Put()` API takes a string, which should be legal UTF-8, and displays
-the first grapheme (which may composed of multiple runes). It returns the
-actual width displayed, which can be used to advance the column positiion
+the first grapheme cluster (which may composed of multiple runes).
+It returns the actual width displayed, which can be used to advance the column positiion
 for the next display grapheme.  Alternatively, `PutStr()` or `PutStrStyled()`
 can be used to display a single line of text (which will be clipped at the
 edge of the screen).
@@ -160,19 +156,17 @@ only basis. Pull requests to fix any issues found are welcome!
 
 ### Windows
 
-Windows console mode applications are supported, on Windows versions after
-Windows 10 1703. The modern Windows 11 Terminal is particularly well supported.
-(Note: 3rd party terminal emulators work, and some work very well.  Unfortunately
-the once popular ConEmu is unlikely to work well, and we do not recommend it given
-the existence of superior alternatives like [Rio](https://rioterm.com).)
+Modern Windows is supported.  Please see the [README-windows](README-windows.md)
+document for much more detailed information.
 
 ### WASM
 
 WASM is supported, but needs additional setup detailed in [README-wasm](README-wasm.md).
 
-### Plan9 and its variants
+### Plan 9
 
-Plan 9 is supported on a limited basis. The Plan 9 backend opens `/dev/cons` for I/O, enables raw mode by writing `rawon`/`rawoff` to `/dev/consctl`, watches `/dev/wctl` for resize notifications, and then constructs a **terminfo-backed** `Screen` (so `NewScreen` works as on other platforms). Typical usage is inside `vt(1)` with `TERM=vt100`. Expect **monochrome text** and **no mouse reporting** under stock `vt(1)` (it generally does not emit ANSI color or xterm mouse sequences). If a Plan 9 terminal supplies ANSI color escape sequences and xterm-style mouse reporting, color can be picked up via **terminfo** and mouse support could be added by wiring those sequences into the Plan 9 TTY path; contributions that improve terminal detection and broaden feature support are welcome.
+Plan 9 is supported on a best-effort basis.  Please see the [README-plan](README-plan9.md)
+document for more information.
 
 ### Commercial Support
 
