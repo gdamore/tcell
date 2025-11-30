@@ -581,7 +581,7 @@ func (t *tScreen) drawCell(x, y int) int {
 	t.Print(str)
 	t.cx += width
 	t.cells.SetDirty(x, y, false)
-	if width > 1 {
+	if width > 1 && len([]rune(str)) > 1 {
 		t.cx = -1
 	}
 
