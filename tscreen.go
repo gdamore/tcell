@@ -98,6 +98,7 @@ const (
 	exitCA            = "\x1b[?1049l"                       // alternate screen
 	enterKeypad       = "\x1b[?1h\x1b="                     // Note mode 1 might not be supported everywhere
 	exitKeypad        = "\x1b[?1l\x1b>"                     // Also mode 1
+	requestWindowSize = "\x1b[18t"                          // For modern terminals
 )
 
 // NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
@@ -1079,6 +1080,7 @@ func (t *tScreen) engage() error {
 		t.TPuts(fmt.Sprintf(t.setTitle, t.title))
 	}
 	t.TPuts(t.enableCsiU)
+	t.TPuts(requestWindowSize)
 
 	t.wg.Add(2)
 	go t.inputLoop(stopQ)

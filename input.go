@@ -798,6 +798,15 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 			ip.handleWinKey(P)
 			return
 		}
+	case 't':
+		if len(P) == 3 && P[0] == 8 {
+			// window size report
+			h := P[1]
+			w := P[2]
+			if h != ip.rows || w != ip.cols {
+				ip.SetSize(w, h)
+			}
+		}
 	case '~':
 		if len(intermediate) == 0 && len(P) >= 2 {
 			mod := calcModifier(P[1])
