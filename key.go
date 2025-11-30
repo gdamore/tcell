@@ -273,9 +273,9 @@ func NewEventKey(k Key, str string, mod ModMask) *EventKey {
 			ch = ch + '\x60'
 		}
 	}
-	if k == KeyRune && ch >= '@' && ch <= '_' && mod == ModCtrl {
+	if k == KeyRune && ch >= 'A' && ch <= 'Z' && mod == ModCtrl {
 		// We don't do Ctrl-[ or backslash or those specially.
-		k = KeyCtrlA + Key(ch-'@')
+		k = KeyCtrlA + Key(ch-'A')
 		str = ""
 	}
 
