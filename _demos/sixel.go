@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -95,9 +96,9 @@ func displaySixel(s tcell.Screen, img *imageData, lock bool) {
 	setCursorPosition = "\x1b[%[1]d;%[2]dH"
 
 	// Move the cursor to our draw position
-	ti.TPuts(tty, fmt.Sprintf(setCursorPosition, sixelY+1, sixelX+1))
+	io.WriteString(tty, fmt.Sprintf(setCursorPosition, sixelY+1, sixelX+1))
 	// Draw the sixel data
-	ti.TPuts(tty, img.data.String())
+	io.WriteString(tty, img.data.String())
 
 	s.Show()
 }

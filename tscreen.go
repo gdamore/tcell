@@ -400,25 +400,25 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 	}
 
 	if fg == ColorReset || bg == ColorReset {
-		t.TPuts(resetFgBg)
+		t.Print(resetFgBg)
 	}
 	if t.truecolor {
 		if fg.IsRGB() && bg.IsRGB() {
 			r1, g1, b1 := fg.RGB()
 			r2, g2, b2 := bg.RGB()
-			t.TPuts(fmt.Sprintf(setFgBgRgb, r1, g1, b1, r2, g2, b2))
+			t.Printf(setFgBgRgb, r1, g1, b1, r2, g2, b2)
 			return attr
 		}
 
 		if fg.IsRGB() {
 			r, g, b := fg.RGB()
-			t.TPuts(fmt.Sprintf(setFgRgb, r, g, b))
+			t.Printf(setFgRgb, r, g, b)
 			fg = ColorDefault
 		}
 
 		if bg.IsRGB() {
 			r, g, b := bg.RGB()
-			t.TPuts(fmt.Sprintf(setBgRgb, r, g, b))
+			t.Printf(setBgRgb, r, g, b)
 			bg = ColorDefault
 		}
 	}
@@ -433,9 +433,9 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 		}
 		fgc := fg & 0xffffff
 		if fgc < 8 {
-			t.TPuts(fmt.Sprintf(setFg8, fgc))
+			t.Printf(setFg8, fgc)
 		} else if fgc < 256 {
-			t.TPuts(fmt.Sprintf(setFg256, fgc))
+			t.Printf(setFg256, fgc)
 		}
 	}
 
@@ -449,9 +449,9 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 		}
 		bgc := bg & 0xffffff
 		if bgc < 8 {
-			t.TPuts(fmt.Sprintf(setBg8, bgc))
+			t.Printf(setBg8, bgc)
 		} else if bgc < 256 {
-			t.TPuts(fmt.Sprintf(setBg256, bgc))
+			t.Printf(setBg256, bgc)
 		}
 
 	}
@@ -467,7 +467,7 @@ func (t *tScreen) drawCell(x, y int) int {
 	}
 
 	if t.cy != y || t.cx != x {
-		t.TPuts(fmt.Sprintf(setCursorPosition, y+1, x+1))
+		t.Printf(setCursorPosition, y+1, x+1)
 		t.cx = x
 		t.cy = y
 	}
@@ -478,15 +478,15 @@ func (t *tScreen) drawCell(x, y int) int {
 	if style != t.curstyle {
 		fg, bg, attrs := style.fg, style.bg, style.attrs
 
-		t.TPuts(sgr0)
+		t.Print(sgr0)
 
 		attrs = t.sendFgBg(fg, bg, attrs)
 		if attrs&AttrBold != 0 {
-			t.TPuts(bold)
+			t.Print(bold)
 		}
 		if us, uc := style.ulStyle, style.ulColor; us != UnderlineStyleNone {
 			if uc == ColorReset {
-				t.TPuts(underFg)
+				t.Print(underFg)
 			} else if uc.IsRGB() {
 				if v, ok := t.colors[uc]; ok {
 					uc = v
@@ -495,39 +495,39 @@ func (t *tScreen) drawCell(x, y int) int {
 					t.colors[uc] = v
 					uc = v
 				}
-				t.TPuts(fmt.Sprintf(underColor, uc&0xff))
+				t.Printf(underColor, uc&0xff)
 				r, g, b := uc.RGB()
-				t.TPuts(fmt.Sprintf(underRGB, r, g, b))
+				t.Printf(underRGB, r, g, b)
 			} else if uc.Valid() {
-				t.TPuts(fmt.Sprintf(underColor, uc&0xff))
+				t.Printf(underColor, uc&0xff)
 			}
 
-			t.TPuts(underline) // to ensure everyone gets at least a basic underline
+			t.Print(underline) // to ensure everyone gets at least a basic underline
 			switch us {
 			case UnderlineStyleDouble:
-				t.TPuts(doubleUnder)
+				t.Print(doubleUnder)
 			case UnderlineStyleCurly:
-				t.TPuts(curlyUnder)
+				t.Print(curlyUnder)
 			case UnderlineStyleDotted:
-				t.TPuts(dottedUnder)
+				t.Print(dottedUnder)
 			case UnderlineStyleDashed:
-				t.TPuts(dashedUnder)
+				t.Print(dashedUnder)
 			}
 		}
 		if attrs&AttrReverse != 0 {
-			t.TPuts(reverse)
+			t.Print(reverse)
 		}
 		if attrs&AttrBlink != 0 {
-			t.TPuts(blink)
+			t.Print(blink)
 		}
 		if attrs&AttrDim != 0 {
-			t.TPuts(dim)
+			t.Print(dim)
 		}
 		if attrs&AttrItalic != 0 {
-			t.TPuts(italic)
+			t.Print(italic)
 		}
 		if attrs&AttrStrikeThrough != 0 {
-			t.TPuts(strikeThrough)
+			t.Print(strikeThrough)
 		}
 
 		var newUrl urlInfo
@@ -541,9 +541,9 @@ func (t *tScreen) drawCell(x, y int) int {
 		// URL string can be long, so don't send it unless we really need to
 		if t.enterUrl != "" && newUrl != oldUrl {
 			if newUrl.url != "" {
-				t.TPuts(fmt.Sprintf(t.enterUrl, newUrl.url, newUrl.id))
+				t.Printf(t.enterUrl, newUrl.url, newUrl.id)
 			} else {
-				t.TPuts(t.exitUrl)
+				t.Print(t.exitUrl)
 			}
 		}
 
@@ -572,7 +572,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		width = 1
 		str = " "
 	}
-	t.writeString(str)
+	t.Print(str)
 	t.cx += width
 	t.cells.SetDirty(x, y, false)
 	if width > 1 {
@@ -608,41 +608,39 @@ func (t *tScreen) showCursor() {
 		t.hideCursor()
 		return
 	}
-	t.TPuts(fmt.Sprintf(setCursorPosition, y+1, x+1))
-	t.TPuts(showCursor)
+	t.Printf(setCursorPosition, y+1, x+1)
+	t.Print(showCursor)
 	if t.cursorStyles != nil {
 		if esc, ok := t.cursorStyles[t.cursorStyle]; ok {
-			t.TPuts(esc)
+			t.Print(esc)
 		}
 	}
 	if t.cursorRGB != "" {
 		if t.cursorColor == ColorReset {
-			t.TPuts(t.cursorFg)
+			t.Print(t.cursorFg)
 		} else if t.cursorColor.Valid() {
 			r, g, b := t.cursorColor.RGB()
-			t.TPuts(fmt.Sprintf(t.cursorRGB, r, g, b))
+			t.Printf(t.cursorRGB, r, g, b)
 		}
 	}
 	t.cx = x
 	t.cy = y
 }
 
-// writeString sends a string to the terminal. The string is sent as-is and
-// this function does not expand inline padding indications (of the form
-// $<[delay]> where [delay] is msec). In order to have these expanded, use
-// TPuts. If the screen is "buffering", the string is collected in a buffer,
-// with the intention that the entire buffer be sent to the terminal in one
-// write operation at some point later.
-func (t *tScreen) writeString(s string) {
+func (t *tScreen) Write(b []byte) (int, error) {
 	if t.buffering {
-		_, _ = io.WriteString(&t.buf, s)
+		return t.buf.Write(b)
 	} else {
-		_, _ = io.WriteString(t.tty, s)
+		return t.tty.Write(b)
 	}
 }
 
-func (t *tScreen) TPuts(s string) {
-	t.writeString(s)
+func (t *tScreen) Print(s string) {
+	_, _ = io.WriteString(t, s)
+}
+
+func (t *tScreen) Printf(f string, args ...any) {
+	_, _ = fmt.Fprintf(t, f, args...)
 }
 
 func (t *tScreen) Show() {
@@ -655,29 +653,29 @@ func (t *tScreen) Show() {
 }
 
 func (t *tScreen) clearScreen() {
-	t.TPuts(sgr0)
-	t.TPuts(t.exitUrl)
+	t.Print(sgr0)
+	t.Print(t.exitUrl)
 	_ = t.sendFgBg(t.style.fg, t.style.bg, AttrNone)
 
-	t.TPuts(clear)
+	t.Print(clear)
 
 	t.clear = false
 }
 
 func (t *tScreen) startBuffering() {
-	t.TPuts(startSyncOut)
+	t.Print(startSyncOut)
 }
 
 func (t *tScreen) endBuffering() {
-	t.TPuts(endSyncOut)
+	t.Print(endSyncOut)
 }
 
 func (t *tScreen) hideCursor() {
 	// just in case we cannot hide it, move it to the end
 	t.cx, t.cy = t.cells.Size()
-	t.TPuts(fmt.Sprintf(setCursorPosition, t.cy+1, t.cx+1))
+	t.Printf(setCursorPosition, t.cy+1, t.cx+1)
 	// then hide it
-	t.TPuts(hideCursor)
+	t.Print(hideCursor)
 }
 
 func (t *tScreen) draw() {
@@ -748,18 +746,18 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	// to be understood.
 
 	// start by disabling all tracking.
-	t.TPuts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l")
+	t.Print("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l")
 	if f&MouseButtonEvents != 0 {
-		t.TPuts("\x1b[?1000h")
+		t.Print("\x1b[?1000h")
 	}
 	if f&MouseDragEvents != 0 {
-		t.TPuts("\x1b[?1002h")
+		t.Print("\x1b[?1002h")
 	}
 	if f&MouseMotionEvents != 0 {
-		t.TPuts("\x1b[?1003h")
+		t.Print("\x1b[?1003h")
 	}
 	if f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) != 0 {
-		t.TPuts("\x1b[?1006h")
+		t.Print("\x1b[?1006h")
 	}
 }
 
@@ -792,7 +790,7 @@ func (t *tScreen) enablePasting(on bool) {
 		s = disablePaste
 	}
 	if s != "" {
-		t.TPuts(s)
+		t.Print(s)
 	}
 }
 
@@ -811,11 +809,11 @@ func (t *tScreen) DisableFocus() {
 }
 
 func (t *tScreen) enableFocusReporting() {
-	t.TPuts(enableFocus)
+	t.Print(enableFocus)
 }
 
 func (t *tScreen) disableFocusReporting() {
-	t.TPuts(disableFocus)
+	t.Print(disableFocus)
 }
 
 func (t *tScreen) Size() (int, int) {
@@ -848,13 +846,6 @@ func (t *tScreen) Colors() int {
 	if t.truecolor {
 		return 1 << 24
 	}
-	return t.ncolor
-}
-
-// nColors returns the size of the built-in palette.
-// This is distinct from Colors(), as it will generally
-// always be a small number. (<= 256)
-func (t *tScreen) nColors() int {
 	return t.ncolor
 }
 
@@ -1009,7 +1000,7 @@ func (t *tScreen) UnregisterRuneFallback(orig rune) {
 
 func (t *tScreen) SetSize(w, h int) {
 	if t.setWinSize != "" {
-		t.TPuts(fmt.Sprintf(t.setWinSize, w, h))
+		t.Printf(t.setWinSize, w, h)
 	}
 	t.cells.Invalidate()
 	t.resize()
@@ -1068,19 +1059,19 @@ func (t *tScreen) engage() error {
 		// possibly save and restore the window title and/or icon.
 		// (In theory there could be terminals that don't support X,Y cursor
 		// positions without a setup command, but we don't support them.)
-		t.TPuts(enterCA)
-		t.TPuts(t.saveTitle)
+		t.Print(enterCA)
+		t.Print(t.saveTitle)
 	}
-	t.TPuts(enterKeypad)
-	t.TPuts(hideCursor)
-	t.TPuts(enableAltChars)
-	t.TPuts(disableAutoMargin)
-	t.TPuts(clear)
+	t.Print(enterKeypad)
+	t.Print(hideCursor)
+	t.Print(enableAltChars)
+	t.Print(disableAutoMargin)
+	t.Print(clear)
 	if t.title != "" && t.setTitle != "" {
-		t.TPuts(fmt.Sprintf(t.setTitle, t.title))
+		t.Printf(t.setTitle, t.title)
 	}
-	t.TPuts(t.enableCsiU)
-	t.TPuts(requestWindowSize)
+	t.Print(t.enableCsiU)
+	t.Print(requestWindowSize)
 
 	t.wg.Add(2)
 	go t.inputLoop(stopQ)
@@ -1112,22 +1103,22 @@ func (t *tScreen) disengage() {
 
 	// shutdown the screen and disable special modes (e.g. mouse and bracketed paste)
 	t.cells.Resize(0, 0)
-	t.TPuts(showCursor)
+	t.Print(showCursor)
 	if t.cursorStyles != nil && t.cursorStyle != CursorStyleDefault {
-		t.TPuts(t.cursorStyles[CursorStyleDefault])
+		t.Print(t.cursorStyles[CursorStyleDefault])
 	}
 	if t.cursorFg != "" && t.cursorColor.Valid() {
-		t.TPuts(t.cursorFg)
+		t.Print(t.cursorFg)
 	}
-	t.TPuts(exitKeypad)
-	t.TPuts(resetFgBg)
-	t.TPuts(sgr0)
-	t.TPuts(enableAutoMargin)
-	t.TPuts(t.disableCsiU)
+	t.Print(exitKeypad)
+	t.Print(resetFgBg)
+	t.Print(sgr0)
+	t.Print(enableAutoMargin)
+	t.Print(t.disableCsiU)
 	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
-		t.TPuts(t.restoreTitle)
-		t.TPuts(clear)
-		t.TPuts(exitCA)
+		t.Print(t.restoreTitle)
+		t.Print(clear)
+		t.Print(exitCA)
 	}
 	t.enableMouse(0)
 	t.enablePasting(false)
@@ -1138,7 +1129,7 @@ func (t *tScreen) disengage() {
 
 // Beep emits a beep to the terminal.
 func (t *tScreen) Beep() error {
-	t.writeString(string(byte(7)))
+	t.Print(string(byte(7)))
 	return nil
 }
 
@@ -1166,7 +1157,7 @@ func (t *tScreen) SetTitle(title string) {
 	t.Lock()
 	t.title = title
 	if t.setTitle != "" && t.running {
-		t.TPuts(fmt.Sprintf(t.setTitle, title))
+		t.Printf(t.setTitle, title)
 	}
 	t.Unlock()
 }
@@ -1176,7 +1167,7 @@ func (t *tScreen) SetClipboard(data []byte) {
 	t.Lock()
 	if t.setClipboard != "" {
 		encoded := base64.StdEncoding.EncodeToString(data)
-		t.TPuts(fmt.Sprintf(t.setClipboard, encoded))
+		t.Printf(t.setClipboard, encoded)
 	}
 	t.Unlock()
 }
@@ -1184,7 +1175,7 @@ func (t *tScreen) SetClipboard(data []byte) {
 func (t *tScreen) GetClipboard() {
 	t.Lock()
 	if t.setClipboard != "" {
-		t.TPuts(fmt.Sprintf(t.setClipboard, "?"))
+		t.Printf(t.setClipboard, "?")
 	}
 	t.Unlock()
 }
