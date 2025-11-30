@@ -314,9 +314,6 @@ func (t *tScreen) prepareExtendedOSC() {
 }
 
 func (t *tScreen) prepareCursorStyles() {
-	if t.legacy {
-		return
-	}
 	t.cursorStyles = map[CursorStyle]string{
 		CursorStyleDefault:           "\x1b[0 q",
 		CursorStyleBlinkingBlock:     "\x1b[1 q",
@@ -325,6 +322,9 @@ func (t *tScreen) prepareCursorStyles() {
 		CursorStyleSteadyUnderline:   "\x1b[4 q",
 		CursorStyleBlinkingBar:       "\x1b[5 q",
 		CursorStyleSteadyBar:         "\x1b[6 q",
+	}
+	if t.legacy {
+		return
 	}
 	if t.cursorRGB == "" {
 		t.cursorRGB = "\x1b]12;#%02x%02x%02x\007"
