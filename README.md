@@ -34,7 +34,7 @@ That's a wiki, and please do submit updates if you have something you want to sh
 ## More Portable
 
 _Tcell_ is portable to a wide variety of systems, and is pure Go, without any need for CGO.
-_Tcell_ is believed to work with mainstream systems officially supported by golang.
+_Tcell_ works with mainstream systems officially supported by golang.
 
 Following the Go support policy, _Tcell_ officially only supports the current ("stable") version of go,
 and the version immediately prior ("oldstable").  This policy is necessary to make sure that we can
@@ -44,7 +44,7 @@ update dependencies to pick up security fixes and new features, and it allows us
 ## Rich Unicode & non-Unicode support
 
 _Tcell_ includes enhanced support for Unicode, including wide characters and
-combining characters, provided your terminal can support them.
+grapheme clusters, provided your terminal can support them.
 
 It will also convert to and from Unicode locales, so that the program
 can work with UTF-8 internally, and get reasonable output in other locales.
@@ -52,15 +52,17 @@ _Tcell_ tries hard to convert to native characters on both input and output.
 On output _Tcell_ even makes use of the alternate character set to facilitate
 drawing certain characters.
 
-## More Function Keys
+## Better Keyboard Support
 
 _Tcell_ also has richer support for a larger number of special keys that some
-terminals can send.
+terminals can send. On modern terminal emulators we can also support a rich set of
+modifiers, and can discriminate between e.g. CTRL-I and TAB.  (This does require
+the terminal emulator to support one of the modern keyboard protocols.)
 
 ## Better Mouse Support
 
 _Tcell_ supports enhanced mouse tracking mode, so your application can receive
-regular mouse motion events, and wheel events, if your terminal supports it.
+regular mouse motion events, click-drag, and wheel events, if your terminal supports it.
 
 ## Working With Unicode
 
@@ -86,12 +88,8 @@ wide character (offset by one instead of by two), then the results are undefined
 
 ## Colors
 
-_Tcell_ assumes the ANSI/XTerm color model, including the 256 color map that
-XTerm uses when it supports 256 colors. The terminfo guidance will be
-honored, with respect to the number of colors supported. Also, only
-terminals which expose ANSI style `setaf` and `setab` will support color;
-if you have a color terminal that only has `setf` and `setb`, please submit
-a ticket.
+_Tcell_ assumes the ANSI/XTerm color palette for up to 256 colors, although terminals
+such as legacy ANSI terminals may only support 8 colors.
 
 ## 24-bit Color
 
@@ -99,18 +97,14 @@ _Tcell_ _supports 24-bit color!_ (That is, if your terminal can support it.)
 
 There are a few ways you can enable (or disable) 24-bit color.
 
-- For many terminals, we can detect it automatically if your terminal
-  includes the `RGB` or `Tc` capabilities (or rather it did when the database
-  was updated.)
-
 - You can force this one by setting the `COLORTERM` environment variable to
-  `24-bit`, `truecolor` or `24bit`. This is the same method used
-  by most other terminal applications that support 24-bit color.
+  `truecolor`. This environment variable is frequently set by terminal emulators
+  that support 24-bit color.
+
+- On Windows, 24-bit color support is assumed. (All modern Windows terminal emulators support it.)
 
 - If you set your `TERM` environment variable to a value with the suffix `-truecolor`
-  then 24-bit color compatible with XTerm and ECMA-48 will be assumed.
-  (This feature is deprecated.
-  It is recommended to use one of other methods listed above.)
+  or `-direct`, then 24-bit color compatible with XTerm and ECMA-48 will be assumed.
 
 - You can disable 24-bit color by setting `TCELL_TRUECOLOR=disable` in your
   environment.
@@ -129,13 +123,13 @@ avoiding repeated sequences or drawing the same cell on refresh updates.
 
 ## Mouse Support
 
-Mouse tracking, buttons, and even wheel mice works fine on most terminal
+Mouse tracking, buttons, and even wheel mice are supported on most terminal
 emulators, as well as Windows.
 
 ## Bracketed Paste
 
-Terminals that appear to support the XTerm mouse model also can support
-bracketed paste, for applications that opt-in. See `EnablePaste()` for details.
+Terminals that support support it, can use bracketed paste.
+See `EnablePaste()` for details.
 
 ## Breaking Changes in v3
 
