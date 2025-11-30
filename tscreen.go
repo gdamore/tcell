@@ -69,7 +69,7 @@ const (
 	strikeThrough     = "\x1b[8m"
 	showCursor        = "\x1b[?25h"
 	hideCursor        = "\x1b[?25l"
-	clear             = "\x1b[H\x1b[J" // NB: sun uses \f
+	clear             = "\x1b[H\x1b[J"
 	enablePaste       = "\x1b[?2004h"
 	disablePaste      = "\x1b[?2004l"
 	enableFocus       = "\x1b[?1004h"
