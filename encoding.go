@@ -25,23 +25,17 @@ import (
 
 var encodings map[string]encoding.Encoding
 var encodingLk sync.Mutex
-var encodingFallback EncodingFallback = EncodingFallbackFail
+var encodingFallback EncodingFallback = EncodingFallbackASCII
 
 // RegisterEncoding may be called by the application to register an encoding.
 // The presence of additional encodings will facilitate application usage with
 // terminal environments where the I/O subsystem does not support Unicode.
 //
-// Windows systems use Unicode natively, and do not need any of the encoding
-// subsystem when using Windows Console screens.
+// Modern systems and terminal emulators usually use UTF-8, and for those
+// systems, this API is also unnecessary.  For example, Windows, macOS, and
+// modern Linux systems generally will work out of the box without any of this.
 //
-// Please see the Go documentation for golang.org/x/text/encoding -- most of
-// the common ones exist already as stock variables.  For example, ISO8859-15
-// can be registered using the following code:
-//
-//	import "golang.org/x/text/encoding/charmap"
-//
-//	  ...
-//	  RegisterEncoding("ISO8859-15", charmap.ISO8859_15)
+// Use of UTF-8 is recommended when possible, as it saves quite a lot processing overhead.
 //
 // Aliases can be registered as well, for example "8859-15" could be an alias
 // for "ISO8859-15".
@@ -57,16 +51,14 @@ var encodingFallback EncodingFallback = EncodingFallbackFail
 // or "C", then we assume US-ASCII (the POSIX 'portable character set'
 // and assume all other characters are somehow invalid.)
 //
-// Modern POSIX systems and terminal emulators may use UTF-8, and for those
-// systems, this API is also unnecessary.  For example, Darwin (MacOS X) and
-// modern Linux running modern xterm generally will out of the box without
-// any of this.  Use of UTF-8 is recommended when possible, as it saves
-// quite a lot processing overhead.
+// Please see the Go documentation for golang.org/x/text/encoding -- most of
+// the common ones exist already as stock variables.  For example, ISO8859-15
+// can be registered using the following code:
 //
 // Note that some encodings are quite large (for example GB18030 which is a
 // superset of Unicode) and so the application size can be expected to
 // increase quite a bit as each encoding is added.
-
+//
 // The East Asian encodings have been seen to add 100-200K per encoding to the
 // size of the resulting binary.
 func RegisterEncoding(charset string, enc encoding.Encoding) {
@@ -82,22 +74,21 @@ func RegisterEncoding(charset string, enc encoding.Encoding) {
 // supported automatically.  Other character sets must be added using the
 // RegisterEncoding API.  (A large group of nearly all of them can be
 // added using the RegisterAll function in the encoding sub package.)
+// The default action will be to fallback to UTF-8.
 type EncodingFallback int
 
 const (
+	// EncodingFallbackUTF8 behavior causes GetEncoding to assume
+	// UTF8 can pass unmodified upon failure.
+	EncodingFallbackUTF8 = iota
+
 	// EncodingFallbackFail behavior causes GetEncoding to fail
 	// when it cannot find an encoding.
-	EncodingFallbackFail = iota
+	EncodingFallbackFail
 
 	// EncodingFallbackASCII behavior causes GetEncoding to fall back
 	// to a 7-bit ASCII encoding, if no other encoding can be found.
 	EncodingFallbackASCII
-
-	// EncodingFallbackUTF8 behavior causes GetEncoding to assume
-	// UTF8 can pass unmodified upon failure.  Note that this behavior
-	// is not recommended, unless you are sure your terminal can cope
-	// with real UTF8 sequences.
-	EncodingFallbackUTF8
 )
 
 // SetEncodingFallback changes the behavior of GetEncoding when a suitable

@@ -27,7 +27,6 @@ import (
 	"runtime"
 
 	"github.com/gdamore/tcell/v3"
-	"github.com/gdamore/tcell/v3/encoding"
 )
 
 var defStyle tcell.Style
@@ -97,8 +96,6 @@ func main() {
 			shell = "/bin/sh"
 		}
 	}
-
-	encoding.Register()
 
 	s, e := tcell.NewScreen()
 	if e != nil {
