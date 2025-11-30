@@ -204,6 +204,12 @@ var csiAllKeys = map[csiParamMode]keyMap{
 	{M: 'z', P: 234}: {Key: KeyF11},
 	{M: 'z', P: 235}: {Key: KeyF12},
 	{M: 'z', P: 247}: {Key: KeyInsert},
+	{M: '^', P: 1}:   {Key: KeyHome, Mod: ModCtrl},
+	{M: '^', P: 2}:   {Key: KeyInsert, Mod: ModCtrl},
+	{M: '^', P: 3}:   {Key: KeyDelete, Mod: ModCtrl},
+	{M: '^', P: 4}:   {Key: KeyEnd, Mod: ModCtrl},
+	{M: '^', P: 5}:   {Key: KeyPgUp, Mod: ModCtrl},
+	{M: '^', P: 6}:   {Key: KeyPgDn, Mod: ModCtrl},
 	{M: '^', P: 7}:   {Key: KeyHome, Mod: ModCtrl},
 	{M: '^', P: 8}:   {Key: KeyEnd, Mod: ModCtrl},
 	{M: '^', P: 11}:  {Key: KeyF23},
@@ -228,8 +234,19 @@ var csiAllKeys = map[csiParamMode]keyMap{
 	{M: '^', P: 34}:  {Key: KeyF42},
 	{M: '@', P: 23}:  {Key: KeyF43},
 	{M: '@', P: 24}:  {Key: KeyF44},
+	{M: '@', P: 1}:   {Key: KeyHome, Mod: ModShift | ModCtrl},
+	{M: '@', P: 2}:   {Key: KeyInsert, Mod: ModShift | ModCtrl},
+	{M: '@', P: 3}:   {Key: KeyDelete, Mod: ModShift | ModCtrl},
+	{M: '@', P: 4}:   {Key: KeyEnd, Mod: ModShift | ModCtrl},
+	{M: '@', P: 5}:   {Key: KeyPgUp, Mod: ModShift | ModCtrl},
+	{M: '@', P: 6}:   {Key: KeyPgDn, Mod: ModShift | ModCtrl},
+	{M: '@', P: 7}:   {Key: KeyHome, Mod: ModShift | ModCtrl},
+	{M: '@', P: 8}:   {Key: KeyEnd, Mod: ModShift | ModCtrl},
+	{M: '$', P: 1}:   {Key: KeyHome, Mod: ModShift},
 	{M: '$', P: 2}:   {Key: KeyInsert, Mod: ModShift},
 	{M: '$', P: 3}:   {Key: KeyDelete, Mod: ModShift},
+	{M: '$', P: 5}:   {Key: KeyPgUp, Mod: ModShift},
+	{M: '$', P: 6}:   {Key: KeyPgDn, Mod: ModShift},
 	{M: '$', P: 7}:   {Key: KeyHome, Mod: ModShift},
 	{M: '$', P: 8}:   {Key: KeyEnd, Mod: ModShift},
 	{M: '$', P: 23}:  {Key: KeyF21},
@@ -463,10 +480,16 @@ func (ip *inputProcessor) scan() {
 			}
 		case inpStateCsi:
 			// usual case for incoming keys
+			// NB: rxvt uses terminating '$' which is not a legal CSI terminator,
+			// for certain shifted key sequences.  We special case this, and it's ok
+			// because no other terminal seems to use this for CSI intermediates from
+			// the terminal to the host (queries in the other direction can use it.)
 			if r >= 0x30 && r <= 0x3F { // parameter bytes
 				ip.csiParams = append(ip.csiParams, byte(r))
-			} else if r >= 0x20 && r <= 0x2F { // intermediate bytes, rarely used
+			} else if r >= 0x20 && r <= 0x2F && !(r == '$' && len(ip.csiParams) >= 1) { // intermediate bytes, rarely used
 				ip.csiInterm = append(ip.csiInterm, byte(r))
+			} else if r == '$' && len(ip.csiParams) > 0 { // rxvt non-standard
+				ip.handleCsi(r, ip.csiParams, ip.csiInterm)
 			} else if r >= 0x40 && r <= 0x7F { // final byte
 				ip.handleCsi(r, ip.csiParams, ip.csiInterm)
 			} else {
