@@ -120,57 +120,58 @@ func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	tty          Tty
-	h            int
-	w            int
-	fini         bool
-	cells        CellBuffer
-	buffering    bool // true if we are collecting writes to buf instead of sending directly to out
-	buf          bytes.Buffer
-	curstyle     Style
-	style        Style
-	resizeQ      chan bool
-	quit         chan struct{}
-	keychan      chan []byte
-	cx           int
-	cy           int
-	clear        bool
-	cursorx      int
-	cursory      int
-	acs          map[rune]string
-	charset      string
-	encoder      transform.Transformer
-	decoder      transform.Transformer
-	fallback     map[rune]string
-	ncolor       int
-	colors       map[Color]Color
-	palette      []Color
-	truecolor    bool
-	legacy       bool
-	finiOnce     sync.Once
-	enterUrl     string
-	exitUrl      string
-	setWinSize   string
-	cursorStyles map[CursorStyle]string
-	cursorStyle  CursorStyle
-	cursorColor  Color
-	cursorRGB    string
-	cursorFg     string
-	stopQ        chan struct{}
-	eventQ       chan Event
-	running      bool
-	wg           sync.WaitGroup
-	mouseFlags   MouseFlags
-	pasteEnabled bool
-	focusEnabled bool
-	setTitle     string
-	saveTitle    string
-	restoreTitle string
-	title        string
-	setClipboard string
-	enableCsiU   string
-	disableCsiU  string
-	input        *inputProcessor
+	tty           Tty
+	h             int
+	w             int
+	fini          bool
+	cells         CellBuffer
+	buffering     bool // true if we are collecting writes to buf instead of sending directly to out
+	buf           bytes.Buffer
+	curstyle      Style
+	style         Style
+	resizeQ       chan bool
+	quit          chan struct{}
+	keychan       chan []byte
+	cx            int
+	cy            int
+	clear         bool
+	cursorx       int
+	cursory       int
+	acs           map[rune]string
+	charset       string
+	encoder       transform.Transformer
+	decoder       transform.Transformer
+	fallback      map[rune]string
+	ncolor        int
+	colors        map[Color]Color
+	palette       []Color
+	truecolor     bool
+	legacy        bool
+	finiOnce      sync.Once
+	enterUrl      string
+	exitUrl       string
+	setWinSize    string
+	cursorStyles  map[CursorStyle]string
+	cursorStyle   CursorStyle
+	cursorColor   Color
+	cursorRGB     string
+	cursorFg      string
+	stopQ         chan struct{}
+	eventQ        chan Event
+	running       bool
+	wg            sync.WaitGroup
+	mouseFlags    MouseFlags
+	pasteEnabled  bool
+	focusEnabled  bool
+	setTitle      string
+	saveTitle     string
+	restoreTitle  string
+	title         string
+	setClipboard  string
+	notifyDesktop string
+	enableCsiU    string
+	disableCsiU   string
+	input         *inputProcessor
 
 	sync.Mutex
 }
@@ -292,6 +293,11 @@ func (t *tScreen) prepareExtendedOSC() {
 	// it will also be able to retrieve the clipboard using "?" as the
 	// sent string, when we support that.
 	t.setClipboard = "\x1b]52;c;%s\x1b\\"
+
+	// OSC 777 is the desktop notification supported by a variety of
+	// newer terminals.  (There was also OSC 9 and OSC 99, but they
+	// are not as widely deployed, and OSC 9 is not unique.)
+	t.notifyDesktop = "\x1b]777;notify;%s;%s\x1b\\"
 
 	if t.enableCsiU == "" {
 		if runtime.GOOS == "windows" && (os.Getenv("TERM") == "" || os.Getenv("TERM_PROGRAM") == "WezTerm") {
@@ -1177,5 +1183,11 @@ func (t *tScreen) GetClipboard() {
 	if t.setClipboard != "" {
 		t.Printf(t.setClipboard, "?")
 	}
+	t.Unlock()
+}
+
+func (t *tScreen) ShowNotification(title string, body string) {
+	t.Lock()
+	t.Printf(t.notifyDesktop, title, body)
 	t.Unlock()
 }
