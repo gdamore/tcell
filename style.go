@@ -14,6 +14,8 @@
 
 package tcell
 
+import "strings"
+
 // Style represents a complete text style, including both foreground color,
 // background color, and additional attributes such as "bold" or "underline".
 //
@@ -153,6 +155,16 @@ func (s Style) Underline(params ...any) Style {
 	return s2
 }
 
+// GetForegroundColor returns the foreground (text) color.
+func (s Style) GetForegroundColor() Color {
+	return s.fg
+}
+
+// GetForegroundColor returns the background color.
+func (s Style) GetBackgroundColor() Color {
+	return s.bg
+}
+
 // GetUnderlineStyle returns the underline style for the style.
 func (s Style) GetUnderlineStyle() UnderlineStyle {
 	return s.ulStyle
@@ -197,4 +209,13 @@ func (s Style) UrlId(id string) Style {
 		s2.url.url = s.url.url
 	}
 	return s2
+}
+
+// GetUrl returns the URL (id and actual URL) associated with the style.
+// This is a hyper link that will be used for cells marked up with this style.
+func (s Style) GetUrl() (id string, url string) {
+	if s.url != nil {
+		return strings.TrimPrefix(s.url.id, "id="), s.url.url
+	}
+	return "", ""
 }
