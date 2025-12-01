@@ -155,13 +155,13 @@ func (s Style) Underline(params ...any) Style {
 	return s2
 }
 
-// GetForegroundColor returns the foreground (text) color.
-func (s Style) GetForegroundColor() Color {
+// GetForeground returns the foreground (text) color.
+func (s Style) GetForeground() Color {
 	return s.fg
 }
 
-// GetForegroundColor returns the background color.
-func (s Style) GetBackgroundColor() Color {
+// GetBackground returns the background color.
+func (s Style) GetBackground() Color {
 	return s.bg
 }
 
@@ -177,10 +177,18 @@ func (s Style) GetUnderlineColor() Color {
 
 // Attributes returns a new style based on s, with its attributes set as
 // specified.
+//
+// Deprecated: Use direct functions instead.
 func (s Style) Attributes(attrs AttrMask) Style {
 	s2 := s
 	s2.attrs = attrs
 	return s2
+}
+
+// GetAttributes gets the attributes for a style.
+// Deprecated: Use individual property accessors instead.
+func (s Style) GetAttributes() AttrMask {
+	return s.attrs
 }
 
 // Url returns a style with the Url set.  If the provided Url is not empty,
@@ -218,4 +226,42 @@ func (s Style) GetUrl() (id string, url string) {
 		return strings.TrimPrefix(s.url.id, "id="), s.url.url
 	}
 	return "", ""
+}
+
+// HasBold returns true if the style indicates bold text.
+// Note that on some terminals bold text is simply brighter.
+func (s Style) HasBold() bool {
+	return s.attrs&AttrBold != 0
+}
+
+// HasBlink returns true if the style indicates blinking text.
+func (s Style) HasBlink() bool {
+	return s.attrs&AttrBlink != 0
+}
+
+// HasReverse returns true if the style indicates reverse video text.
+func (s Style) HasReverse() bool {
+	return s.attrs&AttrReverse != 0
+}
+
+// HasItalic returns true if the style indicates italicized text.
+func (s Style) HasItalic() bool {
+	return s.attrs&AttrItalic != 0
+}
+
+// HasDim returns true if the style indicates dim or faint text.
+func (s Style) HasDim() bool {
+	return s.attrs&AttrDim != 0
+}
+
+// HasStrikeThrough returns true if the style striked out / crossed-out text.
+func (s Style) HasStrikeThrough() bool {
+	return s.attrs&AttrStrikeThrough != 0
+}
+
+// HasUnderline returns true if any underline style is set.
+// Note that more detail is available via the GetUnderlineStyle
+// and GetUnderlineColor methods.
+func (s Style) HasUnderline() bool {
+	return s.ulStyle != UnderlineStyleNone
 }

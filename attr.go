@@ -16,6 +16,9 @@ package tcell
 
 // AttrMask represents a mask of text attributes, apart from color.
 // Note that support for attributes may vary widely across terminals.
+// Deprecated: This should not be used directly by applications.
+// Instead use the accessor functions on the style.  (In particular the
+// details of the encoding are subject to change.)
 type AttrMask uint16
 
 // Attributes are not colors, but affect the display of text.  They can
