@@ -1,17 +1,9 @@
 ## Breaking Changes in _Tcell_ v3
 
-> [!NOTE]
-> _Tcell_ v3 is currently in development, and these details are subject to change
-> before we release.
-
-### Events (PostEvent, PollEvent, ChannelEvents)
-
-The event channel is now directly exposed via `EventQ`, and events may be read from or written
-directly to the queue.  This should help applications that want to integrate into `select`
-statements (e.g. for timed key presses).
-
-The `ChannelEvents`, `PollEvent`, `PostEvent`, and `PostEventWait` functions are removed.
-Most simple applications can just change to read from the screen `EventQ` directly.
+There are a number of changes in _Tcell_ v3, mostly aimed at simplifying things for
+applications, but some also intended to reduce the burden for support.  Every application
+will need at least some changes, but it is expected that those changes will be small,
+possibly even mechanical in nature.
 
 ### Cell and Contents APIs
 
@@ -19,9 +11,39 @@ In order to improve support for multi-rune grapheme clusters, and to provide an
 experience that reduces friction when using it, some APIs have been removed, and
 newer APIs exist in their place.
 
-- `SetCell` is removed.  Use `Put` instead.
-- `SetContents` is deprecated and may be removed before release.  Use `Put` instead.
+- `SetCell` and `SetContents` are removed.  Use `Put` instead.
 - `GetContents` is removed. Use `Get` instead.
+
+### Events (PostEvent, PollEvent, ChannelEvents)
+
+The event channel is now directly exposed via `EventQ`, and events may be read from or written
+directly to the channel in the standard Go fashion.  This should help applications that want to
+integrate into `select` statements (e.g. for timed key presses).
+
+The `ChannelEvents`, `PollEvent`, `PostEvent`, and `PostEventWait` functions are removed, as
+applications can now just access the event channel directly.
+
+### Key Event Changes
+
+`EventKey` now carries a string for `KeyRune` instead of a single rune.
+As a result the old `Rune` method for `EventKey` is replaced by `Str`.
+The main difference for most users will be that `Str` returns a string, and most
+of the time that string will consist of only a single rune. However, it is possible
+now to inject synthetic key strokes consisting of multi-rune grapheme clusters.
+
+Additionally the following special keys are removed, as they are delivered
+instead as `KeyRune` with the relevant rune, and the `ModCtrl` modifier:
+`KeyCtrlSpace`, `KeyCtrlLeftSq`, `KeyCtrlRightSq`, `KeyCtrlBackslash`, and
+`KeyCtrlUnderscore`.
+
+Note that `KeyRune` will never have a `ModShift` applied unless it is applied
+also with other modifiers.
+
+The `KeyCtrlA` through `KeyCtrlZ` keys are delivered, but will also carry
+the associated lower case rune (e.g. "a", "b", etc.) and `ModCtrl`.
+
+The `KeyBackspace2` key is no longer delivered, but is converted to
+`KeyBackspace`. (This resolves some inconsistency around e.g. CTRL-H vs DELETE.)
 
 ### Termbox Compatibility Removed
 
@@ -29,15 +51,6 @@ The `termbox` compatibility package is removed. Few applications were using it,
 and the compatibility was imperfect. Also the package had limited support for many
 newer features. Further, _Termbox_ itself is no longer being maintained.
 Applications that still need this should keep using _Tcell_ v2.
-
-
-### Support for Grapheme Clusters in EventKey
-
-`EventKey` now carries a string for `KeyRune` instead of a single rune.
-As a result the old `Rune` method for `EventKey` is replaced by `Str`.
-The main difference for most users will be that `Str` returns a string, and most
-of the time that string will consist of only a single rune. However, it is possible
-now to inject synthetic key strokes consisting of multi-rune grapheme clusters.
 
 ### Terminfo Removed
 
@@ -66,8 +79,8 @@ at least ECMA-48.
 ### Color, Attributes, Etc. Bit Sizes
 
 The `Color` type is now only 32-bits, which should save some memory on large terminal windows.
-The `AttrMask` type is now only 16-bits, and the `UnderlineStyle` is now 8 bits.  All these lead
-to further savings in the memory per-cell.
+The `AttrMask` type is now only 16-bits, and the `UnderlineStyle` is now 8 bits.
+All these lead to further savings in the memory per cell.
 
 ### Underline
 
