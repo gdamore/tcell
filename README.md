@@ -19,8 +19,8 @@ It was inspired by _termbox_, but includes many additional improvements.
 > [!NOTE]
 > This is version 3 of _Tcell_.
 > There are breaking changes relative to versions 1 and 2.
-> Version 2.x remains available using the import `github.com/gdamore/tcell/v2`.
-> Version 1.x remains available using the import `github.com/gdamore/tcell`, but is
+> [Version 2](https://github.com/gdamore/tcell/v2) remains available using the import `github.com/gdamore/tcell/v2`.
+> [Version 1](https://github.com/gdamore/tcell/v1) Version 1.x remains available using the import `github.com/gdamore/tcell`, but is
 > unmaintained and should not be used.
 
 ## Tutorial
