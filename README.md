@@ -17,10 +17,11 @@ It was inspired by _termbox_, but includes many additional improvements.
 [![Latest Release](https://img.shields.io/github/v/release/gdamore/tcell.svg?logo=github&label=)](https://github.com/gdamore/tcell/releases)
 
 > [!NOTE]
-> This is a development branch intended to become version 3 of _Tcell_.
+> This is version 3 of _Tcell_.
 > There are breaking changes relative to versions 1 and 2.
-> Version 1.x remains available using the import `github.com/gdamore/tcell`.
 > Version 2.x remains available using the import `github.com/gdamore/tcell/v2`.
+> Version 1.x remains available using the import `github.com/gdamore/tcell`, but is
+> unmaintained and should not be used.
 
 ## Tutorial
 
