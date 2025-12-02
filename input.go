@@ -426,7 +426,9 @@ func (ip *inputProcessor) scan() {
 				ip.post(NewEventKey(KeyEnter, "", ModNone))
 			default:
 				// Control keys - legacy handling
-				if r < ' ' {
+				if r == 0 {
+					ip.post(NewEventKey(KeyRune, " ", ModCtrl))
+				} else if r < ' ' {
 					ip.post(NewEventKey(KeyRune, string(r+0x40), ModCtrl))
 				} else {
 					ip.post(NewEventKey(KeyRune, string(r), ModNone))
