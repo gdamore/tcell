@@ -175,8 +175,8 @@ func (w *winTty) getConsoleInput() error {
 
 			case resizeEvent:
 				w.Lock()
-				w.cols = binary.LittleEndian.Uint16(ir.data[0:]) + 1
-				w.rows = binary.LittleEndian.Uint16(ir.data[2:]) + 1
+				w.cols = binary.LittleEndian.Uint16(ir.data[0:])
+				w.rows = binary.LittleEndian.Uint16(ir.data[2:])
 				cb := w.resizeCb
 				w.Unlock()
 				if cb != nil {
@@ -271,8 +271,8 @@ func NewDevTty() (Tty, error) {
 	_, _, _ = procGetConsoleScreenBufferInfo.Call(uintptr(w.out), uintptr(unsafe.Pointer(&w.oscreen)))
 	_, _, _ = procGetConsoleMode.Call(uintptr(w.out), uintptr(unsafe.Pointer(&w.oomode)))
 	_, _, _ = procGetConsoleMode.Call(uintptr(w.in), uintptr(unsafe.Pointer(&w.oimode)))
-	w.rows = uint16(w.oscreen.size.y + 1)
-	w.cols = uint16(w.oscreen.size.x + 1)
+	w.rows = uint16(w.oscreen.size.y)
+	w.cols = uint16(w.oscreen.size.x)
 
 	return w, nil
 }
