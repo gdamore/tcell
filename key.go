@@ -299,6 +299,11 @@ func NewEventKey(k Key, str string, mod ModMask) *EventKey {
 		k = KeyBackspace
 	}
 
+	// Shift-Tab should be Backtab.
+	if k == KeyTab && (mod&ModShift) != 0 {
+		k = KeyBacktab
+		mod &^= ModShift
+	}
 	return &EventKey{t: time.Now(), key: k, str: str, mod: mod}
 }
 
