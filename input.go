@@ -488,10 +488,10 @@ func (ip *inputProcessor) scan() {
 			// the terminal to the host (queries in the other direction can use it.)
 			if r >= 0x30 && r <= 0x3F { // parameter bytes
 				ip.csiParams = append(ip.csiParams, byte(r))
-			} else if r >= 0x20 && r <= 0x2F && !(r == '$' && len(ip.csiParams) >= 1) { // intermediate bytes, rarely used
-				ip.csiInterm = append(ip.csiInterm, byte(r))
 			} else if r == '$' && len(ip.csiParams) > 0 { // rxvt non-standard
 				ip.handleCsi(r, ip.csiParams, ip.csiInterm)
+			} else if r >= 0x20 && r <= 0x2F { // intermediate bytes, rarely used
+				ip.csiInterm = append(ip.csiInterm, byte(r))
 			} else if r >= 0x40 && r <= 0x7F { // final byte
 				ip.handleCsi(r, ip.csiParams, ip.csiInterm)
 			} else {
