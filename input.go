@@ -448,6 +448,7 @@ func (ip *inputProcessor) scan() {
 				ip.scratch = nil
 			case 'O':
 				ip.state = inpStateSs3
+				ip.csiParams = nil
 				ip.scratch = nil
 			case 'X':
 				ip.state = inpStateSos
@@ -504,8 +505,29 @@ func (ip *inputProcessor) scan() {
 
 		case inpStateSs3: // typically application mode keys or older terminals
 			ip.state = inpStateInit
-			if k, ok := ss3Keys[r]; ok {
-				ip.post(NewEventKey(k, "", ModNone))
+			// some SS3 sequences (old VTE) encode modifiers here just like CSI
+			if r >= 0x30 && r <= 0x3F {
+				ip.csiParams = append(ip.csiParams, byte(r))
+				ip.state = inpStateSs3
+			} else if k, ok := ss3Keys[r]; ok {
+				// If there are no parameters, then it's simple without modifiers.
+				// The options for parameters are "1;<modifiers>" , or ";modifiers" (empty
+				// first paramter defaults to 1), or just <modifiers>.  If a sequence has
+				// parameters that do not match one of these forms, we just discard it.
+				if len(ip.csiParams) == 0 {
+					// simple SS3 case
+					ip.post(NewEventKey(k, "", ModNone))
+				} else if parts := strings.Split(string(ip.csiParams), ";"); len(parts) >= 1 {
+					// SS3 with modifier (old style).  Note old terminfo would declare these as high
+					// numbered function keys, but we encode as modified since that's how they are entered.
+					if len(parts) >= 2 {
+						if m, err := strconv.Atoi(parts[1]); err == nil && (parts[0] == "1" || parts[0] == "") {
+							ip.post(NewEventKey(k, "", calcModifier(m)))
+						}
+					} else if m, err := strconv.Atoi(parts[0]); err == nil {
+						ip.post(NewEventKey(k, "", calcModifier(m)))
+					}
+				}
 			}
 
 		case inpStatePm, inpStateApc, inpStateSos, inpStateDcs: // these we just eat
