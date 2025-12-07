@@ -819,7 +819,7 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 			return
 		}
 	case '_':
-		if len(intermediate) == 0 && len(P) > 0 {
+		if len(P) > 0 {
 			ip.handleWinKey(P)
 			return
 		}
@@ -834,7 +834,7 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 			return
 		}
 	case '~':
-		if len(intermediate) == 0 && len(P) >= 2 && !hasLT {
+		if len(P) >= 2 && !hasLT {
 			mod := calcModifier(P[1])
 			if ks, ok := csiAllKeys[csiParamMode{M: mode, P: P0}]; ok {
 				ip.post(NewEventKey(ks.Key, "", mod))
