@@ -86,11 +86,11 @@ func TestInputProcessorControlKeys(t *testing.T) {
 		{"Ctrl+X", 0x18, KeyCtrlX, "", ModCtrl},
 		{"Ctrl+Y", 0x19, KeyCtrlY, "", ModCtrl},
 		{"Ctrl+Z", 0x1A, KeyCtrlZ, "", ModCtrl},
-		{"Ctrl+[", 0x1B, KeyEscape, "", ModNone},    // ESC is special
-		{"Ctrl+\\", 0x1C, KeyRune, "\\", ModCtrl},   // becomes KeyRune with string
-		{"Ctrl+]", 0x1D, KeyRune, "]", ModCtrl},     // becomes KeyRune with string
-		{"Ctrl+^", 0x1E, KeyRune, "^", ModCtrl},     // becomes KeyRune with string
-		{"Ctrl+_", 0x1F, KeyRune, "_", ModCtrl},     // becomes KeyRune with string
+		{"Ctrl+[", 0x1B, KeyEscape, "", ModNone},  // ESC is special
+		{"Ctrl+\\", 0x1C, KeyRune, "\\", ModCtrl}, // becomes KeyRune with string
+		{"Ctrl+]", 0x1D, KeyRune, "]", ModCtrl},   // becomes KeyRune with string
+		{"Ctrl+^", 0x1E, KeyRune, "^", ModCtrl},   // becomes KeyRune with string
+		{"Ctrl+_", 0x1F, KeyRune, "_", ModCtrl},   // becomes KeyRune with string
 	}
 
 	for _, tt := range tests {
@@ -273,10 +273,10 @@ func TestInputProcessorSequentialInput(t *testing.T) {
 		str string
 		mod ModMask
 	}{
-		{KeyRune, " ", ModCtrl},  // null -> Ctrl+Space
-		{KeyCtrlA, "", ModCtrl},  // 0x01 -> KeyCtrlA with ModCtrl
-		{KeyRune, "B", ModNone},  // 'B'
-		{KeyRune, " ", ModNone},  // space
+		{KeyRune, " ", ModCtrl}, // null -> Ctrl+Space
+		{KeyCtrlA, "", ModCtrl}, // 0x01 -> KeyCtrlA with ModCtrl
+		{KeyRune, "B", ModNone}, // 'B'
+		{KeyRune, " ", ModNone}, // space
 	}
 
 	for i, b := range inputs {
@@ -442,7 +442,7 @@ func TestInputProcessorConcurrentAccess(t *testing.T) {
 
 	// Goroutine 1: Send null bytes
 	go func() {
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			ip.ScanUTF8([]byte{0x00})
 			time.Sleep(time.Millisecond)
 		}
@@ -451,7 +451,7 @@ func TestInputProcessorConcurrentAccess(t *testing.T) {
 
 	// Goroutine 2: Send regular characters
 	go func() {
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			ip.ScanUTF8([]byte{'A'})
 			time.Sleep(time.Millisecond)
 		}
@@ -509,5 +509,79 @@ func TestInputProcessorStateTransitions(t *testing.T) {
 		}
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("Timeout")
+	}
+}
+
+// TestSpecialKeys tests that special keys (F-keys, home, del, etc. work as expected)
+func TestSpecialKeys(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       []byte
+		expectedKey Key
+		expectedMod ModMask
+	}{
+		{"Esc", []byte{'\x1b'}, KeyEscape, ModNone},
+		{"Tab", []byte{'\t'}, KeyTab, ModNone},
+		{"NL", []byte{'\n'}, KeyEnter, ModNone},
+		{"CR", []byte{'\r'}, KeyEnter, ModNone},
+		{"Backspace", []byte{'\b'}, KeyBackspace, ModNone},
+		{"Delete", []byte{'\x7f'}, KeyBackspace, ModNone},
+		{"CSI-A", []byte{'\x1b', '[', 'A'}, KeyUp, ModNone},
+		{"CSI-B", []byte{'\x1b', '[', 'B'}, KeyDown, ModNone},
+		{"CSI-C", []byte{'\x1b', '[', 'C'}, KeyRight, ModNone},
+		{"CSI-D", []byte{'\x1b', '[', 'D'}, KeyLeft, ModNone},
+		{"CSI-F", []byte{'\x1b', '[', 'F'}, KeyEnd, ModNone},
+		{"CSI-H", []byte{'\x1b', '[', 'H'}, KeyHome, ModNone},
+		{"CSI-L", []byte{'\x1b', '[', 'L'}, KeyInsert, ModNone},
+		{"CSI-P", []byte{'\x1b', '[', 'P'}, KeyF1, ModNone},
+		{"CSI-Q", []byte{'\x1b', '[', 'Q'}, KeyF2, ModNone},
+		{"CSI-S", []byte{'\x1b', '[', 'S'}, KeyF4, ModNone},
+		{"CSI-Z", []byte{'\x1b', '[', 'Z'}, KeyBacktab, ModNone},
+		{"CSI-a", []byte{'\x1b', '[', 'a'}, KeyUp, ModShift},
+		{"CSI-b", []byte{'\x1b', '[', 'b'}, KeyDown, ModShift},
+		{"CSI-c", []byte{'\x1b', '[', 'c'}, KeyRight, ModShift},
+		{"CSI-d", []byte{'\x1b', '[', 'd'}, KeyLeft, ModShift},
+		{"CSI-15~", []byte{'\x1b', '[', '1', '5', '~'}, KeyF5, ModNone},
+		{"CSI-17~", []byte{'\x1b', '[', '1', '7', '~'}, KeyF6, ModNone},
+		{"CSI-18~", []byte{'\x1b', '[', '1', '8', '~'}, KeyF7, ModNone},
+		{"CSI-19~", []byte{'\x1b', '[', '1', '9', '~'}, KeyF8, ModNone},
+		{"CSI-20~", []byte{'\x1b', '[', '2', '0', '~'}, KeyF9, ModNone},
+		{"CSI-21~", []byte{'\x1b', '[', '2', '1', '~'}, KeyF10, ModNone},
+		{"CSI-23~", []byte{'\x1b', '[', '2', '3', '~'}, KeyF11, ModNone},
+		{"CSI-24~", []byte{'\x1b', '[', '2', '4', '~'}, KeyF12, ModNone},
+		{"SS3-F1", []byte{'\x1b', 'O', 'P'}, KeyF1, ModNone},
+		{"SS3-F2", []byte{'\x1b', 'O', 'Q'}, KeyF2, ModNone},
+		{"SS3-F3", []byte{'\x1b', 'O', 'R'}, KeyF3, ModNone},
+		{"SS3-F4", []byte{'\x1b', 'O', 'S'}, KeyF4, ModNone},
+		{"SS3-F4-Shift", []byte{'\x1b', 'O', '1', ';', '2', 'S'}, KeyF4, ModShift},
+		{"SS3-F4-Ctrl", []byte{'\x1b', 'O', '1', ';', '5', 'S'}, KeyF4, ModCtrl},
+		{"SS3-F4-Ctrl-Short", []byte{'\x1b', 'O', '5', 'S'}, KeyF4, ModCtrl},
+		{"SS3-F4-Ctrl-Shift", []byte{'\x1b', 'O', ';', '6', 'S'}, KeyF4, ModCtrl | ModShift},
+		{"SS3-F2-Meta", []byte{'\x1b', 'O', ';', '9', 'Q'}, KeyF2, ModMeta},
+		{"SS3-Home", []byte{'\x1b', 'O', 'H'}, KeyHome, ModNone},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			evch := make(chan Event, 10)
+			ip := newInputProcessor(evch)
+
+			ip.ScanUTF8(tt.input)
+
+			expected := NewEventKey(tt.expectedKey, "", tt.expectedMod)
+
+			select {
+			case ev := <-evch:
+				if kev, ok := ev.(*EventKey); ok {
+					if kev.Key() != tt.expectedKey || kev.Modifiers() != tt.expectedMod {
+						t.Errorf("Expected %q, got %q", expected.Name(), kev.Name())
+					}
+				} else {
+					t.Errorf("Expected EventKey, got %T", ev)
+				}
+			case <-time.After(100 * time.Millisecond):
+				t.Fatal("Timeout waiting for UTF-8 character event")
+			}
+		})
 	}
 }
