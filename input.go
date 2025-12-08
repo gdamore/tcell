@@ -34,60 +34,64 @@ import (
 	"unicode/utf8"
 )
 
-type inpState int
+type inputState int
 
 const (
-	inpStateInit = inpState(iota)
-	inpStateUtf
-	inpStateEsc
-	inpStateCsi // control sequence introducer
-	inpStateOsc // operating system command
-	inpStateDcs // device control string
-	inpStateSos // start of string (unused)
-	inpStatePm  // privacy message (unused)
-	inpStateApc // application program command
-	inpStateSt  // string terminator
-	inpStateSs2 // single shift 2
-	inpStateSs3 // single shift 3
-	inpStateLFK // linux F-key (not ECMA-48 compliant - bogus CSI)
+	istInit = inputState(iota)
+	istUtf  // utf8 state
+	istEsc  // escape
+	istCsi  // control sequence introducer
+	istOsc  // operating system command
+	istDcs  // device control string
+	istSos  // start of string (unused)
+	istPm   // privacy message (unused)
+	istApc  // application program command
+	istSt   // string terminator
+	istSs2  // single shift 2
+	istSs3  // single shift 3
+	istLnx  // linux F-key (not ECMA-48 compliant - bogus CSI)
 )
 
-func newInputProcessor(eq chan<- Event) *inputProcessor {
-	return &inputProcessor{
+func newInputParser(eq chan<- Event) *inputParser {
+	return &inputParser{
 		evch: eq,
 		buf:  make([]rune, 0, 128),
 	}
 }
 
-type inputProcessor struct {
-	ut8       []byte
-	buf       []rune
-	scratch   []byte
-	csiParams []byte
-	csiInterm []byte
-	escChar   byte      // last byte for escape
-	keyTime   time.Time // time of last key press / byte ingested
-	escaped   bool
-	btnDown   bool // mouse button tracking for broken terms
-	state     inpState
-	strState  inpState // saved str state (needed for ST)
-	timer     *time.Timer
-	expire    time.Time
-	l         sync.Mutex
-	encBuf    []rune
-	evch      chan<- Event
-	rows      int // used for clipping mouse coordinates
-	cols      int // used for clipping mouse coordinates
-	nested    *inputProcessor
+type inputParser struct {
+	buf       []rune       // bytes to process (ingest data)
+	utfBuf    []byte       // accrued UTF8 bytes
+	strBuf    []byte       // accrued string data (for ST, OSC, etc.)
+	csiParams []byte       // accrued parameter bytes for CSI (and SS3)
+	csiInterm []byte       // accrued intermediate bytes for CSI
+	escChar   byte         // last byte for escape
+	escaped   bool         // true if next key should be modified by ESC
+	btnDown   bool         // mouse button tracking for broken terms
+	state     inputState   // tracks processor state
+	strState  inputState   // saved str state (needed for ST)
+	l         sync.Mutex   // protects local state
+	evch      chan<- Event // where events are routed
+	rows      int          // used for clipping mouse coordinates
+	cols      int          // used for clipping mouse coordinates
+	keyTime   time.Time    // time of last key press / byte ingested
+	nested    *inputParser // for buggy win32-input-mode implementations
 }
 
-func (ip *inputProcessor) Waiting() bool {
+// Waiting returns true if the processor is waiting for
+// some more input (i.e. we are not in in the initial state.)
+// This can occur when we have ambiguous escape sequences, such
+// as the lone escape.  If this is typed, we expect at least a minimal
+// interkey delay before the next stroke occurs, and the caller
+// should check for waiting, and call Scan() or ScanUTF8() to
+// finish the processing.  (Typically after a delay of around 100msec.)
+func (ip *inputParser) Waiting() bool {
 	ip.l.Lock()
 	defer ip.l.Unlock()
-	return ip.state != inpStateInit
+	return ip.state != istInit
 }
 
-func (ip *inputProcessor) SetSize(w, h int) {
+func (ip *inputParser) SetSize(w, h int) {
 	if ip.nested != nil {
 		ip.nested.SetSize(w, h)
 		return
@@ -100,7 +104,7 @@ func (ip *inputProcessor) SetSize(w, h int) {
 		ip.l.Unlock()
 	}()
 }
-func (ip *inputProcessor) post(ev Event) {
+func (ip *inputParser) post(ev Event) {
 	if ip.escaped {
 		ip.escaped = false
 		if ke, ok := ev.(*EventKey); ok {
@@ -116,24 +120,6 @@ func (ip *inputProcessor) post(ev Event) {
 	}
 
 	ip.evch <- ev
-}
-
-func (ip *inputProcessor) escTimeout() {
-	ip.l.Lock()
-	defer ip.l.Unlock()
-	if ip.expire.Before(time.Now()) {
-		if ip.state == inpStateEsc {
-			// post it
-			ip.state = inpStateInit
-			ip.escaped = false
-			ip.post(NewEventKey(KeyEsc, "", ModNone))
-		} else if ec := ip.escChar; ec != 0 {
-			ip.escChar = 0
-			ip.escaped = false
-			ip.state = inpStateInit
-			ip.post(NewEventKey(KeyRune, string(ec), ModAlt))
-		}
-	}
 }
 
 type csiParamMode struct {
@@ -414,23 +400,23 @@ var linuxFKeys = map[rune]Key{
 	'E': KeyF5,
 }
 
-func (ip *inputProcessor) scan() {
+func (ip *inputParser) scan() {
 	for _, r := range ip.buf {
 		ip.buf = ip.buf[1:]
 		ip.escChar = 0
 		ip.keyTime = time.Now()
 		if r > 0x7F {
 			// 8-bit extended Unicode we just treat as such - this will swallow anything else queued up
-			ip.state = inpStateInit
+			ip.state = istInit
 			ip.post(NewEventKey(KeyRune, string(r), ModNone))
 			continue
 		}
 		switch ip.state {
-		case inpStateInit:
+		case istInit:
 			switch r {
 			case '\x1b':
 				// escape.. pending
-				ip.state = inpStateEsc
+				ip.state = istEsc
 				ip.escChar = 0
 			case '\t':
 				ip.post(NewEventKey(KeyTab, "", ModNone))
@@ -448,44 +434,44 @@ func (ip *inputProcessor) scan() {
 					ip.post(NewEventKey(KeyRune, string(r), ModNone))
 				}
 			}
-		case inpStateEsc:
+		case istEsc:
 			switch r {
 			case '[':
-				ip.state = inpStateCsi
+				ip.state = istCsi
 				ip.csiInterm = nil
 				ip.csiParams = nil
 				ip.escChar = byte(r)
 			case ']':
-				ip.state = inpStateOsc
-				ip.scratch = nil
+				ip.state = istOsc
+				ip.strBuf = nil
 				ip.escChar = byte(r)
 			case 'N':
-				ip.state = inpStateSs2 // no known uses
-				ip.scratch = nil
+				ip.state = istSs2 // no known uses
+				ip.strBuf = nil
 				ip.escChar = byte(r)
 			case 'O':
-				ip.state = inpStateSs3
+				ip.state = istSs3
 				ip.csiParams = nil
-				ip.scratch = nil
+				ip.strBuf = nil
 				ip.escChar = byte(r)
 			case 'X':
-				ip.state = inpStateSos
-				ip.scratch = nil
+				ip.state = istSos
+				ip.strBuf = nil
 				ip.escChar = byte(r)
 			case '^':
-				ip.state = inpStatePm
-				ip.scratch = nil
+				ip.state = istPm
+				ip.strBuf = nil
 				ip.escChar = byte(r)
 			case '_':
-				ip.state = inpStateApc
-				ip.scratch = nil
+				ip.state = istApc
+				ip.strBuf = nil
 				ip.escChar = byte(r)
 			case '\\':
 				// string terminator reached, (orphaned?)
-				ip.state = inpStateInit
+				ip.state = istInit
 			case '\t':
 				// Linux console only, does not conform to ECMA
-				ip.state = inpStateInit
+				ip.state = istInit
 				ip.post(NewEventKey(KeyBacktab, "", ModNone))
 			default:
 				if r == '\x1b' {
@@ -494,7 +480,7 @@ func (ip *inputProcessor) scan() {
 					ip.escChar = byte(r)
 				} else {
 					// treat as alt-key ... legacy emulators only (no CSI-u or other)
-					ip.state = inpStateInit
+					ip.state = istInit
 					mod := ModAlt
 					if r < ' ' {
 						mod |= ModCtrl
@@ -503,7 +489,7 @@ func (ip *inputProcessor) scan() {
 					ip.post(NewEventKey(KeyRune, string(r), mod))
 				}
 			}
-		case inpStateCsi:
+		case istCsi:
 			// usual case for incoming keys
 			// NB: rxvt uses terminating '$' which is not a legal CSI terminator,
 			// for certain shifted key sequences.  We special case this, and it's ok
@@ -519,18 +505,18 @@ func (ip *inputProcessor) scan() {
 				ip.handleCsi(r, ip.csiParams, ip.csiInterm)
 			} else {
 				// bad parse, just swallow it all
-				ip.state = inpStateInit
+				ip.state = istInit
 			}
-		case inpStateSs2:
+		case istSs2:
 			// No known uses for SS2
-			ip.state = inpStateInit
+			ip.state = istInit
 
-		case inpStateSs3: // typically application mode keys or older terminals
-			ip.state = inpStateInit
+		case istSs3: // typically application mode keys or older terminals
+			ip.state = istInit
 			// some SS3 sequences (old VTE) encode modifiers here just like CSI
 			if r >= 0x30 && r <= 0x3F {
 				ip.csiParams = append(ip.csiParams, byte(r))
-				ip.state = inpStateSs3
+				ip.state = istSs3
 			} else if k, ok := ss3Keys[r]; ok {
 				// If there are no parameters, then it's simple without modifiers.
 				// The options for parameters are "1;<modifiers>" , or ";modifiers" (empty
@@ -552,61 +538,61 @@ func (ip *inputProcessor) scan() {
 				}
 			}
 
-		case inpStatePm, inpStateApc, inpStateSos, inpStateDcs: // these we just eat
+		case istPm, istApc, istSos, istDcs: // these we just eat
 			switch r {
 			case '\x1b':
 				ip.strState = ip.state
-				ip.state = inpStateSt
+				ip.state = istSt
 			case '\x07': // bell - some send this instead of ST
-				ip.state = inpStateInit
+				ip.state = istInit
 			}
 
-		case inpStateOsc: // not sure if used
+		case istOsc: // not sure if used
 			switch r {
 			case '\x1b':
 				ip.strState = ip.state
-				ip.state = inpStateSt
+				ip.state = istSt
 			case '\x07':
-				ip.handleOsc(string(ip.scratch))
+				ip.handleOsc(string(ip.strBuf))
 			default:
-				ip.scratch = append(ip.scratch, byte(r&0x7f))
+				ip.strBuf = append(ip.strBuf, byte(r&0x7f))
 			}
-		case inpStateSt:
+		case istSt:
 			if r == '\\' || r == '\x07' {
-				ip.state = inpStateInit
+				ip.state = istInit
 				switch ip.strState {
-				case inpStateOsc:
-					ip.handleOsc(string(ip.scratch))
-				case inpStatePm, inpStateApc, inpStateSos, inpStateDcs:
-					ip.state = inpStateInit
+				case istOsc:
+					ip.handleOsc(string(ip.strBuf))
+				case istPm, istApc, istSos, istDcs:
+					ip.state = istInit
 				}
 			} else {
-				ip.scratch = append(ip.scratch, '\x1b', byte(r))
+				ip.strBuf = append(ip.strBuf, '\x1b', byte(r))
 				ip.state = ip.strState
 			}
-		case inpStateLFK:
+		case istLnx:
 			// linux console does not follow ECMA
 			if k, ok := linuxFKeys[r]; ok {
 				ip.post(NewEventKey(k, "", ModNone))
 			}
-			ip.state = inpStateInit
+			ip.state = istInit
 		}
 	}
 
-	if ip.state != inpStateInit && time.Since(ip.keyTime) > time.Millisecond*50 {
-		if ip.state == inpStateEsc {
+	if ip.state != istInit && time.Since(ip.keyTime) > time.Millisecond*50 {
+		if ip.state == istEsc {
 			ip.post(NewEventKey(KeyEscape, "", ModNone))
 		} else if ec := ip.escChar; ec != 0 {
 			ip.post(NewEventKey(KeyRune, string(ec), ModAlt))
 		} else {
 		}
 		// if we take too long between bytes, reset the state machine.
-		ip.state = inpStateInit
+		ip.state = istInit
 	}
 }
 
-func (ip *inputProcessor) handleOsc(str string) {
-	ip.state = inpStateInit
+func (ip *inputParser) handleOsc(str string) {
+	ip.state = istInit
 	if content, ok := strings.CutPrefix(str, "52;c;"); ok {
 		decoded := make([]byte, base64.StdEncoding.DecodedLen(len(content)))
 		if count, err := base64.StdEncoding.Decode(decoded, []byte(content)); err == nil {
@@ -644,8 +630,7 @@ func calcModifier(n int) ModMask {
 	return m
 }
 
-// func (ip *inputProcessor) handleMouse(x, y, btn int, down bool) *EventMouse {
-func (ip *inputProcessor) handleMouse(mode rune, params []int) {
+func (ip *inputParser) handleMouse(mode rune, params []int) {
 
 	// XTerm mouse events only report at most one button at a time,
 	// which may include a wheel button.  Wheel motion events are
@@ -723,7 +708,7 @@ func (ip *inputProcessor) handleMouse(mode rune, params []int) {
 	ip.post(NewEventMouse(x, y, button, mod))
 }
 
-func (ip *inputProcessor) handleWinKey(P []int) {
+func (ip *inputParser) handleWinKey(P []int) {
 	// win32-input-mode
 	//  ^[ [ Vk ; Sc ; Uc ; Kd ; Cs ; Rc _
 	// Vk: the value of wVirtualKeyCode - any number. If omitted, defaults to '0'.
@@ -748,7 +733,7 @@ func (ip *inputProcessor) handleWinKey(P []int) {
 		return
 	}
 	if P[0] == 0 && P[2] == 27 && ip.nested == nil {
-		ip.nested = &inputProcessor{
+		ip.nested = &inputParser{
 			evch: ip.evch,
 			rows: ip.rows,
 			cols: ip.cols,
@@ -803,10 +788,10 @@ func (ip *inputProcessor) handleWinKey(P []int) {
 	}
 }
 
-func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byte) {
+func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) {
 
 	// reset state
-	ip.state = inpStateInit
+	ip.state = istInit
 
 	if len(intermediate) != 0 {
 		// we don't know what to do with these for now
@@ -853,7 +838,7 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 		return
 	case '[':
 		// linux console F-key - CSI-[ modifies next key
-		ip.state = inpStateLFK
+		ip.state = istLnx
 		return
 	case 'u':
 		// CSI-u kitty keyboard protocol
@@ -925,31 +910,33 @@ func (ip *inputProcessor) handleCsi(mode rune, params []byte, intermediate []byt
 	// if we got here we just swallow the unknown sequence
 }
 
-func (ip *inputProcessor) ScanUTF8(b []byte) {
+func (ip *inputParser) ScanUTF8(b []byte) {
 	ip.l.Lock()
 	defer ip.l.Unlock()
 
-	ip.ut8 = append(ip.ut8, b...)
-	for len(ip.ut8) > 0 {
+	ip.utfBuf = append(ip.utfBuf, b...)
+	for len(ip.utfBuf) > 0 {
 		// fast path, basic ascii
-		if ip.ut8[0] < 0x7F {
-			ip.buf = append(ip.buf, rune(ip.ut8[0]))
-			ip.ut8 = ip.ut8[1:]
+		if ip.utfBuf[0] < 0x7F {
+			ip.buf = append(ip.buf, rune(ip.utfBuf[0]))
+			ip.utfBuf = ip.utfBuf[1:]
 		} else {
-			r, len := utf8.DecodeRune(ip.ut8)
+			r, len := utf8.DecodeRune(ip.utfBuf)
 			if r == utf8.RuneError {
-				r = rune(ip.ut8[0])
+				r = rune(ip.utfBuf[0])
 				len = 1
 			}
 			ip.buf = append(ip.buf, r)
-			ip.ut8 = ip.ut8[len:]
+			ip.utfBuf = ip.utfBuf[len:]
 		}
 	}
 
 	ip.scan()
 }
 
-func (ip *inputProcessor) Scan() {
+// Scan scans the existing input, but does not take new content.
+// This is typically called after a delay when Waiting() is true.
+func (ip *inputParser) Scan() {
 	ip.l.Lock()
 	ip.scan()
 	ip.l.Unlock()

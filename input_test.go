@@ -19,11 +19,11 @@ import (
 	"time"
 )
 
-// TestInputProcessorNullByte tests that null byte (0x00) is correctly handled
+// TestInputNullByte tests that null byte (0x00) is correctly handled
 // as Ctrl+Space per the fix in the scan() function.
-func TestInputProcessorNullByte(t *testing.T) {
+func TestInputNullByte(t *testing.T) {
 	evch := make(chan Event, 10)
-	ip := newInputProcessor(evch)
+	ip := newInputParser(evch)
 
 	// Send null byte
 	ip.ScanUTF8([]byte{0x00})
@@ -49,10 +49,10 @@ func TestInputProcessorNullByte(t *testing.T) {
 	}
 }
 
-// TestInputProcessorControlKeys tests control key handling for bytes 1-31.
+// TestInputControlKeys tests control key handling for bytes 1-31.
 // Note: NewEventKey converts control characters to KeyCtrlA-Z for 0x01-0x1A,
 // and KeyRune for 0x1C-0x1F with the character and ModCtrl.
-func TestInputProcessorControlKeys(t *testing.T) {
+func TestInputControlKeys(t *testing.T) {
 	tests := []struct {
 		name  string
 		input byte
@@ -96,7 +96,7 @@ func TestInputProcessorControlKeys(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			evch := make(chan Event, 10)
-			ip := newInputProcessor(evch)
+			ip := newInputParser(evch)
 
 			// Skip ESC (0x1B) as it has special timeout handling
 			if tt.input == 0x1B {
@@ -128,11 +128,11 @@ func TestInputProcessorControlKeys(t *testing.T) {
 	}
 }
 
-// TestInputProcessorNullVsOtherControlChars tests the boundary between
+// TestInputNullVsOtherControlChars tests the boundary between
 // null byte and other control characters.
-func TestInputProcessorNullVsOtherControlChars(t *testing.T) {
+func TestInputNullVsOtherControlChars(t *testing.T) {
 	evch := make(chan Event, 10)
-	ip := newInputProcessor(evch)
+	ip := newInputParser(evch)
 
 	// Test null (0x00) - should be KeyRune with Ctrl+Space
 	ip.ScanUTF8([]byte{0x00})
@@ -170,9 +170,9 @@ func TestInputProcessorNullVsOtherControlChars(t *testing.T) {
 	}
 }
 
-// TestInputProcessorPrintableCharacters tests that printable characters
+// TestInputPrintableCharacters tests that printable characters
 // are handled correctly without control modifiers.
-func TestInputProcessorPrintableCharacters(t *testing.T) {
+func TestInputPrintableCharacters(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -194,7 +194,7 @@ func TestInputProcessorPrintableCharacters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			evch := make(chan Event, 10)
-			ip := newInputProcessor(evch)
+			ip := newInputParser(evch)
 
 			ip.ScanUTF8([]byte(tt.input))
 
@@ -220,8 +220,8 @@ func TestInputProcessorPrintableCharacters(t *testing.T) {
 	}
 }
 
-// TestInputProcessorSpecialKeys tests special key handling (tab, backspace, enter).
-func TestInputProcessorSpecialKeys(t *testing.T) {
+// TestInputSpecialKeys tests special key handling (tab, backspace, enter).
+func TestInputSpecialKeys(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    byte
@@ -238,7 +238,7 @@ func TestInputProcessorSpecialKeys(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			evch := make(chan Event, 10)
-			ip := newInputProcessor(evch)
+			ip := newInputParser(evch)
 
 			ip.ScanUTF8([]byte{tt.input})
 
@@ -261,10 +261,10 @@ func TestInputProcessorSpecialKeys(t *testing.T) {
 	}
 }
 
-// TestInputProcessorSequentialInput tests handling multiple inputs in sequence.
-func TestInputProcessorSequentialInput(t *testing.T) {
+// TestInputSequentialInput tests handling multiple inputs in sequence.
+func TestInputSequentialInput(t *testing.T) {
 	evch := make(chan Event, 10)
-	ip := newInputProcessor(evch)
+	ip := newInputParser(evch)
 
 	// Send: null, Ctrl+A, 'B', space
 	inputs := []byte{0x00, 0x01, 'B', ' '}
@@ -303,8 +303,8 @@ func TestInputProcessorSequentialInput(t *testing.T) {
 	}
 }
 
-// TestInputProcessorUTF8Characters tests UTF-8 multibyte character handling.
-func TestInputProcessorUTF8Characters(t *testing.T) {
+// TestInputUTF8Characters tests UTF-8 multibyte character handling.
+func TestInputUTF8Characters(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    []byte
@@ -320,7 +320,7 @@ func TestInputProcessorUTF8Characters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			evch := make(chan Event, 10)
-			ip := newInputProcessor(evch)
+			ip := newInputParser(evch)
 
 			ip.ScanUTF8(tt.input)
 			time.Sleep(time.Millisecond * 100)
@@ -345,11 +345,11 @@ func TestInputProcessorUTF8Characters(t *testing.T) {
 	}
 }
 
-// TestInputProcessorEdgeCases tests edge cases and boundary conditions.
-func TestInputProcessorEdgeCases(t *testing.T) {
+// TestInputEdgeCases tests edge cases and boundary conditions.
+func TestInputEdgeCases(t *testing.T) {
 	t.Run("EmptyInput", func(t *testing.T) {
 		evch := make(chan Event, 10)
-		ip := newInputProcessor(evch)
+		ip := newInputParser(evch)
 
 		ip.ScanUTF8([]byte{})
 		time.Sleep(time.Millisecond * 100)
@@ -365,7 +365,7 @@ func TestInputProcessorEdgeCases(t *testing.T) {
 
 	t.Run("MultipleNullBytes", func(t *testing.T) {
 		evch := make(chan Event, 10)
-		ip := newInputProcessor(evch)
+		ip := newInputParser(evch)
 
 		ip.ScanUTF8([]byte{0x00, 0x00, 0x00})
 
@@ -386,7 +386,7 @@ func TestInputProcessorEdgeCases(t *testing.T) {
 
 	t.Run("BoundaryByte0x1F", func(t *testing.T) {
 		evch := make(chan Event, 10)
-		ip := newInputProcessor(evch)
+		ip := newInputParser(evch)
 
 		// 0x1F is the last control character before space (0x20)
 		// NewEventKey transforms it to KeyRune with "_" and ModCtrl
@@ -412,7 +412,7 @@ func TestInputProcessorEdgeCases(t *testing.T) {
 
 	t.Run("BoundaryByte0x20", func(t *testing.T) {
 		evch := make(chan Event, 10)
-		ip := newInputProcessor(evch)
+		ip := newInputParser(evch)
 
 		// 0x20 is space - first printable character
 		ip.ScanUTF8([]byte{0x20})
@@ -436,11 +436,11 @@ func TestInputProcessorEdgeCases(t *testing.T) {
 	})
 }
 
-// TestInputProcessorConcurrentAccess tests that the inputProcessor is safe
+// TestInputConcurrentAccess tests that the parser is safe
 // for concurrent access (it uses a mutex internally).
-func TestInputProcessorConcurrentAccess(t *testing.T) {
+func TestInputConcurrentAccess(t *testing.T) {
 	evch := make(chan Event, 100)
-	ip := newInputProcessor(evch)
+	ip := newInputParser(evch)
 
 	done := make(chan bool)
 
@@ -479,11 +479,11 @@ func TestInputProcessorConcurrentAccess(t *testing.T) {
 	}
 }
 
-// TestInputProcessorStateTransitions tests that the null byte fix doesn't
+// TestInputStateTransitions tests that the null byte fix doesn't
 // interfere with state machine transitions.
-func TestInputProcessorStateTransitions(t *testing.T) {
+func TestInputStateTransitions(t *testing.T) {
 	evch := make(chan Event, 10)
-	ip := newInputProcessor(evch)
+	ip := newInputParser(evch)
 
 	// Send null in initial state
 	ip.ScanUTF8([]byte{0x00})
@@ -569,7 +569,7 @@ func TestSpecialKeys(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			evch := make(chan Event, 10)
-			ip := newInputProcessor(evch)
+			ip := newInputParser(evch)
 
 			ip.ScanUTF8(tt.input)
 

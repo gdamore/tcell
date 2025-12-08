@@ -172,7 +172,7 @@ type tScreen struct {
 	notifyDesktop string
 	enableCsiU    string
 	disableCsiU   string
-	input         *inputProcessor
+	input         *inputParser
 
 	sync.Mutex
 }
@@ -254,7 +254,7 @@ func (t *tScreen) Init() error {
 
 	t.quit = make(chan struct{})
 	t.eventQ = make(chan Event, 256)
-	t.input = newInputProcessor(t.eventQ)
+	t.input = newInputParser(t.eventQ)
 
 	t.Lock()
 	t.cx = -1
