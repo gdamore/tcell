@@ -67,7 +67,7 @@ const (
 	underline         = "\x1b[4m"
 	blink             = "\x1b[5m"
 	reverse           = "\x1b[7m"
-	strikeThrough     = "\x1b[8m"
+	strikeThrough     = "\x1b[9m"
 	showCursor        = "\x1b[?25h"
 	hideCursor        = "\x1b[?25l"
 	clear             = "\x1b[H\x1b[J"
