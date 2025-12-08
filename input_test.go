@@ -323,6 +323,8 @@ func TestInputProcessorUTF8Characters(t *testing.T) {
 			ip := newInputProcessor(evch)
 
 			ip.ScanUTF8(tt.input)
+			time.Sleep(time.Millisecond * 100)
+			ip.Scan()
 
 			select {
 			case ev := <-evch:
@@ -350,6 +352,8 @@ func TestInputProcessorEdgeCases(t *testing.T) {
 		ip := newInputProcessor(evch)
 
 		ip.ScanUTF8([]byte{})
+		time.Sleep(time.Millisecond * 100)
+		ip.Scan()
 
 		select {
 		case ev := <-evch:
@@ -365,7 +369,7 @@ func TestInputProcessorEdgeCases(t *testing.T) {
 
 		ip.ScanUTF8([]byte{0x00, 0x00, 0x00})
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			select {
 			case ev := <-evch:
 				if kev, ok := ev.(*EventKey); ok {
@@ -521,6 +525,7 @@ func TestSpecialKeys(t *testing.T) {
 		expectedMod ModMask
 	}{
 		{"Esc", []byte{'\x1b'}, KeyEscape, ModNone},
+		{"Esc-Esc", []byte{'\x1b', '\x1b'}, KeyEscape, ModAlt},
 		{"Tab", []byte{'\t'}, KeyTab, ModNone},
 		{"NL", []byte{'\n'}, KeyEnter, ModNone},
 		{"CR", []byte{'\r'}, KeyEnter, ModNone},
@@ -579,8 +584,22 @@ func TestSpecialKeys(t *testing.T) {
 				} else {
 					t.Errorf("Expected EventKey, got %T", ev)
 				}
+
 			case <-time.After(100 * time.Millisecond):
-				t.Fatal("Timeout waiting for UTF-8 character event")
+				ip.Scan()
+				select {
+				case ev := <-evch:
+					if kev, ok := ev.(*EventKey); ok {
+						if kev.Key() != tt.expectedKey || kev.Modifiers() != tt.expectedMod {
+							t.Errorf("Expected %q, got %q", expected.Name(), kev.Name())
+						}
+					} else {
+						t.Errorf("Expected EventKey, got %T", ev)
+					}
+
+				default:
+					t.Fatalf("Timeout waiting for key event")
+				}
 			}
 		})
 	}
