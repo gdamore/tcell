@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/text/transform"
@@ -922,6 +923,7 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 func (t *tScreen) mainLoop(stopQ chan struct{}) {
 	defer t.wg.Done()
 	buf := &bytes.Buffer{}
+	var ta <-chan time.Time
 	for {
 		select {
 		case <-stopQ:
@@ -940,6 +942,13 @@ func (t *tScreen) mainLoop(stopQ chan struct{}) {
 		case chunk := <-t.keychan:
 			buf.Write(chunk)
 			t.scanInput(buf)
+			if t.input.Waiting() {
+				ta = time.After(time.Millisecond * 100)
+			} else {
+				ta = nil
+			}
+		case <-ta:
+			t.input.Scan()
 		}
 	}
 }

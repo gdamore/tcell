@@ -65,6 +65,8 @@ type inputProcessor struct {
 	scratch   []byte
 	csiParams []byte
 	csiInterm []byte
+	escChar   byte      // last byte for escape
+	keyTime   time.Time // time of last key press / byte ingested
 	escaped   bool
 	btnDown   bool // mouse button tracking for broken terms
 	state     inpState
@@ -77,6 +79,12 @@ type inputProcessor struct {
 	rows      int // used for clipping mouse coordinates
 	cols      int // used for clipping mouse coordinates
 	nested    *inputProcessor
+}
+
+func (ip *inputProcessor) Waiting() bool {
+	ip.l.Lock()
+	defer ip.l.Unlock()
+	return ip.state != inpStateInit
 }
 
 func (ip *inputProcessor) SetSize(w, h int) {
@@ -113,11 +121,18 @@ func (ip *inputProcessor) post(ev Event) {
 func (ip *inputProcessor) escTimeout() {
 	ip.l.Lock()
 	defer ip.l.Unlock()
-	if ip.state == inpStateEsc && ip.expire.Before(time.Now()) {
-		// post it
-		ip.state = inpStateInit
-		ip.escaped = false
-		ip.post(NewEventKey(KeyEsc, "", ModNone))
+	if ip.expire.Before(time.Now()) {
+		if ip.state == inpStateEsc {
+			// post it
+			ip.state = inpStateInit
+			ip.escaped = false
+			ip.post(NewEventKey(KeyEsc, "", ModNone))
+		} else if ec := ip.escChar; ec != 0 {
+			ip.escChar = 0
+			ip.escaped = false
+			ip.state = inpStateInit
+			ip.post(NewEventKey(KeyRune, string(ec), ModAlt))
+		}
 	}
 }
 
@@ -402,6 +417,8 @@ var linuxFKeys = map[rune]Key{
 func (ip *inputProcessor) scan() {
 	for _, r := range ip.buf {
 		ip.buf = ip.buf[1:]
+		ip.escChar = 0
+		ip.keyTime = time.Now()
 		if r > 0x7F {
 			// 8-bit extended Unicode we just treat as such - this will swallow anything else queued up
 			ip.state = inpStateInit
@@ -414,10 +431,7 @@ func (ip *inputProcessor) scan() {
 			case '\x1b':
 				// escape.. pending
 				ip.state = inpStateEsc
-				if len(ip.buf) == 0 && ip.nested == nil {
-					ip.expire = time.Now().Add(time.Millisecond * 50)
-					ip.timer = time.AfterFunc(time.Millisecond*60, ip.escTimeout)
-				}
+				ip.escChar = 0
 			case '\t':
 				ip.post(NewEventKey(KeyTab, "", ModNone))
 			case '\b', '\x7F':
@@ -440,25 +454,32 @@ func (ip *inputProcessor) scan() {
 				ip.state = inpStateCsi
 				ip.csiInterm = nil
 				ip.csiParams = nil
+				ip.escChar = byte(r)
 			case ']':
 				ip.state = inpStateOsc
 				ip.scratch = nil
+				ip.escChar = byte(r)
 			case 'N':
 				ip.state = inpStateSs2 // no known uses
 				ip.scratch = nil
+				ip.escChar = byte(r)
 			case 'O':
 				ip.state = inpStateSs3
 				ip.csiParams = nil
 				ip.scratch = nil
+				ip.escChar = byte(r)
 			case 'X':
 				ip.state = inpStateSos
 				ip.scratch = nil
+				ip.escChar = byte(r)
 			case '^':
 				ip.state = inpStatePm
 				ip.scratch = nil
+				ip.escChar = byte(r)
 			case '_':
 				ip.state = inpStateApc
 				ip.scratch = nil
+				ip.escChar = byte(r)
 			case '\\':
 				// string terminator reached, (orphaned?)
 				ip.state = inpStateInit
@@ -470,6 +491,7 @@ func (ip *inputProcessor) scan() {
 				if r == '\x1b' {
 					// leading ESC to capture alt
 					ip.escaped = true
+					ip.escChar = byte(r)
 				} else {
 					// treat as alt-key ... legacy emulators only (no CSI-u or other)
 					ip.state = inpStateInit
@@ -569,6 +591,17 @@ func (ip *inputProcessor) scan() {
 			}
 			ip.state = inpStateInit
 		}
+	}
+
+	if ip.state != inpStateInit && time.Since(ip.keyTime) > time.Millisecond*50 {
+		if ip.state == inpStateEsc {
+			ip.post(NewEventKey(KeyEscape, "", ModNone))
+		} else if ec := ip.escChar; ec != 0 {
+			ip.post(NewEventKey(KeyRune, string(ec), ModAlt))
+		} else {
+		}
+		// if we take too long between bytes, reset the state machine.
+		ip.state = inpStateInit
 	}
 }
 
@@ -914,4 +947,10 @@ func (ip *inputProcessor) ScanUTF8(b []byte) {
 	}
 
 	ip.scan()
+}
+
+func (ip *inputProcessor) Scan() {
+	ip.l.Lock()
+	ip.scan()
+	ip.l.Unlock()
 }
