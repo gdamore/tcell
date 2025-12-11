@@ -297,6 +297,12 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 		k = KeyBackspace
 	}
 
+	// Shift-Tab should be Backtab.
+	if k == KeyTab && (mod&ModShift) != 0 {
+		k = KeyBacktab
+		mod &^= ModShift
+	}
+
 	return &EventKey{t: time.Now(), key: k, ch: ch, mod: mod}
 }
 
