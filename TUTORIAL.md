@@ -38,8 +38,8 @@ When a non-rune key is pressed, it is available as the `Key` of the event.
 ```go
 switch ev := ev.(type) {
 case *tcell.EventKey:
-    mod, key, ch := ev.Mod(), ev.Key(), ev.Rune()
-    logMessage(fmt.Sprintf("EventKey Modifiers: %d Key: %d Rune: %d", mod, key, ch))
+    mod, key, ch := ev.Mod(), ev.Key(), ev.Str()
+    logMessage(fmt.Sprintf("EventKey Modifiers: %d Key: %d Str: %q", mod, key, ch))
 }
 ```
 
@@ -304,7 +304,7 @@ func main() {
 				return
 			} else if ev.Key() == tcell.KeyCtrlL {
 				s.Sync()
-			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
+			} else if ev.Str() == "C" || ev.Str() == "c" {
 				s.Clear()
 			}
 		case *tcell.EventMouse:
