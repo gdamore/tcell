@@ -584,7 +584,6 @@ func (ip *inputParser) scan() {
 			ip.post(NewEventKey(KeyEscape, "", ModNone))
 		} else if ec := ip.escChar; ec != 0 {
 			ip.post(NewEventKey(KeyRune, string(ec), ModAlt))
-		} else {
 		}
 		// if we take too long between bytes, reset the state machine.
 		ip.state = istInit
@@ -732,16 +731,21 @@ func (ip *inputParser) handleWinKey(P []int) {
 		// key up event ignore ignore
 		return
 	}
-	if P[0] == 0 && P[2] == 27 && ip.nested == nil {
-		ip.nested = &inputParser{
-			evch: ip.evch,
-			rows: ip.rows,
-			cols: ip.cols,
-		}
-	}
 
-	if ip.nested != nil && P[2] > 0 && P[2] < 0x80 { // only ASCII in win32-input-mode
-		ip.nested.ScanUTF8([]byte{byte(P[2])})
+	// these terminals never send ambiguous escapes
+	ip.escaped = false
+
+	if P[0] == 0 && P[1] == 0 && P[2] > 0 && P[2] < 0x80 { // only ASCII in win32-input-mode
+		if ip.nested == nil {
+			ip.nested = &inputParser{
+				evch: ip.evch,
+				rows: ip.rows,
+				cols: ip.cols,
+			}
+		}
+		if P[2] > 0 {
+			ip.nested.ScanUTF8([]byte{byte(P[2])})
+		}
 		return
 	}
 
@@ -814,6 +818,8 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 				if n, e := strconv.ParseInt(parts[i], 10, 32); e == nil {
 					P = append(P, int(n))
 				}
+			} else {
+				P = append(P, 0)
 			}
 		}
 	}
@@ -827,6 +833,7 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		case 'm', 'M': // mouse event, we only do SGR tracking
 			ip.handleMouse(mode, P)
 		}
+		return
 	}
 
 	switch mode {
@@ -841,8 +848,8 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		ip.state = istLnx
 		return
 	case 'u':
-		// CSI-u kitty keyboard protocol
-		if len(P) > 0 && !hasLT {
+		// CSI-u kitty keyboard protocol, is unambiguous
+		if len(P) > 0 {
 			mod := ModNone
 			key := KeyRune
 			chr := rune(0)
@@ -874,7 +881,7 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 			return
 		}
 	case '~':
-		if len(P) >= 2 && !hasLT {
+		if len(P) >= 2 {
 			mod := calcModifier(P[1])
 			if ks, ok := csiAllKeys[csiParamMode{M: mode, P: P0}]; ok {
 				ip.post(NewEventKey(ks.Key, "", mod))
@@ -891,7 +898,7 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		}
 	}
 
-	if ks, ok := csiAllKeys[csiParamMode{M: mode, P: P0}]; ok && !hasLT {
+	if ks, ok := csiAllKeys[csiParamMode{M: mode, P: P0}]; ok {
 		if mode == '~' && len(P) > 1 && ks.Mod == ModNone {
 			// apply modifiers if present
 			ks.Mod = calcModifier(P[1])

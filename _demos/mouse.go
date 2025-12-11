@@ -139,7 +139,7 @@ func main() {
 
 	for {
 		drawBox(s, 1, 1, 42, 8, style, ' ')
-		s.PutStrStyled(2, 2, "Press ESC twice to exit, C to clear.", style)
+		s.PutStrStyled(2, 2, "Press Ctrl-Q to Quit, C to clear.", style)
 		s.PutStrStyled(2, 3, fmt.Sprintf(posfmt, mx, my), style)
 		s.PutStrStyled(2, 4, fmt.Sprintf(btnfmt, bstr), style)
 		s.PutStrStyled(2, 5, fmt.Sprintf(keyfmt, lks), style)
@@ -196,6 +196,9 @@ func main() {
 				}
 			} else if ev.Key() == tcell.KeyCtrlL {
 				s.Sync()
+			} else if ev.Key() == tcell.KeyCtrlQ {
+				s.Fini()
+				os.Exit(0)
 			} else if ev.Key() == tcell.KeyCtrlZ {
 				// CtrlZ doesn't really suspend the process, but we use it to execute a subshell.
 				if err := s.Suspend(); err == nil {
