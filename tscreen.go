@@ -320,21 +320,17 @@ func (t *tScreen) prepareExtendedOSC() {
 	}
 
 	if t.enableCsiU == "" && t.ti.XTermLike {
-		if runtime.GOOS == "windows" && (os.Getenv("TERM") == "" || os.Getenv("TERM_PROGRAM") == "WezTerm") {
+		if runtime.GOOS == "windows" && os.Getenv("TERM") == "" {
 			// on Windows, if we don't have a TERM, use only win32-input-mode
 			t.enableCsiU = "\x1b[?9001h"
 			t.disableCsiU = "\x1b[?9001l"
-		} else if os.Getenv("TERM_PROGRAM") == "WezTerm" {
-			// WezTerm is unhappy if we ask for other modes
-			t.enableCsiU = "\x1b[>1u"
-			t.disableCsiU = "\x1b[<u"
 		} else {
 			// three advanced keyboard protocols:
 			// - xterm modifyOtherKeys (uses CSI 27 ~ )
 			// - kitty csi-u (uses CSI u)
 			// - win32-input-mode (uses CSI _)
-			t.enableCsiU = "\x1b[>4;2m" + "\x1b[>1u" + "\x1b[9001h"
-			t.disableCsiU = "\x1b[9001l" + "\x1b[<u" + "\x1b[>4;0m"
+			t.enableCsiU = "\x1b[>4;2m" + "\x1b[>1u" + "\x1b[?9001h"
+			t.disableCsiU = "\x1b[?9001l" + "\x1b[<u" + "\x1b[>4;0m"
 		}
 	}
 }
