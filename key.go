@@ -31,7 +31,9 @@ import (
 // high bit set, or in some cases, by sending an ESC prior to the rune.)
 //
 // If the value of Key() is KeyRune, then the actual key value will be
-// available with the Rune() method.  This will be the case for most keys.
+// available (as a grapheme cluster) with the Str() method.
+// This will be the case for most keys.
+//
 // In most situations, the modifiers will not be set.  For example, if the
 // rune is 'A', this will be reported without the ModShift bit set, since
 // really can't tell if the Shift key was pressed (it might have been CAPSLOCK,
@@ -66,7 +68,7 @@ func (ev *EventKey) Str() string {
 // codes, such as KeyEnter, etc.  Most control and function keys are reported
 // with unique Key values.  Normal alphanumeric and punctuation keys will
 // generally return KeyRune here; the specific key can be further decoded
-// using the Rune() function.
+// using the Str() function.
 func (ev *EventKey) Key() Key {
 	return ev.key
 }
@@ -328,7 +330,7 @@ const (
 // Key is a generic value for representing keys, and especially special
 // keys (function keys, cursor movement keys, etc.)  For normal keys, like
 // ASCII letters, we use KeyRune, and then expect the application to
-// inspect the Rune() member of the EventKey.
+// inspect the Str() member of the EventKey.
 type Key int16
 
 // This is the list of named keys.  KeyRune is special however, in that it is
