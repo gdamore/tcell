@@ -27,7 +27,7 @@ jobs:
         run: go test -coverpkg="github.com/gdamore/tcell/v3/..." -covermode=count -coverprofile="coverage.txt" ./...
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5.5.1
+        uses: codecov/codecov-action@v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.txt
