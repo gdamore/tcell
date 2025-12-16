@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -14,13 +14,9 @@
 
 package tcell
 
-import (
-	"time"
-)
-
 // EventResize is sent when the window size changes.
 type EventResize struct {
-	t  time.Time
+	EventTime
 	ws WindowSize
 }
 
@@ -31,12 +27,9 @@ func NewEventResize(width, height int) *EventResize {
 		Width:  width,
 		Height: height,
 	}
-	return &EventResize{t: time.Now(), ws: ws}
-}
-
-// When returns the time when the Event was created.
-func (ev *EventResize) When() time.Time {
-	return ev.t
+	ev := &EventResize{ws: ws}
+	ev.SetEventNow()
+	return ev
 }
 
 // Size returns the new window size as width, height in character cells.

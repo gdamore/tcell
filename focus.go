@@ -17,12 +17,14 @@ package tcell
 // EventFocus is a focus event. It is sent when the terminal window (or tab)
 // gets or loses focus.
 type EventFocus struct {
-	*EventTime
+	EventTime
 
 	// True if the window received focus, false if it lost focus
 	Focused bool
 }
 
 func NewEventFocus(focused bool) *EventFocus {
-	return &EventFocus{Focused: focused}
+	ev := &EventFocus{Focused: focused}
+	ev.SetEventNow()
+	return ev
 }

@@ -1,4 +1,4 @@
-// Copyright 2015 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -16,7 +16,6 @@ package tcell
 
 import (
 	"errors"
-	"time"
 )
 
 var (
@@ -42,13 +41,8 @@ var (
 // An EventError is an event representing some sort of error, and carries
 // an error payload.
 type EventError struct {
-	t   time.Time
+	EventTime
 	err error
-}
-
-// When returns the time when the event was created.
-func (ev *EventError) When() time.Time {
-	return ev.t
 }
 
 // Error implements the error.
@@ -58,5 +52,7 @@ func (ev *EventError) Error() string {
 
 // NewEventError creates an ErrorEvent with the given error payload.
 func NewEventError(err error) *EventError {
-	return &EventError{t: time.Now(), err: err}
+	ev := &EventError{err: err}
+	ev.SetEventNow()
+	return ev
 }
