@@ -14,10 +14,6 @@
 
 package tcell
 
-import (
-	"time"
-)
-
 // EventMouse is a mouse event.  It is sent on either mouse up or mouse down
 // events.  It is also sent on mouse motion events - if the terminal supports
 // it.  We make every effort to ensure that mouse release events are delivered.
@@ -35,16 +31,11 @@ import (
 // Applications can inspect the time between events to resolve double or
 // triple clicks.
 type EventMouse struct {
-	t   time.Time
+	EventTime
 	btn ButtonMask
 	mod ModMask
 	x   int
 	y   int
-}
-
-// When returns the time when this EventMouse was created.
-func (ev *EventMouse) When() time.Time {
-	return ev.t
 }
 
 // Buttons returns the list of buttons that were pressed or wheel motions.
@@ -67,7 +58,9 @@ func (ev *EventMouse) Position() (int, int) {
 // NewEventMouse is used to create a new mouse event.  Applications
 // shouldn't need to use this; its mostly for screen implementors.
 func NewEventMouse(x, y int, btn ButtonMask, mod ModMask) *EventMouse {
-	return &EventMouse{t: time.Now(), x: x, y: y, btn: btn, mod: mod}
+	ev := &EventMouse{x: x, y: y, btn: btn, mod: mod}
+	ev.SetEventNow()
+	return ev
 }
 
 // ButtonMask is a mask of mouse buttons and wheel events.  Mouse button presses

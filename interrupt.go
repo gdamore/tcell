@@ -14,20 +14,11 @@
 
 package tcell
 
-import (
-	"time"
-)
-
 // EventInterrupt is a generic wakeup event.  Its can be used to
 // to request a redraw.  It can carry an arbitrary payload, as well.
 type EventInterrupt struct {
-	t time.Time
+	EventTime
 	v any
-}
-
-// When returns the time when this event was created.
-func (ev *EventInterrupt) When() time.Time {
-	return ev.t
 }
 
 // Data is used to obtain the opaque event payload.
@@ -37,5 +28,7 @@ func (ev *EventInterrupt) Data() any {
 
 // NewEventInterrupt creates an EventInterrupt with the given payload.
 func NewEventInterrupt(data any) *EventInterrupt {
-	return &EventInterrupt{t: time.Now(), v: data}
+	ev := &EventInterrupt{v: data}
+	ev.SetEventNow()
+	return ev
 }

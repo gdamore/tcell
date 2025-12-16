@@ -24,6 +24,7 @@ func TestChannelMouseEvents(t *testing.T) {
 	s := mkTestScreen(t, "")
 	defer s.Fini()
 
+	now := time.Now()
 	s.EnableMouse()
 	s.InjectMouse(4, 9, Button1, ModCtrl)
 	em := new(EventMouse)
@@ -39,6 +40,10 @@ loop:
 				em = evm
 				break loop
 			}
+			if !now.Before(ev.When()) {
+				t.Errorf("Events arrived out of order!")
+			}
+			now = ev.When()
 			continue
 		case <-time.After(time.Second):
 			break loop

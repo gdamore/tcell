@@ -17,7 +17,6 @@ package tcell
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 // EventKey represents a key press.  Usually this is a key press followed
@@ -45,16 +44,10 @@ import (
 // overly much on availability of modifiers, or the availability of any
 // specific keys.
 type EventKey struct {
-	t   time.Time
+	EventTime
 	mod ModMask
 	key Key
 	str string // string for key, usually just one character, but may be composed sequence
-}
-
-// When returns the time when this Event was created, which should closely
-// match the time when the key was pressed.
-func (ev *EventKey) When() time.Time {
-	return ev.t
 }
 
 // Str returns the string corresponding to the key press, if it makes sense.
@@ -306,7 +299,9 @@ func NewEventKey(k Key, str string, mod ModMask) *EventKey {
 		k = KeyBacktab
 		mod &^= ModShift
 	}
-	return &EventKey{t: time.Now(), key: k, str: str, mod: mod}
+	ev := &EventKey{key: k, str: str, mod: mod}
+	ev.SetEventNow()
+	return ev
 }
 
 // ModMask is a mask of modifier keys.  Note that it will not always be
