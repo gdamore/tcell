@@ -244,9 +244,6 @@ func (w *winTty) scanInput() {
 
 func (w *winTty) Start() error {
 
-	w.Lock()
-	defer w.Unlock()
-
 	if w.running {
 		return errors.New("already engaged")
 	}
@@ -275,8 +272,6 @@ func (w *winTty) Start() error {
 
 func (w *winTty) Stop() error {
 	w.wg.Wait()
-	w.Lock()
-	defer w.Unlock()
 	_, _, _ = procSetConsoleMode.Call(uintptr(w.in), uintptr(w.oimode))
 	_, _, _ = procSetConsoleMode.Call(uintptr(w.out), uintptr(w.oomode))
 	_, _, _ = procFlushConsoleInputBuffer.Call(uintptr(w.in))
@@ -286,7 +281,9 @@ func (w *winTty) Stop() error {
 }
 
 func (w *winTty) NotifyResize(cb func()) {
+	w.Lock()
 	w.resizeCb = cb
+	w.Unlock()
 }
 
 func (w *winTty) WindowSize() (WindowSize, error) {
