@@ -1,4 +1,4 @@
-// Copyright 2021 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -22,10 +22,18 @@ import "io"
 // with the terminfo-style based API.  It extends the io.ReadWriter API.  It is reasonable
 // that the implementation might choose to use different underlying files for the Reader
 // and Writer sides of this API, as part of it's internal implementation.
+//
+// Note that the consumer of these interfaces will provide mutual exclusion guarantees
+// for the methods. Implementations need only be concerned about locking for any
+// asynchronous functions that they use (e.g. signal handlers.) The exception to this
+// is that Read and Write may be called concurrently to each other (but only after
+// a successful) Start, and Stop may be called while an outstanding Read or Write
+// call is pending. (Stop should interrupt any blocking read.)
 type Tty interface {
 	// Start is used to activate the Tty for use.  Upon return the terminal should be
 	// in raw mode, non-blocking, etc.  The implementation should take care of saving
 	// any state that is required so that it may be restored when Stop is called.
+	// Start must be idempotent.
 	Start() error
 
 	// Stop is used to stop using this Tty instance.  This may be a suspend, so that other
@@ -46,6 +54,11 @@ type Tty interface {
 	// NotifyResize is used register a callback when the tty thinks the dimensions have
 	// changed.  The standard UNIX implementation links this to a handler for SIGWINCH.
 	// If the supplied callback is nil, then any handler should be unregistered.
+	// If nil is passed, then no callback is registered, or an existing callback is
+	// unregistered. If window resize events are delivered inline as part of Read,
+	// then the implementation may stub this. If the caller determines that the underlying
+	// terminal can deliver notifications without OS support (i.e. the terminal supports
+	// in-band resize notifications), then it may not register a handler for this.
 	NotifyResize(cb func())
 
 	// WindowSize is called to determine the terminal dimensions.  This might be determined

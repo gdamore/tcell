@@ -33,16 +33,17 @@ import (
 
 // devTty is an implementation of the Tty API based upon /dev/tty.
 type devTty struct {
-	fd    int
-	f     *os.File
-	of    *os.File // the first open of /dev/tty
-	saved *term.State
-	sig   chan os.Signal
-	cb    func()
-	stopQ chan struct{}
-	dev   string
-	wg    sync.WaitGroup
-	l     sync.Mutex // this protects the cb, and nothing else
+	fd      int
+	f       *os.File
+	of      *os.File // the first open of /dev/tty
+	saved   *term.State
+	sig     chan os.Signal
+	cb      func()
+	stopQ   chan struct{}
+	dev     string
+	wg      sync.WaitGroup
+	l       sync.Mutex // this protects the cb, and nothing else
+	started bool
 }
 
 func (tty *devTty) Read(b []byte) (int, error) {
@@ -59,6 +60,9 @@ func (tty *devTty) Close() error {
 
 func (tty *devTty) Start() error {
 
+	if tty.started {
+		return nil
+	}
 	// We open another copy of /dev/tty.  This is a workaround for unusual behavior
 	// observed in macOS, apparently caused when a subshell (for example) closes our
 	// own tty device (when it exits for example).  Getting a fresh new one seems to
@@ -115,6 +119,11 @@ func (tty *devTty) Drain() error {
 }
 
 func (tty *devTty) Stop() error {
+	// unconditionally set this, because we cannot recover
+	// if we fail anyway, so this gives the best hope of
+	// picking up the pieces in such a circumstance
+	tty.started = false
+
 	if err := term.Restore(tty.fd, tty.saved); err != nil {
 		return err
 	}
