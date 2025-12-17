@@ -1,4 +1,4 @@
-// Copyright 2021 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -42,7 +42,7 @@ type devTty struct {
 	stopQ chan struct{}
 	dev   string
 	wg    sync.WaitGroup
-	l     sync.Mutex
+	l     sync.Mutex // this protects the cb, and nothing else
 }
 
 func (tty *devTty) Read(b []byte) (int, error) {
@@ -58,8 +58,6 @@ func (tty *devTty) Close() error {
 }
 
 func (tty *devTty) Start() error {
-	tty.l.Lock()
-	defer tty.l.Unlock()
 
 	// We open another copy of /dev/tty.  This is a workaround for unusual behavior
 	// observed in macOS, apparently caused when a subshell (for example) closes our
@@ -105,7 +103,6 @@ func (tty *devTty) Start() error {
 		}
 	}(tty.stopQ)
 
-	signal.Notify(tty.sig, syscall.SIGWINCH)
 	return nil
 }
 
@@ -118,16 +115,13 @@ func (tty *devTty) Drain() error {
 }
 
 func (tty *devTty) Stop() error {
-	tty.l.Lock()
 	if err := term.Restore(tty.fd, tty.saved); err != nil {
-		tty.l.Unlock()
 		return err
 	}
 	_ = tty.f.SetReadDeadline(time.Now())
 
-	signal.Stop(tty.sig)
+	tty.NotifyResize(nil)
 	close(tty.stopQ)
-	tty.l.Unlock()
 
 	tty.wg.Wait()
 
@@ -166,7 +160,13 @@ func (tty *devTty) WindowSize() (WindowSize, error) {
 
 func (tty *devTty) NotifyResize(cb func()) {
 	tty.l.Lock()
+	oldcb := tty.cb
 	tty.cb = cb
+	if cb != nil && oldcb == nil {
+		signal.Notify(tty.sig, syscall.SIGWINCH)
+	} else if cb == nil {
+		signal.Stop(tty.sig)
+	}
 	tty.l.Unlock()
 }
 

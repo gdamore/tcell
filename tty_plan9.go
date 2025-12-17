@@ -40,18 +40,16 @@ import (
 // - vt(1): VT100 emulator typically used for TUI programs on Plan 9
 //
 // Limitations:
-// - We assume VT100-level capabilities (often no colors, no mouse).
-// - Window size is conservative: we return 80x24 unless overridden.
-//   Set LINES/COLUMNS (or TCELL_LINES/TCELL_COLS) to refine.
-// - Mouse and bracketed paste are not wired; terminfo/xterm queries
-//   are not attempted because vt(1) may not support them.
+//   - We assume VT100-level capabilities (often no colors, no mouse).
+//   - Window size is conservative: we return 80x24 unless overridden.
+//     Set LINES/COLUMNS (or TCELL_LINES/TCELL_COLS) to refine.
+//   - Mouse and bracketed paste are not wired; terminfo/xterm queries
+//     are not attempted because vt(1) may not support them.
 type p9Tty struct {
 	cons    *os.File // /dev/cons (read+write)
 	consctl *os.File // /dev/consctl (write "rawon"/"rawoff")
 	wctl    *os.File // /dev/wctl (resize notifications)
 
-	// protect close/stop; Read/Write are serialized by os.File
-	mu     sync.Mutex
 	closed atomic.Bool
 
 	// resize callback
@@ -99,8 +97,6 @@ func newPlan9TTY() (Tty, error) {
 }
 
 func (t *p9Tty) Start() error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
 
 	if t.closed.Load() {
 		return errors.New("tty closed")
@@ -137,8 +133,6 @@ func (t *p9Tty) Drain() error {
 }
 
 func (t *p9Tty) Stop() error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
 
 	// Signal watcher to stop (if not already).
 	if t.stopCh != nil && !isClosed(t.stopCh) {
@@ -160,8 +154,6 @@ func (t *p9Tty) Stop() error {
 }
 
 func (t *p9Tty) Close() error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
 
 	if t.closed.Swap(true) {
 		return nil
