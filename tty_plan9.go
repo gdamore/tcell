@@ -50,7 +50,8 @@ type p9Tty struct {
 	consctl *os.File // /dev/consctl (write "rawon"/"rawoff")
 	wctl    *os.File // /dev/wctl (resize notifications)
 
-	closed atomic.Bool
+	closed  atomic.Bool
+	started bool
 
 	// resize callback
 	onResize atomic.Value // func()
@@ -98,6 +99,9 @@ func newPlan9TTY() (Tty, error) {
 
 func (t *p9Tty) Start() error {
 
+	if t.started {
+		return nil
+	}
 	if t.closed.Load() {
 		return errors.New("tty closed")
 	}
@@ -123,6 +127,7 @@ func (t *p9Tty) Start() error {
 		t.wg.Add(1)
 		go t.watchResize()
 	}
+	t.started = true
 	return nil
 }
 
@@ -150,6 +155,7 @@ func (t *p9Tty) Stop() error {
 
 	// Ensure watcher goroutine has exited before returning.
 	t.wg.Wait()
+	t.started = false
 	return nil
 }
 

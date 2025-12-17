@@ -245,7 +245,7 @@ func (w *winTty) scanInput() {
 func (w *winTty) Start() error {
 
 	if w.running {
-		return errors.New("already engaged")
+		return nil
 	}
 	_, _, _ = procFlushConsoleInputBuffer.Call(uintptr(w.in))
 	w.stopQ = make(chan struct{})
