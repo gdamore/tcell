@@ -23,7 +23,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 
@@ -33,15 +32,12 @@ import (
 
 // stdIoTty is an implementation of the Tty API based upon stdin/stdout.
 type stdIoTty struct {
-	fd    int
-	in    *os.File
-	out   *os.File
-	saved *term.State
-	sig   chan os.Signal
-	cb    func()
-	stopQ chan struct{}
-	wg    sync.WaitGroup
-	l     sync.Mutex
+	fd      int
+	in      *os.File
+	out     *os.File
+	saved   *term.State
+	sig     chan os.Signal
+	started bool
 }
 
 func (tty *stdIoTty) Read(b []byte) (int, error) {
@@ -57,18 +53,10 @@ func (tty *stdIoTty) Close() error {
 }
 
 func (tty *stdIoTty) Start() error {
-	tty.l.Lock()
-	defer tty.l.Unlock()
+	if tty.started {
+		return nil
+	}
 
-	// We open another copy of /dev/tty.  This is a workaround for unusual behavior
-	// observed in macOS, apparently caused when a sub-shell (for example) closes our
-	// own tty device (when it exits for example).  Getting a fresh new one seems to
-	// resolve the problem.  (We believe this is a bug in the macOS tty driver that
-	// fails to account for dup() references to the same file before applying close()
-	// related behaviors to the tty.)  We're also holding the original copy we opened
-	// since closing that might have deleterious effects as well.  The upshot is that
-	// we will have up to two separate file handles open on /dev/tty.  (Note that when
-	// using stdin/stdout instead of /dev/tty this problem is not observed.)
 	var err error
 	tty.in = os.Stdin
 	tty.out = os.Stdout
@@ -84,27 +72,8 @@ func (tty *stdIoTty) Start() error {
 		return err
 	}
 	tty.saved = saved
+	tty.started = true
 
-	tty.stopQ = make(chan struct{})
-	tty.wg.Add(1)
-	go func(stopQ chan struct{}) {
-		defer tty.wg.Done()
-		for {
-			select {
-			case <-tty.sig:
-				tty.l.Lock()
-				cb := tty.cb
-				tty.l.Unlock()
-				if cb != nil {
-					cb()
-				}
-			case <-stopQ:
-				return
-			}
-		}
-	}(tty.stopQ)
-
-	signal.Notify(tty.sig, syscall.SIGWINCH)
 	return nil
 }
 
@@ -117,18 +86,14 @@ func (tty *stdIoTty) Drain() error {
 }
 
 func (tty *stdIoTty) Stop() error {
-	tty.l.Lock()
 	if err := term.Restore(tty.fd, tty.saved); err != nil {
-		tty.l.Unlock()
 		return err
 	}
 	_ = tty.in.SetReadDeadline(time.Now())
 
-	signal.Stop(tty.sig)
-	close(tty.stopQ)
-	tty.l.Unlock()
+	tty.NotifyResize(nil)
 
-	tty.wg.Wait()
+	tty.started = false
 
 	return nil
 }
@@ -160,10 +125,33 @@ func (tty *stdIoTty) WindowSize() (WindowSize, error) {
 	return size, nil
 }
 
-func (tty *stdIoTty) NotifyResize(cb func()) {
-	tty.l.Lock()
-	tty.cb = cb
-	tty.l.Unlock()
+func (tty *stdIoTty) NotifyResize(resizeQ chan<- bool) {
+
+	sigQ := tty.sig
+	tty.sig = nil
+
+	if sigQ != nil {
+		signal.Stop(sigQ)
+		close(sigQ)
+	}
+
+	if resizeQ == nil {
+		return
+	}
+
+	sigQ = make(chan os.Signal, 1)
+	signal.Notify(sigQ, syscall.SIGWINCH)
+
+	tty.sig = sigQ
+
+	go func() {
+		for range sigQ {
+			select {
+			case resizeQ <- true:
+			default: // queue full, so nvm.
+			}
+		}
+	}()
 }
 
 // NewStdioTty opens a tty using standard input/output.

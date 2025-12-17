@@ -27,7 +27,7 @@ import "io"
 // for the methods. Implementations need only be concerned about locking for any
 // asynchronous functions that they use (e.g. signal handlers.) The exception to this
 // is that Read and Write may be called concurrently to each other (but only after
-// a successful) Start, and Stop may be called while an outstanding Read or Write
+// a successful Start), and Stop may be called while an outstanding Read or Write
 // call is pending. (Stop should interrupt any blocking read.)
 type Tty interface {
 	// Start is used to activate the Tty for use.  Upon return the terminal should be
@@ -51,15 +51,15 @@ type Tty interface {
 	// emitted between the time this is called, and when Stop is called.
 	Drain() error
 
-	// NotifyResize is used register a callback when the tty thinks the dimensions have
-	// changed.  The standard UNIX implementation links this to a handler for SIGWINCH.
-	// If the supplied callback is nil, then any handler should be unregistered.
-	// If nil is passed, then no callback is registered, or an existing callback is
-	// unregistered. If window resize events are delivered inline as part of Read,
-	// then the implementation may stub this. If the caller determines that the underlying
-	// terminal can deliver notifications without OS support (i.e. the terminal supports
-	// in-band resize notifications), then it may not register a handler for this.
-	NotifyResize(cb func())
+	// NotifyResize is used to post a signal that will be written to (non-blocking) if the
+	// system detects that a resize event happened.  If the channel is null, then the caller
+	// does not desire such notifications (or no longer desires them.)
+	// The standard UNIX implementation links this to a handler for SIGWINCH.
+	//
+	// If window resize events are delivered inline as part of Read, then the implementation may stub this.
+	// If the caller determines that the underlying terminal can deliver notifications without OS support
+	// (i.e. the terminal supports in-band resize notifications), then it may not call this function at all.
+	NotifyResize(chan<- bool)
 
 	// WindowSize is called to determine the terminal dimensions.  This might be determined
 	// by an ioctl or other means.

@@ -53,8 +53,7 @@ type p9Tty struct {
 	closed  atomic.Bool
 	started bool
 
-	// resize callback
-	onResize atomic.Value // func()
+	onResize atomic.Value // resize channel
 	wg       sync.WaitGroup
 	stopCh   chan struct{}
 }
@@ -189,12 +188,8 @@ func (t *p9Tty) Write(p []byte) (int, error) {
 	return t.cons.Write(p)
 }
 
-func (t *p9Tty) NotifyResize(cb func()) {
-	if cb == nil {
-		t.onResize.Store((func())(nil))
-		return
-	}
-	t.onResize.Store(cb)
+func (t *p9Tty) NotifyResize(resizeQ chan<- bool) {
+	t.onResize.Store(resizeQ)
 }
 
 func (t *p9Tty) WindowSize() (WindowSize, error) {
@@ -242,8 +237,11 @@ func (t *p9Tty) watchResize() {
 			}
 			// transient errors: continue
 		}
-		if cb, _ := t.onResize.Load().(func()); cb != nil {
-			cb()
+		if rq, ok := t.onResize.Load().(chan<- bool); ok && rq != nil {
+			select {
+			case rq <- true:
+			default:
+			}
 		}
 	}
 }

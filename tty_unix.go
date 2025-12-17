@@ -23,7 +23,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 
@@ -38,11 +37,7 @@ type devTty struct {
 	of      *os.File // the first open of /dev/tty
 	saved   *term.State
 	sig     chan os.Signal
-	cb      func()
-	stopQ   chan struct{}
 	dev     string
-	wg      sync.WaitGroup
-	l       sync.Mutex // this protects the cb, and nothing else
 	started bool
 }
 
@@ -87,25 +82,7 @@ func (tty *devTty) Start() error {
 		return err
 	}
 	tty.saved = saved
-
-	tty.stopQ = make(chan struct{})
-	tty.wg.Add(1)
-	go func(stopQ chan struct{}) {
-		defer tty.wg.Done()
-		for {
-			select {
-			case <-tty.sig:
-				tty.l.Lock()
-				cb := tty.cb
-				tty.l.Unlock()
-				if cb != nil {
-					cb()
-				}
-			case <-stopQ:
-				return
-			}
-		}
-	}(tty.stopQ)
+	tty.started = true
 
 	return nil
 }
@@ -130,9 +107,6 @@ func (tty *devTty) Stop() error {
 	_ = tty.f.SetReadDeadline(time.Now())
 
 	tty.NotifyResize(nil)
-	close(tty.stopQ)
-
-	tty.wg.Wait()
 
 	// close our tty device -- we'll get another one if we Start again later.
 	_ = tty.f.Close()
@@ -167,16 +141,33 @@ func (tty *devTty) WindowSize() (WindowSize, error) {
 	return size, nil
 }
 
-func (tty *devTty) NotifyResize(cb func()) {
-	tty.l.Lock()
-	oldcb := tty.cb
-	tty.cb = cb
-	if cb != nil && oldcb == nil {
-		signal.Notify(tty.sig, syscall.SIGWINCH)
-	} else if cb == nil {
-		signal.Stop(tty.sig)
+func (tty *devTty) NotifyResize(resizeQ chan<- bool) {
+
+	sigQ := tty.sig
+	tty.sig = nil
+
+	if sigQ != nil {
+		signal.Stop(sigQ)
+		close(sigQ)
 	}
-	tty.l.Unlock()
+
+	if resizeQ == nil {
+		return
+	}
+
+	sigQ = make(chan os.Signal, 1)
+	signal.Notify(sigQ, syscall.SIGWINCH)
+
+	tty.sig = sigQ
+
+	go func() {
+		for range sigQ {
+			select {
+			case resizeQ <- true:
+			default: // queue full, so nvm.
+			}
+		}
+	}()
 }
 
 // NewDevTty opens a /dev/tty based Tty.
