@@ -1039,12 +1039,7 @@ func (t *tScreen) engage() error {
 	if t.tty == nil {
 		return ErrNoScreen
 	}
-	t.tty.NotifyResize(func() {
-		select {
-		case t.resizeQ <- true:
-		default:
-		}
-	})
+	t.tty.NotifyResize(t.resizeQ)
 	if t.running {
 		return errors.New("already engaged")
 	}

@@ -105,7 +105,7 @@ type winTty struct {
 	cancelFlag syscall.Handle
 	running    bool
 	stopQ      chan struct{}
-	resizeCb   func()
+	resizeQ    chan<- bool
 	cols       uint16
 	rows       uint16
 	pair       []uint16 // for surrogate pairs (UTF-16)
@@ -218,11 +218,13 @@ func (w *winTty) getConsoleInput() error {
 				w.Lock()
 				w.cols = binary.LittleEndian.Uint16(ir.data[0:])
 				w.rows = binary.LittleEndian.Uint16(ir.data[2:])
-				cb := w.resizeCb
-				w.Unlock()
-				if cb != nil {
-					cb()
+				if w.resizeQ != nil {
+					select {
+					case w.resizeQ <- true:
+					default:
+					}
 				}
+				w.Unlock()
 
 			default:
 			}
@@ -280,10 +282,10 @@ func (w *winTty) Stop() error {
 	return nil
 }
 
-func (w *winTty) NotifyResize(cb func()) {
-	w.Lock()
-	w.resizeCb = cb
-	w.Unlock()
+func (tty *winTty) NotifyResize(resizeQ chan<- bool) {
+	tty.Lock()
+	tty.resizeQ = resizeQ
+	tty.Unlock()
 }
 
 func (w *winTty) WindowSize() (WindowSize, error) {
