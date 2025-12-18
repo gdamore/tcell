@@ -100,6 +100,8 @@ const (
 	enterKeypad       = "\x1b[?1h\x1b="                     // Note mode 1 might not be supported everywhere
 	exitKeypad        = "\x1b[?1l\x1b>"                     // Also mode 1
 	requestWindowSize = "\x1b[18t"                          // For modern terminals
+	requestPrimaryDA  = "\x1b[c"                            // Request primary device attributes
+	setClipboard      = "\x1b]52;c;%s\x1b\\"
 )
 
 // NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
@@ -147,6 +149,7 @@ type tScreen struct {
 	colors        map[Color]Color
 	palette       []Color
 	truecolor     bool
+	noColor       bool
 	legacy        bool
 	finiOnce      sync.Once
 	enterUrl      string
@@ -159,6 +162,8 @@ type tScreen struct {
 	cursorFg      string
 	stopQ         chan struct{}
 	eventQ        chan Event
+	initQ         chan Event
+	initted       bool
 	running       bool
 	wg            sync.WaitGroup
 	mouseFlags    MouseFlags
@@ -173,7 +178,6 @@ type tScreen struct {
 	enableCsiU    string
 	disableCsiU   string
 	input         *inputParser
-
 	sync.Mutex
 }
 
@@ -230,6 +234,7 @@ func (t *tScreen) Init() error {
 	if os.Getenv("NO_COLOR") != "" {
 		t.truecolor = false
 		t.ncolor = 0
+		t.noColor = true
 	}
 
 	if strings.HasPrefix(nterm, "vt") || strings.Contains(nterm, "ansi") || nterm == "linux" || nterm == "sun" || nterm == "sun-color" {
@@ -242,19 +247,12 @@ func (t *tScreen) Init() error {
 	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
 		t.truecolor = false
 	}
-	// clip to reasonable limits
-	nColors := min(t.ncolor, 256)
-	t.colors = make(map[Color]Color, nColors)
-	t.palette = make([]Color, nColors)
-	for i := range nColors {
-		t.palette[i] = Color(i) | ColorValid
-		// identity map for our builtin colors
-		t.colors[Color(i)|ColorValid] = Color(i) | ColorValid
-	}
 
+	t.initted = false
 	t.quit = make(chan struct{})
-	t.eventQ = make(chan Event, 256)
-	t.input = newInputParser(t.eventQ)
+	t.initQ = make(chan Event, 32)
+	t.eventQ = make(chan Event, 128)
+	t.input = newInputParser(t.filterEvents())
 
 	t.Lock()
 	t.cx = -1
@@ -270,7 +268,71 @@ func (t *tScreen) Init() error {
 		return err
 	}
 
+	// clip to reasonable limits
+	nColors := min(t.ncolor, 256)
+	t.colors = make(map[Color]Color, nColors)
+	t.palette = make([]Color, nColors)
+	for i := range nColors {
+		t.palette[i] = Color(i) | ColorValid
+		// identity map for our builtin colors
+		t.colors[Color(i)|ColorValid] = Color(i) | ColorValid
+	}
+
 	return nil
+}
+
+func (t *tScreen) processInitQ() {
+	// NB: called with lock held
+	if t.initted {
+		return
+	}
+
+	expire := time.After(time.Second)
+
+	for {
+		select {
+		case <-expire:
+			t.initted = true
+			return
+		case ev := <-t.initQ:
+			switch ev := ev.(type) {
+			case *eventPrimaryAttributes:
+				if ev.Color && t.ncolor == 0 && !t.noColor {
+					t.ncolor = 8
+				}
+				if ev.Clipboard && t.setClipboard == "" {
+					t.setClipboard = setClipboard
+				}
+				t.initted = true
+				return
+			}
+		}
+	}
+
+}
+
+func (t *tScreen) filterEvents() chan Event {
+	inQ := make(chan Event, 128)
+	go func() {
+		for {
+			var ev Event
+			select {
+			case ev = <-inQ:
+			case <-t.quit:
+				return
+			}
+			switch ev.(type) {
+			case *eventPrimaryAttributes:
+				select {
+				case t.initQ <- ev:
+				default:
+				}
+			default:
+				t.eventQ <- ev
+			}
+		}
+	}()
+	return inQ
 }
 
 func (t *tScreen) prepareExtendedOSC() {
@@ -293,7 +355,7 @@ func (t *tScreen) prepareExtendedOSC() {
 	// this string takes a base64 string and sends it to the clipboard.
 	// it will also be able to retrieve the clipboard using "?" as the
 	// sent string, when we support that.
-	t.setClipboard = "\x1b]52;c;%s\x1b\\"
+	t.setClipboard = setClipboard
 
 	// OSC 777 is the desktop notification supported by a variety of
 	// newer terminals.  (There was also OSC 9 and OSC 99, but they
@@ -925,13 +987,15 @@ func (t *tScreen) mainLoop(stopQ chan struct{}) {
 		case <-t.quit:
 			return
 		case <-t.resizeQ:
-			t.Lock()
-			t.cx = -1
-			t.cy = -1
-			t.resize()
-			t.cells.Invalidate()
-			t.draw()
-			t.Unlock()
+			go func() {
+				t.Lock()
+				t.cx = -1
+				t.cy = -1
+				t.resize()
+				t.cells.Invalidate()
+				t.draw()
+				t.Unlock()
+			}()
 			continue
 		case chunk := <-t.keychan:
 			buf.Write(chunk)
@@ -1039,19 +1103,28 @@ func (t *tScreen) engage() error {
 	if t.tty == nil {
 		return ErrNoScreen
 	}
-	t.tty.NotifyResize(t.resizeQ)
 	if t.running {
 		return errors.New("already engaged")
 	}
 	if err := t.tty.Start(); err != nil {
 		return err
 	}
+
+	stopQ := make(chan struct{})
+	t.stopQ = stopQ
+	t.wg.Add(2)
+	go t.inputLoop(stopQ)
+	go t.mainLoop(stopQ)
+
+	if !t.initted {
+		t.Print(requestPrimaryDA)
+	}
+	t.processInitQ()
+
 	t.running = true
 	if ws, err := t.tty.WindowSize(); err == nil && ws.Width != 0 && ws.Height != 0 {
 		t.cells.Resize(ws.Width, ws.Height)
 	}
-	stopQ := make(chan struct{})
-	t.stopQ = stopQ
 	t.enableMouse(t.mouseFlags)
 	t.enablePasting(t.pasteEnabled)
 	if t.focusEnabled {
@@ -1077,9 +1150,7 @@ func (t *tScreen) engage() error {
 	t.Print(t.enableCsiU)
 	t.Print(requestWindowSize)
 
-	t.wg.Add(2)
-	go t.inputLoop(stopQ)
-	go t.mainLoop(stopQ)
+	t.tty.NotifyResize(t.resizeQ)
 	return nil
 }
 

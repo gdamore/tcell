@@ -792,6 +792,39 @@ func (ip *inputParser) handleWinKey(P []int) {
 	}
 }
 
+func (ip *inputParser) handlePrimaryDA(params []int) {
+	if len(params) < 1 {
+		return
+	}
+	evDA := &eventPrimaryAttributes{Class: params[0]}
+	params = params[1:]
+	if evDA.Class >= 60 {
+		for _, v := range params {
+			switch v {
+			case 3:
+				evDA.ReGIS = true
+			case 4:
+				evDA.Sixel = true
+			case 9:
+				evDA.National = true
+			case 12:
+				evDA.SerboCroation = true
+			case 22:
+				evDA.Color = true
+			case 23:
+				evDA.Greek = true
+			case 24:
+				evDA.Turkish = true
+			case 42:
+				evDA.Latin2 = true
+			case 52:
+				evDA.Clipboard = true
+			}
+		}
+	}
+	ip.post(evDA)
+}
+
 func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) {
 
 	// reset state
@@ -805,12 +838,17 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 	var parts []string
 	var P []int
 	hasLT := false
+	hasQM := false
 	pstr := string(params)
 	// extract numeric parameters
 	if strings.HasPrefix(pstr, "<") {
 		hasLT = true
 		pstr = pstr[1:]
+	} else if strings.HasPrefix(pstr, "?") {
+		hasQM = true
+		pstr = pstr[1:]
 	}
+
 	if pstr != "" && pstr[0] >= '0' && pstr[0] <= '9' {
 		parts = strings.Split(pstr, ";")
 		for i := range parts {
@@ -832,6 +870,13 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		switch mode {
 		case 'm', 'M': // mouse event, we only do SGR tracking
 			ip.handleMouse(mode, P)
+		}
+		return
+	}
+	if hasQM {
+		switch mode {
+		case 'c':
+			ip.handlePrimaryDA(P)
 		}
 		return
 	}
@@ -947,4 +992,19 @@ func (ip *inputParser) Scan() {
 	ip.l.Lock()
 	ip.scan()
 	ip.l.Unlock()
+}
+
+// Private events between input and tscreen.
+type eventPrimaryAttributes struct {
+	EventTime
+	Class         int  // Terminal class, 1 is vt100, vt101, 6 is vt102, > 60 for vt200 and up
+	ReGIS         bool // Terminal supports ReGIS graphics (DA 3)
+	Sixel         bool // Terminal supports Sixel graphics (DA 4)
+	National      bool // Terminal supports national replacement character sets (DA 9)
+	SerboCroation bool // Serbo-Croatian(DA 12)
+	Color         bool // Terminal supports color (DA 22)
+	Greek         bool // Greek (DA 23)
+	Turkish       bool // Turkish (DA 24)
+	Latin2        bool // ISO Latin-2 (DA 42)
+	Clipboard     bool // OSC-52 support (DA 52)
 }
