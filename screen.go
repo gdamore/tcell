@@ -237,6 +237,12 @@ type Screen interface {
 	// ShowNotification is used to show a desktop notification, when the terminal
 	// supports it.  Right now only terminals supporting OSC 777 support this.
 	ShowNotification(title string, body string)
+
+	// Terminal returns the terminal name and version if known.  If either of these
+	// are unknown, then empty strings are returned in their place.  This is intended
+	// to facilitate debug, and also applications that wish to enable very specific
+	// behaviors for the terminal
+	Terminal() (string, string)
 }
 
 // NewScreen returns a default Screen suitable for the user's terminal
@@ -305,6 +311,7 @@ type screenImpl interface {
 	SetClipboard([]byte)
 	GetClipboard()
 	ShowNotification(string, string)
+	Terminal() (string, string)
 
 	// Following methods are not part of the Screen api, but are used for interaction with
 	// the common layer code.

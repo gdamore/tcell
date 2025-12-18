@@ -122,6 +122,7 @@ func main() {
 	keyfmt := "Keys: %s"
 	pastefmt := "Paste: [%d] %s"
 	focusfmt := "Focus: %s"
+	termFmt := "Term: %s (%s)"
 	style := tcell.StyleDefault.
 		Foreground(tcell.ColorMidnightBlue).Background(tcell.ColorLightCoral)
 
@@ -138,7 +139,7 @@ func main() {
 	focus := true // assume we are focused when we start
 
 	for {
-		drawBox(s, 1, 1, 42, 8, style, ' ')
+		drawBox(s, 1, 1, 42, 9, style, ' ')
 		s.PutStrStyled(2, 2, "Press Ctrl-Q to Quit, C to clear.", style)
 		s.PutStrStyled(2, 3, fmt.Sprintf(posfmt, mx, my), style)
 		s.PutStrStyled(2, 4, fmt.Sprintf(btnfmt, bstr), style)
@@ -155,6 +156,9 @@ func main() {
 			fstr = "true"
 		}
 		s.PutStrStyled(2, 7, fmt.Sprintf(focusfmt, fstr), style)
+
+		n, v := s.Terminal()
+		s.PutStrStyled(2, 8, fmt.Sprintf(termFmt, n, v), style)
 
 		s.Show()
 		bstr = ""

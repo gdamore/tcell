@@ -504,3 +504,7 @@ func (s *simscreen) GetClipboardData() []byte {
 }
 
 func (s *simscreen) ShowNotification(_ string, _ string) {}
+
+func (s *simscreen) Terminal() (string, string) {
+	return "simulator", ""
+}

@@ -50,6 +50,7 @@ const (
 	istSs2  // single shift 2
 	istSs3  // single shift 3
 	istLnx  // linux F-key (not ECMA-48 compliant - bogus CSI)
+	istXda  // extended device attributes (ESC P Ps ST)
 )
 
 func newInputParser(eq chan<- Event) *inputParser {
@@ -454,6 +455,11 @@ func (ip *inputParser) scan() {
 				ip.csiParams = nil
 				ip.strBuf = nil
 				ip.escChar = byte(r)
+			case 'P':
+				ip.state = istXda
+				ip.csiParams = nil
+				ip.strBuf = nil
+				ip.escChar = byte(r)
 			case 'X':
 				ip.state = istSos
 				ip.strBuf = nil
@@ -547,6 +553,17 @@ func (ip *inputParser) scan() {
 				ip.state = istInit
 			}
 
+		case istXda:
+			switch r {
+			case '\x1b':
+				ip.strState = ip.state
+				ip.state = istSt
+			case '\x07':
+				ip.handleXda(string(ip.strBuf))
+			default:
+				ip.strBuf = append(ip.strBuf, byte(r&0x7f))
+			}
+
 		case istOsc: // not sure if used
 			switch r {
 			case '\x1b':
@@ -563,6 +580,8 @@ func (ip *inputParser) scan() {
 				switch ip.strState {
 				case istOsc:
 					ip.handleOsc(string(ip.strBuf))
+				case istXda:
+					ip.handleXda(string(ip.strBuf))
 				case istPm, istApc, istSos, istDcs:
 					ip.state = istInit
 				}
@@ -597,6 +616,20 @@ func (ip *inputParser) handleOsc(str string) {
 		if count, err := base64.StdEncoding.Decode(decoded, []byte(content)); err == nil {
 			ip.post(NewEventClipboard(decoded[:count]))
 			return
+		}
+	}
+}
+
+func (ip *inputParser) handleXda(str string) {
+	ip.state = istInit
+	if content, ok := strings.CutPrefix(str, ">|"); ok {
+		// two approaches, one with version like (1.23) another with just spaces
+		if name, vers, ok := strings.Cut(content, "("); ok && strings.HasSuffix(vers, ")") {
+			name = strings.TrimSpace(name)
+			vers = strings.TrimSpace(strings.TrimSuffix(vers, ")"))
+			ip.post(&eventTermName{Name: name, Version: vers})
+		} else if name, vers, ok = strings.Cut(content, " "); ok {
+			ip.post(&eventTermName{Name: name, Version: vers})
 		}
 	}
 }
@@ -995,6 +1028,9 @@ func (ip *inputParser) Scan() {
 }
 
 // Private events between input and tscreen.
+
+// eventPrimaryAttributes is for primary device attributes -- this should be
+// the last event returned during initial handshaking
 type eventPrimaryAttributes struct {
 	EventTime
 	Class         int  // Terminal class, 1 is vt100, vt101, 6 is vt102, > 60 for vt200 and up
@@ -1007,4 +1043,11 @@ type eventPrimaryAttributes struct {
 	Turkish       bool // Turkish (DA 24)
 	Latin2        bool // ISO Latin-2 (DA 42)
 	Clipboard     bool // OSC-52 support (DA 52)
+}
+
+// eventTermName is for extended attributes
+type eventTermName struct {
+	EventTime
+	Name    string
+	Version string
 }
