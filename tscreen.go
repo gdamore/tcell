@@ -101,7 +101,10 @@ const (
 	exitKeypad        = "\x1b[?1l\x1b>"                     // Also mode 1
 	requestWindowSize = "\x1b[18t"                          // For modern terminals
 	requestPrimaryDA  = "\x1b[c"                            // Request primary device attributes
-	setClipboard      = "\x1b]52;c;%s\x1b\\"
+	requestExtAttr    = "\x1b[>q"                           // Request extended attribute (emulator name and version)
+	setClipboard      = "\x1b]52;c;%s\x1b\\"                // Clipboard content is base64
+	notifyDesktop9    = "\x1b]9;%[2]s\x1b\\"                // Args are title, body (but osc 9 only has body)
+	notifyDesktop777  = "\x1b]777;notify;%s;%s\x1b\\"       // Most commonly supported
 )
 
 // NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
@@ -177,6 +180,8 @@ type tScreen struct {
 	notifyDesktop string
 	enableCsiU    string
 	disableCsiU   string
+	termName      string
+	termVers      string
 	input         *inputParser
 	sync.Mutex
 }
@@ -305,6 +310,18 @@ func (t *tScreen) processInitQ() {
 				}
 				t.initted = true
 				return
+			case *eventTermName:
+				// terminal specific overrides
+				t.termName = ev.Name
+				t.termVers = ev.Version
+				switch ev.Name {
+				case "iTerm2":
+					// Some terminals can use OSC 9.  Unfortunately we can only discover
+					// them using this means.  It appears that pretty much all of them
+					// except iTerm2 also support more standard OSC 777, and it seems like
+					// only Kitty has its OSC 99 thing, but it also does OSC 777 well.
+					t.notifyDesktop = notifyDesktop9
+				}
 			}
 		}
 	}
@@ -322,6 +339,11 @@ func (t *tScreen) filterEvents() chan Event {
 				return
 			}
 			switch ev.(type) {
+			case *eventTermName:
+				select {
+				case t.initQ <- ev:
+				default:
+				}
 			case *eventPrimaryAttributes:
 				select {
 				case t.initQ <- ev:
@@ -360,7 +382,7 @@ func (t *tScreen) prepareExtendedOSC() {
 	// OSC 777 is the desktop notification supported by a variety of
 	// newer terminals.  (There was also OSC 9 and OSC 99, but they
 	// are not as widely deployed, and OSC 9 is not unique.)
-	t.notifyDesktop = "\x1b]777;notify;%s;%s\x1b\\"
+	t.notifyDesktop = notifyDesktop777
 
 	if runtime.GOOS == "windows" && os.Getenv("TERM") == "" {
 		// on Windows, if we don't have a TERM, use only win32-input-mode
@@ -1117,6 +1139,7 @@ func (t *tScreen) engage() error {
 	go t.mainLoop(stopQ)
 
 	if !t.initted {
+		t.Print(requestExtAttr)
 		t.Print(requestPrimaryDA)
 	}
 	t.processInitQ()
@@ -1259,4 +1282,10 @@ func (t *tScreen) ShowNotification(title string, body string) {
 	t.Lock()
 	t.Printf(t.notifyDesktop, title, body)
 	t.Unlock()
+}
+
+func (t *tScreen) Terminal() (string, string) {
+	t.Lock()
+	defer t.Unlock()
+	return t.termName, t.termVers
 }

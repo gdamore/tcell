@@ -602,3 +602,5 @@ var curStyleClasses = map[CursorStyle]string{
 	CursorStyleBlinkingBar:       "cursor-blinking-bar",
 	CursorStyleSteadyBar:         "cursor-steady-bar",
 }
+
+func (*wScreen) Terminal() (string, string) { return "Tcell-WebASM", "" }
