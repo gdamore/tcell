@@ -504,9 +504,11 @@ func (ip *inputParser) scan() {
 			// for certain shifted key sequences.  We special case this, and it's ok
 			// because no other terminal seems to use this for CSI intermediates from
 			// the terminal to the host (queries in the other direction can use it.)
+			// However, this is only true if the first parameter does not have a "?",
+			// because it *does* collide with DEC private mode queries otherwise.
 			if r >= 0x30 && r <= 0x3F { // parameter bytes
 				ip.csiParams = append(ip.csiParams, byte(r))
-			} else if r == '$' && len(ip.csiParams) > 0 { // rxvt non-standard
+			} else if r == '$' && len(ip.csiParams) > 0 && ip.csiParams[0] != '?' { // rxvt non-standard
 				ip.handleCsi(r, ip.csiParams, ip.csiInterm)
 			} else if r >= 0x20 && r <= 0x2F { // intermediate bytes, rarely used
 				ip.csiInterm = append(ip.csiInterm, byte(r))
