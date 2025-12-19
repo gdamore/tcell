@@ -22,6 +22,9 @@
 // There is unfortunately *one* conflict, with aixterm, for CSI-P - which is KeyDelete
 // in aixterm, but F1 in others.
 
+//go:build !js || !wasm
+// +build !js !wasm
+
 package tcell
 
 import (
@@ -858,15 +861,38 @@ func (ip *inputParser) handlePrimaryDA(params []int) {
 	ip.post(evDA)
 }
 
+func (ip *inputParser) handlePrivateModeResponse(params []int) {
+	for len(params) < 2 {
+		params = append(params, 0)
+	}
+	ev := &eventPrivateMode{
+		Mode: privateMode(params[0]),
+	}
+	switch params[1] {
+	case 1:
+		ev.Supported = true
+		ev.Enabled = true
+		ev.Permanent = false
+	case 2:
+		ev.Supported = true
+		ev.Enabled = false
+		ev.Permanent = false
+	case 3:
+		ev.Supported = true
+		ev.Enabled = true
+		ev.Permanent = true
+	case 4:
+		ev.Supported = true
+		ev.Enabled = false
+		ev.Permanent = true
+	}
+	ip.post(ev)
+}
+
 func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) {
 
 	// reset state
 	ip.state = istInit
-
-	if len(intermediate) != 0 {
-		// we don't know what to do with these for now
-		return
-	}
 
 	var parts []string
 	var P []int
@@ -899,7 +925,7 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		P0 = P[0]
 	}
 
-	if hasLT {
+	if hasLT && len(intermediate) == 0 {
 		switch mode {
 		case 'm', 'M': // mouse event, we only do SGR tracking
 			ip.handleMouse(mode, P)
@@ -909,8 +935,19 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 	if hasQM {
 		switch mode {
 		case 'c':
-			ip.handlePrimaryDA(P)
+			if len(intermediate) == 0 {
+				ip.handlePrimaryDA(P)
+			}
+		case 'y':
+			if string(intermediate) == "$" {
+				ip.handlePrivateModeResponse(P)
+			}
 		}
+		return
+	}
+
+	if len(intermediate) != 0 {
+		// we don't know what to do with these for now
 		return
 	}
 
@@ -949,14 +986,26 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 			return
 		}
 	case 't':
-		if len(P) == 3 && P[0] == 8 {
-			// window size report
-			h := P[1]
-			w := P[2]
-			if h != ip.rows || w != ip.cols {
-				ip.SetSize(w, h)
+		if len(P) < 1 {
+			break
+		}
+		switch P[0] {
+		case 8:
+			if len(P) > 2 {
+				// window size report
+				h := P[1]
+				w := P[2]
+				if h != ip.rows || w != ip.cols {
+					ip.SetSize(w, h)
+				}
+				return
 			}
-			return
+		case 48:
+			if len(P) > 2 {
+				// window resize report
+				ip.post(NewEventResize(P[2], P[1]))
+				return
+			}
 		}
 	case '~':
 		if len(P) >= 2 {
@@ -1050,4 +1099,17 @@ type eventTermName struct {
 	EventTime
 	Name    string
 	Version string
+}
+
+type eventPrivateMode struct {
+	EventTime
+	Mode      privateMode // numeric mode e.g. 7 for automargin, 1006 for SGR mouse reports, etc
+	Supported bool        // true unless terminal answers back 0
+	Enabled   bool        // true if mode is enable
+	Permanent bool        // true if value cannot be changed
+}
+
+func (ev *eventPrivateMode) usable() bool {
+	// technically we could look for hardwired on, but its not normally a concern
+	return ev.Supported && !ev.Permanent
 }

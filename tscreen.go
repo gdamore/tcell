@@ -58,7 +58,6 @@ func NewTerminfoScreen() (Screen, error) {
 // the complaint to stderr from "st", everything else is fine.
 const (
 	enableAutoMargin  = "\x1b[?7h" // dec private mode 7
-	disableAutoMargin = "\x1b[?7l"
 	setCursorPosition = "\x1b[%[1]d;%[2]dH"
 	sgr0              = "\x1b[m" // attrOff
 	bold              = "\x1b[1m"
@@ -68,15 +67,7 @@ const (
 	blink             = "\x1b[5m"
 	reverse           = "\x1b[7m"
 	strikeThrough     = "\x1b[9m"
-	showCursor        = "\x1b[?25h"
-	hideCursor        = "\x1b[?25l"
 	clear             = "\x1b[H\x1b[J"
-	enablePaste       = "\x1b[?2004h"
-	disablePaste      = "\x1b[?2004l"
-	enableFocus       = "\x1b[?1004h"
-	disableFocus      = "\x1b[?1004l"
-	startSyncOut      = "\x1b[?2026h"
-	endSyncOut        = "\x1b[?2026l"
 	doubleUnder       = "\x1b[4:2m"
 	curlyUnder        = "\x1b[4:3m"
 	dottedUnder       = "\x1b[4:4m"
@@ -106,6 +97,37 @@ const (
 	notifyDesktop9    = "\x1b]9;%[2]s\x1b\\"                // Args are title, body (but osc 9 only has body)
 	notifyDesktop777  = "\x1b]777;notify;%s;%s\x1b\\"       // Most commonly supported
 )
+
+type privateMode int
+
+const (
+	pmKeypad         privateMode = 1
+	pmAutoMargin     privateMode = 7
+	pmAltScreen      privateMode = 1049 // 47 and 1047 are alternates, but we use 1049
+	pmBlinkCursor    privateMode = 12
+	pmShowCursor     privateMode = 25
+	pmMouseButton    privateMode = 1000
+	pmMouseDrag      privateMode = 1002
+	pmMouseMotion    privateMode = 1003
+	pmFocusReports   privateMode = 1004
+	pmMouseSgr       privateMode = 1006
+	pmMouseSgrPixel  privateMode = 1016
+	pmBracketedPaste privateMode = 2004
+	pmSyncOutput     privateMode = 2026
+	pmResizeReports  privateMode = 2048 // send in-band resize reports
+)
+
+func (pm privateMode) enable() string {
+	return fmt.Sprintf("\x1b[?%dh", pm)
+}
+
+func (pm privateMode) disable() string {
+	return fmt.Sprintf("\x1b[?%dl", pm)
+}
+
+func (pm privateMode) query() string {
+	return fmt.Sprintf("\x1b[?%d$p", pm)
+}
 
 // NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
 // If the passed in tty is nil, then a reasonable default (typically /dev/tty)
@@ -182,6 +204,7 @@ type tScreen struct {
 	disableCsiU   string
 	termName      string
 	termVers      string
+	inlineResize  bool
 	input         *inputParser
 	sync.Mutex
 }
@@ -322,6 +345,13 @@ func (t *tScreen) processInitQ() {
 					// only Kitty has its OSC 99 thing, but it also does OSC 777 well.
 					t.notifyDesktop = notifyDesktop9
 				}
+			case *eventPrivateMode:
+				switch ev.Mode {
+				case pmResizeReports:
+					if ev.usable() {
+						t.inlineResize = true
+					}
+				}
 			}
 		}
 	}
@@ -339,12 +369,7 @@ func (t *tScreen) filterEvents() chan Event {
 				return
 			}
 			switch ev.(type) {
-			case *eventTermName:
-				select {
-				case t.initQ <- ev:
-				default:
-				}
-			case *eventPrimaryAttributes:
+			case *eventTermName, *eventPrimaryAttributes, *eventPrivateMode:
 				select {
 				case t.initQ <- ev:
 				default:
@@ -694,7 +719,7 @@ func (t *tScreen) showCursor() {
 		return
 	}
 	t.Printf(setCursorPosition, y+1, x+1)
-	t.Print(showCursor)
+	t.Print(pmShowCursor.enable())
 	if t.cursorStyles != nil {
 		if esc, ok := t.cursorStyles[t.cursorStyle]; ok {
 			t.Print(esc)
@@ -748,11 +773,11 @@ func (t *tScreen) clearScreen() {
 }
 
 func (t *tScreen) startBuffering() {
-	t.Print(startSyncOut)
+	t.Print(pmSyncOutput.enable())
 }
 
 func (t *tScreen) endBuffering() {
-	t.Print(endSyncOut)
+	t.Print(pmSyncOutput.disable())
 }
 
 func (t *tScreen) hideCursor() {
@@ -760,7 +785,7 @@ func (t *tScreen) hideCursor() {
 	t.cx, t.cy = t.cells.Size()
 	t.Printf(setCursorPosition, t.cy+1, t.cx+1)
 	// then hide it
-	t.Print(hideCursor)
+	t.Print(pmShowCursor.disable())
 }
 
 func (t *tScreen) draw() {
@@ -831,18 +856,22 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	// to be understood.
 
 	// start by disabling all tracking.
-	t.Print("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l")
+	t.Print(pmMouseButton.disable())
+	t.Print(pmMouseDrag.disable())
+	t.Print(pmMouseMotion.disable())
+	t.Print(pmMouseSgr.disable())
+
 	if f&MouseButtonEvents != 0 {
-		t.Print("\x1b[?1000h")
+		t.Print(pmMouseButton.enable())
 	}
 	if f&MouseDragEvents != 0 {
-		t.Print("\x1b[?1002h")
+		t.Print(pmMouseDrag.enable())
 	}
 	if f&MouseMotionEvents != 0 {
-		t.Print("\x1b[?1003h")
+		t.Print(pmMouseMotion.enable())
 	}
 	if f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) != 0 {
-		t.Print("\x1b[?1006h")
+		t.Print(pmMouseSgr.enable())
 	}
 }
 
@@ -870,9 +899,9 @@ func (t *tScreen) DisablePaste() {
 func (t *tScreen) enablePasting(on bool) {
 	var s string
 	if on {
-		s = enablePaste
+		s = pmBracketedPaste.enable()
 	} else {
-		s = disablePaste
+		s = pmBracketedPaste.disable()
 	}
 	if s != "" {
 		t.Print(s)
@@ -894,11 +923,11 @@ func (t *tScreen) DisableFocus() {
 }
 
 func (t *tScreen) enableFocusReporting() {
-	t.Print(enableFocus)
+	t.Print(pmFocusReports.enable())
 }
 
 func (t *tScreen) disableFocusReporting() {
-	t.Print(disableFocus)
+	t.Print(pmFocusReports.disable())
 }
 
 func (t *tScreen) Size() (int, int) {
@@ -1139,6 +1168,8 @@ func (t *tScreen) engage() error {
 	go t.mainLoop(stopQ)
 
 	if !t.initted {
+		t.Print(requestWindowSize)
+		t.Print(pmResizeReports.query())
 		t.Print(requestExtAttr)
 		t.Print(requestPrimaryDA)
 	}
@@ -1163,9 +1194,9 @@ func (t *tScreen) engage() error {
 		t.Print(t.saveTitle)
 	}
 	t.Print(enterKeypad)
-	t.Print(hideCursor)
 	t.Print(enableAltChars)
-	t.Print(disableAutoMargin)
+	t.Print(pmShowCursor.disable())
+	t.Print(pmAutoMargin.disable())
 	t.Print(clear)
 	if t.title != "" && t.setTitle != "" {
 		t.Printf(t.setTitle, t.title)
@@ -1173,7 +1204,11 @@ func (t *tScreen) engage() error {
 	t.Print(t.enableCsiU)
 	t.Print(requestWindowSize)
 
-	t.tty.NotifyResize(t.resizeQ)
+	if t.inlineResize {
+		t.Print(pmResizeReports.enable())
+	} else {
+		t.tty.NotifyResize(t.resizeQ)
+	}
 	return nil
 }
 
@@ -1190,18 +1225,22 @@ func (t *tScreen) disengage() {
 	}
 
 	t.running = false
+	if t.inlineResize {
+		t.Print(pmResizeReports.disable())
+	} else {
+		t.tty.NotifyResize(nil)
+	}
 	stopQ := t.stopQ
 	close(stopQ)
 	_ = t.tty.Drain()
 	t.Unlock()
 
-	t.tty.NotifyResize(nil)
 	// wait for everything to shut down
 	t.wg.Wait()
 
 	// shutdown the screen and disable special modes (e.g. mouse and bracketed paste)
 	t.cells.Resize(0, 0)
-	t.Print(showCursor)
+	t.Print(pmShowCursor.enable())
 	if t.cursorStyles != nil && t.cursorStyle != CursorStyleDefault {
 		t.Print(t.cursorStyles[CursorStyleDefault])
 	}
@@ -1211,7 +1250,7 @@ func (t *tScreen) disengage() {
 	t.Print(exitKeypad)
 	t.Print(resetFgBg)
 	t.Print(sgr0)
-	t.Print(enableAutoMargin)
+	t.Print(pmAutoMargin.enable())
 	t.Print(t.disableCsiU)
 	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
 		t.Print(t.restoreTitle)
