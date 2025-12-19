@@ -205,6 +205,7 @@ type tScreen struct {
 	termName      string
 	termVers      string
 	inlineResize  bool
+	haveMouseSgr  bool
 	input         *inputParser
 	sync.Mutex
 }
@@ -348,9 +349,9 @@ func (t *tScreen) processInitQ() {
 			case *eventPrivateMode:
 				switch ev.Mode {
 				case pmResizeReports:
-					if ev.usable() {
-						t.inlineResize = true
-					}
+					t.inlineResize = ev.usable()
+				case pmMouseSgr:
+					t.haveMouseSgr = ev.usable()
 				}
 			}
 		}
@@ -374,6 +375,7 @@ func (t *tScreen) filterEvents() chan Event {
 				case t.initQ <- ev:
 				default:
 				}
+
 			default:
 				t.eventQ <- ev
 			}
@@ -855,6 +857,12 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	// the same DEC private modes.  Note that the SGR mode is required for the mouse sequences
 	// to be understood.
 
+	// We rely on dec private mode queries for this.
+	// If your terminal doesn't support these, then ask them to fix it.
+	if !t.haveMouseSgr {
+		return
+	}
+
 	// start by disabling all tracking.
 	t.Print(pmMouseButton.disable())
 	t.Print(pmMouseDrag.disable())
@@ -1170,8 +1178,9 @@ func (t *tScreen) engage() error {
 	if !t.initted {
 		t.Print(requestWindowSize)
 		t.Print(pmResizeReports.query())
+		t.Print(pmMouseSgr.query())
 		t.Print(requestExtAttr)
-		t.Print(requestPrimaryDA)
+		t.Print(requestPrimaryDA) // NB: MUST BE LAST
 	}
 	t.processInitQ()
 
