@@ -22,8 +22,8 @@
 // There is unfortunately *one* conflict, with aixterm, for CSI-P - which is KeyDelete
 // in aixterm, but F1 in others.
 
-//go:build !js || !wasm
-// +build !js !wasm
+//go:build !js && !wasm
+// +build !js,!wasm
 
 package tcell
 
