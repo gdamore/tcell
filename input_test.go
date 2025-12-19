@@ -18,6 +18,7 @@
 package tcell
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -557,6 +558,7 @@ func TestSpecialKeys(t *testing.T) {
 		{"CSI-21~", []byte{'\x1b', '[', '2', '1', '~'}, KeyF10, ModNone},
 		{"CSI-23~", []byte{'\x1b', '[', '2', '3', '~'}, KeyF11, ModNone},
 		{"CSI-24~", []byte{'\x1b', '[', '2', '4', '~'}, KeyF12, ModNone},
+		{"CSI-1-$", []byte{'\x1b', '[', '1', '$'}, KeyHome, ModShift}, // rxvt bs
 		{"SS3-F1", []byte{'\x1b', 'O', 'P'}, KeyF1, ModNone},
 		{"SS3-F2", []byte{'\x1b', 'O', 'Q'}, KeyF2, ModNone},
 		{"SS3-F3", []byte{'\x1b', 'O', 'R'}, KeyF3, ModNone},
@@ -603,6 +605,48 @@ func TestSpecialKeys(t *testing.T) {
 				default:
 					t.Fatalf("Timeout waiting for key event")
 				}
+			}
+		})
+	}
+}
+
+// TestDecPrivateModeResponse tests responses to various DEC private mode queries
+func TestDecPrivateModeResponse(t *testing.T) {
+	tests := []struct {
+		bytes  string
+		result eventPrivateMode
+		usable bool
+	}{
+		{"\x1b[?1001;0$y", eventPrivateMode{Mode: privateMode(1001)}, false},
+		{"\x1b[?1004;2$y", eventPrivateMode{Mode: privateMode(1004), Supported: true}, true},
+		{"\x1b[?7;1$y", eventPrivateMode{Mode: privateMode(7), Supported: true, Enabled: true}, true},
+		{"\x1b[?25;3$y", eventPrivateMode{Mode: privateMode(25), Supported: true, Enabled: true, Permanent: true}, false},
+		{"\x1b[?12;4$y", eventPrivateMode{Mode: privateMode(12), Supported: true, Enabled: false, Permanent: true}, false},
+		{"\x1b[?990;$y", eventPrivateMode{Mode: privateMode(990), Supported: false}, false},
+		{"\x1b[?991$y", eventPrivateMode{Mode: privateMode(991), Supported: false}, false},
+	}
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("case #%d", i), func(t *testing.T) {
+			evch := make(chan Event, 10)
+			ip := newInputParser(evch)
+
+			// Send null in initial state
+			ip.ScanUTF8([]byte(tt.bytes))
+
+			select {
+			case ev := <-evch:
+				if pev, ok := ev.(*eventPrivateMode); ok {
+					if pev.usable() != tt.usable {
+						t.Errorf("Private mode usability wrong %v != %v", pev.usable(), tt.usable)
+					}
+					if *pev != tt.result {
+						t.Errorf("Private mode mismatch for %d", tt.result.Mode)
+					}
+				} else {
+					t.Errorf("Got unexpected event %T", ev)
+				}
+			case <-time.After(100 * time.Millisecond):
+				t.Fatal("Timeout")
 			}
 		})
 	}
