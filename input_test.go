@@ -73,7 +73,7 @@ func TestInputControlKeys(t *testing.T) {
 		{"Ctrl+G", 0x07, KeyCtrlG, "", ModCtrl},
 		{"Ctrl+H", 0x08, KeyBackspace, "", ModNone}, // BS is special
 		{"Ctrl+I", 0x09, KeyTab, "", ModNone},       // Tab is special
-		{"Ctrl+J", 0x0A, KeyEnter, "", ModNone},     // LF is Enter
+		{"Ctrl+J", 0x0A, KeyCtrlJ, "", ModCtrl},
 		{"Ctrl+K", 0x0B, KeyCtrlK, "", ModCtrl},
 		{"Ctrl+L", 0x0C, KeyCtrlL, "", ModCtrl},
 		{"Ctrl+M", 0x0D, KeyEnter, "", ModNone}, // CR is Enter
@@ -235,7 +235,7 @@ func TestInputSpecialKeys(t *testing.T) {
 		{"Tab", '\t', KeyTab, ModNone},
 		{"Backspace_BS", '\b', KeyBackspace, ModNone},
 		{"Backspace_DEL", 0x7F, KeyBackspace, ModNone},
-		{"Enter_LF", '\n', KeyEnter, ModNone},
+		{"Enter_LF", '\n', KeyCtrlJ, ModCtrl},
 		{"Enter_CR", '\r', KeyEnter, ModNone},
 	}
 
@@ -531,7 +531,7 @@ func TestSpecialKeys(t *testing.T) {
 		{"Esc", []byte{'\x1b'}, KeyEscape, ModNone},
 		{"Esc-Esc", []byte{'\x1b', '\x1b'}, KeyEscape, ModAlt},
 		{"Tab", []byte{'\t'}, KeyTab, ModNone},
-		{"NL", []byte{'\n'}, KeyEnter, ModNone},
+		{"NL", []byte{'\n'}, KeyCtrlJ, ModCtrl},
 		{"CR", []byte{'\r'}, KeyEnter, ModNone},
 		{"Backspace", []byte{'\b'}, KeyBackspace, ModNone},
 		{"Delete", []byte{'\x7f'}, KeyBackspace, ModNone},

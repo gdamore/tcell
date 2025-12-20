@@ -426,7 +426,7 @@ func (ip *inputParser) scan() {
 				ip.post(NewEventKey(KeyTab, "", ModNone))
 			case '\b', '\x7F':
 				ip.post(NewEventKey(KeyBackspace, "", ModNone))
-			case '\n', '\r':
+			case '\r':
 				ip.post(NewEventKey(KeyEnter, "", ModNone))
 			default:
 				// Control keys - legacy handling
