@@ -160,7 +160,7 @@ WASM is supported, but needs additional setup detailed in [README-wasm](README-w
 
 ### Plan 9
 
-Plan 9 is supported on a best-effort basis.  Please see the [README-plan](README-plan9.md)
+Plan 9 is supported on a best-effort basis.  Please see the [README-plan9](README-plan9.md)
 document for more information.
 
 ### Commercial Support
