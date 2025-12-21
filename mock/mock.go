@@ -173,28 +173,28 @@ func (mt *MockTty) handleCsi(final byte) {
 
 	switch funcId {
 	case "A": // up n times (CUU)
-		if y := vt.Row(intParams(str, 1, 0)[0]); y >= 1 {
+		if y := vt.Row(intParams(str, 1, 1)[0]); y >= 1 {
 			mt.moveUp(y)
 		}
 	case "B": // down n times (CUD)
-		mt.moveDown(vt.Row(intParams(str, 1, 0)[0]))
+		mt.moveDown(vt.Row(intParams(str, 1, 1)[0]))
 
 	case "C": // forward n times (CUF)
-		mt.moveForward(vt.Col(intParams(str, 1, 0)[0]))
+		mt.moveForward(vt.Col(intParams(str, 1, 1)[0]))
 
 	case "D": // back n times (CUB)
-		mt.moveBackward(vt.Col(intParams(str, 1, 0)[0]))
+		mt.moveBackward(vt.Col(intParams(str, 1, 1)[0]))
 
 	case "E": // down n times (and reset column) (CNL)
-		mt.moveDown(vt.Row(intParams(str, 1, 0)[0]))
+		mt.moveDown(vt.Row(intParams(str, 1, 1)[0]))
 		mt.X = 0
 
 	case "F": // up n times (and reset column) (CPL)
-		mt.moveUp(vt.Row(intParams(str, 1, 0)[0]))
+		mt.moveUp(vt.Row(intParams(str, 1, 1)[0]))
 		mt.X = 0
 
 	case "G": // cursor column (CHA)
-		if x := vt.Col(intParams(str, 1, 0)[0]); x >= 1 && x <= mt.Cols {
+		if x := vt.Col(intParams(str, 1, 1)[0]); x >= 1 && x <= mt.Cols {
 			mt.X = x - 1
 		}
 	case "H": // cursor position (CUP)
