@@ -41,14 +41,14 @@ type Cell struct {
 
 type MockTty struct {
 	Cells []Cell // Content of cells
-	Rows  int
-	Cols  int
+	Rows  vt.Row
+	Cols  vt.Col
 	Fg    tcell.Color
 	Bg    tcell.Color
 	Attr  tcell.AttrMask
-	X     int // cursor position
-	Y     int // cursor position
-	Bells int // incremented each time the bell is sounded
+	X     vt.Col // cursor horizontal position
+	Y     vt.Row // cursor vertical position
+	Bells int    // incremented each time the bell is sounded
 
 	ReadQ  chan byte // contents of stdin
 	WriteQ chan byte // contents of stdout
@@ -104,7 +104,7 @@ func intParams(str string, minNum int, defVal int) []int {
 }
 
 // moveUp movers the cursor up.
-func (mt *MockTty) moveUp(n int) {
+func (mt *MockTty) moveUp(n vt.Row) {
 	mt.Y -= n
 	if mt.Y < 0 {
 		mt.Y = 0
@@ -112,7 +112,7 @@ func (mt *MockTty) moveUp(n int) {
 }
 
 // moveDown moves the cursor down.
-func (mt *MockTty) moveDown(n int) {
+func (mt *MockTty) moveDown(n vt.Row) {
 	mt.Y += n
 	if mt.Y > mt.Rows-1 {
 		mt.Y = mt.Rows - 1
@@ -120,7 +120,7 @@ func (mt *MockTty) moveDown(n int) {
 }
 
 // moveForward moves the cursor to the right.
-func (mt *MockTty) moveForward(n int) {
+func (mt *MockTty) moveForward(n vt.Col) {
 	mt.X += n
 	if mt.X > mt.Cols-1 {
 		mt.X = mt.Cols - 1
@@ -128,7 +128,7 @@ func (mt *MockTty) moveForward(n int) {
 }
 
 // moveBackward moves the cursor to the left.
-func (mt *MockTty) moveBackward(n int) {
+func (mt *MockTty) moveBackward(n vt.Col) {
 	mt.X -= n
 	if mt.X < 0 {
 		mt.X = 0
@@ -136,9 +136,9 @@ func (mt *MockTty) moveBackward(n int) {
 }
 
 // eraseCell erases the cell at the given location.
-func (mt *MockTty) eraseCell(x, y int) {
+func (mt *MockTty) eraseCell(x vt.Col, y vt.Row) {
 	if x >= 0 && x < mt.Cols && y >= 0 && y < mt.Rows {
-		ix := (y * mt.Cols) + x
+		ix := (int(y) * int(mt.Cols)) + int(x)
 		mt.Cells[ix] = Cell{C: []rune{' '}, Width: 1, Fg: mt.Fg, Bg: mt.Bg, Attr: mt.Attr}
 	}
 }
@@ -173,52 +173,52 @@ func (mt *MockTty) handleCsi(final byte) {
 
 	switch funcId {
 	case "A": // up n times (CUU)
-		if y := intParams(str, 1, 0)[0]; y >= 1 {
+		if y := vt.Row(intParams(str, 1, 0)[0]); y >= 1 {
 			mt.moveUp(y)
 		}
 	case "B": // down n times (CUD)
-		mt.moveDown(intParams(str, 1, 0)[0])
+		mt.moveDown(vt.Row(intParams(str, 1, 0)[0]))
 
 	case "C": // forward n times (CUF)
-		mt.moveForward(intParams(str, 1, 0)[0])
+		mt.moveForward(vt.Col(intParams(str, 1, 0)[0]))
 
 	case "D": // back n times (CUB)
-		mt.moveBackward(intParams(str, 1, 0)[0])
+		mt.moveBackward(vt.Col(intParams(str, 1, 0)[0]))
 
 	case "E": // down n times (and reset column) (CNL)
-		mt.moveDown(intParams(str, 1, 0)[0])
+		mt.moveDown(vt.Row(intParams(str, 1, 0)[0]))
 		mt.X = 0
 
 	case "F": // up n times (and reset column) (CPL)
-		mt.moveUp(intParams(str, 1, 0)[0])
+		mt.moveUp(vt.Row(intParams(str, 1, 0)[0]))
 		mt.X = 0
 
 	case "G": // cursor column (CHA)
-		if x := intParams(str, 1, 0)[0]; x >= 1 && x <= mt.Cols {
+		if x := vt.Col(intParams(str, 1, 0)[0]); x >= 1 && x <= mt.Cols {
 			mt.X = x - 1
 		}
 	case "H": // cursor position (CUP)
-		if pos := intParams(str, 2, 1); pos[0] >= 1 && pos[0] <= mt.Rows && pos[1] >= 1 && pos[1] <= mt.Cols {
-			mt.X = pos[1] - 1
-			mt.Y = pos[0] - 1
+		if pos := intParams(str, 2, 1); pos[0] >= 1 && vt.Row(pos[0]) <= mt.Rows && vt.Col(pos[1]) >= 1 && vt.Col(pos[1]) <= mt.Cols {
+			mt.X = vt.Col(pos[1]) - 1
+			mt.Y = vt.Row(pos[0]) - 1
 		}
 	case "I": // TODO: advance to next tab stop
 	case "J": // erase in display (ED)
 		switch intParams(str, 1, 0)[0] {
 		case 0: // erase below
 			for y := mt.Y + 1; y < mt.Rows; y++ {
-				for x := 0; x < mt.Cols; x++ {
+				for x := vt.Col(0); x < mt.Cols; x++ {
 					mt.eraseCell(x, y)
 				}
 			}
 		case 1: // erase above
-			for y := 0; y < mt.Y; y++ {
-				for x := 0; x < mt.Cols; x++ {
+			for y := vt.Row(0); y < mt.Y; y++ {
+				for x := vt.Col(0); x < mt.Cols; x++ {
 					mt.eraseCell(x, y)
 				}
 			}
 			// erase preceding on the same line
-			for x := 0; x < mt.X; x++ {
+			for x := vt.Col(0); x < mt.X; x++ {
 				mt.eraseCell(x, mt.Y)
 			}
 		case 2: // erase all
@@ -236,11 +236,11 @@ func (mt *MockTty) handleCsi(final byte) {
 				mt.eraseCell(x, mt.Y)
 			}
 		case 1:
-			for x := 0; x <= mt.X; x++ {
+			for x := vt.Col(0); x <= mt.X; x++ {
 				mt.eraseCell(x, mt.Y)
 			}
 		case 2:
-			for x := 0; x < mt.Cols; x++ {
+			for x := vt.Col(0); x < mt.Cols; x++ {
 				mt.eraseCell(x, mt.Y)
 			}
 		}
@@ -311,7 +311,7 @@ func (mt *MockTty) run() {
 		}
 
 		// calculate the position in the cells because we will use it a bit
-		ix := mt.X + mt.Y*mt.Cols
+		ix := int(mt.X) + int(mt.Y)*int(mt.Cols)
 
 		switch mt.state {
 		case stateInit:
@@ -556,7 +556,7 @@ func (mt *MockTty) NotifyResize(rq chan<- bool) {
 }
 
 func (mt *MockTty) WindowSize() (tcell.WindowSize, error) {
-	return tcell.WindowSize{Height: mt.Rows, Width: mt.Cols}, nil
+	return tcell.WindowSize{Height: int(mt.Rows), Width: int(mt.Cols)}, nil
 }
 
 // Reset is not part of the TTY interface, and is for testing.
@@ -565,7 +565,7 @@ func (mt *MockTty) Reset() {
 		mt.inited = true
 		mt.Rows = 24
 		mt.Cols = 80
-		mt.Cells = make([]Cell, mt.Cols*mt.Rows)
+		mt.Cells = make([]Cell, int(mt.Cols)*int(mt.Rows))
 		mt.Fg = tcell.ColorWhite
 		mt.Bg = tcell.ColorBlack
 		mt.Attr = tcell.AttrNone
