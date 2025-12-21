@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !js && !wasm
+// +build !js,!wasm
+
 package mock
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gdamore/tcell/v3"
 )
@@ -36,5 +40,6 @@ func TestMockStart(t *testing.T) {
 	if w != 80 || h != 24 {
 		t.Errorf("bad window size %d x %d", w, h)
 	}
+	time.Sleep(time.Millisecond * 100)
 	screen.Fini()
 }

@@ -18,7 +18,16 @@
 package mock
 
 import (
+	"bytes"
+	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+	"unicode/utf8"
+
 	"github.com/gdamore/tcell/v3"
+	"github.com/rivo/uniseg"
 )
 
 type Cell struct {
@@ -35,27 +44,444 @@ type MockTty struct {
 	Cols  int
 	Fg    tcell.Color
 	Bg    tcell.Color
-	attr  tcell.AttrMask
+	Attr  tcell.AttrMask
 	X     int // cursor position
 	Y     int // cursor position
+	Bells int // incremented each time the bell is sounded
 
 	ReadQ  chan byte // contents of stdin
 	WriteQ chan byte // contents of stdout
 
 	// These values can be overridden before Init.
 
-	PrimaryAttributes  string // Primary device attributes, response to CSI-c
-	ExtendedAttributes string // Extended attributes (term name, etc.) response to CSI > q
+	PrimaryAttributes   string // Primary device attributes, response to CSI-c
+	SecondaryAttributes string // Secondary device attributes, response to CSI-c
+	ExtendedAttributes  string // Extended attributes (term name, etc.) response to CSI > q
+	PrivateModes        map[int]int
 
 	inited  bool
 	started bool
 	stopQ   chan struct{}
 	resizeQ chan<- bool
+	state   int
+	waitG   sync.WaitGroup
+	escBuf  *bytes.Buffer
+	utfBuf  []byte
+	utfLen  int
+}
+
+// input states for the state machine - this parses data from the app
+const (
+	stateInit = iota
+	stateEsc
+	stateCSI
+	stateOSC
+	stateDCS
+	stateSOS
+	statePM
+	stateAPC
+	stateUTF // parsing a Unicode rune
+)
+
+// intParams parses the CSI parameter bytes as a range of at least minNum integers,
+// with default values defVal.
+func intParams(str string, minNum int, defVal int) []int {
+	words := strings.Split(str, ";")
+	if len(words) > minNum {
+		minNum = len(words)
+	}
+	result := make([]int, minNum)
+	for i := range len(result) {
+		result[i] = defVal
+	}
+	for i, word := range words {
+		if v, e := strconv.Atoi(word); e == nil {
+			result[i] = v
+		}
+	}
+	return result
+}
+
+// moveUp movers the cursor up.
+func (mt *MockTty) moveUp(n int) {
+	mt.Y -= n
+	if mt.Y < 0 {
+		mt.Y = 0
+	}
+}
+
+// moveDown moves the cursor down.
+func (mt *MockTty) moveDown(n int) {
+	mt.Y += n
+	if mt.Y > mt.Rows-1 {
+		mt.Y = mt.Rows - 1
+	}
+}
+
+// moveForward moves the cursor to the right.
+func (mt *MockTty) moveForward(n int) {
+	mt.X += n
+	if mt.X > mt.Cols-1 {
+		mt.X = mt.Cols - 1
+	}
+}
+
+// moveBackward moves the cursor to the left.
+func (mt *MockTty) moveBackward(n int) {
+	mt.X -= n
+	if mt.X < 0 {
+		mt.X = 0
+	}
+}
+
+// eraseCell erases the cell at the given location.
+func (mt *MockTty) eraseCell(x, y int) {
+	if x >= 0 && x < mt.Cols && y >= 0 && y < mt.Rows {
+		ix := (y * mt.Cols) + x
+		mt.Cells[ix] = Cell{C: []rune{' '}, Width: 1, Fg: mt.Fg, Bg: mt.Bg, Attr: mt.Attr}
+	}
+}
+
+// handleCsi process a fully complete CSI sequence.
+func (mt *MockTty) handleCsi(final byte) {
+	// NB: Technically the spec allows characters 0x3A through 0x3F to be
+	// intermixed with digits, but all of the escape sequences basically have
+	// at most one of these as a prefix, which when combined with the middle
+	// initial, dictates the final function.
+	str := mt.escBuf.String()
+	mt.escBuf.Reset()
+	funcId := ""
+	if len(str) > 0 && str[0] >= 0x3A && str[0] <= 0x3F {
+		funcId = string([]byte{str[0], final})
+		str = str[1:]
+	} else {
+		funcId = string([]byte{final})
+	}
+	// insert the last intermediate byte as well -- right now we will only
+	// have at most one of these (no other variants are known, though they
+	// could legally exist)  This will look like e.g. "?$p" ($ is the intermediate)
+	// for a private mode query.
+	if len(str) > 0 && str[len(str)-1] >= 0x20 && str[len(str)-1] <= 0x2F {
+		if len(funcId) == 2 {
+			funcId = string([]byte{funcId[0], str[len(str)-1], final})
+		} else {
+			funcId = string([]byte{final, str[len(str)-1]})
+		}
+		str = str[0 : len(str)-1]
+	}
+
+	switch funcId {
+	case "A": // up n times (CUU)
+		if y := intParams(str, 1, 0)[0]; y >= 1 {
+			mt.moveUp(y)
+		}
+	case "B": // down n times (CUD)
+		mt.moveDown(intParams(str, 1, 0)[0])
+
+	case "C": // forward n times (CUF)
+		mt.moveForward(intParams(str, 1, 0)[0])
+
+	case "D": // back n times (CUB)
+		mt.moveBackward(intParams(str, 1, 0)[0])
+
+	case "E": // down n times (and reset column) (CNL)
+		mt.moveDown(intParams(str, 1, 0)[0])
+		mt.X = 0
+
+	case "F": // up n times (and reset column) (CPL)
+		mt.moveUp(intParams(str, 1, 0)[0])
+		mt.X = 0
+
+	case "G": // cursor column (CHA)
+		if x := intParams(str, 1, 0)[0]; x >= 1 && x <= mt.Cols {
+			mt.X = x - 1
+		}
+	case "H": // cursor position (CUP)
+		if pos := intParams(str, 2, 1); pos[0] >= 1 && pos[0] <= mt.Rows && pos[1] >= 1 && pos[1] <= mt.Cols {
+			mt.X = pos[1] - 1
+			mt.Y = pos[0] - 1
+		}
+	case "I": // TODO: advance to next tab stop
+	case "J": // erase in display (ED)
+		switch intParams(str, 1, 0)[0] {
+		case 0: // erase below
+			for y := mt.Y + 1; y < mt.Rows; y++ {
+				for x := 0; x < mt.Cols; x++ {
+					mt.eraseCell(x, y)
+				}
+			}
+		case 1: // erase above
+			for y := 0; y < mt.Y; y++ {
+				for x := 0; x < mt.Cols; x++ {
+					mt.eraseCell(x, y)
+				}
+			}
+			// erase preceding on the same line
+			for x := 0; x < mt.X; x++ {
+				mt.eraseCell(x, mt.Y)
+			}
+		case 2: // erase all
+			for y := range mt.Rows {
+				for x := range mt.Cols {
+					mt.eraseCell(x, y)
+				}
+			}
+			// others not supported (3 is erase saved lines)
+		}
+	case "K":
+		switch intParams(str, 1, 0)[0] {
+		case 0:
+			for x := mt.X; x < mt.Cols; x++ {
+				mt.eraseCell(x, mt.Y)
+			}
+		case 1:
+			for x := 0; x <= mt.X; x++ {
+				mt.eraseCell(x, mt.Y)
+			}
+		case 2:
+			for x := 0; x < mt.Cols; x++ {
+				mt.eraseCell(x, mt.Y)
+			}
+		}
+	case "L": // TODO: insert line (IL)
+	case "M": // TODO: delete line (DL)
+	case "P": // TODO: delete characters
+	case "c": // send primary DA
+		if intParams(str, 1, 0)[0] == 0 {
+			mt.reply(mt.PrimaryAttributes)
+		}
+	case "n":
+		switch intParams(str, 1, 0)[0] {
+		case 5:
+			// device status ("OK")
+			mt.reply("\x1b[0n")
+		case 6: // cursor position report (CPR)
+			mt.reply(fmt.Sprintf("\x1b[%d;%dR", mt.Y+1, mt.X+1))
+		}
+	case ">c":
+		if intParams(str, 1, 0)[0] == 0 {
+			mt.reply(mt.SecondaryAttributes)
+		}
+	case ">q":
+		if intParams(str, 1, 0)[0] == 0 {
+			mt.reply(mt.ExtendedAttributes)
+		}
+	case "?h": // set private mode
+		pm := intParams(str, 1, 0)[0]
+		if v := mt.PrivateModes[pm]; v == 1 || v == 2 {
+			mt.PrivateModes[pm] = 1
+		}
+	case "?l": // reset private mode
+		pm := intParams(str, 1, 0)[0]
+		if v := mt.PrivateModes[pm]; v == 1 || v == 2 {
+			mt.PrivateModes[pm] = 2
+		}
+	case "?$p": // private mode query
+		pm := intParams(str, 1, 0)[0]
+		mt.reply(fmt.Sprintf("\x1b[?%d;%d$y", pm, mt.PrivateModes[pm]))
+	}
+}
+
+// handleOSC processes a fully complete OSC command.
+func (mt *MockTty) handleOSC(_ string) {
+	mt.state = stateInit
+}
+
+// reply sends the given string to the application's stdin.
+func (mt *MockTty) reply(s string) {
+	for _, b := range []byte(s) {
+		select {
+		case mt.ReadQ <- b:
+		case <-mt.stopQ:
+		}
+	}
+}
+
+// run the input processor.
+func (mt *MockTty) run() {
+	defer mt.waitG.Done()
+	mt.state = stateInit
+	var ch byte
+	for {
+		select {
+		case ch = <-mt.WriteQ: // read from application output
+		case <-mt.stopQ:
+			return
+		}
+
+		// calculate the position in the cells because we will use it a bit
+		ix := mt.X + mt.Y*mt.Cols
+
+		switch mt.state {
+		case stateInit:
+			switch {
+			case ch >= ' ' && ch < '\x7E':
+				// normal ASCII, this is the easiest case
+				mt.Cells[ix] = Cell{C: []rune{rune(ch)}, Fg: mt.Fg, Bg: mt.Bg, Attr: mt.Attr}
+				if mt.X < mt.Cols-1 {
+					mt.X++
+				}
+			case ch == '\x1B':
+				mt.state = stateEsc
+			case (ch & 0xE0) == 0xC0:
+				mt.utfBuf = []byte{ch}
+				mt.utfLen = 2
+				mt.state = stateUTF
+			case (ch & 0xF0) == 0xE0:
+				mt.utfBuf = []byte{ch}
+				mt.utfLen = 3
+				mt.state = stateUTF
+			case (ch & 0xF8) == 0xF0:
+				mt.utfBuf = []byte{ch}
+				mt.utfLen = 4
+				mt.state = stateUTF
+			// C0 cases
+			case ch == '\x07':
+				mt.Bells++
+			case ch == '\x08':
+				if mt.X > 0 {
+					mt.X--
+				}
+			case ch == '\x0e': // TODO: SO
+			case ch == '\x0f': // TODO: SI
+			// C1 cases - note that these are all < 0xC0 so do not overlap with UTF
+			case ch == 0x9b: // 8-bit CSI, not recommended but real terminals grok
+				mt.state = stateCSI
+				mt.escBuf.Reset()
+			case ch == 0x9d:
+				mt.state = stateOSC
+				mt.escBuf.Reset()
+			case ch == 0x9e:
+				mt.state = statePM
+				mt.escBuf.Reset()
+			case ch == 0x9f:
+				mt.state = stateAPC
+				mt.escBuf.Reset()
+			case ch == 0x98:
+				mt.state = stateSOS
+				mt.escBuf.Reset()
+
+			// case ch == 0x84: // TODO: IND
+			// case ch == 0x85: // TODO: NEL
+			// case ch == 0x88: // TODO: HTS
+			// case ch == 0x8e: // TODO: SSG2
+			// case ch == 0x8f: // TODO: SSG3
+			// case ch == 0x9a: // TODO: DECID
+			default:
+				// all other unknown cases, just ignore it (we don't do 8-bit decodes right now, as we are unicode only)
+			}
+		case stateUTF:
+			if (ch & 0xC0) != 0x80 {
+				// miscoded, discard this and reset the state
+				mt.state = stateInit
+				continue
+			}
+			mt.utfBuf = append(mt.utfBuf, ch)
+			if len(mt.utfBuf) < mt.utfLen {
+				continue
+			}
+
+			mt.state = stateInit
+			// should be a full rune
+			// TODO: possibly consider this as appending to the grapheme cluster?
+			if r, l := utf8.DecodeRune(mt.utfBuf); l == mt.utfLen && r != utf8.RuneError {
+				mt.Cells[ix] = Cell{C: []rune{r}, Fg: mt.Fg, Bg: mt.Bg, Attr: mt.Attr}
+				if mt.X < mt.Cols-1 {
+					mt.X++
+				}
+				if uniseg.StringWidth(string(r)) > 1 && mt.X < mt.Cols {
+					mt.Cells[ix+1] = Cell{C: nil, Fg: mt.Fg, Bg: mt.Bg, Attr: mt.Attr}
+					if mt.X < mt.Cols-1 {
+						mt.X++
+					}
+				}
+			}
+		case stateEsc:
+			switch ch {
+			case '[':
+				mt.state = stateCSI
+				mt.escBuf.Reset()
+			case ']':
+				mt.state = stateOSC
+				mt.escBuf.Reset()
+			case 'D': // down one line
+				if mt.Y < mt.Rows-1 {
+					mt.Y++
+				}
+			case 'E':
+				if mt.Y < mt.Rows-1 {
+					mt.Y++
+				}
+				mt.X = 0
+			case 'H': // TODO: set tab stop
+			case 'M':
+				if mt.Y > 0 {
+					mt.Y--
+				}
+			case 'N': // TODO: SS2: set G2 (not doing)
+			case 'O': // TODO: SS3: set G3
+			case 'P':
+				mt.state = stateDCS
+				mt.escBuf.Reset()
+			case 'X':
+				mt.state = stateSOS
+				mt.escBuf.Reset()
+			case 'Z':
+				mt.reply(mt.PrimaryAttributes)
+			case '\\': // TODO: end of string
+			case '^':
+				mt.state = statePM
+				mt.escBuf.Reset()
+			case '_':
+				mt.state = stateAPC
+				mt.escBuf.Reset()
+			case '6': // TODO: move left one, possibly moving data
+			case '7': // TODO: save state
+			case '8': // TODO: restore state
+			case '9': // TODO: move right one, possibly moving data
+			case '=': // TODO: application keypad mode
+			case '>': // TODO: normal keypad mode
+			case 'c': // TODO: terminal reset
+			case 'g':
+				mt.Bells++
+			case 'n': // TODO: LS2
+			case 'o': // TODO: LS3
+			case '|': // TODO LS3R
+			case '}': // TODO LS2R
+			case '#': // TODO: support ESC-#-E
+			case '$', '(', ')', '*', '+': // TODO: select character set
+			}
+
+		case stateCSI:
+			if (ch >= 0x30) && (ch <= 0x3F) {
+				mt.escBuf.WriteByte(ch) // parameter bytes
+			} else if (ch >= 0x20) && (ch <= 0x2F) {
+				mt.escBuf.WriteByte(ch) // intermediate bytes
+			} else if ch >= 0x40 && (ch <= 0x7F) {
+				mt.state = stateInit
+				mt.handleCsi(ch)
+			}
+
+		case stateOSC:
+			if ch == '\x9c' {
+				// TODO: handle OSC
+				mt.handleOSC(mt.escBuf.String())
+			} else if buf := mt.escBuf.Bytes(); len(buf) > 0 && buf[len(buf)-1] == '\x1b' && ch == '\\' {
+				buf = buf[:len(buf)-1]
+				mt.handleOSC(string(buf))
+				// TODO: handle OSC
+			} else {
+				mt.escBuf.WriteByte(ch)
+			}
+		}
+	}
 }
 
 func (mt *MockTty) Start() error {
 	mt.started = true
 	mt.stopQ = make(chan struct{})
+	mt.waitG.Add(1)
+	go mt.run()
 	return nil
 }
 
@@ -65,18 +491,36 @@ func (mt *MockTty) Stop() error {
 	default:
 		close(mt.stopQ)
 	}
+	mt.waitG.Wait()
 	mt.started = false
 	return nil
 }
 
 func (mt *MockTty) Read(b []byte) (int, error) {
 
-	for n := range len(b) {
+	// This implements VMIN 1, VTIME 0...
+	// I.e. it will wait for at least one character,
+	// then it reads as many as it can (up to the requested amount).
+	// It returns once at least one character is available, unless
+	// it is aborted.
+	if len(b) == 0 {
+		return 0, nil
+	}
+	select {
+	case b[0] = <-mt.ReadQ:
+	case <-mt.stopQ:
+		return 0, nil
+	}
+
+	n := 1
+
+	for n < len(b) {
 		select {
 		case b[n] = <-mt.ReadQ:
-		case <-mt.stopQ:
+		default:
 			return n, nil
 		}
+		n++
 	}
 	return len(b), nil
 }
@@ -95,14 +539,13 @@ func (mt *MockTty) Write(b []byte) (int, error) {
 func (mt *MockTty) Close() error { return nil }
 
 func (mt *MockTty) Drain() error {
-	close(mt.stopQ)
-loop:
-	for {
-		select {
-		case <-mt.ReadQ:
-		default:
-			break loop
-		}
+	for len(mt.ReadQ) > 0 {
+		time.Sleep(time.Millisecond * 10)
+	}
+	select {
+	case <-mt.stopQ:
+	default:
+		close(mt.stopQ)
 	}
 	return nil
 }
@@ -124,10 +567,18 @@ func (mt *MockTty) Reset() {
 		mt.Cells = make([]Cell, mt.Cols*mt.Rows)
 		mt.Fg = tcell.ColorWhite
 		mt.Bg = tcell.ColorBlack
-		mt.attr = tcell.AttrNone
-		mt.PrimaryAttributes = "\x1b[?62;1;7;22c"
+		mt.Attr = tcell.AttrNone
+		mt.PrimaryAttributes = "\x1b[?62;1;22;52c"
+		mt.SecondaryAttributes = "\x1b[>1;10c"
 		mt.ExtendedAttributes = "\x1b[P>|simtty 0.1.2\x1b\\"
 		mt.WriteQ = make(chan byte, 128)
 		mt.ReadQ = make(chan byte, 128)
+		mt.state = stateInit
+		mt.escBuf = &bytes.Buffer{}
+		mt.PrivateModes = map[int]int{
+			7:    4, // forced auto margin
+			2004: 2, // focus mode
+			2048: 2, // resize reports
+		}
 	}
 }
