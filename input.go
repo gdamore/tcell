@@ -35,6 +35,8 @@ import (
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/gdamore/tcell/v3/vt"
 )
 
 type inputState int
@@ -867,28 +869,13 @@ func (ip *inputParser) handlePrivateModeResponse(params []int) {
 	for len(params) < 2 {
 		params = append(params, 0)
 	}
-	ev := &eventPrivateMode{
-		Mode: privateMode(params[0]),
+	if params[1] >= 0 && params[1] <= 4 {
+		ev := &eventPrivateMode{
+			Mode:   vt.PrivateMode(params[0]),
+			Status: vt.ModeStatus(params[1]),
+		}
+		ip.post(ev)
 	}
-	switch params[1] {
-	case 1:
-		ev.Supported = true
-		ev.Enabled = true
-		ev.Permanent = false
-	case 2:
-		ev.Supported = true
-		ev.Enabled = false
-		ev.Permanent = false
-	case 3:
-		ev.Supported = true
-		ev.Enabled = true
-		ev.Permanent = true
-	case 4:
-		ev.Supported = true
-		ev.Enabled = false
-		ev.Permanent = true
-	}
-	ip.post(ev)
 }
 
 func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) {
@@ -1105,13 +1092,6 @@ type eventTermName struct {
 
 type eventPrivateMode struct {
 	EventTime
-	Mode      privateMode // numeric mode e.g. 7 for automargin, 1006 for SGR mouse reports, etc
-	Supported bool        // true unless terminal answers back 0
-	Enabled   bool        // true if mode is enable
-	Permanent bool        // true if value cannot be changed
-}
-
-func (ev *eventPrivateMode) usable() bool {
-	// technically we could look for hardwired on, but its not normally a concern
-	return ev.Supported && !ev.Permanent
+	Mode   vt.PrivateMode // numeric mode e.g. 7 for automargin, 1006 for SGR mouse reports, etc
+	Status vt.ModeStatus  // value of status
 }

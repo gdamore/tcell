@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/gdamore/tcell/v3/vt"
 )
 
 // TestInputNullByte tests that null byte (0x00) is correctly handled
@@ -617,13 +619,13 @@ func TestDecPrivateModeResponse(t *testing.T) {
 		result eventPrivateMode
 		usable bool
 	}{
-		{"\x1b[?1001;0$y", eventPrivateMode{Mode: privateMode(1001)}, false},
-		{"\x1b[?1004;2$y", eventPrivateMode{Mode: privateMode(1004), Supported: true}, true},
-		{"\x1b[?7;1$y", eventPrivateMode{Mode: privateMode(7), Supported: true, Enabled: true}, true},
-		{"\x1b[?25;3$y", eventPrivateMode{Mode: privateMode(25), Supported: true, Enabled: true, Permanent: true}, false},
-		{"\x1b[?12;4$y", eventPrivateMode{Mode: privateMode(12), Supported: true, Enabled: false, Permanent: true}, false},
-		{"\x1b[?990;$y", eventPrivateMode{Mode: privateMode(990), Supported: false}, false},
-		{"\x1b[?991$y", eventPrivateMode{Mode: privateMode(991), Supported: false}, false},
+		{"\x1b[?1001;0$y", eventPrivateMode{Mode: 1001, Status: vt.ModeNA}, false},
+		{"\x1b[?1004;2$y", eventPrivateMode{Mode: 1004, Status: vt.ModeOff}, true},
+		{"\x1b[?7;1$y", eventPrivateMode{Mode: vt.PmAutoMargin, Status: vt.ModeOn}, true},
+		{"\x1b[?25;3$y", eventPrivateMode{Mode: vt.PmShowCursor, Status: vt.ModeOnLocked}, false},
+		{"\x1b[?12;4$y", eventPrivateMode{Mode: vt.PmBlinkCursor, Status: vt.ModeOffLocked}, false},
+		{"\x1b[?990;$y", eventPrivateMode{Mode: 990, Status: vt.ModeNA}, false},
+		{"\x1b[?991$y", eventPrivateMode{Mode: 991, Status: vt.ModeNA}, false},
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("case #%d", i), func(t *testing.T) {
@@ -636,8 +638,8 @@ func TestDecPrivateModeResponse(t *testing.T) {
 			select {
 			case ev := <-evch:
 				if pev, ok := ev.(*eventPrivateMode); ok {
-					if pev.usable() != tt.usable {
-						t.Errorf("Private mode usability wrong %v != %v", pev.usable(), tt.usable)
+					if pev.Status.Changeable() != tt.usable {
+						t.Errorf("Private mode usability wrong %v != %v", pev.Status.Changeable(), tt.usable)
 					}
 					if *pev != tt.result {
 						t.Errorf("Private mode mismatch for %d", tt.result.Mode)
