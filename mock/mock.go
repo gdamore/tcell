@@ -27,6 +27,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/vt"
 	"github.com/rivo/uniseg"
 )
 
@@ -57,7 +58,7 @@ type MockTty struct {
 	PrimaryAttributes   string // Primary device attributes, response to CSI-c
 	SecondaryAttributes string // Secondary device attributes, response to CSI-c
 	ExtendedAttributes  string // Extended attributes (term name, etc.) response to CSI > q
-	PrivateModes        map[int]int
+	PrivateModes        map[vt.PrivateMode]vt.ModeStatus
 
 	inited  bool
 	started bool
@@ -267,18 +268,18 @@ func (mt *MockTty) handleCsi(final byte) {
 			mt.reply(mt.ExtendedAttributes)
 		}
 	case "?h": // set private mode
-		pm := intParams(str, 1, 0)[0]
-		if v := mt.PrivateModes[pm]; v == 1 || v == 2 {
-			mt.PrivateModes[pm] = 1
+		pm := vt.PrivateMode(intParams(str, 1, 0)[0])
+		if mt.PrivateModes[pm].Changeable() {
+			mt.PrivateModes[pm] = vt.ModeOn
 		}
 	case "?l": // reset private mode
-		pm := intParams(str, 1, 0)[0]
-		if v := mt.PrivateModes[pm]; v == 1 || v == 2 {
-			mt.PrivateModes[pm] = 2
+		pm := vt.PrivateMode(intParams(str, 1, 0)[0])
+		if mt.PrivateModes[pm].Changeable() {
+			mt.PrivateModes[pm] = vt.ModeOff
 		}
 	case "?$p": // private mode query
-		pm := intParams(str, 1, 0)[0]
-		mt.reply(fmt.Sprintf("\x1b[?%d;%d$y", pm, mt.PrivateModes[pm]))
+		pm := vt.PrivateMode(intParams(str, 1, 0)[0])
+		mt.reply(pm.Reply(mt.PrivateModes[pm]))
 	}
 }
 
@@ -575,10 +576,10 @@ func (mt *MockTty) Reset() {
 		mt.ReadQ = make(chan byte, 128)
 		mt.state = stateInit
 		mt.escBuf = &bytes.Buffer{}
-		mt.PrivateModes = map[int]int{
-			7:    4, // forced auto margin
-			2004: 2, // focus mode
-			2048: 2, // resize reports
+		mt.PrivateModes = map[vt.PrivateMode]vt.ModeStatus{
+			vt.PmAutoMargin:    vt.ModeOffLocked, // forced auto margin
+			vt.PmFocusReports:  vt.ModeOff,       // focus mode
+			vt.PmResizeReports: vt.ModeOff,       // resize reports
 		}
 	}
 }
