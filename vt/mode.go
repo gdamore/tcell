@@ -56,7 +56,7 @@ func (pm PrivateMode) Query() string {
 
 // Reply returns a string representing a query reply for the given mode and status.
 func (pm PrivateMode) Reply(status ModeStatus) string {
-	return (fmt.Sprintf("\x1b[?%d;%d$y", pm, status))
+	return fmt.Sprintf("\x1b[?%d;%d$y", pm, status)
 }
 
 // ModeStatus represents the status of the mode.
@@ -66,7 +66,7 @@ const (
 	ModeNA        ModeStatus = 0 // Mode is not supported (or unknown)
 	ModeOn        ModeStatus = 1 // Mode is on (e.g. via CSI-h)
 	ModeOff       ModeStatus = 2 // Mode is off (e.g. via CSI-l)
-	ModeOnLocked  ModeStatus = 3 // Mode is hardwared ton
+	ModeOnLocked  ModeStatus = 3 // Mode is hardwired on
 	ModeOffLocked ModeStatus = 4 // Mode is hardwired off
 )
 
