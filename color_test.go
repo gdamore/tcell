@@ -47,12 +47,12 @@ func TestColorValues(t *testing.T) {
 
 func TestColorFitting(t *testing.T) {
 	var pal []Color
-	for i := range 255 {
+	for i := range 256 {
 		pal = append(pal, PaletteColor(i))
 	}
 
 	// Exact color fitting on ANSI colors
-	for i := range 7 {
+	for i := range 8 {
 		if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i) {
 			t.Errorf("Color ANSI fit fail at %d", i)
 		}
@@ -75,7 +75,6 @@ func TestColorFitting(t *testing.T) {
 		FindColor(GetColor("#00FD00"), pal) != ColorLime {
 		t.Errorf("Imperfect color fit")
 	}
-
 }
 
 func TestColorNameLookup(t *testing.T) {

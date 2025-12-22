@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 func main() {
@@ -57,25 +58,25 @@ func main() {
 					switch ev.Str() {
 					case "0":
 						s.Put(2, 2, "0", tcell.StyleDefault)
-						s.SetCursorStyle(tcell.CursorStyleDefault, tcell.ColorReset)
+						s.SetCursorStyle(tcell.CursorStyleDefault, color.Reset)
 					case "1":
 						s.Put(2, 2, "1", tcell.StyleDefault)
-						s.SetCursorStyle(tcell.CursorStyleBlinkingBlock, tcell.ColorGreen)
+						s.SetCursorStyle(tcell.CursorStyleBlinkingBlock, color.Green)
 					case "2":
 						s.Put(2, 2, "2", tcell.StyleDefault)
-						s.SetCursorStyle(tcell.CursorStyleSteadyBlock, tcell.ColorBlue)
+						s.SetCursorStyle(tcell.CursorStyleSteadyBlock, color.Blue)
 					case "3":
 						s.Put(2, 2, "3", tcell.StyleDefault)
-						s.SetCursorStyle(tcell.CursorStyleBlinkingUnderline, tcell.ColorRed)
+						s.SetCursorStyle(tcell.CursorStyleBlinkingUnderline, color.Red)
 					case "4":
 						s.Put(2, 2, "4", tcell.StyleDefault)
-						s.SetCursorStyle(tcell.CursorStyleSteadyUnderline, tcell.ColorOrange)
+						s.SetCursorStyle(tcell.CursorStyleSteadyUnderline, color.Orange)
 					case "5":
 						s.Put(2, 2, "5", tcell.StyleDefault)
-						s.SetCursorStyle(tcell.CursorStyleBlinkingBar, tcell.ColorYellow)
+						s.SetCursorStyle(tcell.CursorStyleBlinkingBar, color.Yellow)
 					case "6":
 						s.Put(2, 2, "6", tcell.StyleDefault)
-						s.SetCursorStyle(tcell.CursorStyleSteadyBar, tcell.ColorPink)
+						s.SetCursorStyle(tcell.CursorStyleSteadyBar, color.Pink)
 					}
 
 				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:

@@ -23,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 var clipboard []byte
@@ -30,7 +31,7 @@ var clipboard []byte
 func displayHelloWorld(s tcell.Screen) {
 	w, h := s.Size()
 	s.Clear()
-	style := tcell.StyleDefault.Foreground(tcell.ColorCadetBlue.TrueColor()).Background(tcell.ColorWhite)
+	style := tcell.StyleDefault.Foreground(color.CadetBlue.TrueColor()).Background(color.White)
 	s.PutStrStyled(w/2-14, h/2, "Press 1 to set clipboard", style)
 	s.PutStrStyled(w/2-14, h/2+1, "Press 2 to get clipboard", style)
 
@@ -65,8 +66,8 @@ func main() {
 	}
 
 	defStyle := tcell.StyleDefault.
-		Background(tcell.ColorBlack).
-		Foreground(tcell.ColorWhite)
+		Background(color.Black).
+		Foreground(color.White)
 	s.SetStyle(defStyle)
 
 	displayHelloWorld(s)

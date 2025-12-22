@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 var row = 0
@@ -46,13 +47,13 @@ func main() {
 	bold := style.Bold(true)
 
 	s.SetStyle(tcell.StyleDefault.
-		Foreground(tcell.ColorBlack).
-		Background(tcell.ColorWhite))
+		Foreground(color.Black).
+		Background(color.White))
 	s.Clear()
 
 	quit := make(chan struct{})
 
-	style = bold.Foreground(tcell.ColorBlue).Background(tcell.ColorSilver)
+	style = bold.Foreground(color.Blue).Background(color.Silver)
 
 	row = 2
 	s.PutStrStyled(2, row, "Press ESC to Exit", style)
@@ -60,7 +61,7 @@ func main() {
 	s.PutStrStyled(2, row, "Note: Style support is dependent on your terminal.", plain)
 	row = 6
 
-	plain = tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(tcell.ColorWhite)
+	plain = tcell.StyleDefault.Foreground(color.Black).Background(color.White)
 
 	style = plain
 	s.PutStrStyled(2, row, "Plain", style)
@@ -118,15 +119,15 @@ func main() {
 	s.PutStrStyled(2, row, "Dashed Underline", style)
 	row++
 
-	style = plain.Underline(true, tcell.ColorBlue)
+	style = plain.Underline(true, color.Blue)
 	s.PutStrStyled(2, row, "Blue Underline", style)
 	row++
 
-	style = plain.Underline(tcell.UnderlineStyleSolid, tcell.ColorFireBrick)
+	style = plain.Underline(tcell.UnderlineStyleSolid, color.FireBrick)
 	s.PutStrStyled(2, row, "Firebrick Underline", style)
 	row++
 
-	style = plain.Underline(tcell.UnderlineStyleCurly, tcell.NewRGBColor(0xc5, 0x8a, 0xf9))
+	style = plain.Underline(tcell.UnderlineStyleCurly, color.NewRGBColor(0xc5, 0x8a, 0xf9))
 	s.PutStrStyled(2, row, "Pink Curly Underline", style)
 	row++
 
@@ -134,11 +135,11 @@ func main() {
 	s.PutStrStyled(2, row, "HyperLink", style)
 	row++
 
-	style = plain.Foreground(tcell.ColorRed)
+	style = plain.Foreground(color.Red)
 	s.PutStrStyled(2, row, "Red Foreground", style)
 	row++
 
-	style = plain.Background(tcell.ColorRed)
+	style = plain.Background(color.Red)
 	s.PutStrStyled(2, row, "Red Background", style)
 	row++
 

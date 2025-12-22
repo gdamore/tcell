@@ -29,6 +29,7 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/encoding"
 
 	"github.com/mattn/go-sixel"
@@ -43,7 +44,7 @@ type imageData struct {
 func displayHelloWorld(s tcell.Screen) {
 	w, h := s.Size()
 	s.Clear()
-	style := tcell.StyleDefault.Foreground(tcell.ColorCadetBlue.TrueColor()).Background(tcell.ColorWhite)
+	style := tcell.StyleDefault.Foreground(color.CadetBlue.TrueColor()).Background(color.White)
 	s.PutStrStyled(w/2-7, h/2, "Hello, World!", style)
 	s.PutStr(w/2-9, h/2+1, "Press ESC to exit.")
 	s.PutStr(w/2-18, h/2+2, "Press Enter to toggle sixel lock.")
@@ -118,8 +119,8 @@ func main() {
 	}
 
 	defStyle := tcell.StyleDefault.
-		Background(tcell.ColorBlack).
-		Foreground(tcell.ColorWhite)
+		Background(color.Black).
+		Foreground(color.White)
 	s.SetStyle(defStyle)
 
 	raw, err := loadImage("./logos/tcell.png")

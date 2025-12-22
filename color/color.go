@@ -1156,7 +1156,7 @@ func PaletteColor(index int) Color {
 	return Color(index) | IsValid
 }
 
-// FromImageColor converts an image/color.Color into tcell.Color.
+// FromImageColor converts an image/color.Color into Color.
 // The alpha value is limited to just zero and non-zero, so it should
 // be tracked separately if full detail is needed. (A zero alpha
 // becomes the default color, which means no color change at all.)

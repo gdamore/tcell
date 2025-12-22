@@ -23,12 +23,13 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 func displayHelloWorld(s tcell.Screen, secs int) {
 	w, h := s.Size()
 	s.Clear()
-	style := tcell.StyleDefault.Foreground(tcell.ColorCadetBlue.TrueColor()).Background(tcell.ColorWhite)
+	style := tcell.StyleDefault.Foreground(color.CadetBlue.TrueColor()).Background(color.White)
 	msg := "Notification Demo"
 	s.PutStrStyled((w-len(msg))/2, h/2-1, msg, style)
 	msg = "(Minimize This Window)"
@@ -58,8 +59,8 @@ func main() {
 	}
 
 	defStyle := tcell.StyleDefault.
-		Background(tcell.ColorBlack).
-		Foreground(tcell.ColorWhite)
+		Background(color.Black).
+		Foreground(color.White)
 	s.SetStyle(defStyle)
 
 	when := 10

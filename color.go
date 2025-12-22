@@ -280,7 +280,7 @@ const (
 	Color217                  = color.XTerm217
 	Color218                  = color.XTerm218
 	Color219                  = color.XTerm219
-	Color220                  = color.XTerm210
+	Color220                  = color.XTerm220
 	Color221                  = color.XTerm221
 	Color222                  = color.XTerm222
 	Color223                  = color.XTerm223
@@ -500,7 +500,7 @@ func PaletteColor(index int) Color {
 	return color.PaletteColor(index)
 }
 
-// FromImageColor converts an image/color.Color into tcell.Color.
+// FromImageColor converts an image/color.Color into Color.
 // Deprecated: Use color.FromImageColor.
 func FromImageColor(imageColor ic.Color) Color {
 	return color.FromImageColor(imageColor)
