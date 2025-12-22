@@ -14,7 +14,11 @@
 
 package tcell
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/gdamore/tcell/v3/color"
+)
 
 // Style represents a complete text style, including both foreground color,
 // background color, and additional attributes such as "bold" or "underline".
@@ -25,9 +29,9 @@ import "strings"
 //
 // To use Style, just declare a variable of its type.
 type Style struct {
-	fg      Color
-	bg      Color
-	ulColor Color
+	fg      color.Color
+	bg      color.Color
+	ulColor color.Color
 	attrs   AttrMask
 	ulStyle UnderlineStyle
 	url     *urlInfo
@@ -47,7 +51,7 @@ var styleInvalid = Style{attrs: AttrInvalid}
 
 // Foreground returns a new style based on s, with the foreground color set
 // as requested.  ColorDefault can be used to select the global default.
-func (s Style) Foreground(c Color) Style {
+func (s Style) Foreground(c color.Color) Style {
 	s2 := s
 	s2.fg = c
 	return s2
@@ -55,7 +59,7 @@ func (s Style) Foreground(c Color) Style {
 
 // Background returns a new style based on s, with the background color set
 // as requested.  ColorDefault can be used to select the global default.
-func (s Style) Background(c Color) Style {
+func (s Style) Background(c color.Color) Style {
 	s2 := s
 	s2.bg = c
 	return s2
@@ -156,12 +160,12 @@ func (s Style) Underline(params ...any) Style {
 }
 
 // GetForeground returns the foreground (text) color.
-func (s Style) GetForeground() Color {
+func (s Style) GetForeground() color.Color {
 	return s.fg
 }
 
 // GetBackground returns the background color.
-func (s Style) GetBackground() Color {
+func (s Style) GetBackground() color.Color {
 	return s.bg
 }
 
@@ -171,7 +175,7 @@ func (s Style) GetUnderlineStyle() UnderlineStyle {
 }
 
 // GetUnderlineColor returns the underline color for the style.
-func (s Style) GetUnderlineColor() Color {
+func (s Style) GetUnderlineColor() color.Color {
 	return s.ulColor
 }
 

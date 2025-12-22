@@ -14,7 +14,11 @@
 
 package tcell
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/gdamore/tcell/v3/color"
+)
 
 // Screen represents the physical (or emulated) screen.
 // This can be a terminal window or a physical console.  Platforms implement
@@ -91,7 +95,7 @@ type Screen interface {
 	// is not supported (or cursor styles are not supported at all),
 	// then this will have no effect.  Color will be changed if supplied,
 	// and the terminal supports doing so.
-	SetCursorStyle(CursorStyle, ...Color)
+	SetCursorStyle(CursorStyle, ...color.Color)
 
 	// Size returns the screen size as width, height.  This changes in
 	// response to a call to Clear or Flush.
@@ -287,7 +291,7 @@ type screenImpl interface {
 	SetStyle(style Style)
 	ShowCursor(x int, y int)
 	HideCursor()
-	SetCursor(CursorStyle, Color)
+	SetCursor(CursorStyle, color.Color)
 	Size() (width, height int)
 	EnableMouse(...MouseFlags)
 	DisableMouse()
@@ -402,7 +406,7 @@ func (b *baseScreen) LockRegion(x, y, width, height int, lock bool) {
 	b.Unlock()
 }
 
-func (b *baseScreen) SetCursorStyle(cs CursorStyle, ccs ...Color) {
+func (b *baseScreen) SetCursorStyle(cs CursorStyle, ccs ...color.Color) {
 	if len(ccs) > 0 {
 		b.SetCursor(cs, ccs[0])
 	} else {

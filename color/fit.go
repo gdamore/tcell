@@ -1,4 +1,4 @@
-// Copyright 2016 The TCell Authors
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package color
 
 import (
 	"math"
@@ -20,11 +20,11 @@ import (
 	"github.com/lucasb-eyer/go-colorful"
 )
 
-// FindColor attempts to find a given color, or the best match possible for it,
+// Find attempts to find a given color, or the best match possible for it,
 // from the palette given.  This is an expensive operation, so results should
 // be cached by the caller.
-func FindColor(c Color, palette []Color) Color {
-	match := ColorDefault
+func Find(c Color, palette []Color) Color {
+	match := Default
 	dist := float64(0)
 	r, g, b := c.RGB()
 	c1 := colorful.Color{
@@ -44,7 +44,7 @@ func FindColor(c Color, palette []Color) Color {
 		if math.IsNaN(nd) {
 			nd = math.Inf(1)
 		}
-		if match == ColorDefault || nd < dist {
+		if match == Default || nd < dist {
 			match = d
 			dist = nd
 		}

@@ -20,6 +20,7 @@ package mock
 import (
 	"bytes"
 	"fmt"
+	"image/color"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,8 +35,8 @@ import (
 // Cell is a representation of a display cell.
 type Cell struct {
 	C     []rune // Content, for now only a single rune is supported
-	Fg    tcell.Color
-	Bg    tcell.Color
+	Fg    color.Color
+	Bg    color.Color
 	Attr  tcell.AttrMask
 	Width int // Display width of C.
 }
@@ -200,7 +201,7 @@ func (mt *MockTty) handleCsi(final byte) {
 		if x := vt.Col(intParams(str, 1, 1)[0]); x > 0 && x <= mt.Cols {
 			mt.X = x - 1
 		}
-	case "H": // cursor position (CUP)
+	case "H", "f": // cursor position (CUP), also (HVP)
 		if pos := vt.Row(intParams(str, 2, 1)[0]); pos > 0 && pos <= mt.Rows {
 			mt.Y = pos - 1
 		}

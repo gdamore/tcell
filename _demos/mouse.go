@@ -22,6 +22,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"os"
 	"os/exec"
 	"runtime"
@@ -270,14 +271,14 @@ func main() {
 				ox, oy = x, y
 			}
 			theme := []tcell.Color{
-				tcell.ColorGray,
-				tcell.ColorRed,
-				tcell.ColorLime,
-				tcell.ColorYellow,
-				tcell.ColorFuchsia,
-				tcell.ColorBlue,
-				tcell.ColorAqua,
-				tcell.ColorSilver,
+				color.Gray,
+				color.Red,
+				color.Lime,
+				color.Yellow,
+				color.Fuchsia,
+				color.Blue,
+				color.Aqua,
+				color.Silver,
 			}
 			switch ev.Buttons() {
 			case tcell.ButtonNone:
