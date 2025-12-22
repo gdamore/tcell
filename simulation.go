@@ -19,6 +19,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/gdamore/tcell/v3/color"
 	"golang.org/x/text/transform"
 )
 
@@ -246,7 +247,7 @@ func (s *simscreen) hideCursor() {
 	s.cursorvis = false
 }
 
-func (s *simscreen) SetCursor(CursorStyle, Color) {}
+func (s *simscreen) SetCursor(CursorStyle, color.Color) {}
 
 func (s *simscreen) Show() {
 	s.Lock()

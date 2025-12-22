@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package color
 
 import (
 	ic "image/color"
@@ -24,14 +24,14 @@ func TestColorValues(t *testing.T) {
 		color Color
 		hex   int32
 	}{
-		{ColorRed, 0xFF0000},
-		{ColorGreen, 0x008000},
-		{ColorLime, 0x00FF00},
-		{ColorBlue, 0x0000FF},
-		{ColorBlack, 0x000000},
-		{ColorWhite, 0xFFFFFF},
-		{ColorSilver, 0xC0C0C0},
-		{ColorNavy, 0x000080},
+		{Red, 0xFF0000},
+		{Green, 0x008000},
+		{Lime, 0x00FF00},
+		{Blue, 0x0000FF},
+		{Black, 0x000000},
+		{White, 0xFFFFFF},
+		{Silver, 0xC0C0C0},
+		{Navy, 0x000080},
 	}
 
 	for _, tc := range values {
@@ -53,26 +53,26 @@ func TestColorFitting(t *testing.T) {
 
 	// Exact color fitting on ANSI colors
 	for i := range 7 {
-		if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i) {
+		if Find(PaletteColor(i), pal[:8]) != PaletteColor(i) {
 			t.Errorf("Color ANSI fit fail at %d", i)
 		}
 	}
 	// Grey is closest to Silver
-	if FindColor(PaletteColor(8), pal[:8]) != PaletteColor(7) {
+	if Find(PaletteColor(8), pal[:8]) != PaletteColor(7) {
 		t.Errorf("Grey does not fit to silver")
 	}
 	// Color fitting of upper 8 colors.
 	for i := 9; i < 16; i++ {
-		if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i%8) {
+		if Find(PaletteColor(i), pal[:8]) != PaletteColor(i%8) {
 			t.Errorf("Color fit fail at %d", i)
 		}
 	}
 	// Imperfect fit
-	if FindColor(ColorOrangeRed, pal[:16]) != ColorRed ||
-		FindColor(ColorAliceBlue, pal[:16]) != ColorWhite ||
-		FindColor(ColorPink, pal) != Color217 ||
-		FindColor(ColorSienna, pal) != Color173 ||
-		FindColor(GetColor("#00FD00"), pal) != ColorLime {
+	if Find(OrangeRed, pal[:16]) != Red ||
+		Find(AliceBlue, pal[:16]) != White ||
+		Find(Pink, pal) != XTerm217 ||
+		Find(Sienna, pal) != XTerm173 ||
+		Find(GetColor("#00FD00"), pal) != Lime {
 		t.Errorf("Imperfect color fit")
 	}
 
@@ -84,10 +84,10 @@ func TestColorNameLookup(t *testing.T) {
 		color Color
 		rgb   bool
 	}{
-		{"#FF0000", ColorRed, true},
-		{"black", ColorBlack, false},
-		{"orange", ColorOrange, true},
-		{"door", ColorDefault, false},
+		{"#FF0000", Red, true},
+		{"black", Black, false},
+		{"orange", Orange, true},
+		{"door", Default, false},
 	}
 	for _, v := range values {
 		c := GetColor(v.name)
@@ -95,11 +95,11 @@ func TestColorNameLookup(t *testing.T) {
 			t.Errorf("Wrong color for %v: %v", v.name, c.Hex())
 		}
 		if v.rgb {
-			if c&ColorIsRGB == 0 {
+			if !c.IsRGB() {
 				t.Errorf("Color should have RGB: %v", v.name)
 			}
 		} else {
-			if c&ColorIsRGB != 0 {
+			if c.IsRGB() {
 				t.Errorf("Named color should not be RGB: %v", v.name)
 			}
 		}
@@ -110,14 +110,14 @@ func TestColorNameLookup(t *testing.T) {
 	}
 
 	// these colors only have strings (for debugging), you cannot use them to create a color
-	if ColorNone.String() != "none" {
+	if None.String() != "none" {
 		t.Errorf("ColorNone did not match")
 	}
-	if ColorReset.String() != "reset" {
-		t.Errorf("ColorReset did not match")
+	if Reset.String() != "reset" {
+		t.Errorf("Reset did not match")
 	}
-	if ColorDefault.String() != "default" {
-		t.Errorf("ColorDefault did not match")
+	if Default.String() != "default" {
+		t.Errorf("Default did not match")
 	}
 }
 
@@ -144,33 +144,27 @@ func TestFromImageColor(t *testing.T) {
 	}
 }
 
-func TestColorNone(t *testing.T) {
-	s := mkTestScreen(t, "")
-	s.Init()
-	s.SetSize(80, 24)
-	st := StyleDefault.Foreground(ColorBlack).Background(ColorWhite)
-	s.Fill(' ', st)
-	if _, s1, _ := s.Get(0, 0); s1 != st {
-		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
+func TestColorRGBA(t *testing.T) {
+	r, g, b, a := Red.RGBA()
+	if r != 0xffff || g != 0 || b != 0 || a != 0xffff {
+		t.Errorf("Wrong RGBA for red: %x %x %x %x", r, g, b, a)
 	}
-	st2 := st.Foreground(ColorNone).Background(ColorNone)
-	s.Fill('X', st2)
-	if _, s1, _ := s.Get(0, 0); s1 != st {
-		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
+	r, g, b, a = Red.TrueColor().RGBA()
+	if r != 0xffff || g != 0 || b != 0 || a != 0xffff {
+		t.Errorf("Wrong RGBA for red.TrueColor: %x %x %x %x", r, g, b, a)
 	}
-	red := st.Foreground(ColorRed).Background(ColorNone)
-	s.Put(1, 0, " ", red)
-	if _, s1, _ := s.Get(1, 0); s1 != red.Background(st.bg) {
-		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
-	}
-	if _, s1, _ := s.Get(0, 0); s1 != st {
-		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
-	}
-	pink := st.Background(ColorPink).Foreground(ColorNone)
-	s.Put(1, 0, " ", pink)
-	combined := pink.Foreground(ColorRed)
 
-	if _, s1, _ := s.Get(1, 0); s1 != combined {
-		t.Errorf("Wrong style! fg %s bg %s", s1.fg.String(), s1.bg.String())
+	r, g, b, a = Default.RGBA()
+	if r != 0 || g != 0 || b != 0 || a != 0 {
+		t.Errorf("Non-zero RGBA for default")
+	}
+
+	r, g, b, a = None.RGBA()
+	if r != 0 || g != 0 || b != 0 || a != 0 {
+		t.Errorf("Non-zero RGBA for none")
+	}
+	r, g, b, a = Reset.RGBA()
+	if r != 0 || g != 0 || b != 0 || a != 0 {
+		t.Errorf("Non-zero RGBA for reset")
 	}
 }

@@ -33,6 +33,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/vt"
 	"golang.org/x/text/transform"
 )
@@ -141,8 +142,8 @@ type tScreen struct {
 	decoder       transform.Transformer
 	fallback      map[rune]string
 	ncolor        int
-	colors        map[Color]Color
-	palette       []Color
+	colors        map[color.Color]color.Color
+	palette       []color.Color
 	truecolor     bool
 	noColor       bool
 	legacy        bool
@@ -152,7 +153,7 @@ type tScreen struct {
 	setWinSize    string
 	cursorStyles  map[CursorStyle]string
 	cursorStyle   CursorStyle
-	cursorColor   Color
+	cursorColor   color.Color
 	cursorRGB     string
 	cursorFg      string
 	stopQ         chan struct{}
@@ -269,12 +270,12 @@ func (t *tScreen) Init() error {
 
 	// clip to reasonable limits
 	nColors := min(t.ncolor, 256)
-	t.colors = make(map[Color]Color, nColors)
-	t.palette = make([]Color, nColors)
+	t.colors = make(map[color.Color]color.Color, nColors)
+	t.palette = make([]color.Color, nColors)
 	for i := range nColors {
-		t.palette[i] = Color(i) | ColorValid
+		t.palette[i] = color.PaletteColor(i)
 		// identity map for our builtin colors
-		t.colors[Color(i)|ColorValid] = Color(i) | ColorValid
+		t.colors[color.PaletteColor(i)] = color.PaletteColor(i)
 	}
 
 	return nil
@@ -470,7 +471,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 		}
 		v, ok := t.colors[fg]
 		if !ok {
-			v = FindColor(fg, []Color{ColorBlack, ColorWhite})
+			v = color.Find(fg, []Color{ColorBlack, ColorWhite})
 			t.colors[fg] = v
 		}
 		switch v {
@@ -509,7 +510,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 		if v, ok := t.colors[fg]; ok {
 			fg = v
 		} else {
-			v = FindColor(fg, t.palette)
+			v = color.Find(fg, t.palette)
 			t.colors[fg] = v
 			fg = v
 		}
@@ -525,7 +526,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 		if v, ok := t.colors[bg]; ok {
 			bg = v
 		} else {
-			v = FindColor(bg, t.palette)
+			v = color.Find(bg, t.palette)
 			t.colors[bg] = v
 			bg = v
 		}
@@ -573,7 +574,7 @@ func (t *tScreen) drawCell(x, y int) int {
 				if v, ok := t.colors[uc]; ok {
 					uc = v
 				} else {
-					v = FindColor(uc, t.palette)
+					v = color.Find(uc, t.palette)
 					t.colors[uc] = v
 					uc = v
 				}
