@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 var red = int32(rand.Int() % 256)
@@ -41,7 +42,7 @@ var redi = int32(inc)
 var grni = int32(inc)
 var blui = int32(inc)
 
-func makebox(s tcell.Screen, name string, color tcell.Color) {
+func makebox(s tcell.Screen, name string, fill color.Color) {
 	w, h := s.Size()
 
 	if w == 0 || h == 0 {
@@ -55,17 +56,17 @@ func makebox(s tcell.Screen, name string, color tcell.Color) {
 	st := tcell.StyleDefault
 
 	s.Fill(' ', st)
-	bg := st.Background(color)
+	bg := st.Background(fill)
 	for row := 0; row < lh; row++ {
 		for col := 0; col < lw; col++ {
 			s.Put(lx+col, ly+row, " ", bg)
 		}
 	}
-	cn := color.Name()
+	cn := fill.Name()
 	if cn == "" {
 		cn = "rgb"
 	}
-	msg := fmt.Sprintf("This is %s (#%06x, %s). Terminal supports %d colors.", name, color.Hex(), cn, s.Colors())
+	msg := fmt.Sprintf("This is %s (#%06x, %s). Terminal supports %d colors.", name, fill.Hex(), cn, s.Colors())
 	if len(msg) < w {
 		lx = (w - len(msg)) / 2
 	} else {
@@ -86,7 +87,7 @@ func main() {
 		fatal("usage: %s color", os.Args[0])
 	}
 
-	var color tcell.Color
+	var color_ color.Color
 
 	if strings.HasPrefix(os.Args[1], "#") {
 		name := os.Args[1][1:]
@@ -102,20 +103,20 @@ func main() {
 			r = r<<4 + r
 			g = g<<4 + g
 			b = b<<4 + b
-			color = tcell.NewRGBColor(r, g, b)
+			color_ = color.NewRGBColor(r, g, b)
 		} else if len(name) == 6 {
 			hex, err := strconv.ParseUint(name, 16, 32)
 			if err != nil {
 				fatal("invalid color specification")
 			}
-			color = tcell.NewHexColor(int32(hex))
+			color_ = color.NewHexColor(int32(hex))
 		} else {
 			fatal("invalid color specification")
 		}
 	} else if val, err := strconv.Atoi(os.Args[1]); err == nil {
-		color = tcell.ColorBlack + tcell.Color(val)
-	} else if val, ok := tcell.ColorNames[strings.ToLower(os.Args[1])]; ok {
-		color = val
+		color_ = color.Black + color.Color(val)
+	} else if val, ok := color.Names[strings.ToLower(os.Args[1])]; ok {
+		color_ = val
 	} else {
 		fatal("invalid color specification")
 	}
@@ -130,8 +131,8 @@ func main() {
 	}
 
 	s.SetStyle(tcell.StyleDefault.
-		Foreground(tcell.ColorBlack).
-		Background(tcell.ColorWhite))
+		Foreground(color.Black).
+		Background(color.White))
 	s.Clear()
 
 	quit := make(chan struct{})
@@ -153,7 +154,7 @@ func main() {
 		}
 	}()
 
-	makebox(s, os.Args[1], color)
+	makebox(s, os.Args[1], color_)
 	<-quit
 
 	s.Fini()

@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 var red = int32(rand.Int() % 256)
@@ -109,8 +110,8 @@ func main() {
 	}
 
 	s.SetStyle(tcell.StyleDefault.
-		Foreground(tcell.ColorBlack).
-		Background(tcell.ColorWhite))
+		Foreground(color.Black).
+		Background(color.White))
 	s.Clear()
 
 	quit := make(chan struct{})

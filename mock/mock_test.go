@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/vt"
 )
 
@@ -46,7 +47,7 @@ func TestMockStart(t *testing.T) {
 }
 
 func TestMockDECALN(t *testing.T) {
-	mt := &MockTty{Rows: 3, Cols: 5, Fg: tcell.ColorWhite, Bg: tcell.ColorBlack}
+	mt := &MockTty{Rows: 3, Cols: 5, Fg: color.White, Bg: color.Black}
 	mt.Reset()
 	if err := mt.Start(); err != nil {
 		t.Fatalf("Failed to start: %v", err)
@@ -65,10 +66,10 @@ func TestMockDECALN(t *testing.T) {
 		if mt.Cells[i].Attr != tcell.AttrNone {
 			t.Errorf("wrong attr at %d: %x", i, mt.Cells[i].Attr)
 		}
-		if mt.Cells[i].Fg != tcell.ColorWhite {
+		if mt.Cells[i].Fg != color.White {
 			t.Errorf("wrong fg at %d: %s", i, mt.Cells[i].Fg.String())
 		}
-		if mt.Cells[i].Bg != tcell.ColorBlack {
+		if mt.Cells[i].Bg != color.Black {
 			t.Errorf("wrong bg at %d: %s", i, mt.Cells[i].Bg.String())
 		}
 		if mt.Cells[i].Width != 1 {
@@ -79,7 +80,7 @@ func TestMockDECALN(t *testing.T) {
 	if err := mt.Start(); err != nil {
 		t.Fatalf("Failed to start: %v", err)
 	}
-	mt.Fg = tcell.ColorRed
+	mt.Fg = color.Red
 	mt.Attr = tcell.AttrBold
 	mt.Write([]byte("\x1b#8"))
 	mt.Drain()
@@ -91,10 +92,10 @@ func TestMockDECALN(t *testing.T) {
 		if mt.Cells[i].Attr != tcell.AttrBold {
 			t.Errorf("wrong attr at %d: %x", i, mt.Cells[i].Attr)
 		}
-		if mt.Cells[i].Fg != tcell.ColorRed {
+		if mt.Cells[i].Fg != color.Red {
 			t.Errorf("wrong fg at %d: %s", i, mt.Cells[i].Fg.String())
 		}
-		if mt.Cells[i].Bg != tcell.ColorBlack {
+		if mt.Cells[i].Bg != color.Black {
 			t.Errorf("wrong bg at %d: %s", i, mt.Cells[i].Bg.String())
 		}
 	}
@@ -104,7 +105,7 @@ func TestMockDECALN(t *testing.T) {
 }
 
 func TestMockCursorMovement(t *testing.T) {
-	mt := &MockTty{Rows: 3, Cols: 5, Fg: tcell.ColorWhite, Bg: tcell.ColorBlack}
+	mt := &MockTty{Rows: 3, Cols: 5, Fg: color.White, Bg: color.Black}
 	mt.Reset()
 	if err := mt.Start(); err != nil {
 		t.Fatalf("Failed to start: %v", err)

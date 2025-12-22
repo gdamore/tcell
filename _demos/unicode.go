@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/encoding"
 )
 
@@ -55,8 +56,8 @@ func main() {
 	bold := style.Bold(true)
 
 	s.SetStyle(tcell.StyleDefault.
-		Foreground(tcell.ColorBlack).
-		Background(tcell.ColorWhite))
+		Foreground(color.Black).
+		Background(color.White))
 	s.Clear()
 
 	// we can even try to use unicode window titles!

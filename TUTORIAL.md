@@ -100,7 +100,7 @@ if err := s.Init(); err != nil {
 }
 
 // Set default text style
-defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+defStyle := tcell.StyleDefault.Background(color.Reset).Foreground(color.Reset)
 s.SetStyle(defStyle)
 
 // Clear screen
@@ -184,6 +184,7 @@ import (
 	"log"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
@@ -244,8 +245,8 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string)
 }
 
 func main() {
-	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	boxStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorPurple)
+	defStyle := tcell.StyleDefault.Background(color.Reset).Foreground(color.Reset)
+	boxStyle := tcell.StyleDefault.Foreground(color.White).Background(color.Purple)
 
 	// Initialize screen
 	s, err := tcell.NewScreen()

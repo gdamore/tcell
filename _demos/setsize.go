@@ -22,13 +22,14 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/encoding"
 )
 
 func displayDemo(s tcell.Screen) {
 	w, h := s.Size()
 	s.Clear()
-	style := tcell.StyleDefault.Foreground(tcell.ColorCadetBlue.TrueColor()).Background(tcell.ColorWhite)
+	style := tcell.StyleDefault.Foreground(color.CadetBlue.TrueColor()).Background(color.White)
 	sizeStr := fmt.Sprintf("%d x %d", w, h)
 	helpStr := "Use cursors to resize, ESC to exit."
 	s.PutStrStyled((w-len(sizeStr))/2, h/2, sizeStr, style)
@@ -51,8 +52,8 @@ func main() {
 	}
 
 	defStyle := tcell.StyleDefault.
-		Background(tcell.ColorBlack).
-		Foreground(tcell.ColorWhite)
+		Background(color.Black).
+		Foreground(color.White)
 	s.SetStyle(defStyle)
 
 	displayDemo(s)

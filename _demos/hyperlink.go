@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) int {
@@ -38,7 +39,7 @@ func displayDemo(s tcell.Screen) {
 	x = emitStr(s, x, h/2, style, "Please visit the ")
 	x = emitStr(s, x, h/2, style.Url("https://github.com/gdamore/tcell"), "GitHub Repository")
 	emitStr(s, x, h/2, style, " for the source code.")
-	style = tcell.StyleDefault.Foreground(tcell.ColorCadetBlue.TrueColor()).Background(tcell.ColorWhite)
+	style = tcell.StyleDefault.Foreground(color.CadetBlue.TrueColor()).Background(color.White)
 	emitStr(s, (w-18)/2, h/2+2, style, "Press ESC to exit.")
 	s.Show()
 }
@@ -57,8 +58,8 @@ func main() {
 	}
 
 	defStyle := tcell.StyleDefault.
-		Background(tcell.ColorBlack).
-		Foreground(tcell.ColorWhite)
+		Background(color.Black).
+		Foreground(color.White)
 	s.SetStyle(defStyle)
 
 	displayDemo(s)

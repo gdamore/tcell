@@ -212,10 +212,12 @@ func (t *tScreen) Init() error {
 		if slices.Contains([]string{"truecolor", "direct", "24bit"}, cterm) || strings.HasSuffix(nterm, "-direct") || strings.HasSuffix(nterm, "-truecolor") {
 			t.truecolor = true
 			t.ncolor = 256 // base 8-bit palette
-		} else if strings.HasSuffix("-256color", nterm) || strings.Contains(cterm, "256") {
+		} else if strings.HasSuffix(nterm, "-256color") || strings.Contains(cterm, "256") {
 			t.ncolor = 256
-		} else if strings.HasSuffix("-88color", nterm) {
+		} else if strings.HasSuffix(nterm, "-88color") {
 			t.ncolor = 88
+		} else if strings.HasSuffix(nterm, "-16color") {
+			t.ncolor = 16
 		} else if strings.Contains(nterm, "color") || cterm != "" {
 			t.ncolor = 8
 		} else if strings.Contains(nterm, "mono") || strings.HasSuffix(nterm, "-m") { // monochrome variants

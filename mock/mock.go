@@ -20,7 +20,6 @@ package mock
 import (
 	"bytes"
 	"fmt"
-	"image/color"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,6 +27,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/vt"
 	"github.com/rivo/uniseg"
 )
@@ -46,8 +46,8 @@ type MockTty struct {
 	Cells []Cell // Content of cells
 	Rows  vt.Row
 	Cols  vt.Col
-	Fg    tcell.Color
-	Bg    tcell.Color
+	Fg    color.Color
+	Bg    color.Color
 	Attr  tcell.AttrMask
 	X     vt.Col // cursor horizontal position
 	Y     vt.Row // cursor vertical position
@@ -651,8 +651,8 @@ func (mt *MockTty) Reset() {
 			mt.Cols = 80
 		}
 		mt.Cells = make([]Cell, int(mt.Cols)*int(mt.Rows))
-		mt.Fg = tcell.ColorWhite
-		mt.Bg = tcell.ColorBlack
+		mt.Fg = color.White
+		mt.Bg = color.Black
 		mt.Attr = tcell.AttrNone
 		mt.PrimaryAttributes = "\x1b[?62;1;22;52c"
 		mt.SecondaryAttributes = "\x1b[>1;10c"
