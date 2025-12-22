@@ -31,6 +31,7 @@ import (
 	"github.com/rivo/uniseg"
 )
 
+// Cell is a representation of a display cell.
 type Cell struct {
 	C     []rune // Content, for now only a single rune is supported
 	Fg    tcell.Color
@@ -39,6 +40,7 @@ type Cell struct {
 	Width int // Display width of C.
 }
 
+// MockTty is a mock terminal device.
 type MockTty struct {
 	Cells []Cell // Content of cells
 	Rows  vt.Row
@@ -50,8 +52,8 @@ type MockTty struct {
 	Y     vt.Row // cursor vertical position
 	Bells int    // incremented each time the bell is sounded
 
-	ReadQ  chan byte // contents of stdin
-	WriteQ chan byte // contents of stdout
+	ReadQ  chan any // contents of stdin
+	WriteQ chan any // contents of stdout
 
 	// These values can be overridden before Init.
 
@@ -82,6 +84,7 @@ const (
 	statePM
 	stateAPC
 	stateUTF // parsing a Unicode rune
+	state3Fp
 )
 
 // intParams parses the CSI parameter bytes as a range of at least minNum integers,
@@ -290,6 +293,25 @@ func (mt *MockTty) handleOSC(_ string) {
 	mt.state = stateInit
 }
 
+// handle3Fp handles private 3Fp cases (esc-#)
+func (mt *MockTty) handle3Fp(final byte) {
+	mt.state = stateInit
+	switch final {
+	case '8': // DECALN
+		if mt.escBuf.Len() == 0 {
+			for i := range len(mt.Cells) {
+				mt.Cells[i] = Cell{
+					C:     []rune{'E'},
+					Fg:    mt.Fg,
+					Bg:    mt.Bg,
+					Attr:  mt.Attr,
+					Width: 1,
+				}
+			}
+		}
+	}
+}
+
 // reply sends the given string to the application's stdin.
 func (mt *MockTty) reply(s string) {
 	for _, b := range []byte(s) {
@@ -307,7 +329,14 @@ func (mt *MockTty) run() {
 	var ch byte
 	for {
 		select {
-		case ch = <-mt.WriteQ: // read from application output
+		case item := <-mt.WriteQ: // read from application output
+			switch v := item.(type) {
+			case byte:
+				ch = v
+			case chan struct{}: // this was a drain checkpoint
+				close(v)
+				continue
+			}
 		case <-mt.stopQ:
 			return
 		}
@@ -451,7 +480,9 @@ func (mt *MockTty) run() {
 			case 'o': // TODO: LS3
 			case '|': // TODO LS3R
 			case '}': // TODO LS2R
-			case '#': // TODO: support ESC-#-E
+			case '#':
+				mt.state = state3Fp
+				mt.escBuf.Reset()
 			case '$', '(', ')', '*', '+': // TODO: select character set
 			}
 
@@ -467,14 +498,30 @@ func (mt *MockTty) run() {
 
 		case stateOSC:
 			if ch == '\x9c' {
-				// TODO: handle OSC
 				mt.handleOSC(mt.escBuf.String())
 			} else if buf := mt.escBuf.Bytes(); len(buf) > 0 && buf[len(buf)-1] == '\x1b' && ch == '\\' {
 				buf = buf[:len(buf)-1]
 				mt.handleOSC(string(buf))
-				// TODO: handle OSC
 			} else {
 				mt.escBuf.WriteByte(ch)
+			}
+
+		case statePM, stateSOS, stateAPC, stateDCS: // none of these have handling for now
+			if ch == '\x9c' {
+				mt.state = stateInit
+			} else if buf := mt.escBuf.Bytes(); len(buf) > 0 && buf[len(buf)-1] == '\x1b' && ch == '\\' {
+				mt.state = stateInit
+			} else {
+				mt.escBuf.WriteByte(ch)
+			}
+		case state3Fp:
+			if ch >= 0x20 && ch <= 0x2F {
+				mt.escBuf.WriteByte(ch)
+			} else if ch >= 0x30 && ch <= 0x3F {
+				mt.handle3Fp(ch)
+			} else {
+				// unexpected
+				mt.state = stateInit
 			}
 		}
 	}
@@ -509,21 +556,41 @@ func (mt *MockTty) Read(b []byte) (int, error) {
 	if len(b) == 0 {
 		return 0, nil
 	}
-	select {
-	case b[0] = <-mt.ReadQ:
-	case <-mt.stopQ:
-		return 0, nil
+	gotOne := false
+	for !gotOne {
+		select {
+		// case b[0] = <-mt.ReadQ:
+		case v := <-mt.ReadQ:
+			switch v := v.(type) {
+			case byte:
+				b[0] = v
+				gotOne = true
+			case chan struct{}:
+				close(v)
+				return 0, nil
+			case bool:
+				return 0, nil
+			}
+		case <-mt.stopQ:
+			return 0, nil
+		}
 	}
 
 	n := 1
 
 	for n < len(b) {
 		select {
-		case b[n] = <-mt.ReadQ:
+		case v := <-mt.ReadQ:
+			switch v := v.(type) {
+			case byte:
+				b[n] = v
+				n++
+			case chan struct{}:
+				close(v)
+			}
 		default:
 			return n, nil
 		}
-		n++
 	}
 	return len(b), nil
 }
@@ -542,14 +609,20 @@ func (mt *MockTty) Write(b []byte) (int, error) {
 func (mt *MockTty) Close() error { return nil }
 
 func (mt *MockTty) Drain() error {
-	for len(mt.ReadQ) > 0 {
-		time.Sleep(time.Millisecond * 10)
-	}
+
+	// inject a checkpoint to make sure the entire
+	// write q to this point is done - but we have a
+	wcq := make(chan struct{})
+	mt.WriteQ <- wcq
 	select {
-	case <-mt.stopQ:
-	default:
-		close(mt.stopQ)
+	case <-wcq:
+	case <-time.After(time.Millisecond * 200):
 	}
+
+	// readq side, we don't need to wait, as the
+	// read call will be interrupted which is all that is needed
+	mt.ReadQ <- true
+
 	return nil
 }
 
@@ -565,8 +638,12 @@ func (mt *MockTty) WindowSize() (tcell.WindowSize, error) {
 func (mt *MockTty) Reset() {
 	if !mt.inited {
 		mt.inited = true
-		mt.Rows = 24
-		mt.Cols = 80
+		if mt.Rows == 0 {
+			mt.Rows = 24
+		}
+		if mt.Cols == 0 {
+			mt.Cols = 80
+		}
 		mt.Cells = make([]Cell, int(mt.Cols)*int(mt.Rows))
 		mt.Fg = tcell.ColorWhite
 		mt.Bg = tcell.ColorBlack
@@ -574,8 +651,8 @@ func (mt *MockTty) Reset() {
 		mt.PrimaryAttributes = "\x1b[?62;1;22;52c"
 		mt.SecondaryAttributes = "\x1b[>1;10c"
 		mt.ExtendedAttributes = "\x1b[P>|simtty 0.1.2\x1b\\"
-		mt.WriteQ = make(chan byte, 128)
-		mt.ReadQ = make(chan byte, 128)
+		mt.WriteQ = make(chan any, 128)
+		mt.ReadQ = make(chan any, 128)
 		mt.state = stateInit
 		mt.escBuf = &bytes.Buffer{}
 		mt.PrivateModes = map[vt.PrivateMode]vt.ModeStatus{
