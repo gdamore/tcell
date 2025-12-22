@@ -194,13 +194,15 @@ func (mt *MockTty) handleCsi(final byte) {
 		mt.X = 0
 
 	case "G": // cursor column (CHA)
-		if x := vt.Col(intParams(str, 1, 1)[0]); x >= 1 && x <= mt.Cols {
+		if x := vt.Col(intParams(str, 1, 1)[0]); x > 0 && x <= mt.Cols {
 			mt.X = x - 1
 		}
 	case "H": // cursor position (CUP)
-		if pos := intParams(str, 2, 1); pos[0] >= 1 && vt.Row(pos[0]) <= mt.Rows && vt.Col(pos[1]) >= 1 && vt.Col(pos[1]) <= mt.Cols {
-			mt.X = vt.Col(pos[1]) - 1
-			mt.Y = vt.Row(pos[0]) - 1
+		if pos := vt.Row(intParams(str, 2, 1)[0]); pos > 0 && pos <= mt.Rows {
+			mt.Y = pos - 1
+		}
+		if pos := vt.Col(intParams(str, 2, 1)[1]); pos >= 1 && pos <= mt.Cols {
+			mt.X = pos - 1
 		}
 	case "I": // TODO: advance to next tab stop
 	case "J": // erase in display (ED)
