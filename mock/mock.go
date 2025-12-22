@@ -349,7 +349,7 @@ func (mt *MockTty) run() {
 			switch {
 			case ch >= ' ' && ch < '\x7E':
 				// normal ASCII, this is the easiest case
-				mt.Cells[ix] = Cell{C: []rune{rune(ch)}, Fg: mt.Fg, Bg: mt.Bg, Attr: mt.Attr}
+				mt.Cells[ix] = Cell{C: []rune{rune(ch)}, Fg: mt.Fg, Bg: mt.Bg, Attr: mt.Attr, Width: 1}
 				if mt.X < mt.Cols-1 {
 					mt.X++
 				}
@@ -421,8 +421,9 @@ func (mt *MockTty) run() {
 				if mt.X < mt.Cols-1 {
 					mt.X++
 				}
-				if uniseg.StringWidth(string(r)) > 1 && mt.X < mt.Cols {
-					mt.Cells[ix+1] = Cell{C: nil, Fg: mt.Fg, Bg: mt.Bg, Attr: mt.Attr}
+				if w := uniseg.StringWidth(string(r)); w > 1 && mt.X < mt.Cols {
+					mt.Cells[ix].Width = w
+					mt.Cells[ix+1] = Cell{C: nil, Fg: mt.Fg, Bg: mt.Bg, Attr: mt.Attr, Width: 0}
 					if mt.X < mt.Cols-1 {
 						mt.X++
 					}
