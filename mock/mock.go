@@ -617,11 +617,15 @@ func (mt *MockTty) Drain() error {
 	select {
 	case <-wcq:
 	case <-time.After(time.Millisecond * 200):
+	case <-mt.stopQ:
 	}
 
 	// readq side, we don't need to wait, as the
 	// read call will be interrupted which is all that is needed
-	mt.ReadQ <- true
+	select {
+	case mt.ReadQ <- true:
+	case <-mt.stopQ:
+	}
 
 	return nil
 }
