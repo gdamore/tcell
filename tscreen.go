@@ -176,6 +176,7 @@ type tScreen struct {
 	termName      string
 	termVers      string
 	inlineResize  bool
+	haveMouse     bool
 	haveMouseSgr  bool
 	input         *inputParser
 	sync.Mutex
@@ -325,6 +326,8 @@ func (t *tScreen) processInitQ() {
 					t.inlineResize = ev.Status.Changeable()
 				case vt.PmMouseSgr:
 					t.haveMouseSgr = ev.Status.Changeable()
+				case vt.PmMouseButton:
+					t.haveMouse = ev.Status.Changeable()
 				}
 			}
 		}
@@ -832,7 +835,11 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 
 	// We rely on dec private mode queries for this.
 	// If your terminal doesn't support these, then ask them to fix it.
-	if !t.haveMouseSgr {
+	// Note that as of macOS 26, macOS Terminal does not support them,
+	// so we enable the mouse unconditionally unless we get a report
+	// that says we have mouse, but not SGR mouse.  This is suboptimal, but
+	// a concession forced by the sorry state of terminal emulators.
+	if t.haveMouse && !t.haveMouseSgr {
 		return
 	}
 
@@ -1150,9 +1157,17 @@ func (t *tScreen) engage() error {
 
 	if !t.initted {
 		t.Print(requestWindowSize)
-		t.Print(vt.PmResizeReports.Query())
-		t.Print(vt.PmMouseSgr.Query())
-		t.Print(requestExtAttr)
+		// macOS Terminal.app is brain damaged
+		// https://garrett.damore.org/2025/12/macos-terminal-still-missing-mark-apple.html
+		// Eventually they'll hopefully fix this.  As the environment variable
+		// does not convey by default via ssh, remote sessions might see spurious characters
+		// emitted during startup.  See the blog post for alternatives.
+		if os.Getenv("TERM_PROGRAM") != "Apple_Terminal" {
+			t.Print(vt.PmResizeReports.Query())
+			t.Print(vt.PmMouseButton.Query())
+			t.Print(vt.PmMouseSgr.Query())
+			t.Print(requestExtAttr)
+		}
 		t.Print(requestPrimaryDA) // NB: MUST BE LAST
 	}
 	t.processInitQ()
