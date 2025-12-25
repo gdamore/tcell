@@ -187,11 +187,11 @@ func NewDevTtyFromDev(dev string) (Tty, error) {
 	}
 	tty.fd = int(tty.of.Fd())
 	if !term.IsTerminal(tty.fd) {
-		_ = tty.f.Close()
+		_ = tty.of.Close()
 		return nil, errors.New("not a terminal")
 	}
 	if tty.saved, err = term.GetState(tty.fd); err != nil {
-		_ = tty.f.Close()
+		_ = tty.of.Close()
 		return nil, fmt.Errorf("failed to get state: %w", err)
 	}
 	return tty, nil
