@@ -34,7 +34,6 @@ import (
 type devTty struct {
 	fd      int
 	f       *os.File
-	of      *os.File // the first open of /dev/tty
 	saved   *term.State
 	sig     chan os.Signal
 	dev     string
@@ -63,22 +62,24 @@ func (tty *devTty) Start() error {
 	// own tty device (when it exits for example).  Getting a fresh new one seems to
 	// resolve the problem.  (We believe this is a bug in the macOS tty driver that
 	// fails to account for dup() references to the same file before applying close()
-	// related behaviors to the tty.)  We're also holding the original copy we opened
-	// since closing that might have deleterious effects as well.  The upshot is that
-	// we will have up to two separate file handles open on /dev/tty.  (Note that when
-	// using stdin/stdout instead of /dev/tty this problem is not observed.)
+	// related behaviors to the tty.)  (Note that when using stdin/stdout instead of
+	// /dev/tty this problem is not observed.)
 	var err error
 	if tty.f, err = os.OpenFile(tty.dev, os.O_RDWR, 0); err != nil {
 		return err
 	}
 
+	tty.fd = int(tty.f.Fd())
+
 	if !term.IsTerminal(tty.fd) {
+		tty.f.Close()
 		return errors.New("device is not a terminal")
 	}
 
 	_ = tty.f.SetReadDeadline(time.Time{})
 	saved, err := term.MakeRaw(tty.fd) // also sets vMin and vTime
 	if err != nil {
+		tty.f.Close()
 		return err
 	}
 	tty.saved = saved
@@ -181,18 +182,20 @@ func NewDevTtyFromDev(dev string) (Tty, error) {
 		dev: dev,
 		sig: make(chan os.Signal),
 	}
-	var err error
-	if tty.of, err = os.OpenFile(dev, os.O_RDWR, 0); err != nil {
+	// Only open the file long enough to check that the device
+	// represents a TTY.  We will reopen it in start.  We do collect
+	// the terminal state so we can restore it later though.
+	if f, err := os.OpenFile(dev, os.O_RDWR, 0); err != nil {
 		return nil, err
-	}
-	tty.fd = int(tty.of.Fd())
-	if !term.IsTerminal(tty.fd) {
-		_ = tty.f.Close()
-		return nil, errors.New("not a terminal")
-	}
-	if tty.saved, err = term.GetState(tty.fd); err != nil {
-		_ = tty.f.Close()
-		return nil, fmt.Errorf("failed to get state: %w", err)
+	} else {
+		defer func() { _ = f.Close() }()
+		fd := int(f.Fd())
+		if !term.IsTerminal(fd) {
+			return nil, errors.New("not a terminal")
+		}
+		if tty.saved, err = term.GetState(fd); err != nil {
+			return nil, fmt.Errorf("failed to get state: %w", err)
+		}
 	}
 	return tty, nil
 }
