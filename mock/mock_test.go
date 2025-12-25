@@ -63,7 +63,7 @@ func TestMockDECALN(t *testing.T) {
 			t.Errorf("wrong value at %d: %s", i, string(mt.Cells[i].C))
 			break
 		}
-		if mt.Cells[i].Attr != tcell.AttrNone {
+		if mt.Cells[i].Attr != vt.Plain {
 			t.Errorf("wrong attr at %d: %x", i, mt.Cells[i].Attr)
 		}
 		if mt.Cells[i].Fg != color.White {
@@ -81,7 +81,7 @@ func TestMockDECALN(t *testing.T) {
 		t.Fatalf("Failed to start: %v", err)
 	}
 	mt.Fg = color.Red
-	mt.Attr = tcell.AttrBold
+	mt.Attr = vt.Bold
 	mt.Write([]byte("\x1b#8"))
 	mt.Drain()
 	for i := range mt.Cells {
@@ -89,7 +89,7 @@ func TestMockDECALN(t *testing.T) {
 			t.Errorf("wrong value at %d: %s", i, string(mt.Cells[i].C))
 			break
 		}
-		if mt.Cells[i].Attr != tcell.AttrBold {
+		if mt.Cells[i].Attr != vt.Bold {
 			t.Errorf("wrong attr at %d: %x", i, mt.Cells[i].Attr)
 		}
 		if mt.Cells[i].Fg != color.Red {

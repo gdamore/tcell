@@ -32,15 +32,6 @@ import (
 	"github.com/rivo/uniseg"
 )
 
-// Cell is a representation of a display cell.
-type Cell struct {
-	C     []rune // Content, for now only a single rune is supported
-	Fg    color.Color
-	Bg    color.Color
-	Attr  tcell.AttrMask
-	Width int // Display width of C.
-}
-
 // MockTty is a mock terminal device.
 type MockTty struct {
 	Cells []Cell // Content of cells
@@ -48,7 +39,7 @@ type MockTty struct {
 	Cols  vt.Col
 	Fg    color.Color
 	Bg    color.Color
-	Attr  tcell.AttrMask
+	Attr  vt.Attr
 	X     vt.Col // cursor horizontal position
 	Y     vt.Row // cursor vertical position
 	Bells int    // incremented each time the bell is sounded
@@ -653,7 +644,7 @@ func (mt *MockTty) Reset() {
 		mt.Cells = make([]Cell, int(mt.Cols)*int(mt.Rows))
 		mt.Fg = color.White
 		mt.Bg = color.Black
-		mt.Attr = tcell.AttrNone
+		mt.Attr = vt.Plain
 		mt.PrimaryAttributes = "\x1b[?62;1;22;52c"
 		mt.SecondaryAttributes = "\x1b[>1;10c"
 		mt.ExtendedAttributes = "\x1b[P>|simtty 0.1.2\x1b\\"
