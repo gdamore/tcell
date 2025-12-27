@@ -65,7 +65,7 @@ func NewEmulator(be Backend) Emulator {
 		be:         be,
 		inBuf:      &bytes.Buffer{},
 		writeQ:     make(chan any),
-		readQ:      make(chan byte, 32),
+		readQ:      make(chan byte, 128),
 		stopQ:      stopQ,
 		localModes: map[PrivateMode]ModeStatus{PmAutoMargin: ModeOn},
 	}
@@ -124,20 +124,20 @@ func (em *emulator) inbInit(b byte) {
 	// and ShiftJIS use values in those ranges.
 
 	switch b {
-	case 0x1b:
+	case 0x1b: // ESC (escape)
 		em.inb = em.inbEsc
-	case 0x07:
+	case 0x07: // BEL (bell)
 		em.beep()
-	case 0x08: // TODO: backspace
+	case 0x08: // BS (backspace)
 		em.moveLeft()
 	case 0x09: // TODO: tab
-	case 0x0a: // TODO: newline
+	case 0x0a: // NL (newline)
 		em.nextLine()
-	case 0x0b: // TODO: VT (treat as LF)
+	case 0x0b: // VT (vertical tab, treat as LF)
 		em.nextLine()
-	case 0x0c: // FF (same as LF)
+	case 0x0c: // FF (form feed, treat as LF)
 		em.nextLine()
-	case 0x0d: // TODO: CR
+	case 0x0d: // CR (carriage return)
 		em.setPosition(Coord{0, em.getPosition().Y})
 	case 0x0e: // TODO: SO
 	case 0x0f: // TODO: SI
@@ -422,7 +422,7 @@ func (em *emulator) processCsi(final byte) {
 	// sometimes used to affect function.  (E.g. $ in some cases.)
 	cmd := ""
 	if em.inBuf.Len() > 0 {
-		if b := em.inBuf.Bytes()[0]; b > '9' && b < '?' {
+		if b := em.inBuf.Bytes()[0]; b > '9' && b <= '?' {
 			cmd += string(b)
 			em.inBuf.ReadByte()
 		}
@@ -430,7 +430,7 @@ func (em *emulator) processCsi(final byte) {
 	if l := em.inBuf.Len(); l > 0 {
 		if b := em.inBuf.Bytes()[l-1]; b >= 0x20 && b <= 0x2F {
 			cmd += string(b)
-			em.inBuf.ReadByte()
+			em.inBuf.Truncate(l - 1)
 		}
 	}
 	cmd += string(final)
