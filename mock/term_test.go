@@ -60,6 +60,7 @@ func checkPos(t *testing.T, trm MockTerm, x vt.Col, y vt.Row) {
 	}
 }
 
+// TestCursorMove tests several aspects of cursor movement.
 func TestCursorMovement(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 5, Y: 3}, MockOptColors(0))
 	defer mustClose(t, trm)
@@ -106,6 +107,7 @@ func TestCursorMovement(t *testing.T) {
 	checkPos(t, trm, 0, 0)
 }
 
+// TestDECALN tests the DEC alignment test (screen filled with 'E').
 func TestDECALN(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 5, Y: 3}, MockOptColors(0))
 	defer mustClose(t, trm)
@@ -155,6 +157,7 @@ func TestDECALN(t *testing.T) {
 	}
 }
 
+// TestBell tests the bell.
 func TestBell(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 5, Y: 3}, MockOptColors(0))
 	defer mustClose(t, trm)
@@ -173,6 +176,7 @@ func TestBell(t *testing.T) {
 	}
 }
 
+// TestPrimaryDA tests primary device attributes using several mechanisms.
 func TestPrimaryDA(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 5, Y: 3}, MockOptColors(0))
 	defer mustClose(t, trm)
@@ -211,6 +215,7 @@ func TestPrimaryDA(t *testing.T) {
 	}
 }
 
+// TestExtendedAttr requests ther terminal ID using CSI > q.
 func TestExtendedAttr(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 5, Y: 3}, MockOptColors(0))
 	defer mustClose(t, trm)
@@ -235,5 +240,68 @@ func TestExtendedAttr(t *testing.T) {
 	}
 	if !strings.Contains(result, "TcellMock 1.0") {
 		t.Errorf("Missing terminal identification")
+	}
+}
+
+// TestCursorReport verifies that cursor position reporting works.
+func TestCursorReport(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
+	defer mustClose(t, trm)
+
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[5;10H") // fifth row, tenth column
+	checkPos(t, trm, 9, 4)
+
+	writeF(t, trm, "\x1b[6n") // cursor position report
+
+	buf := make([]byte, 32)
+	n, err := trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result := string(buf[:n])
+	if result != "\x1b[5;10R" {
+		t.Errorf("wrong report: %q", result)
+	}
+
+	buf = make([]byte, 32)
+	// move the cursor back one
+	writeF(t, trm, "\b\x1b[6n")
+	checkPos(t, trm, 8, 4)
+	n, err = trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result = string(buf[:n])
+	if result != "\x1b[5;9R" {
+		t.Errorf("wrong report: %q", result)
+	}
+}
+
+func TestPrivateModes(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
+	defer mustClose(t, trm)
+
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[?7$p")              // query for automargin (should start on by default)
+	writeF(t, trm, "\x1b[?7l")               // turn it off
+	writeF(t, trm, "\x1b[?7$p")              // should readback positive
+	writeF(t, trm, "\x1b[?7h")               // put it back on
+	writeF(t, trm, "\x1b[?7$p")              // should read back negative
+	writeF(t, trm, "\x1b[?1919$p")           // read invalid mode
+	writeF(t, trm, "\x1b[?1919h\x1b[?1919l") // toogle invalid mode
+	writeF(t, trm, "\x1b[?1919$p")           // read invalid mode one more time
+
+	buf := make([]byte, 128)
+	n, err := trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result := string(buf[:n])
+	want := "\x1b[?7;1$y" + "\x1b[?7;2$y" + "\x1b[?7;1$y" + "\x1b[?1919;0$y" + "\x1b[?1919;0$y"
+	if result != want {
+		t.Errorf("wrong response: %q != %q", result, want)
 	}
 }
