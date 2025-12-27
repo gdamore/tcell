@@ -15,4 +15,7 @@
 // Package vt provides common definitions for VT derived terminals and applications.
 // This includes the venerable VT100, XTerm, and newer emulators such as Kitty and
 // the Windows Terminal.
+//
+// This package is still under development and direct access to any of the interfaces
+// here is not guaranteed to be stable yet.  Caveat emptor.
 package vt
