@@ -20,6 +20,7 @@ import (
 	"testing"
 )
 
+// TestColorValues test variety of color edge cases.
 func TestColorValues(t *testing.T) {
 	var values = []struct {
 		color Color
@@ -49,6 +50,7 @@ func TestColorValues(t *testing.T) {
 	}
 }
 
+// TestColorFitting tests color matching.
 func TestColorFitting(t *testing.T) {
 	var pal []Color
 	for i := range 255 {
@@ -82,6 +84,7 @@ func TestColorFitting(t *testing.T) {
 
 }
 
+// TestColorNameLookup tests looking up colors by a string name.
 func TestColorNameLookup(t *testing.T) {
 	var values = []struct {
 		name  string
@@ -125,6 +128,7 @@ func TestColorNameLookup(t *testing.T) {
 	}
 }
 
+// TestColorRGB tests the Color.RGB API.
 func TestColorRGB(t *testing.T) {
 	r, g, b := GetColor("#112233").RGB()
 	if r != 0x11 || g != 0x22 || b != 0x33 {
@@ -136,6 +140,7 @@ func TestColorRGB(t *testing.T) {
 	}
 }
 
+// TestFromImageColor tests converting from image.Color to Color.
 func TestFromImageColor(t *testing.T) {
 	red := ic.RGBA{0xFF, 0x00, 0x00, 0x01}
 	white := ic.Gray{0xFF}
@@ -156,6 +161,7 @@ func TestFromImageColor(t *testing.T) {
 	}
 }
 
+// TestColorRGBA tests the Color.RGBA API.
 func TestColorRGBA(t *testing.T) {
 	r, g, b, a := Red.RGBA()
 	if r != 0xffff || g != 0 || b != 0 || a != 0xffff {
@@ -181,6 +187,7 @@ func TestColorRGBA(t *testing.T) {
 	}
 }
 
+// TestColorNames tests the color.Name() API.
 func TestColorNames(t *testing.T) {
 	cases := []struct {
 		c    Color
@@ -213,6 +220,7 @@ func TestColorNames(t *testing.T) {
 	}
 }
 
+// TestColorString tests the color.String() API.
 func TestColorString(t *testing.T) {
 	if s := Color(0).String(); s != "default" {
 		t.Errorf("zero color not default: %q", s)

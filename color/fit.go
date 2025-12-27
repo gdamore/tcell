@@ -15,8 +15,6 @@
 package color
 
 import (
-	"math"
-
 	"github.com/lucasb-eyer/go-colorful"
 )
 
@@ -41,9 +39,8 @@ func Find(c Color, palette []Color) Color {
 		}
 		// CIE94 is more accurate, but really really expensive.
 		nd := c1.DistanceCIE76(c2)
-		if math.IsNaN(nd) {
-			nd = math.Inf(1)
-		}
+		// NB: nd < dist is false if is NaN.
+		// We have never seen a case where the CIE76 algorithm returns NaN.
 		if match == Default || nd < dist {
 			match = d
 			dist = nd
