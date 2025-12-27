@@ -15,6 +15,7 @@
 package color
 
 import (
+	"fmt"
 	ic "image/color"
 	"testing"
 )
@@ -150,7 +151,7 @@ func TestFromImageColor(t *testing.T) {
 		t.Errorf("%v is not 0x00FFFF", hex)
 	}
 	if c := FromImageColor(clear); c != Default {
-		t.Errorf("traansparent should be default")
+		t.Errorf("transparent should be default")
 	}
 }
 
@@ -192,7 +193,7 @@ func TestColorNames(t *testing.T) {
 		{XTerm100, "", "#878700"},
 	}
 	for i, cs := range cases {
-		t.Run(cs.c.Name(), func(t *testing.T) {
+		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
 			if cs.c.CSS() != cs.css {
 				t.Errorf("case %d: color css %q != %q", i, cs.c.CSS(), cs.css)
 			}
@@ -204,7 +205,7 @@ func TestColorNames(t *testing.T) {
 				exp = cs.c.CSS()
 			}
 			if cs.c.Name(true) != exp { // test css
-				t.Errorf("case %d: color name(true) %q != %q", i, cs.c.Name(), exp)
+				t.Errorf("case %d: color name(true) %q != %q", i, cs.c.Name(true), exp)
 			}
 		})
 	}
@@ -215,6 +216,6 @@ func TestColorInvalidString(t *testing.T) {
 		t.Errorf("zero color not default: %q", s)
 	}
 	if s := Color(10).String(); s != "" {
-		t.Errorf("invalid non-zero color did not empty string: %q", s)
+		t.Errorf("invalid non-zero color did not yield empty string: %q", s)
 	}
 }
