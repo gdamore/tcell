@@ -185,6 +185,10 @@ func NewMockBackend(options ...MockOpt) MockBackend {
 		// TODO: possibly be could be "filtered" for some options (e.g. to hide colorer API, etc.)
 	}
 
+	if mb.colors > 0 {
+		mb.fg = mb.defaultFg
+		mb.bg = mb.defaultBg
+	}
 	mb.cells = make([]Cell, int(mb.size.X)*int(mb.size.Y))
 	mb.modes = make(map[vt.PrivateMode]vt.ModeStatus)
 	mb.modes[vt.PmShowCursor] = vt.ModeOn
