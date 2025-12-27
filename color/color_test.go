@@ -32,6 +32,8 @@ func TestColorValues(t *testing.T) {
 		{White, 0xFFFFFF},
 		{Silver, 0xC0C0C0},
 		{Navy, 0x000080},
+		{None, -1},
+		{Reset, -1},
 	}
 
 	for _, tc := range values {
@@ -126,12 +128,17 @@ func TestColorRGB(t *testing.T) {
 	if r != 0x11 || g != 0x22 || b != 0x33 {
 		t.Errorf("RGB wrong (%x, %x, %x)", r, g, b)
 	}
+	r, g, b = None.RGB()
+	if r != -1 || g != -1 || b != -1 {
+		t.Errorf("None should not give valid RGB")
+	}
 }
 
 func TestFromImageColor(t *testing.T) {
 	red := ic.RGBA{0xFF, 0x00, 0x00, 0x01}
 	white := ic.Gray{0xFF}
 	cyan := ic.CMYK{0xFF, 0x00, 0x00, 0x00}
+	clear := ic.RGBA{0x01, 0x02, 0x03, 0x00}
 
 	if hex := FromImageColor(red).Hex(); hex != 0xFF0000 {
 		t.Errorf("%v is not 0xFF0000", hex)
@@ -141,6 +148,9 @@ func TestFromImageColor(t *testing.T) {
 	}
 	if hex := FromImageColor(cyan).Hex(); hex != 0x00FFFF {
 		t.Errorf("%v is not 0x00FFFF", hex)
+	}
+	if c := FromImageColor(clear); c != Default {
+		t.Errorf("traansparent should be default")
 	}
 }
 
@@ -166,5 +176,45 @@ func TestColorRGBA(t *testing.T) {
 	r, g, b, a = Reset.RGBA()
 	if r != 0 || g != 0 || b != 0 || a != 0 {
 		t.Errorf("Non-zero RGBA for reset")
+	}
+}
+
+func TestColorNames(t *testing.T) {
+	cases := []struct {
+		c    Color
+		name string
+		css  string
+	}{
+		{Red, "red", "#FF0000"},
+		{Pink, "pink", "#FFC0CB"},
+		{Black, "black", "#000000"},
+		{Black.TrueColor(), "", "#000000"},
+		{XTerm100, "", "#878700"},
+	}
+	for i, cs := range cases {
+		t.Run(cs.c.Name(), func(t *testing.T) {
+			if cs.c.CSS() != cs.css {
+				t.Errorf("case %d: color css %q != %q", i, cs.c.CSS(), cs.css)
+			}
+			if cs.c.Name() != cs.name {
+				t.Errorf("case %d: color name %q != %q", i, cs.c.Name(), cs.name)
+			}
+			exp := cs.c.Name()
+			if exp == "" {
+				exp = cs.c.CSS()
+			}
+			if cs.c.Name(true) != exp { // test css
+				t.Errorf("case %d: color name(true) %q != %q", i, cs.c.Name(), exp)
+			}
+		})
+	}
+}
+
+func TestColorInvalidString(t *testing.T) {
+	if s := Color(0).String(); s != "default" {
+		t.Errorf("zero color not default: %q", s)
+	}
+	if s := Color(10).String(); s != "" {
+		t.Errorf("invalid non-zero color did not empty string: %q", s)
 	}
 }
