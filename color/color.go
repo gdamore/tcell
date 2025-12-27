@@ -1104,7 +1104,11 @@ func (c Color) TrueColor() Color {
 	if c&IsRGB != 0 {
 		return c | IsValid
 	}
-	return Color(c.Hex()) | IsRGB | IsValid
+	if hex := c.Hex(); hex < 0 {
+		return Default
+	} else {
+		return Color(hex) | IsRGB | IsValid
+	}
 }
 
 // RGBA makes these colors directly usable as imageColor colors.

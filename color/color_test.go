@@ -35,6 +35,7 @@ func TestColorValues(t *testing.T) {
 		{Navy, 0x000080},
 		{None, -1},
 		{Reset, -1},
+		{Color(300) | IsValid, -1}, // beyond the palette, marked valid
 	}
 
 	for _, tc := range values {
@@ -191,6 +192,7 @@ func TestColorNames(t *testing.T) {
 		{Black, "black", "#000000"},
 		{Black.TrueColor(), "", "#000000"},
 		{XTerm100, "", "#878700"},
+		{Color(1), "", ""}, // invalid color
 	}
 	for i, cs := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
@@ -211,11 +213,14 @@ func TestColorNames(t *testing.T) {
 	}
 }
 
-func TestColorInvalidString(t *testing.T) {
+func TestColorString(t *testing.T) {
 	if s := Color(0).String(); s != "default" {
 		t.Errorf("zero color not default: %q", s)
 	}
 	if s := Color(10).String(); s != "" {
 		t.Errorf("invalid non-zero color did not yield empty string: %q", s)
+	}
+	if s := Red.String(); s != "red" {
+		t.Errorf("wrong string for red: %q", s)
 	}
 }
