@@ -44,6 +44,7 @@ type Emulator interface {
 	KeyEvent(ev KbdEvent)
 
 	// Drain waits until any queued but not processed input has finished processing.
+	// It also wakes the reader.
 	Drain() error
 
 	// Start starts processing.
@@ -69,7 +70,7 @@ func NewEmulator(be Backend) Emulator {
 		be:         be,
 		inBuf:      &bytes.Buffer{},
 		writeQ:     make(chan any),
-		readQ:      make(chan byte, 128),
+		readQ:      make(chan any, 1024),
 		stopQ:      stopQ,
 		localModes: map[PrivateMode]ModeStatus{PmAutoMargin: ModeOn},
 	}
@@ -83,9 +84,8 @@ func NewEmulator(be Backend) Emulator {
 // level functionality that a real terminal emulator, or a mock, would need.
 type emulator struct {
 	stopQ     chan bool
-	writeQ    chan any  // queues data from application to emulator
-	readQ     chan byte // queues data from emulator to application
-	wakeQ     chan bool
+	writeQ    chan any // queues data from application to emulator
+	readQ     chan any // queues data from emulator to application
 	be        Backend
 	inBuf     *bytes.Buffer // buffer queued for input
 	inb       func(byte)    // input byte function (faster than state switch)
@@ -812,7 +812,7 @@ func (em *emulator) softReset() {
 // sendDA ends the primary device attributes.
 func (em *emulator) sendDA() {
 	buf := &bytes.Buffer{}
-	_, _ = fmt.Fprintf(buf, "\x1b[63")
+	_, _ = fmt.Fprintf(buf, "\x1b[?63")
 	if _, ok := em.be.(Colorer); ok {
 		fmt.Fprintf(buf, ";22")
 	}
@@ -924,6 +924,11 @@ func (em *emulator) Drain() error {
 	case <-q:
 	case <-em.stopQ:
 	}
+	// make sure to wake the reader
+	select {
+	case em.readQ <- true:
+	default:
+	}
 	return nil
 }
 
@@ -955,7 +960,6 @@ func (em *emulator) Write(data []byte) (n int, err error) {
 // Read data (key events, etc.) from the emulator.
 func (em *emulator) Read(data []byte) (n int, err error) {
 	stopQ := em.stopQ
-	wakeQ := em.wakeQ
 	readQ := em.readQ
 
 	n = 0
@@ -965,16 +969,23 @@ func (em *emulator) Read(data []byte) (n int, err error) {
 	select {
 	case <-stopQ:
 		return 0, errors.New("terminal emulator stopped")
-	case <-wakeQ:
-		return 0, nil
-	case ch := <-readQ:
-		data[n] = ch
-		n++
+	case v := <-readQ:
+		// The data arriving in the channel may be a byte, or it might be a bool
+		// trying to force a wakeup.  Note that the bool may be intermingled with other
+		// bytes, so we check it. Also data may have arrived since the bool was posted,
+		// so make sure we don't terminate until we have collected all the relevant data
+		// that we can (up to the limit of what was requested.)
+		if ch, ok := v.(byte); ok {
+			data[n] = ch
+			n++
+		}
 		for n < len(data) {
 			select {
-			case ch = <-readQ:
-				data[n] = ch
-				n++
+			case v = <-readQ:
+				if ch, ok := v.(byte); ok {
+					data[n] = ch
+					n++
+				}
 			default:
 				return n, nil
 			}

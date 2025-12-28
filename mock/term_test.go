@@ -195,8 +195,8 @@ func TestPrimaryDA(t *testing.T) {
 	if !strings.HasSuffix(result, "c") {
 		t.Errorf("Missing suffix 'c': %q", result)
 	}
-	if !strings.HasPrefix(result, "\x1b[63") {
-		t.Errorf("Missing prefix 'c': %q", result)
+	if !strings.HasPrefix(result, "\x1b[?63") {
+		t.Errorf("Missing prefix '\x1b[?63': %q", result)
 	}
 
 	// Legacy version
@@ -211,8 +211,8 @@ func TestPrimaryDA(t *testing.T) {
 	if !strings.HasSuffix(result, "c") {
 		t.Errorf("Missing suffix 'c': %q", result)
 	}
-	if !strings.HasPrefix(result, "\x1b[63") {
-		t.Errorf("Missing prefix 'c': %q", result)
+	if !strings.HasPrefix(result, "\x1b[?63") {
+		t.Errorf("Missing prefix '\x1b[?63': %q", result)
 	}
 }
 
