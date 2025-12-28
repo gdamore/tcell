@@ -19,7 +19,7 @@ type KbdEvent struct {
 	Repeat int      // if > 1, a repeat count
 	Code   KeyCode  // logical key code (X11 keysm, e.g. 'A')
 	Base   KeyCode  // base key code (physical key, e.g 'a'), may be zero if same as code
-	Mod    Modifier // modifiers x
+	Mod    Modifier // modifiers
 	Utf    string   // if non-empty, the unicode content for this
 }
 
