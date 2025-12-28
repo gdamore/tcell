@@ -279,6 +279,7 @@ func TestCursorReport(t *testing.T) {
 	}
 }
 
+// TestPrivateModes tests the private mode feature.
 func TestPrivateModes(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
 	defer mustClose(t, trm)
@@ -325,6 +326,7 @@ func TestPrivateModes(t *testing.T) {
 	}
 }
 
+// TestAutoMargin tests the auto margin feature.
 func TestAutoMargin(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
 	defer mustClose(t, trm)
@@ -349,5 +351,59 @@ func TestAutoMargin(t *testing.T) {
 	checkPos(t, trm, 79, 2)
 	if s := string(trm.GetCell(vt.Coord{X: 79, Y: 2}).C); s != "D" {
 		t.Errorf("last column wrong: %q", s)
+	}
+}
+
+// TestUnicode tests basic placement of unicode glyphs.
+// For now it assumes that the terminal itself supports unicode / latin 1.
+func TestUnicode(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[2J") // clear the screen
+	writeF(t, trm, "\x1b[2;2H")
+	checkPos(t, trm, 1, 1)
+	writeF(t, trm, "åßcπ")
+	checkPos(t, trm, 5, 1)
+	if s := string(trm.GetCell(vt.Coord{X: 1, Y: 1}).C); s != "å" {
+		t.Errorf("decode error wrong: %q", s)
+	}
+	if s := string(trm.GetCell(vt.Coord{X: 2, Y: 1}).C); s != "ß" {
+		t.Errorf("decode error wrong: %q", s)
+	}
+	if s := string(trm.GetCell(vt.Coord{X: 3, Y: 1}).C); s != "c" {
+		t.Errorf("decode error wrong: %q", s)
+	}
+	if s := string(trm.GetCell(vt.Coord{X: 4, Y: 1}).C); s != "π" {
+		t.Errorf("decode error wrong: %q", s)
+	}
+}
+
+// TestUnicodeWide tests a wide unicode glyph.
+func TestUnicodeWide(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b#8") // fill it with E's (so we can see that wide clears the next cell)
+	writeF(t, trm, "\x1b[2;2H")
+	checkPos(t, trm, 1, 1)
+	writeF(t, trm, "å宽cπ")
+	checkPos(t, trm, 6, 1)
+	if s := string(trm.GetCell(vt.Coord{X: 1, Y: 1}).C); s != "å" {
+		t.Errorf("decode error wrong: %q", s)
+	}
+	if s := string(trm.GetCell(vt.Coord{X: 2, Y: 1}).C); s != "宽" {
+		t.Errorf("decode error wrong: %q", s)
+	}
+	if s := string(trm.GetCell(vt.Coord{X: 3, Y: 1}).C); s != " " {
+		t.Errorf("decode error wrong: %q", s)
+	}
+	if s := string(trm.GetCell(vt.Coord{X: 4, Y: 1}).C); s != "c" {
+		t.Errorf("decode error wrong: %q", s)
+	}
+	if s := string(trm.GetCell(vt.Coord{X: 5, Y: 1}).C); s != "π" {
+		t.Errorf("decode error wrong: %q", s)
 	}
 }
