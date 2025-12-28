@@ -324,3 +324,30 @@ func TestPrivateModes(t *testing.T) {
 		t.Errorf("wrong response: %q != %q", result, want)
 	}
 }
+
+func TestAutoMargin(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	// default is automargin is enabled
+	writeF(t, trm, "\x1b[2J") // clear the screen
+	writeF(t, trm, "\x1b[1;80HAB")
+	checkPos(t, trm, 1, 1)
+	if s := string(trm.GetCell(vt.Coord{X: 79, Y: 0}).C); s != "A" {
+		t.Errorf("last column wrong: %q", s)
+	}
+	if s := string(trm.GetCell(vt.Coord{X: 0, Y: 1}).C); s != "B" {
+		t.Errorf("auto wrap did not work: %q", s)
+	}
+
+	// now turn it off
+	writeF(t, trm, "\x1b[?7l")
+
+	// mess with 3rd row
+	writeF(t, trm, "\x1b[3;80HCD")
+	checkPos(t, trm, 79, 2)
+	if s := string(trm.GetCell(vt.Coord{X: 79, Y: 2}).C); s != "D" {
+		t.Errorf("last column wrong: %q", s)
+	}
+}
