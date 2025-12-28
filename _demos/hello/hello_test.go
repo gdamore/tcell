@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -14,8 +13,8 @@ import (
 
 func TestHello(t *testing.T) {
 	// ensure we only use 8 color ANSI for now
-	os.Setenv("TERM", "ansi")
-	os.Setenv("COLORTERM", "")
+	t.Setenv("TERM", "ansi")
+	t.Setenv("COLORTERM", "")
 
 	mt := mock.NewMockTerm(mock.MockOptColors(8))
 	scr, err := tcell.NewTerminfoScreenFromTty(mt)
