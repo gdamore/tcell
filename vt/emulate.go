@@ -649,8 +649,12 @@ func (em *emulator) putc(r rune) {
 	} else {
 		autoMargin := em.getPrivateMode(PmAutoMargin) == ModeOn
 		old := em.getPosition()
-		em.be.PutAbs(em.pos, r, em.attr)
 		w := uniseg.StringWidth(string(r))
+		if w == 2 && old.X < em.be.GetSize().X-1 {
+			// clobber the content in the next cell
+			em.eraseCell(Coord{X: old.X + 1, Y: old.Y})
+		}
+		em.be.PutAbs(em.pos, r, em.attr)
 		em.moveRightN(Col(w))
 		if autoMargin && old.X+Col(w) >= em.be.GetSize().X {
 			em.nextLine()
