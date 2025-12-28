@@ -15,7 +15,7 @@
 //go:build linux || aix || zos || solaris
 // +build linux aix zos solaris
 
-package tcell
+package tty
 
 import (
 	"syscall"

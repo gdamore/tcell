@@ -15,7 +15,7 @@
 package mock
 
 import (
-	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/tty"
 	"github.com/gdamore/tcell/v3/vt"
 )
 
@@ -55,10 +55,10 @@ func (mt *mockTerm) Write(b []byte) (n int, err error) {
 }
 
 // WindowSize obtains the dimensions of the window.
-func (mt *mockTerm) WindowSize() (tcell.WindowSize, error) {
+func (mt *mockTerm) WindowSize() (tty.WindowSize, error) {
 	sz := mt.mb.GetSize()
 	// No pixel sizes for now
-	return tcell.WindowSize{Width: int(sz.X), Height: int(sz.Y)}, nil
+	return tty.WindowSize{Width: int(sz.X), Height: int(sz.Y)}, nil
 }
 
 // NotifyResize registers a channel to be signaled when a resize has occurred.
@@ -95,7 +95,7 @@ func (mt *mockTerm) Bells() int {
 // uses the terminal.  It also implements the Tty interface used
 // by tcell itself.
 type MockTerm interface {
-	tcell.Tty
+	tty.Tty
 
 	// Pos reports the current cursor position.
 	Pos() vt.Coord

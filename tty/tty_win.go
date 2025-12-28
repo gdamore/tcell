@@ -15,7 +15,7 @@
 //go:build windows
 // +build windows
 
-package tcell
+package tty
 
 import (
 	"encoding/binary"
@@ -306,6 +306,25 @@ func NewDevTty() (Tty, error) {
 		_ = syscall.Close(w.in)
 		return nil, err
 	}
+	w.buf = make(chan byte, 128)
+
+	_, _, _ = procGetConsoleScreenBufferInfo.Call(uintptr(w.out), uintptr(unsafe.Pointer(&w.oscreen)))
+	_, _, _ = procGetConsoleMode.Call(uintptr(w.out), uintptr(unsafe.Pointer(&w.oomode)))
+	_, _, _ = procGetConsoleMode.Call(uintptr(w.in), uintptr(unsafe.Pointer(&w.oimode)))
+	w.rows = uint16(w.oscreen.size.y)
+	w.cols = uint16(w.oscreen.size.x)
+
+	return w, nil
+}
+
+func NewDevTtyFromDev(dev string) (Tty, error) {
+	return nil, errors.New("No tty device on Windows")
+}
+
+func NewStdIoTty() (Tty, error) {
+	w := &winTty{}
+	w.in = syscall.Stdin
+	w.out = syscall.Stdout
 	w.buf = make(chan byte, 128)
 
 	_, _, _ = procGetConsoleScreenBufferInfo.Call(uintptr(w.out), uintptr(unsafe.Pointer(&w.oscreen)))

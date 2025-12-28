@@ -14,6 +14,8 @@
 
 package tcell
 
+import "github.com/gdamore/tcell/v3/tty"
+
 // EventResize is sent when the window size changes.
 type EventResize struct {
 	EventTime
@@ -43,17 +45,4 @@ func (ev *EventResize) PixelSize() (int, int) {
 	return ev.ws.PixelWidth, ev.ws.PixelHeight
 }
 
-type WindowSize struct {
-	Width       int
-	Height      int
-	PixelWidth  int
-	PixelHeight int
-}
-
-// CellDimensions returns the dimensions of a single cell, in pixels
-func (ws WindowSize) CellDimensions() (int, int) {
-	if ws.PixelWidth == 0 || ws.PixelHeight == 0 {
-		return 0, 0
-	}
-	return (ws.PixelWidth / ws.Width), (ws.PixelHeight / ws.Height)
-}
+type WindowSize = tty.WindowSize

@@ -12,23 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package tty
 
-import "github.com/gdamore/tcell/v3/tty"
-
-type Tty = tty.Tty
-
-// NewDevTty obtains a default tty from the console or TTY (e.g. /dev/tty) for the process.
-func NewDevTty() (Tty, error) {
-	return tty.NewDevTty()
+// WindowSize represents the dimensions of the window of a terminal.
+type WindowSize struct {
+	Width       int // Width in characters
+	Height      int // Height in characters
+	PixelWidth  int // Width in pixels (zero if not available or known)
+	PixelHeight int // Height in pixels (zero if not available or known)
 }
 
-// NewDevTtyFromDev obtains a tty from the given device path. Not supported on Windows.
-func NewDevTtyFromDev(dev string) (Tty, error) {
-	return tty.NewDevTtyFromDev(dev)
-}
-
-// NewStdIoTty obtains a tty from stdin and stdout.
-func NewStdIoTty() (Tty, error) {
-	return tty.NewStdIoTty()
+// CellDimensions returns the dimensions of a single cell, in pixels
+func (ws WindowSize) CellDimensions() (int, int) {
+	if ws.PixelWidth == 0 || ws.PixelHeight == 0 {
+		return 0, 0
+	}
+	return (ws.PixelWidth / ws.Width), (ws.PixelHeight / ws.Height)
 }
