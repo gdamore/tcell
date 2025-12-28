@@ -84,12 +84,13 @@ func (mb *mockBackend) PutAbs(pos vt.Coord, r rune, attr vt.Attr) {
 		mb.cells[index].Attr = attr
 		if r == 0 {
 			mb.cells[index].C = nil
+			mb.cells[index].Width = 0
 		} else {
 			mb.cells[index].C = []rune{r}
+			mb.cells[index].Width = uniseg.StringWidth(string(r))
 		}
 		mb.cells[index].Fg = mb.fg
 		mb.cells[index].Bg = mb.bg
-		mb.cells[index].Width = uniseg.StringWidth(string(r))
 	} else {
 		mb.errs++
 	}
