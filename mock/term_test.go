@@ -304,4 +304,23 @@ func TestPrivateModes(t *testing.T) {
 	if result != want {
 		t.Errorf("wrong response: %q != %q", result, want)
 	}
+
+	// Lets also test the cursor (show vs hide)
+	writeF(t, trm, "\x1b[?25$p")
+	writeF(t, trm, "\x1b[?25l")
+	writeF(t, trm, "\x1b[?25$p")
+	writeF(t, trm, "\x1b[?25h")
+	writeF(t, trm, "\x1b[?25$p")
+
+	buf = make([]byte, 128)
+	n, err = trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result = string(buf[:n])
+
+	want = "\x1b[?25;1$y" + "\x1b[?25;2$y" + "\x1b[?25;1$y"
+	if result != want {
+		t.Errorf("wrong response: %q != %q", result, want)
+	}
 }
