@@ -409,6 +409,32 @@ func TestUnicodeWide(t *testing.T) {
 	}
 }
 
+// TestKbdEventLegacy tests key events when using the default legacy key protocol.
+func TestKbdEventLegacy(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	trm.KeyEvent(vt.KbdEvent{Code: 'a', Base: 'a', Down: true})
+	trm.KeyEvent(vt.KbdEvent{Code: 'A', Base: 'a', Mod: vt.ModShift, Down: false})
+	trm.KeyEvent(vt.KbdEvent{Code: 'B', Base: 'b', Mod: vt.ModShift, Down: true})
+	trm.KeyEvent(vt.KbdEvent{Code: 'B', Base: 'b', Mod: vt.ModShift, Down: false})
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcReturn, Down: true})
+	trm.KeyEvent(vt.KbdEvent{Code: 'i', Down: true, Mod: vt.ModCtrl})
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcEsc, Down: true})
+
+	buf := make([]byte, 256)
+	n, err := trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result := string(buf[:n])
+	want := "aB\r\x09\x1B"
+	if result != want {
+		t.Errorf("key responses failed: %q != %q", result, want)
+	}
+}
+
 // TestSgrAttr tests a variety of combinations of Sgr settings.
 func TestSgrAttr(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})

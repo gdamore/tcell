@@ -39,6 +39,10 @@ type Emulator interface {
 	// so it should be used with caution.
 	SendRaw([]byte)
 
+	// KeyEvent injects a keyboard event into the emulator, which will ultimately
+	// result in data being sent via SendRaw.
+	KeyEvent(ev KbdEvent)
+
 	// Drain waits until any queued but not processed input has finished processing.
 	Drain() error
 
@@ -847,6 +851,34 @@ func (em *emulator) SendRaw(b []byte) {
 		case <-em.stopQ:
 			return
 		}
+	}
+}
+
+// KbdEvent injects a keyboard event into the emulator
+func (em *emulator) KeyEvent(ev KbdEvent) {
+	// TODO: more add support for other keyboard protocols, right now we only do legacy
+	em.keyLegacy(ev)
+}
+
+func (em *emulator) keyLegacy(ev KbdEvent) {
+	if !ev.Down { // legacy protocol does not support key release
+		return
+	}
+	if ev.Code > KcSpace && ev.Code < 0x7F && (ev.Mod == ModNone || ev.Mod == ModShift) {
+		em.SendRaw([]byte{byte(ev.Code)})
+		return
+	}
+	switch ev.Code {
+	case KcSpace, KcEsc, KcReturn, KcTab, KcBackspace, KcDelete:
+		if ev.Mod == ModNone {
+			em.SendRaw([]byte{byte(ev.Code)})
+			return
+		}
+	}
+
+	// fallback control key handling
+	if ev.Code >= 'a' && ev.Code <= 'z' && ev.Mod == ModCtrl {
+		em.SendRaw([]byte{byte(ev.Code) - 'a' + 1})
 	}
 }
 
