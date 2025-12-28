@@ -46,8 +46,32 @@ import (
 // For terminals that do not support dynamic resize events, the $LINES
 // $COLUMNS environment variables can be set to the actual window size,
 // otherwise defaults taken from the terminal database are used.
-func NewTerminfoScreen() (Screen, error) {
-	return NewTerminfoScreenFromTty(nil)
+func NewTerminfoScreen(opts ...TerminfoScreenOption) (Screen, error) {
+	return NewTerminfoScreenFromTty(nil, opts...)
+}
+
+type TerminfoScreenOption interface {
+	apply(*tScreen)
+}
+
+// OptColors forces the number of colors, overriding the value
+// of the color count that would be detected by the environment.
+// If the value is 0, then color is forced off.  Other reasonable values
+// are 8, 16, 88, 256, or 1<<24.  The latter case intrinsically enables
+// 24-bit color as well.
+type OptColors int
+
+func (o OptColors) apply(t *tScreen) {
+	t.ncolor = min(int(o), 256)
+	t.truecolor = o > 256
+	t.noColor = o == 0
+}
+
+// OptTerm overrides the detection of $TERM.
+type OptTerm string
+
+func (o OptTerm) apply(t *tScreen) {
+	t.term = string(o)
 }
 
 // Some terminal escapes that are basically universal.
@@ -104,7 +128,7 @@ const (
 // If the passed in tty is nil, then a reasonable default (typically /dev/tty)
 // is presumed, at least on UNIX hosts. (Windows hosts will typically fail this
 // call altogether.)
-func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
+func NewTerminfoScreenFromTty(tty Tty, opts ...TerminfoScreenOption) (Screen, error) {
 	t := &tScreen{tty: tty}
 
 	t.prepareCursorStyles()
@@ -113,6 +137,9 @@ func NewTerminfoScreenFromTty(tty Tty) (Screen, error) {
 	t.resizeQ = make(chan bool, 1)
 	t.fallback = make(map[rune]string)
 	maps.Copy(t.fallback, RuneFallbacks)
+	for _, o := range opts {
+		o.apply(t)
+	}
 
 	return &baseScreen{screenImpl: t}, nil
 }
@@ -175,6 +202,7 @@ type tScreen struct {
 	disableCsiU   string
 	termName      string
 	termVers      string
+	term          string // value from $TERM
 	inlineResize  bool
 	haveMouse     bool
 	haveMouseSgr  bool
@@ -206,11 +234,19 @@ func (t *tScreen) Init() error {
 	if i, _ := strconv.Atoi(os.Getenv("COLUMNS")); i != 0 {
 		w = i
 	}
-	cterm := os.Getenv("COLORTERM")
-	nterm := os.Getenv("TERM")
+	if t.term == "" {
+		t.term = os.Getenv("TERM")
+	}
+	nterm := t.term
 
-	if t.ncolor == 0 {
-		if slices.Contains([]string{"truecolor", "direct", "24bit"}, cterm) || strings.HasSuffix(nterm, "-direct") || strings.HasSuffix(nterm, "-truecolor") {
+	if t.ncolor == 0 && !t.noColor {
+		cterm := os.Getenv("COLORTERM")
+
+		// On Windows, enable 24-bit color by default (all terminals there are 24-bit capable)
+		if runtime.GOOS == "windows" {
+			t.truecolor = true
+			t.ncolor = 256
+		} else if slices.Contains([]string{"truecolor", "direct", "24bit"}, cterm) || strings.HasSuffix(nterm, "-direct") || strings.HasSuffix(nterm, "-truecolor") {
 			t.truecolor = true
 			t.ncolor = 256 // base 8-bit palette
 		} else if strings.HasSuffix(nterm, "-256color") || strings.Contains(cterm, "256") {
@@ -232,23 +268,20 @@ func (t *tScreen) Init() error {
 			// best guess - this covers all the modern variants like ghostty,
 			t.ncolor = 256
 		}
-	}
-
-	if os.Getenv("NO_COLOR") != "" {
-		t.truecolor = false
-		t.ncolor = 0
-		t.noColor = true
+		if os.Getenv("NO_COLOR") != "" {
+			t.truecolor = false
+			t.ncolor = 0
+			t.noColor = true
+		}
+		// A user who wants to have his themes honored can set this environment variable.
+		if os.Getenv("TCELL_TRUECOLOR") == "disable" {
+			t.truecolor = false
+		}
 	}
 
 	if strings.HasPrefix(nterm, "vt") || strings.Contains(nterm, "ansi") || nterm == "linux" || nterm == "sun" || nterm == "sun-color" {
 		// these terminals are "legacy" and not expected to support most OSC functions
 		t.legacy = true
-	}
-
-	// A user who wants to have his themes honored can
-	// set this environment variable.
-	if os.Getenv("TCELL_TRUECOLOR") == "disable" {
-		t.truecolor = false
 	}
 
 	t.initted = false
@@ -387,7 +420,7 @@ func (t *tScreen) prepareExtendedOSC() {
 	// are not as widely deployed, and OSC 9 is not unique.)
 	t.notifyDesktop = notifyDesktop777
 
-	if runtime.GOOS == "windows" && os.Getenv("TERM") == "" {
+	if runtime.GOOS == "windows" && t.term == "" {
 		// on Windows, if we don't have a TERM, use only win32-input-mode
 		t.enableCsiU = "\x1b[?9001h"
 		t.disableCsiU = "\x1b[?9001l"

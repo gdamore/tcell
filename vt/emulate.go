@@ -103,6 +103,8 @@ type emulator struct {
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 }
 
+// inbInit processes bytes received in the "default" state. Most often these are just
+// text characters to display on screen, but if ESC is seen then additional processing will result.
 func (em *emulator) inbInit(b byte) {
 	em.inBuf.Reset()
 
@@ -166,6 +168,7 @@ func (em *emulator) inbInit(b byte) {
 	}
 }
 
+// inbEsc processes the next byte after an escape character is seen.
 func (em *emulator) inbEsc(b byte) {
 	// By default, reset to init state. Other states will be set explicitly as needed.
 	em.inb = em.inbInit
@@ -215,6 +218,7 @@ func (em *emulator) inbEsc(b byte) {
 	}
 }
 
+// inbNF processes bytes that are part of an "nF" sequence (see ECMA-48).
 func (em *emulator) inbNF(b byte) {
 	if b >= 0x20 && b <= 0x2F {
 		em.inBuf.WriteByte(b)
@@ -252,6 +256,7 @@ func (em *emulator) inbNF(b byte) {
 	}
 }
 
+// inbCSI handles bytes that are part of a CSI based sequence.
 func (em *emulator) inbCSI(b byte) {
 	if (b >= 0x30) && (b <= 0x3F) {
 		em.inBuf.WriteByte(b) // parameter bytes
@@ -267,6 +272,7 @@ func (em *emulator) inbCSI(b byte) {
 	}
 }
 
+// inbOSC handles bytes that are part of on OSC sequences (operating system command).
 func (em *emulator) inbOSC(b byte) {
 	switch b {
 	case 0x9c:
@@ -303,6 +309,7 @@ func (em *emulator) inbStr(b byte) {
 	}
 }
 
+// inbUTF handles continuation bytes for UTF-8 sequences.
 func (em *emulator) inbUTF(b byte) {
 	if b&0xC0 == 0x80 {
 		// good continuation byte
@@ -349,6 +356,31 @@ func numericParams(str string, minimumLen int, defaultValue int) ([]int, error) 
 	return pi, nil
 }
 
+// splitSgrArgs grabs either 2 arguments, or 4 arguments for palette or rgb values
+// used with SGR 38 and 48.
+func splitSgrArgs(args []string, words []string) ([]string, []string) {
+	if len(args) > 0 {
+		return args, words
+	}
+	if len(words) == 0 {
+		return nil, nil
+	}
+	switch i, _ := strconv.Atoi(words[0]); i {
+	case 2: // RGB value follows, 3 parameters
+		if len(words) < 4 {
+			return nil, nil
+		}
+		return words[:4], words[4:]
+	case 5: // single palette index follows
+		if len(words) < 2 {
+			return nil, nil
+		}
+		return words[:2], words[2:]
+	}
+	return nil, nil
+}
+
+// processSgr processes SGR commmands (things that change how characters are displayed).
 func (em *emulator) processSgr(str string) {
 	words := strings.Split(str, ";")
 
@@ -356,8 +388,7 @@ func (em *emulator) processSgr(str string) {
 	// accident it is more common to see semicolon separation.  Underline styles are also separated
 	// by a colon, if present.
 	if len(words) == 0 {
-		em.attr = Plain
-		return
+		words = []string{"0"}
 	}
 	for len(words) > 0 {
 		// we do this instead of a range so we can lop off
@@ -439,7 +470,8 @@ func (em *emulator) processSgr(str string) {
 			if c, ok := em.be.(Colorer); ok {
 				c.SetFgColor(color.Black + color.Color(v-30))
 			}
-		case 38: // TODO:
+		case 38:
+			args, words = splitSgrArgs(args, words)
 		case 39:
 			if c, ok := em.be.(Colorer); ok {
 				c.SetFgColor(color.Reset)
@@ -449,6 +481,7 @@ func (em *emulator) processSgr(str string) {
 				c.SetBgColor(color.Black + color.Color(v-40))
 			}
 		case 48: // TODO:
+			args, words = splitSgrArgs(args, words)
 		case 49:
 			if c, ok := em.be.(Colorer); ok {
 				c.SetBgColor(color.Reset)
@@ -461,6 +494,7 @@ func (em *emulator) processSgr(str string) {
 	}
 }
 
+// processCsi processes CSI sequences.
 func (em *emulator) processCsi(final byte) {
 	// CSI sequences are supported in several different possible ways:
 	// parameters may have a prefix character that is not numeric, typically
@@ -593,6 +627,8 @@ func (em *emulator) processCsi(final byte) {
 	}
 }
 
+// processOSC processes an operating system command.
+// TODO: add support for these - e.g. OSC 8 for hyperlinks, OSC 52 for clipboard access, etc.
 func (em *emulator) processOSC() {}
 
 func (em *emulator) getPosition() Coord {

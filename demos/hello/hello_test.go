@@ -13,11 +13,9 @@ import (
 
 func TestHello(t *testing.T) {
 	// ensure we only use 8 color ANSI for now
-	t.Setenv("TERM", "ansi")
-	t.Setenv("COLORTERM", "")
 
 	mt := mock.NewMockTerm(mock.MockOptColors(8))
-	scr, err := tcell.NewTerminfoScreenFromTty(mt)
+	scr, err := tcell.NewTerminfoScreenFromTty(mt, tcell.OptColors(8), tcell.OptTerm("ansi"))
 	if err != nil {
 		t.Fatalf("failed to create screen: %v", err)
 	}
