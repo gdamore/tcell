@@ -35,7 +35,9 @@ type Backend interface {
 	GetSize() Coord
 
 	// Put a single character at a specific position with the given attributes.
-	// The cursor should be moved to this location.  It may advance.
+	// The cursor should be moved to this location.  It may advance.  If the value
+	// of the rune is zero, then the cell is being erased, and no content should be
+	// displayed.
 	PutAbs(Coord, rune, Attr)
 
 	// GetPosition returns the cursor position.

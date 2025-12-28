@@ -137,7 +137,7 @@ func TestDECALN(t *testing.T) {
 			if cell.Attr != vt.Plain {
 				t.Errorf("wrong attr at %d,%d: %x", x, y, cell.Attr)
 			}
-			if string(cell.C) != " " {
+			if string(cell.C) != "" {
 				t.Errorf("wrong content at %d,%d: %q", x, y, string(cell.C))
 			}
 		}
@@ -397,7 +397,7 @@ func TestUnicodeWide(t *testing.T) {
 	if s := string(trm.GetCell(vt.Coord{X: 2, Y: 1}).C); s != "宽" {
 		t.Errorf("decode error wrong: %q", s)
 	}
-	if s := string(trm.GetCell(vt.Coord{X: 3, Y: 1}).C); s != " " {
+	if s := string(trm.GetCell(vt.Coord{X: 3, Y: 1}).C); s != "" {
 		t.Errorf("decode error wrong: %q", s)
 	}
 	if s := string(trm.GetCell(vt.Coord{X: 4, Y: 1}).C); s != "c" {

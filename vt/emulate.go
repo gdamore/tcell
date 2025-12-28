@@ -665,7 +665,7 @@ func (em *emulator) putc(r rune) {
 // eraseCell erases a single cell at the given offset.
 // It clears attributes, but leaves the colors intact.
 func (em *emulator) eraseCell(c Coord) {
-	em.be.PutAbs(c, ' ', Plain)
+	em.be.PutAbs(c, 0, Plain)
 }
 
 // eraseBelow erases from (and including) the current cursor position to the end of the window.
