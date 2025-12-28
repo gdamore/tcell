@@ -15,6 +15,8 @@
 package mock
 
 import (
+	"time"
+
 	"github.com/gdamore/tcell/v3/tty"
 	"github.com/gdamore/tcell/v3/vt"
 )
@@ -90,6 +92,15 @@ func (mt *mockTerm) Bells() int {
 	return mt.mb.Bells()
 }
 
+func (mt *mockTerm) KeyEvent(ev vt.KbdEvent) {
+	mt.em.KeyEvent(ev)
+	if ev.Code == vt.KcEsc {
+		// Inject a delay to simulate human typing.
+		// Necessary to disambiguate Escape from other sequences.
+		time.Sleep(time.Millisecond * 150)
+	}
+}
+
 // MockTerm is a mock terminal (emulator).  It can be used to
 // test the emulator itself, or to test applications (or tcell) that
 // uses the terminal.  It also implements the Tty interface used
@@ -105,6 +116,9 @@ type MockTerm interface {
 
 	// Bells returns the number of times the bell has been rung.
 	Bells() int
+
+	// Inject a keyboard event.
+	KeyEvent(vt.KbdEvent)
 }
 
 // NewMockTerm gives a mock terminal emulator.
