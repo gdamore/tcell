@@ -250,6 +250,7 @@ type Screen interface {
 }
 
 var overrideScreen chan Screen
+var overrideOnce sync.Once
 
 // NewScreen returns a default Screen suitable for the user's terminal environment.
 func NewScreen() (Screen, error) {
@@ -270,14 +271,13 @@ func NewScreen() (Screen, error) {
 }
 
 // ShimScreen allows an application to override the screen that will
-// be returned by NewScreen.  This only works for invocation. Note that
-// this is not thread-safe with NewScreen, or with itself.  Typically this
-// is used for testing, where the test code calls this once before running
-// an example.
+// be returned by NewScreen.  Typically this  is used for testing,
+// where the test code calls this once before running an example.
+// It could also be used to intercept a regular Screen.
 func ShimScreen(s Screen) {
-	if overrideScreen == nil {
+	overrideOnce.Do(func() {
 		overrideScreen = make(chan Screen, 8) // normally would only be one anyway
-	}
+	})
 	overrideScreen <- s
 }
 
