@@ -249,14 +249,36 @@ type Screen interface {
 	Terminal() (string, string)
 }
 
-// NewScreen returns a default Screen suitable for the user's terminal
-// environment.
+var overrideScreen chan Screen
+
+// NewScreen returns a default Screen suitable for the user's terminal environment.
 func NewScreen() (Screen, error) {
+
+	// Allow an application (presumably test code) to inject a replacement default
+	// screen.  This could also be used to create shims for things like nesting screens.
+	select {
+	case s := <-overrideScreen:
+		return s, nil
+	default:
+	}
+
 	if s, e := NewTerminfoScreen(); s != nil {
 		return s, nil
 	} else {
 		return nil, e
 	}
+}
+
+// ShimScreen allows an application to override the screen that will
+// be returned by NewScreen.  This only works for invocation. Note that
+// this is not thread-safe with NewScreen, or with itself.  Typically this
+// is used for testing, where the test code calls this once before running
+// an example.
+func ShimScreen(s Screen) {
+	if overrideScreen == nil {
+		overrideScreen = make(chan Screen, 8) // normally would only be one anyway
+	}
+	overrideScreen <- s
 }
 
 // MouseFlags are options to modify the handling of mouse events.
