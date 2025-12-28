@@ -25,9 +25,18 @@ import (
 func displayHelloWorld(s tcell.Screen) {
 	w, h := s.Size()
 	s.Clear()
+	x := w/2 - 7
+	y := h/2 - 1
 	style := tcell.StyleDefault.Foreground(color.CadetBlue.TrueColor()).Background(color.White)
-	s.PutStrStyled(w/2-7, h/2, "Hello, World!", style)
-	s.PutStr(w/2-9, h/2+1, "Press ESC to exit.")
+	s.PutStrStyled(x, y, "Hello, World!", style)
+	x = w/2 - 9
+	y += 2
+	s.PutStr(x, y, "Press ")
+	x += len("Press ")
+
+	s.PutStrStyled(x, y, "ESC", tcell.StyleDefault.Bold(true))
+	x += len("ESC")
+	s.PutStr(x, y, " to exit.")
 	s.Show()
 }
 

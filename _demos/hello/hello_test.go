@@ -45,19 +45,37 @@ func TestHello(t *testing.T) {
 		Bg   color.Color
 		Attr vt.Attr
 	}{
-		{X: 33, Y: 12, C: "H", Fg: color.Teal, Bg: color.Silver},
-		{X: 34, Y: 12, C: "e", Fg: color.Teal, Bg: color.Silver},
-		{X: 35, Y: 12, C: "l", Fg: color.Teal, Bg: color.Silver},
-		{X: 36, Y: 12, C: "l", Fg: color.Teal, Bg: color.Silver},
-		{X: 37, Y: 12, C: "o", Fg: color.Teal, Bg: color.Silver},
-		{X: 38, Y: 12, C: ",", Fg: color.Teal, Bg: color.Silver},
-		{X: 39, Y: 12, C: " ", Fg: color.Teal, Bg: color.Silver},
-		{X: 40, Y: 12, C: "W", Fg: color.Teal, Bg: color.Silver},
-		{X: 41, Y: 12, C: "o", Fg: color.Teal, Bg: color.Silver},
-		{X: 42, Y: 12, C: "r", Fg: color.Teal, Bg: color.Silver},
-		{X: 43, Y: 12, C: "l", Fg: color.Teal, Bg: color.Silver},
-		{X: 44, Y: 12, C: "d", Fg: color.Teal, Bg: color.Silver},
-		{X: 45, Y: 12, C: "!", Fg: color.Teal, Bg: color.Silver},
+		{X: 33, Y: 11, C: "H", Fg: color.Teal, Bg: color.Silver},
+		{X: 34, Y: 11, C: "e", Fg: color.Teal, Bg: color.Silver},
+		{X: 35, Y: 11, C: "l", Fg: color.Teal, Bg: color.Silver},
+		{X: 36, Y: 11, C: "l", Fg: color.Teal, Bg: color.Silver},
+		{X: 37, Y: 11, C: "o", Fg: color.Teal, Bg: color.Silver},
+		{X: 38, Y: 11, C: ",", Fg: color.Teal, Bg: color.Silver},
+		{X: 39, Y: 11, C: " ", Fg: color.Teal, Bg: color.Silver},
+		{X: 40, Y: 11, C: "W", Fg: color.Teal, Bg: color.Silver},
+		{X: 41, Y: 11, C: "o", Fg: color.Teal, Bg: color.Silver},
+		{X: 42, Y: 11, C: "r", Fg: color.Teal, Bg: color.Silver},
+		{X: 43, Y: 11, C: "l", Fg: color.Teal, Bg: color.Silver},
+		{X: 44, Y: 11, C: "d", Fg: color.Teal, Bg: color.Silver},
+		{X: 45, Y: 11, C: "!", Fg: color.Teal, Bg: color.Silver},
+		{X: 31, Y: 13, C: "P", Fg: color.Silver, Bg: color.Black},
+		{X: 32, Y: 13, C: "r", Fg: color.Silver, Bg: color.Black},
+		{X: 33, Y: 13, C: "e", Fg: color.Silver, Bg: color.Black},
+		{X: 34, Y: 13, C: "s", Fg: color.Silver, Bg: color.Black},
+		{X: 35, Y: 13, C: "s", Fg: color.Silver, Bg: color.Black},
+		{X: 36, Y: 13, C: " ", Fg: color.Silver, Bg: color.Black},
+		{X: 37, Y: 13, C: "E", Fg: color.Silver, Bg: color.Black, Attr: vt.Bold},
+		{X: 38, Y: 13, C: "S", Fg: color.Silver, Bg: color.Black, Attr: vt.Bold},
+		{X: 39, Y: 13, C: "C", Fg: color.Silver, Bg: color.Black, Attr: vt.Bold},
+		{X: 40, Y: 13, C: " ", Fg: color.Silver, Bg: color.Black},
+		{X: 41, Y: 13, C: "t", Fg: color.Silver, Bg: color.Black},
+		{X: 42, Y: 13, C: "o", Fg: color.Silver, Bg: color.Black},
+		{X: 43, Y: 13, C: " ", Fg: color.Silver, Bg: color.Black},
+		{X: 44, Y: 13, C: "e", Fg: color.Silver, Bg: color.Black},
+		{X: 45, Y: 13, C: "x", Fg: color.Silver, Bg: color.Black},
+		{X: 46, Y: 13, C: "i", Fg: color.Silver, Bg: color.Black},
+		{X: 47, Y: 13, C: "t", Fg: color.Silver, Bg: color.Black},
+		{X: 48, Y: 13, C: ".", Fg: color.Silver, Bg: color.Black},
 	}
 
 	for _, v := range expect {
@@ -66,10 +84,13 @@ func TestHello(t *testing.T) {
 			t.Errorf("Mismatch string at %d,%d: %q != %q", v.X, v.Y, string(cell.C), v.C)
 		}
 		if v.Fg != cell.Fg {
-			t.Errorf("Mismatch foreground: %s != %s", cell.Fg.String(), v.Fg.String())
+			t.Errorf("Mismatch foreground at %d,%d: %s != %s", v.X, v.Y, cell.Fg.String(), v.Fg.String())
 		}
 		if v.Bg != cell.Bg {
-			t.Errorf("Mismatch foreground: %s != %s", cell.Fg.String(), v.Fg.String())
+			t.Errorf("Mismatch background at %d,%d: %s != %s", v.X, v.Y, cell.Bg.String(), v.Bg.String())
+		}
+		if v.Attr != cell.Attr {
+			t.Errorf("Mismatch attr at %d,%d: %x != %x", v.X, v.Y, cell.Attr, v.Attr)
 		}
 	}
 
