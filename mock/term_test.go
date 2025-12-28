@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/vt"
 )
 
@@ -405,5 +406,132 @@ func TestUnicodeWide(t *testing.T) {
 	}
 	if s := string(trm.GetCell(vt.Coord{X: 5, Y: 1}).C); s != "π" {
 		t.Errorf("decode error wrong: %q", s)
+	}
+}
+
+// TestSgrAttr tests a variety of combinations of Sgr settings.
+func TestSgrAttr(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[H")
+	writeF(t, trm, "\x1b[1mA") // bold
+	if attr := trm.GetCell(vt.Coord{X: 0, Y: 0}).Attr; attr != vt.Bold {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[2mB")                                          // dim
+	if attr := trm.GetCell(vt.Coord{X: 1, Y: 0}).Attr; attr != vt.Dim { // dim is exclusive of bold
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[22mC") // clear both
+	if attr := trm.GetCell(vt.Coord{X: 2, Y: 0}).Attr; attr != vt.Plain {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[3;2mD") // italic, dim
+	if attr := trm.GetCell(vt.Coord{X: 3, Y: 0}).Attr; attr != vt.Italic|vt.Dim {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[22mE") // dim, should leave italic
+	if attr := trm.GetCell(vt.Coord{X: 4, Y: 0}).Attr; attr != vt.Italic {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[23mF") // clear italic
+	if attr := trm.GetCell(vt.Coord{X: 5, Y: 0}).Attr; attr != vt.Plain {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[3;4mG") // simple underline
+	if attr := trm.GetCell(vt.Coord{X: 6, Y: 0}).Attr; attr != vt.Italic|vt.Underline {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[21mH") // double underline (ECMA)
+	if attr := trm.GetCell(vt.Coord{X: 7, Y: 0}).Attr; attr != vt.Italic|vt.DoubleUnderline {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[4mI") // simple underline
+	if attr := trm.GetCell(vt.Coord{X: 8, Y: 0}).Attr; attr != vt.Italic|vt.Underline {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[4:2mJ") // simple underline
+	if attr := trm.GetCell(vt.Coord{X: 9, Y: 0}).Attr; attr != vt.Italic|vt.DoubleUnderline {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[4:3mI") // curly underline
+	if attr := trm.GetCell(vt.Coord{X: 10, Y: 0}).Attr; attr != vt.Italic|vt.CurlyUnderline {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[4:4mJ") // dotted underline
+	if attr := trm.GetCell(vt.Coord{X: 11, Y: 0}).Attr; attr != vt.Italic|vt.DottedUnderline {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[4:5mK") // dashed underline
+	if attr := trm.GetCell(vt.Coord{X: 12, Y: 0}).Attr; attr != vt.Italic|vt.DashedUnderline {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[4:9mL") // junk treats as plain
+	if attr := trm.GetCell(vt.Coord{X: 13, Y: 0}).Attr; attr != vt.Italic|vt.Underline {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[4:5;24mM") // clustering, clear it
+	if attr := trm.GetCell(vt.Coord{X: 14, Y: 0}).Attr; attr != vt.Italic {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[0;9;7;53mN") // clear, strikethrough, reverse, overlined
+	if attr := trm.GetCell(vt.Coord{X: 15, Y: 0}).Attr; attr != vt.StrikeThrough|vt.Reverse|vt.Overline {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[5;27;29;55mO")
+	if attr := trm.GetCell(vt.Coord{X: 16, Y: 0}).Attr; attr != vt.Blink {
+		t.Errorf("wrong attr: %x", attr)
+	}
+	writeF(t, trm, "\x1b[25mP")
+	if attr := trm.GetCell(vt.Coord{X: 17, Y: 0}).Attr; attr != vt.Plain {
+		t.Errorf("wrong attr: %x", attr)
+	}
+}
+
+// TestSgrColor8 tests simple ECMA 48 ANSI color (only 8 possible color values.)
+func TestSgrColor8(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[36;42m\x1b#8")
+	if fg := trm.GetCell(vt.Coord{X: 0, Y: 0}).Fg; fg != color.Teal {
+		t.Errorf("wrong fg: %s\n", fg.String())
+	}
+	if bg := trm.GetCell(vt.Coord{X: 0, Y: 0}).Bg; bg != color.Green {
+		t.Errorf("wrong bg: %s\n", bg.String())
+	}
+	writeF(t, trm, "\x1b[H\x1b[39mA")
+	if fg := trm.GetCell(vt.Coord{X: 0, Y: 0}).Fg; fg != color.Silver {
+		t.Errorf("wrong fg: %s\n", fg.String())
+	}
+	if bg := trm.GetCell(vt.Coord{X: 0, Y: 0}).Bg; bg != color.Green {
+		t.Errorf("wrong bg: %s\n", bg.String())
+	}
+	writeF(t, trm, "\x1b[49mA")
+	if fg := trm.GetCell(vt.Coord{X: 1, Y: 0}).Fg; fg != color.Silver {
+		t.Errorf("wrong fg: %s\n", fg.String())
+	}
+	if bg := trm.GetCell(vt.Coord{X: 1, Y: 0}).Bg; bg != color.Black {
+		t.Errorf("wrong bg: %s\n", bg.String())
+	}
+
+	// verify zero clears colors, first write some non zero colors
+	writeF(t, trm, "\x1b[36;42mD")
+	if fg := trm.GetCell(vt.Coord{X: 2, Y: 0}).Fg; fg != color.Teal {
+		t.Errorf("wrong fg: %s\n", fg.String())
+	}
+	if bg := trm.GetCell(vt.Coord{X: 2, Y: 0}).Bg; bg != color.Green {
+		t.Errorf("wrong bg: %s\n", bg.String())
+	}
+	// then send zero, should go to default colors
+	writeF(t, trm, "\x1b[0mA")
+	if fg := trm.GetCell(vt.Coord{X: 3, Y: 0}).Fg; fg != color.Silver {
+		t.Errorf("wrong fg: %s\n", fg.String())
+	}
+	if bg := trm.GetCell(vt.Coord{X: 3, Y: 0}).Bg; bg != color.Black {
+		t.Errorf("wrong bg: %s\n", bg.String())
 	}
 }

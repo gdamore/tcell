@@ -380,9 +380,15 @@ func (em *emulator) processSgr(str string) {
 		switch v {
 		case 0:
 			em.attr = Plain
+			if c, ok := em.be.(Colorer); ok {
+				c.SetFgColor(color.Reset)
+				c.SetBgColor(color.Reset)
+			}
 		case 1:
+			em.attr &^= Dim
 			em.attr |= Bold
 		case 2:
+			em.attr &^= Bold
 			em.attr |= Dim
 		case 3:
 			em.attr |= Italic
@@ -409,6 +415,44 @@ func (em *emulator) processSgr(str string) {
 		case 8: // ignore, its for invisible
 		case 9:
 			em.attr |= StrikeThrough
+		case 21: // Doubly underlined, per ECMA
+			em.attr &^= UnderlineMask
+			em.attr |= DoubleUnderline
+		case 22:
+			em.attr &^= (Bold | Dim)
+		case 23:
+			em.attr &^= Italic
+		case 24:
+			em.attr &^= UnderlineMask
+		case 25:
+			em.attr &^= Blink
+		case 27:
+			em.attr &^= Reverse
+		case 29:
+			em.attr &^= StrikeThrough
+
+		case 30, 31, 32, 33, 34, 35, 36, 37: // simple foreground colors
+			if c, ok := em.be.(Colorer); ok {
+				c.SetFgColor(color.Black + color.Color(v-30))
+			}
+		case 38: // TODO:
+		case 39:
+			if c, ok := em.be.(Colorer); ok {
+				c.SetFgColor(color.Reset)
+			}
+		case 40, 41, 42, 43, 44, 45, 46, 47: // simple background colors
+			if c, ok := em.be.(Colorer); ok {
+				c.SetBgColor(color.Black + color.Color(v-40))
+			}
+		case 48: // TODO:
+		case 49:
+			if c, ok := em.be.(Colorer); ok {
+				c.SetBgColor(color.Reset)
+			}
+		case 53:
+			em.attr |= Overline
+		case 55:
+			em.attr &^= Overline
 		}
 	}
 }
