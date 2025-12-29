@@ -913,25 +913,123 @@ func (em *emulator) KeyEvent(ev KbdEvent) {
 	em.keyLegacy(ev)
 }
 
+var legacyKeys = map[KeyCode]struct {
+	K  string // unmodified key
+	P  string // unmodified in keypad mode (smkx)
+	S  string // with shift (if empty use regular modifier)
+	C  string // with control (if empty use regular modifier)
+	CS string // with ctrl-shift
+}{
+	KcF1:        {K: "\x1bOP"}, // SS3 P
+	KcF2:        {K: "\x1bOQ"}, // SS3 Q
+	KcF3:        {K: "\x1bOR"}, // SS3 R
+	KcF4:        {K: "\x1bOS"}, // SS3 S
+	KcF5:        {K: "\x1b[15~"},
+	KcF6:        {K: "\x1b[17~"},
+	KcF7:        {K: "\x1b[18~"},
+	KcF8:        {K: "\x1b[19~"},
+	KcF9:        {K: "\x1b[20~"},
+	KcF10:       {K: "\x1b[21~"},
+	KcF11:       {K: "\x1b[23~"},
+	KcF12:       {K: "\x1b[24~"},
+	KcUp:        {K: "\x1b[A", P: "\x1bOA"},
+	KcDown:      {K: "\x1b[B", P: "\x1bOB"},
+	KcRight:     {K: "\x1b[C", P: "\x1bOC"},
+	KcLeft:      {K: "\x1b[D", P: "\x1bOD"},
+	KcHome:      {K: "\x1b[H", P: "\x1bOH"},
+	KcEnd:       {K: "\x1b[F", P: "\x1bOF"},
+	KcPgUp:      {K: "\x1b[5~"},
+	KcPgDn:      {K: "\x1b[6~"},
+	KcDel:       {K: "\x1b[3~"},
+	KcIns:       {K: "\x1b[2~"},
+	KcMenu:      {K: "\x1b[29~"}, // also F15
+	KcTab:       {K: "\t", S: "\x1b[Z", CS: "\x1b[Z"},
+	KcBackspace: {K: "\x7f", S: "\x7f", C: "\x08", CS: "\x08"},
+	KcDelete:    {K: "\x08", S: "\x08", C: "\x7f", CS: "\x7f"},
+	KcSpace:     {K: " ", S: " ", C: "\x00", CS: "\x00"},
+	KcReturn:    {K: "\r", S: "\r", CS: "\r"},
+	KcEsc:       {K: "\x1b", S: "\x1b", C: "\x1b"},
+}
+
 func (em *emulator) keyLegacy(ev KbdEvent) {
 	if !ev.Down { // legacy protocol does not support key release
 		return
 	}
-	if ev.Code > KcSpace && ev.Code < 0x7F && (ev.Mod == ModNone || ev.Mod == ModShift) {
-		em.SendRaw([]byte{byte(ev.Code)})
+	if ev.Mod&(ModHyper|ModMeta) != 0 { // legacy protocol does not support these
 		return
 	}
-	switch ev.Code {
-	case KcSpace, KcEsc, KcReturn, KcTab, KcBackspace, KcDelete:
-		if ev.Mod == ModNone {
-			em.SendRaw([]byte{byte(ev.Code)})
-			return
+
+	if v, ok := legacyKeys[ev.Code]; ok {
+		str := ""
+		match := false
+		switch ev.Mod & (ModShift | ModCtrl) {
+		case ModNone:
+			// TODO: key for keypad mode
+			str = v.K
+			match = true
+		case ModShift:
+			if str = v.S; str != "" {
+				match = true
+			}
+		case ModCtrl:
+			if str = v.C; str != "" {
+				match = true
+			}
+		case ModCtrl | ModShift:
+			if str = v.CS; str != "" {
+				match = true
+			}
 		}
+		if !match {
+			// No specific modifiers present, lets add them. There are two cases,
+			// one for SS3 based keys and another for CSI based keys.  SS3 based
+			// keys are converted to CSI - 1 ; mod ; final
+			// Note: legacy encoding does not use modifiers for alt or super - alt will be
+			// determined by sending an esc prefix.
+			mod := 0
+			if ev.Mod&ModShift != 0 {
+				mod |= 1
+			}
+			if ev.Mod&ModCtrl != 0 {
+				mod |= 4
+			}
+			if strings.HasPrefix(v.K, "\x1bO") {
+				str = fmt.Sprintf("\x1b[1;%d%c", mod+1, v.K[len(v.K)-1])
+			} else {
+				str = fmt.Sprintf("%s;%d%c", v.K[:len(v.K)-1], mod+1, v.K[len(v.K)-1])
+			}
+		}
+		if ev.Mod&ModAlt != 0 {
+			em.SendRaw([]byte{'\x1b'}) // alt sends leading esc
+		}
+		em.SendRaw([]byte(str))
+		return
 	}
 
 	// fallback control key handling
-	if ev.Code >= 'a' && ev.Code <= 'z' && ev.Mod == ModCtrl {
+	if ev.Code >= 'a' && ev.Code <= 'z' && ev.Mod&ModCtrl != 0 {
+		if ev.Mod&ModAlt != 0 {
+			em.SendRaw([]byte{'\x1b'})
+		}
 		em.SendRaw([]byte{byte(ev.Code) - 'a' + 1})
+		return
+	}
+
+	// upper cases and extra keys with control (uncommon)
+	if ev.Code >= 'A' && ev.Code <= '_' && ev.Mod&ModCtrl != 0 {
+		if ev.Mod&ModAlt != 0 {
+			em.SendRaw([]byte{'\x1b'})
+		}
+		em.SendRaw([]byte{byte(ev.Code) - 'A' + 1})
+		return
+	}
+
+	if ev.Code > KcSpace && ev.Code < 0x7F && ev.Mod&ModCtrl == ModNone {
+		if ev.Mod&ModAlt != 0 {
+			em.SendRaw([]byte{'\x1b'})
+		}
+		em.SendRaw([]byte{byte(ev.Code)})
+		return
 	}
 }
 

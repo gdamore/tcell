@@ -433,6 +433,79 @@ func TestKbdEventLegacy(t *testing.T) {
 	if result != want {
 		t.Errorf("key responses failed: %q != %q", result, want)
 	}
+
+	// SS3 based F-keys
+	clear(buf)
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF1, Down: true})                                            // SS3 P
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF1, Down: false})                                           // none
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF1, Mod: vt.ModShift, Down: true})                          // CSI 1 ; 2 P
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF2, Mod: vt.ModCtrl, Down: true})                           // CSI 1 ; 5 Q
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF3, Mod: vt.ModAlt | vt.ModShift | vt.ModCtrl, Down: true}) // ESC CSI 1 ; 6 R
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF4, Mod: vt.ModAlt | vt.ModCtrl, Down: true})               // ESC CSI 1 ; 5 S
+	want = "\x1bOP"
+	want += "\x1b[1;2P"
+	want += "\x1b[1;5Q"
+	want += "\x1b\x1b[1;6R"
+	want += "\x1b\x1b[1;5S"
+	n, err = trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result = string(buf[:n])
+	if result != want {
+		t.Errorf("key responses failed: %q != %q", result, want)
+	}
+
+	// CSI based F-keys
+	buf = make([]byte, 256)
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF5, Down: true})                                            // CSI 15 ~
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF5, Down: false})                                           // none
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF6, Mod: vt.ModShift, Down: true})                          // CSI 17 ; 2 ~
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF7, Mod: vt.ModCtrl, Down: true})                           // CSI 18 ; 5 ~
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF8, Mod: vt.ModAlt | vt.ModShift | vt.ModCtrl, Down: true}) // ESC CSI 19 ; 6 ~
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF9, Mod: vt.ModAlt | vt.ModCtrl, Down: true})               // ESC CSI 20 ; 5 ~
+	want = "\x1b[15~"
+	want += "\x1b[17;2~"
+	want += "\x1b[18;5~"
+	want += "\x1b\x1b[19;6~"
+	want += "\x1b\x1b[20;5~"
+	n, err = trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result = string(buf[:n])
+	if result != want {
+		t.Errorf("key responses failed: %q != %q", result, want)
+	}
+
+	// Misc other keys
+	clear(buf)
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcReturn, Down: true})                                   // \r
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcTab, Down: true})                                      // \t
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcTab, Mod: vt.ModShift, Down: true})                    // CSI Z
+	trm.KeyEvent(vt.KbdEvent{Code: 'm', Mod: vt.ModCtrl, Down: true})                          // \r
+	trm.KeyEvent(vt.KbdEvent{Code: 'l', Mod: vt.ModCtrl, Down: true})                          // \x0c
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcBackspace, Down: true})                                // \x7f
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcBackspace, Mod: vt.ModCtrl, Down: true})               // \x08
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcBackspace, Mod: vt.ModShift | vt.ModCtrl, Down: true}) // \x08
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcSpace, Mod: vt.ModCtrl, Down: true})                   // \x00
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcSpace, Down: true})                                    // ' '
+	trm.KeyEvent(vt.KbdEvent{Code: 'a', Mod: vt.ModAlt, Down: true})                           // \x1b a
+	trm.KeyEvent(vt.KbdEvent{Code: 'a', Mod: vt.ModHyper, Down: true})                         // none
+	trm.KeyEvent(vt.KbdEvent{Code: 'a', Mod: vt.ModMeta, Down: true})                          // none
+	trm.KeyEvent(vt.KbdEvent{Code: 'j', Mod: vt.ModAlt | vt.ModCtrl, Down: true})              // \x1b\n
+	trm.KeyEvent(vt.KbdEvent{Code: 'L', Mod: vt.ModCtrl, Down: true})                          // \x0c
+	trm.KeyEvent(vt.KbdEvent{Code: '[', Mod: vt.ModCtrl, Down: true})                          // \x0c
+
+	want = "\r\t\x1b[Z\r\x0c\x7f\x08\x08\x00 \x1ba\x1b\n\x0c\x1b"
+	n, err = trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result = string(buf[:n])
+	if result != want {
+		t.Errorf("key responses failed: %q != %q", result, want)
+	}
 }
 
 // TestSgrAttr tests a variety of combinations of Sgr settings.
