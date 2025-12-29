@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !js && !wasm
-// +build !js,!wasm
-
 package tcell
 
 import (
+	"runtime"
 	"testing"
 	"time"
+
+	"github.com/gdamore/tcell/v3/mock"
 )
 
 // This just offers some very basic tests that do not require a full mock.
@@ -67,4 +67,23 @@ func TestNoColorEnv(t *testing.T) {
 	}
 
 	drainInput()
+}
+
+func NewMockTerm(t *testing.T, opts ...mock.MockOpt) (mock.MockTerm, Screen) {
+	t.Helper()
+	if runtime.GOOS == "js" {
+		t.Skip("not supported on webasm")
+		return nil, nil
+	}
+	mt := mock.NewMockTerm(opts...)
+	scr, err := NewTerminfoScreenFromTty(mt)
+	if err != nil {
+		t.Fatalf("failed to get terminal: %v", err)
+		return nil, nil
+	}
+	if err = scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+		return nil, nil
+	}
+	return mt, scr
 }

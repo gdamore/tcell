@@ -23,14 +23,31 @@ import (
 	"sync"
 	"syscall/js"
 	"unicode/utf8"
+
+	"github.com/gdamore/tcell/v3/tty"
 )
 
-func NewTerminfoScreen() (Screen, error) {
+// NewTerminfoScreen gets a screen.  The options are ignored for this platform.
+func NewTerminfoScreen(_ ...TerminfoScreenOption) (Screen, error) {
 	t := &wScreen{}
 	t.fallback = make(map[rune]string)
 
 	return &baseScreen{screenImpl: t}, nil
 }
+
+func NewTerminfoScreenFromTty(_ tty.Tty, _ ...TerminfoScreenOption) (Screen, error) {
+	// TODO: When we want to support testing webasm, we'll have to change this
+	// to use a MockTerm.  That will be appropriate when we switch to xterm.js.
+	// The options are ignored for this platform.
+	return nil, errors.New("not implemented")
+}
+
+type TerminfoScreenOption interface{ apply(*wScreen) }
+type OptColors int
+type OptTerm string
+
+func (OptColors) apply(*wScreen) {}
+func (OptTerm) apply(*wScreen)   {}
 
 type wScreen struct {
 	w, h  int
