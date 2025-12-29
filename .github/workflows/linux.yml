@@ -27,4 +27,9 @@ jobs:
         run: go build -v .
 
       - name: Test
-        run: go test ./...
+        run: script -q -e -c "go test -coverpkg=github.com/gdamore/tcell/v3/... -covermode=count -coverprofile=coverage.txt ./..."
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

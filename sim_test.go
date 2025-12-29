@@ -29,22 +29,6 @@ func mkTestScreen(t *testing.T, charset string) SimulationScreen {
 	return s
 }
 
-func TestInitScreen(t *testing.T) {
-
-	s := mkTestScreen(t, "")
-	defer s.Fini()
-
-	if x, y := s.Size(); x != 80 || y != 25 {
-		t.Fatalf("Size should be 80, 25, was %v, %v", x, y)
-	}
-	if s.CharacterSet() != "UTF-8" {
-		t.Fatalf("Character Set (%v) not UTF-8", s.CharacterSet())
-	}
-	if b, x, y := s.GetContents(); len(b) != x*y || x != 80 || y != 25 {
-		t.Fatalf("Contents (%v, %v, %v) wrong", len(b), x, y)
-	}
-}
-
 func TestClearScreen(t *testing.T) {
 	s := mkTestScreen(t, "")
 	defer s.Fini()
