@@ -1,6 +1,3 @@
-//go:build ignore
-// +build ignore
-
 // Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// beep makes a beep for every keypress, until you press ESC.
+// beep makes a beep for every 3 seconds, or when B is pressed, until you press ESC or CTRL-Q
 package main
 
 import (
@@ -26,8 +23,16 @@ import (
 	"github.com/gdamore/tcell/v3"
 )
 
+func draw(s tcell.Screen, remain int) {
+	style := tcell.StyleDefault
+	s.Clear()
+	s.PutStrStyled(1, 1, fmt.Sprintf("Beep will occur in %d seconds...", remain), style)
+	s.PutStrStyled(1, 3, "Press ESC or CTRL-Q to quit, B to beep now.", style.Italic(true))
+
+	s.Show()
+}
+
 func main() {
-	tcell.SetEncodingFallback(tcell.EncodingFallbackASCII)
 	s, e := tcell.NewScreen()
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
@@ -37,40 +42,41 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
 		os.Exit(1)
 	}
+	defer s.Fini()
 
 	s.SetStyle(tcell.StyleDefault)
-	s.Clear()
 
-	quit := make(chan struct{})
-	go func() {
-		for {
-			ev := <-s.EventQ()
+	remain := 3
+	draw(s, remain)
+	for {
+		select {
+		case ev := <-s.EventQ():
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Key() {
-				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:
-					close(quit)
+				case tcell.KeyEscape, tcell.KeyCtrlQ:
 					return
 				case tcell.KeyCtrlL:
+					draw(s, remain)
 					s.Sync()
+				case tcell.KeyRune:
+					if ev.Str() == "b" || ev.Str() == "B" {
+						remain = 3
+						s.Beep()
+						draw(s, remain)
+					}
 				}
 			case *tcell.EventResize:
 				s.Sync()
 			}
-		}
-	}()
-	beep(s, quit)
-	s.Fini()
-}
-
-func beep(s tcell.Screen, quit <-chan struct{}) {
-	t := time.NewTicker(time.Second)
-	for {
-		select {
-		case <-quit:
-			return
-		case <-t.C:
-			s.Beep()
+		case <-time.After(time.Second):
+			// imprecise, but good enough for demo
+			remain--
+			if remain == 0 {
+				remain = 3
+				s.Beep()
+			}
+			draw(s, remain)
 		}
 	}
 }
