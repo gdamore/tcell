@@ -561,3 +561,26 @@ func TestSgrColor8(t *testing.T) {
 		t.Errorf("wrong bg: %s\n", bg.String())
 	}
 }
+
+// TestTitler tests that we can set a window title.
+func TestTitler(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+	writeF(t, trm, "\x1b]2;Test Application\x1b\\")
+	if s := trm.GetTitle(); s != "Test Application" {
+		t.Errorf("wrong title: %q", s)
+	}
+
+	// test ST termination using legacy bell character
+	writeF(t, trm, "\x1b]2;Bell Ring\x07")
+	if s := trm.GetTitle(); s != "Bell Ring" {
+		t.Errorf("wrong title: %q", s)
+	}
+
+	// try using 8-bit sequence
+	writeF(t, trm, "\x9d2;Eight Bits\x9c")
+	if s := trm.GetTitle(); s != "Eight Bits" {
+		t.Errorf("wrong title: %q", s)
+	}
+}

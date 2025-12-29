@@ -275,7 +275,7 @@ func (em *emulator) inbCSI(b byte) {
 // inbOSC handles bytes that are part of on OSC sequences (operating system command).
 func (em *emulator) inbOSC(b byte) {
 	switch b {
-	case 0x9c:
+	case 0x9c, 0x07:
 		em.inb = em.inbInit
 		em.processOSC()
 	case '\\':
@@ -295,7 +295,7 @@ func (em *emulator) inbOSC(b byte) {
 // inbStr handles PM, SOS, and any other string we want to consume and discard.
 func (em *emulator) inbStr(b byte) {
 	switch b {
-	case 0x9c:
+	case 0x9c, 0x07:
 		em.inb = em.inbInit
 	case '\\':
 		if buf := em.inBuf.Bytes(); len(buf) > 0 && buf[len(buf)-1] == 0x1b {
@@ -629,7 +629,24 @@ func (em *emulator) processCsi(final byte) {
 
 // processOSC processes an operating system command.
 // TODO: add support for these - e.g. OSC 8 for hyperlinks, OSC 52 for clipboard access, etc.
-func (em *emulator) processOSC() {}
+func (em *emulator) processOSC() {
+	// Every OSC we support has a number, semicolon, then string.
+	ns, str, ok := strings.Cut(em.inBuf.String(), ";")
+	if !ok {
+		return
+	}
+	if num, err := strconv.Atoi(ns); err != nil {
+		return
+	} else {
+		switch num {
+		case 2: // Set window title
+			if t, ok := em.be.(Titler); ok {
+				// TODO: possibly validate the UTF-8 content?
+				t.SetWindowTitle(str)
+			}
+		}
+	}
+}
 
 func (em *emulator) getPosition() Coord {
 	pos := em.be.GetPosition()

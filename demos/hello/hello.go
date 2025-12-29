@@ -25,6 +25,7 @@ import (
 func displayHelloWorld(s tcell.Screen) {
 	w, h := s.Size()
 	s.Clear()
+	s.SetTitle("Hello World")
 	x := w/2 - 7
 	y := h/2 - 1
 	style := tcell.StyleDefault.Foreground(color.CadetBlue.TrueColor()).Background(color.White)

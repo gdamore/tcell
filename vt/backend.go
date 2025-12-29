@@ -101,3 +101,12 @@ type Resizer interface {
 	// NotifyResize registers a channel to be posted to if the window size changes.
 	NotifyResize(chan<- bool)
 }
+
+// Titler adds support for setting the window title. (Typically this is OSC2.)
+// Note that for security reasons we only support setting this.
+// We don't bother with icon titles, since few terminal emulators support it, and it
+// would be hard for us to do this in any portable fashion.
+type Titler interface {
+	// SetWindowTitle only changes the window title.
+	SetWindowTitle(string)
+}

@@ -38,12 +38,16 @@ type MockBackend interface {
 	// position is out of the bounds of the window.
 	GetCell(vt.Coord) Cell
 
+	// Bells counts the number of bells rung.
 	Bells() int
+
+	// GetTitle gets the current window title.
+	GetTitle() string
 }
 
 // mockBackend is a mock of a backend device for use with the emulator.
 // It implements the following interfaces:
-// vt.Backend, vt.Beeper, vt.Colorer
+// vt.Backend, vt.Beeper, vt.Colorer, vt.Titler
 type mockBackend struct {
 	cells     []Cell // Content of cells
 	size      vt.Coord
@@ -56,6 +60,7 @@ type mockBackend struct {
 	modes     map[vt.PrivateMode]vt.ModeStatus
 	bells     int
 	errs      int
+	title     string
 }
 
 func (mb *mockBackend) GetSize() vt.Coord { return mb.size }
@@ -159,6 +164,16 @@ func (mb *mockBackend) SetFgColor(c color.Color) {
 
 func (mb *mockBackend) SetBgColor(c color.Color) {
 	mb.setColor(c, &mb.bg, mb.defaultBg)
+}
+
+// SetWindowTitle implements the Titler interface.
+func (mb *mockBackend) SetWindowTitle(title string) {
+	mb.title = title
+}
+
+// GetTitle allows test code to observe what was set with SetWindowTitle.
+func (mb *mockBackend) GetTitle() string {
+	return mb.title
 }
 
 // MockOpt is an interface by which options can change the behavior of the mocked terminal.

@@ -101,6 +101,11 @@ func (mt *mockTerm) KeyEvent(ev vt.KbdEvent) {
 	}
 }
 
+// GetTitle returns the current window title.
+func (mt *mockTerm) GetTitle() string {
+	return mt.mb.GetTitle()
+}
+
 // MockTerm is a mock terminal (emulator).  It can be used to
 // test the emulator itself, or to test applications (or tcell) that
 // uses the terminal.  It also implements the Tty interface used
@@ -119,6 +124,9 @@ type MockTerm interface {
 
 	// Inject a keyboard event.
 	KeyEvent(vt.KbdEvent)
+
+	// GetTitle obtains the current window title.
+	GetTitle() string
 }
 
 // NewMockTerm gives a mock terminal emulator.
