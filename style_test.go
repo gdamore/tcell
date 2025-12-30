@@ -21,7 +21,7 @@ import (
 )
 
 func TestStyle(t *testing.T) {
-	_, s := NewMockTerm(t)
+	_, s := NewMockScreen(t)
 	defer s.Fini()
 
 	style := StyleDefault
