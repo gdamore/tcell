@@ -570,7 +570,16 @@ func TestSpecialKeys(t *testing.T) {
 		{"SS3-F4-Ctrl-Short", []byte{'\x1b', 'O', '5', 'S'}, KeyF4, ModCtrl},
 		{"SS3-F4-Ctrl-Shift", []byte{'\x1b', 'O', ';', '6', 'S'}, KeyF4, ModCtrl | ModShift},
 		{"SS3-F2-Meta", []byte{'\x1b', 'O', ';', '9', 'Q'}, KeyF2, ModMeta},
+		{"CSI-F2-Alt", []byte{'\x1b', '[', '1', ';', '3', 'Q'}, KeyF2, ModAlt},
+		{"CSI-F2-Hyper", []byte{'\x1b', '[', '1', ';', '1', '7', 'Q'}, KeyF2, ModHyper},
+		{"CSI-F2-Super", []byte{'\x1b', '[', '1', ';', '3', '3', 'Q'}, KeyF2, ModMeta},
 		{"SS3-Home", []byte{'\x1b', 'O', 'H'}, KeyHome, ModNone},
+		{"ESC-Tab", []byte{'\x1b', '\t'}, KeyBacktab, ModNone}, // linux console special
+		{"Linux-F1", []byte{'\x1b', '[', '[', 'A'}, KeyF1, ModNone},
+		{"Linux-F2", []byte{'\x1b', '[', '[', 'B'}, KeyF2, ModNone},
+		{"Linux-F3", []byte{'\x1b', '[', '[', 'C'}, KeyF3, ModNone},
+		{"Linux-F4", []byte{'\x1b', '[', '[', 'D'}, KeyF4, ModNone},
+		{"Linux-F5", []byte{'\x1b', '[', '[', 'E'}, KeyF5, ModNone},
 	}
 
 	for _, tt := range tests {
