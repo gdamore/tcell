@@ -274,7 +274,7 @@ func (s *simscreen) draw() {
 
 	w, h := s.back.Size()
 	for y := range h {
-		for x := range w {
+		for x := 0; x < w; x++ {
 			width := s.drawCell(x, y)
 			x += width - 1
 		}
