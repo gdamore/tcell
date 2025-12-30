@@ -5,16 +5,15 @@
 _Tcell_ is a _Go_ package that provides a cell based view for text terminals, like _XTerm_.
 It was inspired by _termbox_, but includes many additional improvements.
 
-[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
+[![Stand With Ukraine](logos/ukraine.svg)](https://stand-with-ukraine.pp.ua)
+[![Docs](https://img.shields.io/badge/godoc-reference-blue.svg?label=&logo=go)](https://pkg.go.dev/github.com/gdamore/tcell/v3)
 [![Linux](https://img.shields.io/github/actions/workflow/status/gdamore/tcell/linux.yml?branch=main&logoColor=grey&logo=linux&label=)](https://github.com/gdamore/tcell/actions/workflows/linux.yml)
 [![macOS](https://img.shields.io/github/actions/workflow/status/gdamore/tcell/macos.yml?branch=main&logoColor=grey&logo=apple&label=)](https://github.com/gdamore/tcell/actions/workflows/macos.yml)
 [![Windows](https://custom-icon-badges.demolab.com/github/actions/workflow/status/gdamore/tcell/windows.yml?branch=main&logoColor=grey&logo=windows10&label=)](https://github.com/gdamore/tcell/actions/workflows/windows.yml)
 [![Web Assembly](https://img.shields.io/github/actions/workflow/status/gdamore/tcell/webasm.yml?branch=main&logoColor=grey&logo=webassembly&label=)](https://github.com/gdamore/tcell/actions/workflows/webasm.yml)
-[![Apache License](https://img.shields.io/github/license/gdamore/tcell.svg?logoColor=silver&logo=opensourceinitiative&color=blue&label=)](https://github.com/gdamore/tcell/blob/master/LICENSE)
-[![Docs](https://img.shields.io/badge/godoc-reference-blue.svg?label=&logo=go)](https://pkg.go.dev/github.com/gdamore/tcell/v3)
-[![Discord](https://img.shields.io/discord/639503822733180969?label=&logo=discord)](https://discord.gg/urTTxDN)
 [![Coverage](https://img.shields.io/codecov/c/github/gdamore/tcell?logoColor=grey&logo=codecov&label=)](https://codecov.io/gh/gdamore/tcell)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gdamore/tcell/v3)](https://goreportcard.com/report/github.com/gdamore/tcell/v3)
+[![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat&label=&logo=go&logoColor=grey)](https://goreportcard.com/report/github.com/gdamore/tcell/v3)
+[![Discord](https://img.shields.io/discord/639503822733180969?label=&logo=discord)](https://discord.gg/urTTxDN)
 [![Latest Release](https://img.shields.io/github/v/release/gdamore/tcell.svg?logo=github&label=)](https://github.com/gdamore/tcell/releases)
 
 > [!NOTE]
