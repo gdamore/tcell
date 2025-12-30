@@ -86,7 +86,6 @@ loop:
 					break loop
 				}
 			}
-			break
 		default:
 		}
 		pattern := patterns[frames%len(patterns)]

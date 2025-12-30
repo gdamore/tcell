@@ -126,7 +126,6 @@ func (w *winTty) Read(b []byte) (int, error) {
 	case <-w.stopQ:
 		// stopping, so make sure we eat everything, which might require
 		// very short sleeps to ensure all buffered data is consumed.
-		break
 	}
 
 	// second character read is non-blocking
@@ -199,6 +198,7 @@ func (w *winTty) getConsoleInput() error {
 		if rv == 0 {
 			return er
 		}
+	loop:
 		for i := range nrec {
 			ir := rec[i]
 			switch ir.typ {
@@ -211,7 +211,7 @@ func (w *winTty) getConsoleInput() error {
 				select {
 				case w.buf <- chr:
 				case <-w.stopQ:
-					break
+					break loop
 				}
 
 			case resizeEvent:

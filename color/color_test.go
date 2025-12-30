@@ -145,7 +145,7 @@ func TestFromImageColor(t *testing.T) {
 	red := ic.RGBA{0xFF, 0x00, 0x00, 0x01}
 	white := ic.Gray{0xFF}
 	cyan := ic.CMYK{0xFF, 0x00, 0x00, 0x00}
-	clear := ic.RGBA{0x01, 0x02, 0x03, 0x00}
+	transparent := ic.RGBA{0x01, 0x02, 0x03, 0x00}
 
 	if hex := FromImageColor(red).Hex(); hex != 0xFF0000 {
 		t.Errorf("%v is not 0xFF0000", hex)
@@ -156,7 +156,7 @@ func TestFromImageColor(t *testing.T) {
 	if hex := FromImageColor(cyan).Hex(); hex != 0x00FFFF {
 		t.Errorf("%v is not 0x00FFFF", hex)
 	}
-	if c := FromImageColor(clear); c != Default {
+	if c := FromImageColor(transparent); c != Default {
 		t.Errorf("transparent should be default")
 	}
 }

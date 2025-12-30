@@ -159,7 +159,7 @@ type tScreen struct {
 	keyQ          chan []byte
 	cx            int
 	cy            int
-	clear         bool
+	cls           bool // clear screen
 	cursorx       int
 	cursory       int
 	acs           map[rune]string
@@ -762,9 +762,8 @@ func (t *tScreen) showCursor() {
 func (t *tScreen) Write(b []byte) (int, error) {
 	if t.buffering {
 		return t.buf.Write(b)
-	} else {
-		return t.tty.Write(b)
 	}
+	return t.tty.Write(b)
 }
 
 func (t *tScreen) Print(s string) {
@@ -791,7 +790,7 @@ func (t *tScreen) clearScreen() {
 
 	t.Print(clear)
 
-	t.clear = false
+	t.cls = false
 }
 
 func (t *tScreen) startBuffering() {
@@ -828,7 +827,7 @@ func (t *tScreen) draw() {
 	// hide the cursor while we move stuff around
 	t.hideCursor()
 
-	if t.clear {
+	if t.cls {
 		t.clearScreen()
 	}
 
@@ -1131,7 +1130,7 @@ func (t *tScreen) Sync() {
 	t.cy = -1
 	if !t.fini {
 		t.resize()
-		t.clear = true
+		t.cls = true
 		t.cells.Invalidate()
 		t.draw()
 	}

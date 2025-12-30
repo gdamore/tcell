@@ -1044,13 +1044,13 @@ func (ip *inputParser) ScanUTF8(b []byte) {
 			ip.buf = append(ip.buf, rune(ip.utfBuf[0]))
 			ip.utfBuf = ip.utfBuf[1:]
 		} else {
-			r, len := utf8.DecodeRune(ip.utfBuf)
+			r, utfLen := utf8.DecodeRune(ip.utfBuf)
 			if r == utf8.RuneError {
 				r = rune(ip.utfBuf[0])
-				len = 1
+				utfLen = 1
 			}
 			ip.buf = append(ip.buf, r)
-			ip.utfBuf = ip.utfBuf[len:]
+			ip.utfBuf = ip.utfBuf[utfLen:]
 		}
 	}
 
