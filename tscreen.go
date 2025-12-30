@@ -111,7 +111,6 @@ const (
 	setBg256          = "\x1b[48;5;%dm"                     // for colors less than 256
 	setBgRgb          = "\x1b[48;2;%d;%d;%dm"               // for RGB
 	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm" // for RGB, in one shot
-	resetFgBg         = "\x1b[39;49m"                       // ECMA defined
 	enterCA           = "\x1b[?1049h"                       // alternate screen
 	exitCA            = "\x1b[?1049l"                       // alternate screen
 	enterKeypad       = "\x1b[?1h\x1b="                     // Note mode 1 might not be supported everywhere
@@ -500,6 +499,18 @@ func (t *tScreen) encodeStr(s string) []byte {
 	return buf
 }
 
+// resolvePalette looks up a color to obtain the palette entry for it.
+func (t *tScreen) resolvePalette(c Color) Color {
+	if v, ok := t.colors[c]; ok {
+		return v
+	}
+	v := color.Find(c, t.palette)
+	t.colors[c] = v
+	return v
+}
+
+// sendFgBg sends the foreground and background.  It is assumed that sgr0
+// was already emitted prior to calling this (so colors are already in default).
 func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 	if t.Colors() == 0 {
 		// foreground vs background, we calculate luminance
@@ -520,9 +531,6 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 		}
 	}
 
-	if fg == ColorReset || bg == ColorReset {
-		t.Print(resetFgBg)
-	}
 	if t.truecolor {
 		if fg.IsRGB() && bg.IsRGB() {
 			r1, g1, b1 := fg.RGB()
@@ -545,13 +553,7 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 	}
 
 	if fg.Valid() {
-		if v, ok := t.colors[fg]; ok {
-			fg = v
-		} else {
-			v = color.Find(fg, t.palette)
-			t.colors[fg] = v
-			fg = v
-		}
+		fg = t.resolvePalette(fg)
 		fgc := fg & 0xffffff
 		if fgc < 8 {
 			t.Printf(setFg8, fgc)
@@ -561,23 +563,82 @@ func (t *tScreen) sendFgBg(fg Color, bg Color, attr AttrMask) AttrMask {
 	}
 
 	if bg.Valid() {
-		if v, ok := t.colors[bg]; ok {
-			bg = v
-		} else {
-			v = color.Find(bg, t.palette)
-			t.colors[bg] = v
-			bg = v
-		}
+		bg = t.resolvePalette(bg)
 		bgc := bg & 0xffffff
 		if bgc < 8 {
 			t.Printf(setBg8, bgc)
 		} else if bgc < 256 {
 			t.Printf(setBg256, bgc)
 		}
-
 	}
 
 	return attr
+}
+
+// emitAttrs dumps prints the attributes, aside from underline that is special
+// The assumption is that sgr0 was already printed ahead of this.
+func (t *tScreen) emitAttrs(attrs AttrMask) {
+
+	if attrs&AttrBold != 0 {
+		t.Print(bold)
+	}
+	if attrs&AttrReverse != 0 {
+		t.Print(reverse)
+	}
+	if attrs&AttrBlink != 0 {
+		t.Print(blink)
+	}
+	if attrs&AttrDim != 0 {
+		t.Print(dim)
+	}
+	if attrs&AttrItalic != 0 {
+		t.Print(italic)
+	}
+	if attrs&AttrStrikeThrough != 0 {
+		t.Print(strikeThrough)
+	}
+}
+
+// emitUl dumps prints the underline, which may be colored.
+// The assumption is that sgr0 was already printed ahead of this.
+func (t *tScreen) emitUnderline(us UnderlineStyle, uc Color) {
+	if us != UnderlineStyleNone {
+		// NB: under color should have been reset by sgr0
+		if uc.IsRGB() {
+			r, g, b := uc.RGB()
+			uc = t.resolvePalette(uc)
+			t.Printf(underColor, uc&0xff)
+			t.Printf(underRGB, r, g, b)
+		} else if uc.Valid() {
+			t.Printf(underColor, uc&0xff)
+		}
+
+		t.Print(underline) // to ensure everyone gets at least a basic underline
+		switch us {
+		case UnderlineStyleDouble:
+			t.Print(doubleUnder)
+		case UnderlineStyleCurly:
+			t.Print(curlyUnder)
+		case UnderlineStyleDotted:
+			t.Print(dottedUnder)
+		case UnderlineStyleDashed:
+			t.Print(dashedUnder)
+		}
+	}
+}
+
+// emitUrl either emits a url (OSC 8), or if the string is empty
+// then the OSC 8 to exit the URL.  It should only be called if we
+// either have a new URL, or need to exit an old one, as it always emits
+// the OSC 8 sequence (if OSC 8 is supported).
+func (t *tScreen) emitUrl(u urlInfo) {
+	if t.enterUrl != "" {
+		if u.url != "" {
+			t.Printf(t.enterUrl, u.url, u.id)
+		} else {
+			t.Print(t.exitUrl)
+		}
+	}
 }
 
 func (t *tScreen) drawCell(x, y int) int {
@@ -602,54 +663,8 @@ func (t *tScreen) drawCell(x, y int) int {
 		t.Print(sgr0)
 
 		attrs = t.sendFgBg(fg, bg, attrs)
-		if attrs&AttrBold != 0 {
-			t.Print(bold)
-		}
-		if us, uc := style.ulStyle, style.ulColor; us != UnderlineStyleNone {
-			if uc == ColorReset {
-				t.Print(underFg)
-			} else if uc.IsRGB() {
-				if v, ok := t.colors[uc]; ok {
-					uc = v
-				} else {
-					v = color.Find(uc, t.palette)
-					t.colors[uc] = v
-					uc = v
-				}
-				t.Printf(underColor, uc&0xff)
-				r, g, b := uc.RGB()
-				t.Printf(underRGB, r, g, b)
-			} else if uc.Valid() {
-				t.Printf(underColor, uc&0xff)
-			}
-
-			t.Print(underline) // to ensure everyone gets at least a basic underline
-			switch us {
-			case UnderlineStyleDouble:
-				t.Print(doubleUnder)
-			case UnderlineStyleCurly:
-				t.Print(curlyUnder)
-			case UnderlineStyleDotted:
-				t.Print(dottedUnder)
-			case UnderlineStyleDashed:
-				t.Print(dashedUnder)
-			}
-		}
-		if attrs&AttrReverse != 0 {
-			t.Print(reverse)
-		}
-		if attrs&AttrBlink != 0 {
-			t.Print(blink)
-		}
-		if attrs&AttrDim != 0 {
-			t.Print(dim)
-		}
-		if attrs&AttrItalic != 0 {
-			t.Print(italic)
-		}
-		if attrs&AttrStrikeThrough != 0 {
-			t.Print(strikeThrough)
-		}
+		t.emitAttrs(attrs)
+		t.emitUnderline(style.ulStyle, style.ulColor)
 
 		var newUrl urlInfo
 		var oldUrl urlInfo
@@ -660,12 +675,8 @@ func (t *tScreen) drawCell(x, y int) int {
 			newUrl = *style.url
 		}
 		// URL string can be long, so don't send it unless we really need to
-		if t.enterUrl != "" && newUrl != oldUrl {
-			if newUrl.url != "" {
-				t.Printf(t.enterUrl, newUrl.url, newUrl.id)
-			} else {
-				t.Print(t.exitUrl)
-			}
+		if newUrl != oldUrl {
+			t.emitUrl(newUrl)
 		}
 
 		t.curstyle = style
@@ -1278,7 +1289,6 @@ func (t *tScreen) disengage() {
 		t.Print(t.cursorFg)
 	}
 	t.Print(exitKeypad)
-	t.Print(resetFgBg)
 	t.Print(sgr0)
 	t.Print(vt.PmAutoMargin.Enable())
 	t.Print(t.disableCsiU)
