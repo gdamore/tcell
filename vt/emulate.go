@@ -21,6 +21,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/gdamore/tcell/v3/color"
 	"github.com/rivo/uniseg"
@@ -42,6 +43,10 @@ type Emulator interface {
 	// KeyEvent injects a keyboard event into the emulator, which will ultimately
 	// result in data being sent via SendRaw.
 	KeyEvent(ev KbdEvent)
+
+	// ResizeEvent is called by a backend when the terminal has resized
+	// This will send inband resize notifications if the client has requested them.
+	ResizeEvent()
 
 	// Drain waits until any queued but not processed input has finished processing.
 	// It also wakes the reader.
@@ -74,6 +79,9 @@ func NewEmulator(be Backend) Emulator {
 		stopQ:      stopQ,
 		localModes: map[PrivateMode]ModeStatus{PmAutoMargin: ModeOn},
 	}
+	if _, ok := be.(Resizer); ok {
+		em.localModes[PmResizeReports] = ModeOff
+	}
 	close(stopQ)
 	em.inb = em.inbInit
 	return em
@@ -95,10 +103,11 @@ type emulator struct {
 	attr      Attr
 	utfLen    int
 	pos       Coord
-	sevenOnly bool   // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
-	name      string // name of this emulator (used for extended attributes)
-	vers      string // version string of this emulator (used for extended attributes)
-	savedPos  Coord  // saved via DECSC
+	sevenOnly bool       // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
+	name      string     // name of this emulator (used for extended attributes)
+	vers      string     // version string of this emulator (used for extended attributes)
+	savedPos  Coord      // saved via DECSC
+	sendLock  sync.Mutex // ensures that send data cannot be intermixed
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 }
@@ -897,12 +906,30 @@ func (em *emulator) setPrivateMode(pm PrivateMode, ms ModeStatus) {
 }
 
 // SendRaw allows raw data to be sent to the application.
+// This is done in a thread-safe way, so that content is not intermingled.
 func (em *emulator) SendRaw(b []byte) {
+	em.sendLock.Lock()
+	defer em.sendLock.Unlock()
+
+	// Do not attempt to send *anything* if we are stopped.
+	select {
+	case <-em.stopQ:
+		return
+	default:
+	}
+
+	// Try to write to the readQ, but if we cannot, then wait until
+	// either we can, or the stopQ is fired.  This ensures that we avoid
+	// breaking up content if at all possible.
 	for _, ch := range b {
 		select {
 		case em.readQ <- ch:
-		case <-em.stopQ:
-			return
+		default:
+			select {
+			case em.readQ <- ch:
+			case <-em.stopQ:
+				return
+			}
 		}
 	}
 }
@@ -911,6 +938,19 @@ func (em *emulator) SendRaw(b []byte) {
 func (em *emulator) KeyEvent(ev KbdEvent) {
 	// TODO: more add support for other keyboard protocols, right now we only do legacy
 	em.keyLegacy(ev)
+}
+
+// ResizeEvent is called by the backend when a resize occurs.  A real backend with a child
+// process (essentially a "real emulator") should probably also fire SIGWINCH if appropriate.
+// That would be the job of something other than this code.
+func (em *emulator) ResizeEvent() {
+	// reload our position it may have changed
+	em.pos = em.getPosition()
+	if em.getPrivateMode(PmResizeReports) == ModeOn { // NB: we never support "ModeOnLocked"
+		newSz := em.be.GetSize()
+		// NB: for now we do not support pixel sizes
+		em.SendRaw(fmt.Appendf(nil, "\x1b[48;%d;%d;0;0t", newSz.Y, newSz.X))
+	}
 }
 
 var legacyKeys = map[KeyCode]struct {
@@ -975,6 +1015,18 @@ var legacyKeys = map[KeyCode]struct {
 	KeyCode('?'): {K: "?", C: "\x1f"},
 }
 
+// toAsciiUpper returns the equivalent upper case ASCII (and true),
+// if the input is an ASCII letter.  Otherwise it returns 0, false.
+func toAsciiUpper(r rune) (rune, bool) {
+	if r >= 'a' && r <= 'z' {
+		return (r - 32), true
+	} else if r >= 'A' && r <= 'Z' {
+		return r, true
+	}
+	return 0, false
+}
+
+// keyLegacy handles a keyboard event when in legacy vt220 style mode.
 func (em *emulator) keyLegacy(ev KbdEvent) {
 	if !ev.Down { // legacy protocol does not support key release
 		return
@@ -1024,27 +1076,21 @@ func (em *emulator) keyLegacy(ev KbdEvent) {
 			}
 		}
 		if ev.Mod&ModAlt != 0 {
-			em.SendRaw([]byte{'\x1b'}) // alt sends leading esc
+			em.SendRaw(append([]byte{'\x1b'}, []byte(str)...)) // alt sends leading esc
+		} else {
+			em.SendRaw([]byte(str))
 		}
-		em.SendRaw([]byte(str))
 		return
 	}
 
 	// fallback control key handling
-	if ev.Code >= 'a' && ev.Code <= 'z' && ev.Mod&ModCtrl != 0 {
+	if u, ok := toAsciiUpper(rune(ev.Code)); ok && ev.Mod&ModCtrl != 0 {
+		b := byte(u) - 'A' + 1
 		if ev.Mod&ModAlt != 0 {
-			em.SendRaw([]byte{'\x1b'})
+			em.SendRaw([]byte{'\x1b', b})
+		} else {
+			em.SendRaw([]byte{b})
 		}
-		em.SendRaw([]byte{byte(ev.Code) - 'a' + 1})
-		return
-	}
-
-	// upper cases and extra keys with control (uncommon)
-	if ev.Code >= 'A' && ev.Code <= '_' && ev.Mod&ModCtrl != 0 {
-		if ev.Mod&ModAlt != 0 {
-			em.SendRaw([]byte{'\x1b'})
-		}
-		em.SendRaw([]byte{byte(ev.Code) - 'A' + 1})
 		return
 	}
 

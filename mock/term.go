@@ -106,6 +106,12 @@ func (mt *mockTerm) GetTitle() string {
 	return mt.mb.GetTitle()
 }
 
+// SetSize is used to change the terminal size.
+func (mt *mockTerm) SetSize(size vt.Coord) {
+	mt.mb.SetSize(size)
+	mt.em.ResizeEvent()
+}
+
 // MockTerm is a mock terminal (emulator).  It can be used to
 // test the emulator itself, or to test applications (or tcell) that
 // uses the terminal.  It also implements the Tty interface used
@@ -127,6 +133,9 @@ type MockTerm interface {
 
 	// GetTitle obtains the current window title.
 	GetTitle() string
+
+	// SetSize is used to resize the terminal.
+	SetSize(vt.Coord)
 }
 
 // NewMockTerm gives a mock terminal emulator.

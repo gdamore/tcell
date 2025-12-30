@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/vt"
@@ -682,5 +683,51 @@ func TestTitler(t *testing.T) {
 	writeF(t, trm, "\x9d2;Eight Bits\x9c")
 	if s := trm.GetTitle(); s != "Eight Bits" {
 		t.Errorf("wrong title: %q", s)
+	}
+}
+
+// TestResize tests resizing the terminal
+func TestResize(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	// with E, and enable notifications
+	writeF(t, trm, "\x1b#8\x1b[?2048h")
+	resizeQ := make(chan bool, 1)
+	trm.NotifyResize(resizeQ)
+
+	trm.SetSize(vt.Coord{X: 132, Y: 24})
+	if sz, err := trm.WindowSize(); err != nil || sz.Height != 24 || sz.Width != 132 {
+		t.Errorf("resize did not occur: %v %d %d", err, sz.Height, sz.Width)
+	}
+	for y := range vt.Row(24) {
+		for x := range vt.Col(80) {
+			if s := string(trm.GetCell(vt.Coord{X: x, Y: y}).C); s != "E" {
+				t.Errorf("resize content at %d,%d wrong: %q", x, y, s)
+			}
+		}
+	}
+	for y := range vt.Row(24) {
+		for x := vt.Col(80); x < 132; x++ {
+			if s := string(trm.GetCell(vt.Coord{X: x, Y: y}).C); s != "" {
+				t.Errorf("resize content at %d,%d wrong: %q", x, y, s)
+			}
+		}
+	}
+	select {
+	case <-resizeQ:
+	case <-time.After(time.Millisecond * 100):
+		t.Errorf("resize signal failure")
+	}
+
+	buf := make([]byte, 128)
+	n, err := trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result := string(buf[:n])
+	if result != "\x1b[48;24;132;0;0t" && result != "\x1b[48;24;132t" {
+		t.Errorf("key responses failed: %q", result)
 	}
 }

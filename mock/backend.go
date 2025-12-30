@@ -43,11 +43,15 @@ type MockBackend interface {
 
 	// GetTitle gets the current window title.
 	GetTitle() string
+
+	// SetSize is used to resize the window.
+	// Newly added cells are empty, and content in old cells that out of range is lost.
+	SetSize(vt.Coord)
 }
 
 // mockBackend is a mock of a backend device for use with the emulator.
 // It implements the following interfaces:
-// vt.Backend, vt.Beeper, vt.Colorer, vt.Titler
+// vt.Backend, vt.Beeper, vt.Colorer, vt.Titler, vt.Resizer
 type mockBackend struct {
 	cells     []Cell // Content of cells
 	size      vt.Coord
@@ -57,6 +61,7 @@ type mockBackend struct {
 	bg        color.Color
 	defaultFg color.Color
 	defaultBg color.Color
+	resizeQ   chan<- bool
 	modes     map[vt.PrivateMode]vt.ModeStatus
 	bells     int
 	errs      int
@@ -174,6 +179,40 @@ func (mb *mockBackend) SetWindowTitle(title string) {
 // GetTitle allows test code to observe what was set with SetWindowTitle.
 func (mb *mockBackend) GetTitle() string {
 	return mb.title
+}
+
+// NotifyResize registers a channel to be written to (non-blocking) if the
+// backend changes size.
+func (mb *mockBackend) NotifyResize(rq chan<- bool) {
+	mb.resizeQ = rq
+}
+
+// SetSize is used to change the size of the virtual terminal. Cells that are
+// added are treated as empty, while cells that are removed are just lost.
+// (Note that at least one other emulator erases content on a resize.  There is
+// standard for what to do here.)
+func (mb *mockBackend) SetSize(size vt.Coord) {
+	old := mb.cells
+	ox := int(mb.size.X)
+	oy := int(mb.size.Y)
+	nx := int(size.X)
+	ny := int(size.Y)
+	cells := make([]Cell, int(size.Y)*int(size.X))
+	for y := range min(ny, oy) {
+		for x := range min(nx, ox) {
+			cells[y*nx+x] = old[y*ox+x]
+		}
+	}
+	mb.cells = cells
+	mb.size = size
+	mb.pos.X = min(mb.pos.X, size.X-1)
+	mb.pos.Y = min(mb.pos.Y, size.Y-1)
+	if rq := mb.resizeQ; rq != nil {
+		select {
+		case rq <- true:
+		default:
+		}
+	}
 }
 
 // MockOpt is an interface by which options can change the behavior of the mocked terminal.
