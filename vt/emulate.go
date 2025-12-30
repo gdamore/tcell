@@ -622,7 +622,7 @@ func (em *emulator) processCsi(final byte) {
 		}
 	case ">q":
 		if pi, err := numericParams(str, 1, 0); err == nil && pi[0] == 0 && em.name != "" {
-			em.SendRaw(fmt.Appendf(nil, "\x1b[P>|%s %s\x1b\\", em.name, em.vers))
+			em.SendRaw(fmt.Appendf(nil, "\x1bP>|%s %s\x1b\\", em.name, em.vers))
 		}
 	}
 }

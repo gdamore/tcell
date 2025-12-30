@@ -236,8 +236,8 @@ func TestExtendedAttr(t *testing.T) {
 	if !strings.HasSuffix(result, "\x1b\\") {
 		t.Errorf("Missing suffix ST: %q", result)
 	}
-	if !strings.HasPrefix(result, "\x1b[P>|") {
-		t.Errorf("Missing prefix 'CSI P>|': %q", result)
+	if !strings.HasPrefix(result, "\x1bP>|") {
+		t.Errorf("Missing prefix 'ESC P>|': %q", result)
 	}
 	if !strings.Contains(result, "TcellMock 1.0") {
 		t.Errorf("Missing terminal identification")
