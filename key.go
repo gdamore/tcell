@@ -246,39 +246,43 @@ func NewEventKey(k Key, str string, mod ModMask) *EventKey {
 	if len(str) == 1 {
 		ch = []rune(str)[0]
 	}
-	if k == KeyRune && ch != 0 && (ch < ' ' || ch == 0x7f) {
-		// Turn specials into proper key codes.  This is for
-		// control characters and the DEL.
-		k = Key(ch)
-		if mod == ModNone && ch < ' ' {
-			switch k {
-			case KeyBackspace, KeyTab, KeyEsc, KeyEnter:
-				// these keys are directly typeable without CTRL
-				str = ""
-			default:
-				// most likely entered with a CTRL keypress
-				mod = ModCtrl
+
+	if k == KeyRune {
+		if ch != 0 && (ch < ' ' || ch == 0x7f) {
+			// Turn specials into proper key codes.  This is for
+			// control characters and the DEL.
+			k = Key(ch)
+			if mod == ModNone && ch < ' ' {
+				switch k {
+				case KeyBackspace, KeyTab, KeyEsc, KeyEnter:
+					// these keys are directly typeable without CTRL
+					str = ""
+				default:
+					// most likely entered with a CTRL keypress
+					mod = ModCtrl
+				}
+				ch = ch + '\x60'
 			}
-			ch = ch + '\x60'
 		}
-	}
-	if k == KeyRune && ch >= 'A' && ch <= 'Z' && mod == ModCtrl {
-		// We don't do Ctrl-[ or backslash or those specially.
-		k = KeyCtrlA + Key(ch-'A')
-		str = ""
-	}
 
-	// Might be lower case
-	if k == KeyRune && ch >= 'a' && ch <= 'z' && mod == ModCtrl {
-		// We don't do Ctrl-[ or backslash or those specially.
-		k = KeyCtrlA + Key(ch-'a')
-		str = ""
-	}
+		// For legacy reasons, if Ctrl is pressed with an ASCII alphabetic, then we
+		// emit it as a KeyCtrlXX symbol.
+		if mod == ModCtrl {
+			// We don't do Ctrl-[ or backslash or those specially.
+			if ch >= 'A' && ch <= 'Z' { // upper case
+				k = KeyCtrlA + Key(ch-'A')
+				str = ""
+			} else if ch >= 'a' && ch <= 'z' { // lower case
+				k = KeyCtrlA + Key(ch-'a')
+				str = ""
+			}
+		}
 
-	// Windows reports ModShift for shifted keys.  This is inconsistent
-	// with UNIX, lets harmonize this.
-	if k == KeyRune && mod == ModShift && str != "" {
-		mod = ModNone
+		// Windows reports ModShift for shifted keys.  This is inconsistent
+		// with UNIX, lets harmonize this.
+		if mod == ModShift && str != "" {
+			mod = ModNone
+		}
 	}
 
 	// Backspace2 is just another name for backspace.
