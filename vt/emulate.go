@@ -949,6 +949,21 @@ var legacyKeys = map[KeyCode]struct {
 	KcSpace:     {K: " ", S: " ", C: "\x00", CS: "\x00"},
 	KcReturn:    {K: "\r", S: "\r", CS: "\r"},
 	KcEsc:       {K: "\x1b", S: "\x1b", C: "\x1b"},
+
+	// These ones are weird legacy control sequences that we mostly
+	// do not care about.  We don't include shifted variants.
+	KeyCode('2'): {K: "2", C: "\x00"},
+	KeyCode('3'): {K: "3", C: "\x1b"},
+	KeyCode('4'): {K: "4", C: "\x1c"},
+	KeyCode('5'): {K: "5", C: "\x1d"},
+	KeyCode('6'): {K: "6", C: "\x1e"},
+	KeyCode('7'): {K: "7", C: "\x1f"},
+	KeyCode('8'): {K: "8", C: "\x7f"},
+	KeyCode('['): {K: "[", C: "\x1b"},
+	KeyCode('/'): {K: "/", C: "\x1c"},
+	KeyCode(']'): {K: "]", C: "\x1d"},
+	KeyCode('~'): {K: "~", C: "\x1e"},
+	KeyCode('?'): {K: "?", C: "\x1f"},
 }
 
 func (em *emulator) keyLegacy(ev KbdEvent) {

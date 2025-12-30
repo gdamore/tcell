@@ -506,6 +506,25 @@ func TestKbdEventLegacy(t *testing.T) {
 	if result != want {
 		t.Errorf("key responses failed: %q != %q", result, want)
 	}
+
+	// Legacy control key mappings (weird ones)
+	// 	clear(buf)
+	trm.KeyEvent(vt.KbdEvent{Code: '8', Mod: vt.ModCtrl, Down: true}) // \x7F
+	trm.KeyEvent(vt.KbdEvent{Code: '4', Mod: vt.ModCtrl, Down: true}) // \x1c
+	trm.KeyEvent(vt.KbdEvent{Code: '?', Mod: vt.ModCtrl, Down: true}) // \x1f
+	trm.KeyEvent(vt.KbdEvent{Code: '7', Mod: vt.ModCtrl, Down: true}) // \x1f
+	trm.KeyEvent(vt.KbdEvent{Code: '7', Mod: vt.ModNone, Down: true}) // 7
+	trm.KeyEvent(vt.KbdEvent{Code: '?', Mod: vt.ModNone, Down: true}) // ?
+	trm.KeyEvent(vt.KbdEvent{Code: '[', Mod: vt.ModCtrl, Down: true}) // \x1b
+	want = "\x7f\x1c\x1f\x1f7?\x1b"
+	n, err = trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result = string(buf[:n])
+	if result != want {
+		t.Errorf("key responses failed: %q != %q", result, want)
+	}
 }
 
 // TestSgrAttr tests a variety of combinations of Sgr settings.
