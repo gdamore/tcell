@@ -281,14 +281,6 @@ func NewEventKey(k Key, str string, mod ModMask) *EventKey {
 		mod = ModNone
 	}
 
-	if k >= KeyCtrlA && k <= KeyCtrlZ {
-		if mod&ModShift != 0 {
-			ch = rune((k - KeyCtrlA) + 'A')
-		} else {
-			ch = rune((k - KeyCtrlA) + 'a')
-		}
-	}
-
 	// Backspace2 is just another name for backspace.
 	if k == KeyBackspace2 {
 		k = KeyBackspace
