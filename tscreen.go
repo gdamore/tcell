@@ -157,7 +157,7 @@ type tScreen struct {
 	style         Style
 	resizeQ       chan bool
 	quit          chan struct{}
-	keychan       chan []byte
+	keyQ          chan []byte
 	cx            int
 	cy            int
 	clear         bool
@@ -215,7 +215,7 @@ func (t *tScreen) Init() error {
 		return e
 	}
 
-	t.keychan = make(chan []byte, 10)
+	t.keyQ = make(chan []byte, 10)
 
 	t.charset = getCharset()
 	if enc := GetEncoding(t.charset); enc != nil {
@@ -1069,7 +1069,7 @@ func (t *tScreen) mainLoop(stopQ chan struct{}) {
 				t.Unlock()
 			}()
 			continue
-		case chunk := <-t.keychan:
+		case chunk := <-t.keyQ:
 			buf.Write(chunk)
 			t.scanInput(buf)
 			if t.input.Waiting() {
@@ -1109,7 +1109,7 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 			return
 		}
 		if n > 0 {
-			t.keychan <- chunk[:n]
+			t.keyQ <- chunk[:n]
 		}
 	}
 }

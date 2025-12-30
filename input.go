@@ -533,7 +533,7 @@ func (ip *inputParser) scan() {
 			} else if k, ok := ss3Keys[r]; ok {
 				// If there are no parameters, then it's simple without modifiers.
 				// The options for parameters are "1;<modifiers>" , or ";modifiers" (empty
-				// first paramter defaults to 1), or just <modifiers>.  If a sequence has
+				// first parameter defaults to 1), or just <modifiers>.  If a sequence has
 				// parameters that do not match one of these forms, we just discard it.
 				if len(ip.csiParams) == 0 {
 					// simple SS3 case
