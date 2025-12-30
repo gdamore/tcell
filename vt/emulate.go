@@ -932,6 +932,14 @@ var legacyKeys = map[KeyCode]struct {
 	KcF10:       {K: "\x1b[21~"},
 	KcF11:       {K: "\x1b[23~"},
 	KcF12:       {K: "\x1b[24~"},
+	KcF13:       {K: "\x1b[25~"},
+	KcF14:       {K: "\x1b[26~"},
+	KcF15:       {K: "\x1b[28~"},
+	KcF16:       {K: "\x1b[29~"},
+	KcF17:       {K: "\x1b[31~"},
+	KcF18:       {K: "\x1b[32~"},
+	KcF19:       {K: "\x1b[33~"},
+	KcF20:       {K: "\x1b[34~"},
 	KcUp:        {K: "\x1b[A", P: "\x1bOA"},
 	KcDown:      {K: "\x1b[B", P: "\x1bOB"},
 	KcRight:     {K: "\x1b[C", P: "\x1bOC"},
@@ -942,7 +950,8 @@ var legacyKeys = map[KeyCode]struct {
 	KcPgDn:      {K: "\x1b[6~"},
 	KcDel:       {K: "\x1b[3~"},
 	KcIns:       {K: "\x1b[2~"},
-	KcMenu:      {K: "\x1b[29~"}, // also F15
+	KcHelp:      {K: "\x1b[28~"}, // also F15
+	KcMenu:      {K: "\x1b[29~"}, // also F16
 	KcTab:       {K: "\t", S: "\x1b[Z", CS: "\x1b[Z"},
 	KcBackspace: {K: "\x7f", S: "\x7f", C: "\x08", CS: "\x08"},
 	KcDelete:    {K: "\x08", S: "\x08", C: "\x7f", CS: "\x7f"},

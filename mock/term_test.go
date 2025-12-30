@@ -464,11 +464,19 @@ func TestKbdEventLegacy(t *testing.T) {
 	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF7, Mod: vt.ModCtrl, Down: true})                           // CSI 18 ; 5 ~
 	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF8, Mod: vt.ModAlt | vt.ModShift | vt.ModCtrl, Down: true}) // ESC CSI 19 ; 6 ~
 	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF9, Mod: vt.ModAlt | vt.ModCtrl, Down: true})               // ESC CSI 20 ; 5 ~
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF20, Mod: vt.ModNone, Down: true})                          // CSI 34 ~
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcHelp, Mod: vt.ModNone, Down: true})                         // CSI 28 ~
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF15, Mod: vt.ModNone, Down: true})                          // CSI 28 ~
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcMenu, Mod: vt.ModNone, Down: true})                         // CSI 29 ~
 	want = "\x1b[15~"
 	want += "\x1b[17;2~"
 	want += "\x1b[18;5~"
 	want += "\x1b\x1b[19;6~"
 	want += "\x1b\x1b[20;5~"
+	want += "\x1b[34~"
+	want += "\x1b[28~"
+	want += "\x1b[28~"
+	want += "\x1b[29~"
 	n, err = trm.Read(buf)
 	if err != nil {
 		t.Errorf("failed read: %v", err)
