@@ -1,6 +1,3 @@
-//go:build ignore
-// +build ignore
-
 // Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// unicode just displays a Unicode test on your screen.
-// Press ESC to exit the program.
+// styles just displays some sample output styles.
+// Press CTRL-Q to exit the program.
 package main
 
 import (
@@ -42,6 +39,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
 		os.Exit(1)
 	}
+	defer s.Fini()
 
 	plain := tcell.StyleDefault
 	bold := style.Bold(true)
@@ -100,7 +98,7 @@ func main() {
 	row++
 
 	style = plain.StrikeThrough(true)
-	s.PutStrStyled(2, row, "Strikethrough", style)
+	s.PutStrStyled(2, row, "StrikeThrough", style)
 	row++
 
 	style = plain.Underline(tcell.UnderlineStyleDouble)
@@ -150,7 +148,7 @@ func main() {
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Key() {
-				case tcell.KeyEscape, tcell.KeyEnter:
+				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlQ:
 					close(quit)
 					return
 				case tcell.KeyCtrlL:
@@ -163,6 +161,4 @@ func main() {
 	}()
 
 	<-quit
-
-	s.Fini()
 }
