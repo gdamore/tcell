@@ -732,7 +732,7 @@ func TestResize(t *testing.T) {
 	}
 }
 
-// TestTabs tests tab stop funtionality.
+// TestTabs tests tab stop functionality.
 func TestTabs(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
 	defer mustClose(t, trm)
@@ -792,7 +792,7 @@ func TestTabs(t *testing.T) {
 	if x := trm.Pos().X; x != 9 {
 		t.Errorf("wrong position: %d", x)
 	}
-	// delete this one (do it twice to exericse the does not exist flow)
+	// delete this one (do it twice to exercise the does not exist flow)
 	writeF(t, trm, "\x1b[0g")
 	writeF(t, trm, "\x1b[0g")
 
