@@ -32,6 +32,8 @@ A brief, and still somewhat rough, [tutorial](TUTORIAL.md) is available.
 A number of example are posted up on our [Gallery](https://github.com/gdamore/tcell/wikis/Gallery/).
 That's a wiki, and please do submit updates if you have something you want to showcase.
 
+There are also demonstration programs in the `./demos` directory, as well as some in `./_demos`.
+
 ## More Portable
 
 _Tcell_ is portable to a wide variety of systems, and is pure Go, without any need for CGO.
