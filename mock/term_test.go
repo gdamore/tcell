@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -41,25 +41,38 @@ func writeF(t *testing.T, trm MockTerm, str string, args ...any) {
 	}
 }
 
+// verifyF validates the condition, printing the message on failure.
+func verifyF(t *testing.T, b bool, fmt string, args ...any) {
+	t.Helper()
+	if !b {
+		t.Errorf("validation failure: "+fmt, args...)
+	}
+}
+
+// assertF validates the condition, and aborts the test if it fails.
+func assertF(t *testing.T, b bool, fmt string, args ...any) {
+	t.Helper()
+	if !b {
+		t.Fatalf("validation failure: "+fmt, args...)
+	}
+}
+
 func mustClose(t *testing.T, trm MockTerm) {
 	t.Helper()
-	if err := trm.Close(); err != nil {
-		t.Errorf("close failed: %v", err)
-	}
+	err := trm.Close()
+	assertF(t, err == nil, "close failed: %v", err)
 }
 
 func mustStart(t *testing.T, trm MockTerm) {
 	t.Helper()
-	if err := trm.Start(); err != nil {
-		t.Fatalf("start failed: %v", err)
-	}
+	err := trm.Start()
+	assertF(t, err == nil, "start failed: %v", err)
 }
 
 func checkPos(t *testing.T, trm MockTerm, x vt.Col, y vt.Row) {
 	t.Helper()
-	if trm.Pos().X != x || trm.Pos().Y != y {
-		t.Errorf("bad position %d,%d (expected %d,%d)", trm.Pos().X, trm.Pos().Y, x, y)
-	}
+	verifyF(t, trm.Pos().X == x && trm.Pos().Y == y,
+		"bad position %d,%d (expected %d,%d)", trm.Pos().X, trm.Pos().Y, x, y)
 }
 
 func checkContent(t *testing.T, trm MockTerm, x vt.Col, y vt.Row, s string) {
@@ -258,21 +271,13 @@ func TestExtendedAttr(t *testing.T) {
 	writeF(t, trm, "\x1b[>q")
 
 	n, err := trm.Read(buf)
-	if err != nil {
-		t.Errorf("failed read: %v", err)
-	}
+	assertF(t, err == nil, "read failed: %v", err)
 
 	result := string(buf[:n])
 
-	if !strings.HasSuffix(result, "\x1b\\") {
-		t.Errorf("Missing suffix ST: %q", result)
-	}
-	if !strings.HasPrefix(result, "\x1bP>|") {
-		t.Errorf("Missing prefix 'ESC P>|': %q", result)
-	}
-	if !strings.Contains(result, "TcellMock 1.0") {
-		t.Errorf("Missing terminal identification")
-	}
+	verifyF(t, strings.HasSuffix(result, "\x1b\\"), "missing suffix ST: %q", result)
+	verifyF(t, strings.HasPrefix(result, "\x1bP>|"), "missing prefix 'ESC P>|': %q", result)
+	verifyF(t, strings.Contains(result, "TcellMock 1.0"), "missing terminal identification: %q", result)
 }
 
 // TestCursorReport verifies that cursor position reporting works.
@@ -1059,7 +1064,132 @@ func TestReset(t *testing.T) {
 		t.Errorf("failed read: %v", err)
 	}
 	result := string(buf[:n])
-	if result != want {
-		t.Errorf("wrong mode: %q != %q", result, want)
+	verifyF(t, result == want, "wrong mode: %q != %q", result, want)
+}
+
+// backendBox makes a backend box, filled with increasing letters (modulo 16)
+func backendBox(t *testing.T, mb MockBackend, tl vt.Coord, br vt.Coord, attr vt.Attr) {
+	t.Helper()
+	mb.SetAttr(attr)
+	hex := []rune{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'}
+	assertF(t, len(hex) == 16, "wrong hex string")
+	i := 0
+	for row := tl.Y; row <= br.Y; row++ {
+		for col := tl.X; col <= br.X; col++ {
+			mb.PutRune(vt.Coord{Y: row, X: col}, hex[i%16], 1)
+			i++
+		}
 	}
+}
+
+func TestBackendBlit(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 5})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	mb := trm.Backend()
+	assertF(t, mb != nil, "backend is nil")
+
+	backendBox(t, mb, vt.Coord{X: 0, Y: 0}, vt.Coord{X: 1, Y: 1}, vt.Bold)
+	checkContent(t, trm, 0, 0, "A")
+	checkContent(t, trm, 1, 0, "B")
+	checkContent(t, trm, 2, 0, "")
+	checkContent(t, trm, 0, 1, "C")
+	checkContent(t, trm, 1, 1, "D")
+	checkContent(t, trm, 2, 1, "")
+	checkContent(t, trm, 0, 2, "")
+	checkContent(t, trm, 1, 2, "")
+	checkContent(t, trm, 2, 2, "")
+	checkAttrs(t, trm, 2, 2, vt.Plain)
+
+	// blit the entire box down and right 1
+	mb.Blit(vt.Coord{X: 0, Y: 0}, vt.Coord{X: 1, Y: 1}, vt.Coord{X: 2, Y: 2})
+	checkContent(t, trm, 0, 0, "A")
+	checkContent(t, trm, 1, 0, "B")
+	checkContent(t, trm, 2, 0, "")
+	checkContent(t, trm, 0, 1, "C")
+	checkContent(t, trm, 1, 1, "A")
+	checkContent(t, trm, 2, 1, "B")
+	checkContent(t, trm, 0, 2, "")
+	checkContent(t, trm, 1, 2, "C")
+	checkContent(t, trm, 2, 2, "D")
+
+	// spot check attributes
+	checkAttrs(t, trm, 2, 2, vt.Bold)
+}
+
+func TestBackendBlitReverse(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 5})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	mb := trm.Backend()
+	assertF(t, mb != nil, "backend is nil")
+
+	backendBox(t, mb, vt.Coord{X: 1, Y: 1}, vt.Coord{X: 2, Y: 2}, vt.Bold)
+	checkContent(t, trm, 0, 0, "")
+	checkContent(t, trm, 1, 0, "")
+	checkContent(t, trm, 2, 0, "")
+	checkContent(t, trm, 0, 1, "")
+	checkContent(t, trm, 1, 1, "A")
+	checkContent(t, trm, 2, 1, "B")
+	checkContent(t, trm, 0, 2, "")
+	checkContent(t, trm, 1, 2, "C")
+	checkContent(t, trm, 2, 2, "D")
+	checkAttrs(t, trm, 0, 0, vt.Plain)
+
+	// blit the entire box down and right 1
+	mb.Blit(vt.Coord{X: 1, Y: 1}, vt.Coord{X: 0, Y: 0}, vt.Coord{X: 2, Y: 2})
+	checkContent(t, trm, 0, 0, "A")
+	checkContent(t, trm, 1, 0, "B")
+	checkContent(t, trm, 2, 0, "")
+	checkContent(t, trm, 0, 1, "C")
+	checkContent(t, trm, 1, 1, "D")
+	checkContent(t, trm, 2, 1, "B")
+	checkContent(t, trm, 0, 2, "")
+	checkContent(t, trm, 1, 2, "C")
+	checkContent(t, trm, 2, 2, "D")
+
+	// spot check attributes
+	checkAttrs(t, trm, 2, 2, vt.Bold)
+}
+
+func TestGraphemeCluster(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 5})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[H")
+	// grapheme clustering is off
+	writeF(t, trm, "🇨🇭") // flag + regional indicator C + regional indicator H
+	writeF(t, trm, "A")
+
+	// we advanced by four columns (two wide emoji), and a single character
+	checkPos(t, trm, 5, 0)
+	checkContent(t, trm, 0, 0, "\U0001f1e8") // regional indicator C
+	checkContent(t, trm, 1, 0, "")           // empty
+	checkContent(t, trm, 2, 0, "\U0001f1ed") // regional indicator H
+	checkContent(t, trm, 3, 0, "")           // empty
+	checkContent(t, trm, 4, 0, "A")          // empty
+
+	// now turn on grapheme clustering
+	writeF(t, trm, "\x1b[?2027h")
+	writeF(t, trm, "\x1b[H\x1b[J")
+	checkPos(t, trm, 0, 0)
+	writeF(t, trm, "\U0001f1e8\U0001f1ed")
+	checkPos(t, trm, 2, 0)
+	writeF(t, trm, "A")
+	checkPos(t, trm, 3, 0)
+	checkContent(t, trm, 0, 0, "🇨🇭")
+	checkContent(t, trm, 1, 0, "")
+	checkContent(t, trm, 2, 0, "A")
+
+	// lets also verify it works with automargin
+	// RECALL: Maximum width is 10
+	writeF(t, trm, "\x1b[7h")    // should already be on
+	writeF(t, trm, "\x1b[1;10H") // last position in first row
+	writeF(t, trm, "🇨🇭A")        // flag + regional indicator C + regional indicator H
+	checkPos(t, trm, 1, 1)
+	checkContent(t, trm, 9, 0, "🇨🇭")
+	checkContent(t, trm, 0, 1, "A")
 }

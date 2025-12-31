@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -112,6 +112,11 @@ func (mt *mockTerm) SetSize(size vt.Coord) {
 	mt.em.ResizeEvent()
 }
 
+// Backend returns the backend for testing.
+func (mt *mockTerm) Backend() MockBackend {
+	return mt.mb
+}
+
 // MockTerm is a mock terminal (emulator).  It can be used to
 // test the emulator itself, or to test applications (or tcell) that
 // uses the terminal.  It also implements the Tty interface used
@@ -136,6 +141,9 @@ type MockTerm interface {
 
 	// SetSize is used to resize the terminal.
 	SetSize(vt.Coord)
+
+	// Backend returns the backend (used for testing).
+	Backend() MockBackend
 }
 
 // NewMockTerm gives a mock terminal emulator.

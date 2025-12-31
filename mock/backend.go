@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -17,7 +17,6 @@ package mock
 import (
 	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/vt"
-	"github.com/rivo/uniseg"
 )
 
 // Cell is a representation of a display cell.
@@ -33,6 +32,7 @@ type Cell struct {
 // This is meant to facilitate test cases
 type MockBackend interface {
 	vt.Backend
+	vt.Blitter
 
 	// GetCell returns the cell at the given position, or the zero value if the
 	// position is out of the bounds of the window.
@@ -51,12 +51,13 @@ type MockBackend interface {
 
 // mockBackend is a mock of a backend device for use with the emulator.
 // It implements the following interfaces:
-// vt.Backend, vt.Beeper, vt.Colorer, vt.Titler, vt.Resizer
+// vt.Backend, vt.Beeper, vt.Colorer, vt.Titler, vt.Resizer, vt.Blitter
 type mockBackend struct {
 	cells     []Cell // Content of cells
 	size      vt.Coord
 	pos       vt.Coord
 	colors    int
+	attr      vt.Attr
 	fg        color.Color
 	bg        color.Color
 	defaultFg color.Color
@@ -89,18 +90,53 @@ func (mb *mockBackend) SetPrivateMode(pm vt.PrivateMode, status vt.ModeStatus) e
 	return nil
 }
 
-func (mb *mockBackend) PutAbs(pos vt.Coord, r rune, attr vt.Attr) {
+func (mb *mockBackend) PutRune(pos vt.Coord, r rune, width int) {
 	if index := mb.index(pos); index >= 0 {
 		if r == 0 {
 			mb.cells[index].C = nil
 			mb.cells[index].Width = 0
 		} else {
 			mb.cells[index].C = []rune{r}
-			mb.cells[index].Width = uniseg.StringWidth(string(r))
+			mb.cells[index].Width = width
 		}
-		mb.cells[index].Attr = attr
+		mb.cells[index].Attr = mb.attr
 		mb.cells[index].Fg = mb.fg
 		mb.cells[index].Bg = mb.bg
+		if width == 2 && pos.X < mb.size.X-1 {
+			// wide characters delete the adjacent cell
+			index++
+			mb.cells[index].C = nil
+			mb.cells[index].Width = 0
+			mb.cells[index].Attr = mb.attr
+			mb.cells[index].Fg = mb.fg
+			mb.cells[index].Bg = mb.bg
+		}
+	} else {
+		mb.errs++
+	}
+}
+
+func (mb *mockBackend) PutGrapheme(pos vt.Coord, grapheme string, width int) {
+	if index := mb.index(pos); index >= 0 {
+		if grapheme == "" || width == 0 {
+			mb.cells[index].C = nil
+			mb.cells[index].Width = 0
+		} else {
+			mb.cells[index].C = []rune(grapheme)
+			mb.cells[index].Width = width
+		}
+		mb.cells[index].Attr = mb.attr
+		mb.cells[index].Fg = mb.fg
+		mb.cells[index].Bg = mb.bg
+		if width == 2 && pos.X < mb.size.X-1 {
+			// wide characters delete the adjacent cell
+			index++
+			mb.cells[index].C = nil
+			mb.cells[index].Width = 0
+			mb.cells[index].Attr = mb.attr
+			mb.cells[index].Fg = mb.fg
+			mb.cells[index].Bg = mb.bg
+		}
 	} else {
 		mb.errs++
 	}
@@ -171,6 +207,10 @@ func (mb *mockBackend) SetBgColor(c color.Color) {
 	mb.setColor(c, &mb.bg, mb.defaultBg)
 }
 
+func (mb *mockBackend) SetAttr(attr vt.Attr) {
+	mb.attr = attr
+}
+
 // SetWindowTitle implements the Titler interface.
 func (mb *mockBackend) SetWindowTitle(title string) {
 	mb.title = title
@@ -219,11 +259,70 @@ func (mb *mockBackend) SetSize(size vt.Coord) {
 func (mb *mockBackend) Reset() {
 	mb.fg = mb.defaultFg
 	mb.bg = mb.defaultBg
+	mb.attr = vt.Plain
 	mb.title = ""
 	mb.errs = 0
 	mb.bells = 0
 	mb.pos = vt.Coord{X: 0, Y: 0}
 	mb.modes[vt.PmShowCursor] = vt.ModeOn
+	mb.modes[vt.PmGraphemeClusters] = vt.ModeOff
+}
+
+func (mb *mockBackend) Blit(src, dst, dim vt.Coord) {
+	// clip to visible source
+	if dim.X+src.X > mb.size.X {
+		dim.X = mb.size.X - src.X
+	}
+	if dim.Y+src.Y > mb.size.Y {
+		dim.Y = mb.size.Y - src.Y
+	}
+	// and clip to final destination
+	if dim.X+dst.X > mb.size.X {
+		dim.X = mb.size.X - dst.X
+	}
+	if dim.Y+dst.Y > mb.size.Y {
+		dim.Y = mb.size.Y - dst.Y
+	}
+
+	// gap represents decrement when shifting to the next row --
+	// skipping over the irrelevant cells. (The increment in the
+	// index when going from last cell of row to first cell of next row,
+	// or vice versa.)
+	gap := int(mb.size.X - dim.X)
+
+	// the following logic is carefully constructed to avoid expensive
+	// operations in the loops (only addition or subtraction)
+	if mb.index(src) > mb.index(dst) { // source appears later, so we can forward copy
+		si := mb.index(src)
+		di := mb.index(dst)
+		for range dim.Y {
+			for range dim.X {
+				mb.cells[di] = mb.cells[si]
+				di++
+				si++
+			}
+			// advance to next row
+			si += gap
+			di += gap
+		}
+	} else { // source appears later, so we have to reverse copy
+		src.Y += dim.Y - 1
+		dst.Y += dim.Y - 1
+		src.X += dim.X - 1
+		dst.X += dim.X - 1
+		si := mb.index(src)
+		di := mb.index(dst)
+
+		for range dim.Y {
+			for range dim.X {
+				mb.cells[di] = mb.cells[si]
+				si--
+				di--
+			}
+			si -= gap
+			di -= gap
+		}
+	}
 }
 
 // MockOpt is an interface by which options can change the behavior of the mocked terminal.
@@ -262,5 +361,6 @@ func NewMockBackend(options ...MockOpt) MockBackend {
 	mb.cells = make([]Cell, int(mb.size.X)*int(mb.size.Y))
 	mb.modes = make(map[vt.PrivateMode]vt.ModeStatus)
 	mb.modes[vt.PmShowCursor] = vt.ModeOn
+	mb.modes[vt.PmGraphemeClusters] = vt.ModeOff
 	return mb
 }

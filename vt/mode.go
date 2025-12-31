@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -23,20 +23,21 @@ import "fmt"
 type PrivateMode int
 
 const (
-	PmAppCursor      PrivateMode = 1 // application cursor keys
-	PmAutoMargin     PrivateMode = 7
-	PmAltScreen      PrivateMode = 1049 // 47 and 1047 are alternates, but we use 1049
-	PmBlinkCursor    PrivateMode = 12
-	PmShowCursor     PrivateMode = 25
-	PmMouseButton    PrivateMode = 1000
-	PmMouseDrag      PrivateMode = 1002
-	PmMouseMotion    PrivateMode = 1003
-	PmFocusReports   PrivateMode = 1004
-	PmMouseSgr       PrivateMode = 1006
-	PmMouseSgrPixel  PrivateMode = 1016
-	PmBracketedPaste PrivateMode = 2004
-	PmSyncOutput     PrivateMode = 2026
-	PmResizeReports  PrivateMode = 2048 // send in-band resize reports
+	PmAppCursor        PrivateMode = 1 // application cursor keys
+	PmAutoMargin       PrivateMode = 7
+	PmAltScreen        PrivateMode = 1049 // 47 and 1047 are alternates, but we use 1049
+	PmBlinkCursor      PrivateMode = 12
+	PmShowCursor       PrivateMode = 25
+	PmMouseButton      PrivateMode = 1000
+	PmMouseDrag        PrivateMode = 1002
+	PmMouseMotion      PrivateMode = 1003
+	PmFocusReports     PrivateMode = 1004
+	PmMouseSgr         PrivateMode = 1006
+	PmMouseSgrPixel    PrivateMode = 1016
+	PmBracketedPaste   PrivateMode = 2004
+	PmSyncOutput       PrivateMode = 2026
+	PmGraphemeClusters PrivateMode = 2027 // enable support for grapheme cluster handling
+	PmResizeReports    PrivateMode = 2048 // send in-band resize reports
 )
 
 // Enable returns the string used to enable this private mode.
