@@ -141,21 +141,21 @@ func (mb *mockBackend) SetPosition(pos vt.Coord) {
 }
 
 // setColor is a helper for setting color values.
-func (mb *mockBackend) setColor(c color.Color, tgt *color.Color, def color.Color) {
+func (mb *mockBackend) setColor(c color.Color, dst *color.Color, def color.Color) {
 	if mb.colors == 0 {
 		return
 	}
 	if c.Valid() {
 		if c.IsRGB() {
 			if mb.colors > 256 {
-				*tgt = c
+				*dst = c
 			}
 		} else if (int(c) & 255) < mb.colors {
-			*tgt = c
+			*dst = c
 		}
 		return
 	} else if c == color.Reset {
-		*tgt = def
+		*dst = def
 	}
 }
 
@@ -215,6 +215,17 @@ func (mb *mockBackend) SetSize(size vt.Coord) {
 	}
 }
 
+// Reset the terminal to startup defaults.
+func (mb *mockBackend) Reset() {
+	mb.fg = mb.defaultFg
+	mb.bg = mb.defaultBg
+	mb.title = ""
+	mb.errs = 0
+	mb.bells = 0
+	mb.pos = vt.Coord{X: 0, Y: 0}
+	mb.modes[vt.PmShowCursor] = vt.ModeOn
+}
+
 // MockOpt is an interface by which options can change the behavior of the mocked terminal.
 // This is intended to permit easier testing.
 type MockOpt interface{ SetMockOpt(mb *mockBackend) }
@@ -222,7 +233,7 @@ type MockOpt interface{ SetMockOpt(mb *mockBackend) }
 // MockOptSize changes the default terminal size, which is normally 80x24.
 type MockOptSize vt.Coord
 
-func (mbs MockOptSize) SetMockOpt(mb *mockBackend) { mb.size = vt.Coord(mbs) }
+func (o MockOptSize) SetMockOpt(mb *mockBackend) { mb.size = vt.Coord(o) }
 
 // MockOptColors changes the number of colors the terminal supports.
 type MockOptColors int

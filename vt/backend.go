@@ -46,6 +46,9 @@ type Backend interface {
 	// SetPosition sets the cursor position. If the position is out of bounds,
 	// it should be clipped to the window size.
 	SetPosition(Coord)
+
+	// Reset resets the terminal to default state.
+	Reset()
 }
 
 // Beeper can be implemented by a backend to indicate it can ring the bell or beep.

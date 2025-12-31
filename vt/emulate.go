@@ -1081,16 +1081,15 @@ func (em *emulator) eraseLine() {
 // softReset performs a soft reset.
 func (em *emulator) softReset() {
 	// TODO:
-	// Reset any modes
 	// Select default character sets
-	// Set cursor
-	// Reset colors
 	em.tabStops = nil
 	em.autoWrap = false
 	em.attr = Plain
 	em.fg = color.None
 	em.bg = color.None
 	em.ul = color.None
+	em.saved = savedCursor{}
+	em.be.Reset()
 	if c, ok := em.be.(Colorer); ok {
 		c.SetFgColor(em.fg)
 		c.SetBgColor(em.bg)
@@ -1098,8 +1097,15 @@ func (em *emulator) softReset() {
 	if c, ok := em.be.(UnderlineColorer); ok {
 		c.SetUlColor(em.ul)
 	}
+	// start by resetting all modes
+	for pm := range em.localModes {
+		em.setPrivateMode(pm, ModeOff)
+	}
+	// and set any that should reset on (auto-margin)
+	em.setPrivateMode(PmAutoMargin, ModeOn)
+	em.setPrivateMode(PmShowCursor, ModeOn)
 	em.setPosition(Coord{0, 0})
-	// clear the screen
+	em.eraseAll()
 }
 
 // sendDA ends the primary device attributes.

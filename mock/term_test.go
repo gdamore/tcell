@@ -1022,3 +1022,44 @@ func TestSaveCursorSgr(t *testing.T) {
 	checkColors(t, trm, 1, 0, color.XTerm3, color.XTerm4)
 	checkColors(t, trm, 2, 0, color.Silver, color.Black)
 }
+
+func TestReset(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	// write a bunch of stuff to create state (so we can verify it gets reset)
+	writeF(t, trm, "\x1b[1;4;33;44m")
+	writeF(t, trm, "\x1b#8")
+	writeF(t, trm, "\x1b[1;80HX")
+	writeF(t, trm, "\x1b7")    // save cursor
+	writeF(t, trm, "\x1b[?7l") // disable automargin
+	writeF(t, trm, "\x1bc")
+	checkPos(t, trm, 0, 0)
+	for row := range vt.Row(24) {
+		for col := range vt.Col(80) {
+			checkAttrs(t, trm, col, row, vt.Plain)
+			checkContent(t, trm, col, row, "")
+			checkColors(t, trm, col, row, color.Silver, color.Black)
+		}
+	}
+	writeF(t, trm, "\x1b8") // restore cursor
+	checkPos(t, trm, 0, 0)
+	writeF(t, trm, "X")
+	checkAttrs(t, trm, 0, 0, vt.Plain)
+	checkContent(t, trm, 0, 0, "X")
+	checkColors(t, trm, 0, 0, color.Silver, color.Black)
+	writeF(t, trm, "\x1b[?7$p")
+
+	// verify mode reset
+	want := "\x1b[?7;1$y"
+	buf := make([]byte, 128)
+	n, err := trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result := string(buf[:n])
+	if result != want {
+		t.Errorf("wrong mode: %q != %q", result, want)
+	}
+}
