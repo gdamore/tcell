@@ -107,15 +107,55 @@ type emulator struct {
 	attr      Attr
 	utfLen    int
 	pos       Coord
-	autoWrap  bool       // next character will wrap (auto margin, deferred until char emitted)
-	sevenOnly bool       // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
-	name      string     // name of this emulator (used for extended attributes)
-	vers      string     // version string of this emulator (used for extended attributes)
-	savedPos  Coord      // saved via DECSC
-	sendLock  sync.Mutex // ensures that send data cannot be intermixed
-	tabStops  []Col      // tab stops, ordered. if nil every 8th position is used
+	autoWrap  bool        // next character will wrap (auto margin, deferred until char emitted)
+	sevenOnly bool        // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
+	name      string      // name of this emulator (used for extended attributes)
+	vers      string      // version string of this emulator (used for extended attributes)
+	savedPos  Coord       // saved via DECSC
+	saved     savedCursor // data saved by save cursor (DECSC)
+	sendLock  sync.Mutex  // ensures that send data cannot be intermixed
+	tabStops  []Col       // tab stops, ordered. if nil every 8th position is used
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
+}
+
+// savedCursor is the content we save when saving the cursor,
+// which is more than just the cursor location itself.
+type savedCursor struct {
+	pos      Coord
+	fg       color.Color
+	bg       color.Color
+	ul       color.Color
+	attr     Attr
+	autoWrap bool
+	// We should probably store OSC 8 data here, eventually.
+	// TODO: Character sets
+	// TODO: Origin mode (DEC Mode 6)
+}
+
+func (em *emulator) saveCursor() {
+	em.saved.pos = em.getPosition()
+	em.saved.fg = em.fg
+	em.saved.bg = em.bg
+	em.saved.ul = em.ul
+	em.saved.attr = em.attr
+	em.saved.autoWrap = em.autoWrap
+}
+
+func (em *emulator) restoreCursor() {
+	em.setPosition(em.saved.pos)
+	em.fg = em.saved.fg
+	em.bg = em.saved.bg
+	em.ul = em.saved.ul
+	em.attr = em.saved.attr
+	em.autoWrap = em.saved.autoWrap
+	if c, ok := em.be.(Colorer); ok {
+		c.SetFgColor(em.fg)
+		c.SetBgColor(em.bg)
+	}
+	if c, ok := em.be.(UnderlineColorer); ok {
+		c.SetUlColor(em.ul)
+	}
 }
 
 // inbInit processes bytes received in the "default" state. Most often these are just
@@ -202,13 +242,12 @@ func (em *emulator) inbEsc(b byte) {
 		em.inb = em.inbStr
 	case '_': // application program command (APC)
 		em.inb = em.inbStr
-	case 'D': // down one line (IND)
-		em.autoWrap = false
+	case 'D': // down one line (IND) - note does not reset auto wrap
 		// TODO: should scroll if needed
 		em.moveDown()
 	case 'E': // next line (NEL)
 		em.nextLine()
-	case 'H': // set tab stop (HTS)
+	case 'H': // set tab stop (HTS) - VT52 is go home, but we do not support VT52
 		em.setTabStop(em.getPosition().X)
 	case 'M': // up one line (RI) - note does not reset autoWrap
 		em.moveUp()
@@ -225,23 +264,13 @@ func (em *emulator) inbEsc(b byte) {
 	case '6': // back index (DECBI, VT420, not widely supported)
 		em.moveLeft()
 	case '7': // save cursor (DECSC, VT100)
-		// TODO: Save the following
-		// Cursor row and column in absolute screen coordinates
-		// Character sets
-		// Pending wrap state
-		// SGR attributes
-		// Origin mode (DEC Mode 6)
-		em.savedPos = em.getPosition()
+		em.saveCursor()
 	case '8': // restore cursor (DECRC, VT100)
-		// TODO: restore all the content indicated above
-		em.pos = em.savedPos
-		em.autoWrap = false
-		em.setPosition(em.pos)
+		em.restoreCursor()
 	case '9': // forward index (DECFI, VT420, not widely supported)
 		em.moveRight()
 	default:
 		// ESC-V and ESC-W are for guarded area (TODO)
-		// ESC-H horizontal tab set (note that VT52 uses this for home position)
 		em.inb = em.inbInit
 	}
 }
@@ -442,6 +471,8 @@ func (em *emulator) processSgr(str string) {
 		case 0:
 			em.attr = Plain
 			if c, ok := em.be.(Colorer); ok {
+				em.fg = color.Reset
+				em.bg = color.Reset
 				c.SetFgColor(color.Reset)
 				c.SetBgColor(color.Reset)
 			}
@@ -494,22 +525,26 @@ func (em *emulator) processSgr(str string) {
 
 		case 30, 31, 32, 33, 34, 35, 36, 37: // simple foreground colors
 			if c, ok := em.be.(Colorer); ok {
-				c.SetFgColor(color.Black + color.Color(v-30))
+				em.fg = color.Black + color.Color(v-30)
+				c.SetFgColor(em.fg)
 			}
 		case 38:
 			args, words = splitSgrArgs(args, words)
 		case 39:
 			if c, ok := em.be.(Colorer); ok {
+				em.fg = color.Reset
 				c.SetFgColor(color.Reset)
 			}
 		case 40, 41, 42, 43, 44, 45, 46, 47: // simple background colors
 			if c, ok := em.be.(Colorer); ok {
-				c.SetBgColor(color.Black + color.Color(v-40))
+				em.bg = color.Black + color.Color(v-40)
+				c.SetBgColor(em.bg)
 			}
 		case 48: // TODO:
 			args, words = splitSgrArgs(args, words)
 		case 49:
 			if c, ok := em.be.(Colorer); ok {
+				em.bg = color.Reset
 				c.SetBgColor(color.Reset)
 			}
 		case 53:
@@ -547,6 +582,7 @@ func (em *emulator) processCursorForward(str string) {
 // processCursorBackward implements CUB.
 func (em *emulator) processCursorBackward(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
 		em.moveLeftN(Col(max(1, pi[0])))
 	}
 }
@@ -602,6 +638,7 @@ func (em *emulator) processCursorPosition(str string) {
 // processCursorTab implements CHT.
 func (em *emulator) processCursorTab(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
+		// Note: tab does not clear this field.
 		for range max(1, pi[0]) {
 			em.nextTab()
 		}

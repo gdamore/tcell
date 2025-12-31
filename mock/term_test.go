@@ -62,6 +62,30 @@ func checkPos(t *testing.T, trm MockTerm, x vt.Col, y vt.Row) {
 	}
 }
 
+func checkContent(t *testing.T, trm MockTerm, x vt.Col, y vt.Row, s string) {
+	t.Helper()
+	if actual := string(trm.GetCell(vt.Coord{X: x, Y: y}).C); actual != s {
+		t.Errorf("bad content %d,%d (expected %q got %q)", x, y, s, actual)
+	}
+}
+
+func checkAttrs(t *testing.T, trm MockTerm, x vt.Col, y vt.Row, a vt.Attr) {
+	t.Helper()
+	if actual := trm.GetCell(vt.Coord{X: x, Y: y}).Attr; actual != a {
+		t.Errorf("bad attr %d,%d (expected %x got %x)", x, y, a, actual)
+	}
+}
+
+func checkColors(t *testing.T, trm MockTerm, x vt.Col, y vt.Row, fg color.Color, bg color.Color) {
+	t.Helper()
+	if actual := trm.GetCell(vt.Coord{X: x, Y: y}).Fg; actual != fg {
+		t.Errorf("bad foreground %d,%d (expected %s got %s)", x, y, fg.String(), actual.String())
+	}
+	if actual := trm.GetCell(vt.Coord{X: x, Y: y}).Bg; actual != bg {
+		t.Errorf("bad background %d,%d (expected %s got %s)", x, y, bg.String(), actual.String())
+	}
+}
+
 // TestCursorMove tests several aspects of cursor movement.
 func TestCursorMovement(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 5, Y: 3}, MockOptColors(0))
@@ -387,14 +411,14 @@ func TestAutoMargin(t *testing.T) {
 	// forward also resets pending state (which is clipped)
 	writeF(t, trm, "\x1b[1;80HA\x1b[CB")
 	checkPos(t, trm, 79, 0)
-	writeF(t, trm, "\x1b[1;80HA\x1b[CB")
-	checkPos(t, trm, 79, 0)
+	writeF(t, trm, "\x1b[1;80HA\x1b[CBC")
+	checkPos(t, trm, 1, 1)
 
 	// explicit column also resets pending state (which is clipped)
 	writeF(t, trm, "\x1b[1;80HA\x1b[80GB")
 	checkPos(t, trm, 79, 0)
-	writeF(t, trm, "\x1b[1;80HA\x1b[80GB")
-	checkPos(t, trm, 79, 0)
+	writeF(t, trm, "\x1b[1;80HA\x1b[80GBC")
+	checkPos(t, trm, 1, 1)
 
 	// newline of course does as well (and its variants VT and FF)
 	writeF(t, trm, "\x1b[1;80HA\nB")
@@ -404,11 +428,11 @@ func TestAutoMargin(t *testing.T) {
 	writeF(t, trm, "\x1b[1;80HA\vB")
 	checkPos(t, trm, 1, 1)
 
-	// as does forward index
+	// but not forward index
 	writeF(t, trm, "\x1b[1;80HA\x1bDB")
-	checkPos(t, trm, 79, 1)
+	checkPos(t, trm, 1, 2)
 
-	// but not reverse index
+	// and not reverse index
 	writeF(t, trm, "\x1b[2;80HA\x1bMB")
 	checkPos(t, trm, 1, 1)
 }
@@ -932,4 +956,69 @@ func TestVerticalPos(t *testing.T) {
 	if pos := trm.Pos(); pos.X != 1 || pos.Y != 0 {
 		t.Errorf("wrong position; %d %d", pos.X, pos.Y)
 	}
+}
+
+func TestSaveCursorPosition(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[1;1H\x1b[J")
+	writeF(t, trm, "\x1b[1;5H")
+	writeF(t, trm, "A")
+	writeF(t, trm, "\x1b7")
+	writeF(t, trm, "\x1b[1;1H")
+	writeF(t, trm, "B")
+	writeF(t, trm, "\x1b8")
+	writeF(t, trm, "X")
+
+	checkContent(t, trm, 0, 0, "B")
+	checkContent(t, trm, 4, 0, "A")
+	checkContent(t, trm, 5, 0, "X")
+}
+
+func TestSaveCursorWrapState(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[1;1H\x1b[J")
+	writeF(t, trm, "\x1b[80G")
+	writeF(t, trm, "A")
+	writeF(t, trm, "\x1b7") // save cursor
+	writeF(t, trm, "\x1b[1;1H")
+	writeF(t, trm, "B")
+	writeF(t, trm, "\x1b8") // restore cursor
+	writeF(t, trm, "X")
+	checkContent(t, trm, 0, 0, "B")
+	checkContent(t, trm, 79, 0, "A")
+	checkContent(t, trm, 0, 1, "X")
+}
+
+func TestSaveCursorSgr(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+	writeF(t, trm, "\x1b[1;1H\x1b[0J")
+	writeF(t, trm, "\x1b[1;4;33;44m")
+	writeF(t, trm, "A")
+	checkPos(t, trm, 1, 0)
+	writeF(t, trm, "\x1b7")
+	checkPos(t, trm, 1, 0)
+	writeF(t, trm, "\x1b[0m")
+	checkPos(t, trm, 1, 0)
+	writeF(t, trm, "BE")
+	checkPos(t, trm, 3, 0)
+	writeF(t, trm, "\x1b8")
+	checkPos(t, trm, 1, 0)
+	writeF(t, trm, "X")
+	checkContent(t, trm, 0, 0, "A")
+	checkContent(t, trm, 1, 0, "X")
+	checkContent(t, trm, 2, 0, "E")
+	checkAttrs(t, trm, 0, 0, vt.Bold|vt.Underline)
+	checkAttrs(t, trm, 1, 0, vt.Bold|vt.Underline)
+	checkAttrs(t, trm, 2, 0, vt.Plain)
+	checkColors(t, trm, 0, 0, color.XTerm3, color.XTerm4)
+	checkColors(t, trm, 1, 0, color.XTerm3, color.XTerm4)
+	checkColors(t, trm, 2, 0, color.Silver, color.Black)
 }
