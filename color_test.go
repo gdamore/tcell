@@ -17,136 +17,44 @@ package tcell
 import (
 	ic "image/color"
 	"testing"
+
+	"github.com/gdamore/tcell/v3/color"
+	"github.com/gdamore/tcell/v3/mock"
 )
 
-func TestColorValues(t *testing.T) {
-	var values = []struct {
-		color Color
-		hex   int32
-	}{
-		{ColorRed, 0xFF0000},
-		{ColorGreen, 0x008000},
-		{ColorLime, 0x00FF00},
-		{ColorBlue, 0x0000FF},
-		{ColorBlack, 0x000000},
-		{ColorWhite, 0xFFFFFF},
-		{ColorSilver, 0xC0C0C0},
-		{ColorNavy, 0x000080},
+// TestColorWrappers just tests the legacy API wrappers.
+// The meaty tests are in the color package.
+func TestColorWrappers(t *testing.T) {
+	p := []color.Color{
+		color.XTerm0, color.XTerm1, color.XTerm2, color.XTerm3,
+		color.XTerm4, color.XTerm5, color.XTerm6, color.XTerm7,
 	}
-
-	for _, tc := range values {
-		if tc.color.Hex() != tc.hex {
-			t.Errorf("Color: %x != %x", tc.color.Hex(), tc.hex)
-		}
-
-		if tc.color.TrueColor().Hex() != tc.hex {
-			t.Errorf("TrueColor %x != %x", tc.color.TrueColor().Hex(), tc.hex)
+	for c := ColorBlack; c < Color255; c++ {
+		if FindColor(c, p) != color.Find(c, p) {
+			t.Errorf("API mismatch for color %s", c.String())
 		}
 	}
-}
-
-func TestColorFitting(t *testing.T) {
-	var pal []Color
-	for i := range 256 {
-		pal = append(pal, PaletteColor(i))
+	if GetColor("#112233") != color.GetColor("#112233") {
+		t.Errorf("Wrong colors %s != %s", GetColor("#112233").String(), color.GetColor("#112233"))
 	}
-
-	// Exact color fitting on ANSI colors
-	for i := range 8 {
-		if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i) {
-			t.Errorf("Color ANSI fit fail at %d", i)
-		}
-	}
-	// Grey is closest to Silver
-	if FindColor(PaletteColor(8), pal[:8]) != PaletteColor(7) {
-		t.Errorf("Grey does not fit to silver")
-	}
-	// Color fitting of upper 8 colors.
-	for i := 9; i < 16; i++ {
-		if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i%8) {
-			t.Errorf("Color fit fail at %d", i)
-		}
-	}
-	// Imperfect fit
-	if FindColor(ColorOrangeRed, pal[:16]) != ColorRed ||
-		FindColor(ColorAliceBlue, pal[:16]) != ColorWhite ||
-		FindColor(ColorPink, pal) != Color217 ||
-		FindColor(ColorSienna, pal) != Color173 ||
-		FindColor(GetColor("#00FD00"), pal) != ColorLime {
-		t.Errorf("Imperfect color fit")
-	}
-}
-
-func TestColorNameLookup(t *testing.T) {
-	var values = []struct {
-		name  string
-		color Color
-		rgb   bool
-	}{
-		{"#FF0000", ColorRed, true},
-		{"black", ColorBlack, false},
-		{"orange", ColorOrange, true},
-		{"door", ColorDefault, false},
-	}
-	for _, v := range values {
-		c := GetColor(v.name)
-		if c.Hex() != v.color.Hex() {
-			t.Errorf("Wrong color for %v: %v", v.name, c.Hex())
-		}
-		if v.rgb {
-			if c&ColorIsRGB == 0 {
-				t.Errorf("Color should have RGB: %v", v.name)
-			}
-		} else {
-			if c&ColorIsRGB != 0 {
-				t.Errorf("Named color should not be RGB: %v", v.name)
-			}
-		}
-
-		if c.TrueColor().Hex() != v.color.Hex() {
-			t.Errorf("TrueColor did not match")
-		}
-	}
-
-	// these colors only have strings (for debugging), you cannot use them to create a color
-	if ColorNone.String() != "none" {
-		t.Errorf("ColorNone did not match")
-	}
-	if ColorReset.String() != "reset" {
-		t.Errorf("ColorReset did not match")
-	}
-	if ColorDefault.String() != "default" {
-		t.Errorf("ColorDefault did not match")
-	}
-}
-
-func TestColorRGB(t *testing.T) {
-	r, g, b := GetColor("#112233").RGB()
-	if r != 0x11 || g != 0x22 || b != 0x33 {
-		t.Errorf("RGB wrong (%x, %x, %x)", r, g, b)
-	}
-}
-
-func TestFromImageColor(t *testing.T) {
 	red := ic.RGBA{0xFF, 0x00, 0x00, 0x01}
-	white := ic.Gray{0xFF}
-	cyan := ic.CMYK{0xFF, 0x00, 0x00, 0x00}
+	if FromImageColor(red) != color.FromImageColor(red) {
+		t.Errorf("wrong colors %d %d", FromImageColor(red), color.FromImageColor(red))
+	}
 
-	if hex := FromImageColor(red).Hex(); hex != 0xFF0000 {
-		t.Errorf("%v is not 0xFF0000", hex)
+	if NewHexColor(0x1234) != color.NewHexColor(0x1234) {
+		t.Errorf("hex colors don't match: %d %d", NewHexColor(0x1234), color.NewHexColor(0x1234))
 	}
-	if hex := FromImageColor(white).Hex(); hex != 0xFFFFFF {
-		t.Errorf("%v is not 0xFFFFFF", hex)
-	}
-	if hex := FromImageColor(cyan).Hex(); hex != 0x00FFFF {
-		t.Errorf("%v is not 0x00FFFF", hex)
+
+	if NewRGBColor(11, 22, 33) != color.NewRGBColor(11, 22, 33) {
+		t.Errorf("rgb colors don't match: %d %d", NewRGBColor(11, 22, 33), color.NewRGBColor(11, 22, 33))
 	}
 }
 
 func TestColorNone(t *testing.T) {
-	s := mkTestScreen(t, "")
-	s.Init()
-	s.SetSize(80, 24)
+	_, s := NewMockScreen(t, mock.MockOptSize{X: 80, Y: 24})
+	defer s.Fini()
+
 	st := StyleDefault.Foreground(ColorBlack).Background(ColorWhite)
 	s.Fill(' ', st)
 	if _, s1, _ := s.Get(0, 0); s1 != st {
