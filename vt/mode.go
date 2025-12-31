@@ -23,7 +23,7 @@ import "fmt"
 type PrivateMode int
 
 const (
-	PmKeypad         PrivateMode = 1
+	PmAppCursor      PrivateMode = 1 // application cursor keys
 	PmAutoMargin     PrivateMode = 7
 	PmAltScreen      PrivateMode = 1049 // 47 and 1047 are alternates, but we use 1049
 	PmBlinkCursor    PrivateMode = 12

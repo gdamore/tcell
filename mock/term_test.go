@@ -534,6 +534,20 @@ func TestKbdEventLegacy(t *testing.T) {
 	if result != want {
 		t.Errorf("key responses failed: %q != %q", result, want)
 	}
+
+	// Application cursor keys
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcUp, Down: true})
+	writeF(t, trm, "\x1b[?1h")
+	trm.KeyEvent(vt.KbdEvent{Code: vt.KcDown, Down: true})
+	want = "\x1b[A\x1bOB"
+	n, err = trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result = string(buf[:n])
+	if result != want {
+		t.Errorf("key responses failed: %q != %q", result, want)
+	}
 }
 
 // TestSgrAttr tests a variety of combinations of Sgr settings.

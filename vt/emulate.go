@@ -73,12 +73,15 @@ type Emulator interface {
 func NewEmulator(be Backend) Emulator {
 	stopQ := make(chan bool)
 	em := &emulator{
-		be:         be,
-		inBuf:      &bytes.Buffer{},
-		writeQ:     make(chan any),
-		readQ:      make(chan any, 1024),
-		stopQ:      stopQ,
-		localModes: map[PrivateMode]ModeStatus{PmAutoMargin: ModeOn},
+		be:     be,
+		inBuf:  &bytes.Buffer{},
+		writeQ: make(chan any),
+		readQ:  make(chan any, 1024),
+		stopQ:  stopQ,
+		localModes: map[PrivateMode]ModeStatus{
+			PmAppCursor:  ModeOff,
+			PmAutoMargin: ModeOn,
+		},
 	}
 	if _, ok := be.(Resizer); ok {
 		em.localModes[PmResizeReports] = ModeOff
@@ -1071,7 +1074,7 @@ func (em *emulator) ResizeEvent() {
 
 var legacyKeys = map[KeyCode]struct {
 	K  string // unmodified key
-	P  string // unmodified in keypad mode (smkx)
+	A  string // unmodified in application cursor mode (smkx)
 	S  string // with shift (if empty use regular modifier)
 	C  string // with control (if empty use regular modifier)
 	CS string // with ctrl-shift
@@ -1096,12 +1099,12 @@ var legacyKeys = map[KeyCode]struct {
 	KcF18:       {K: "\x1b[32~"},
 	KcF19:       {K: "\x1b[33~"},
 	KcF20:       {K: "\x1b[34~"},
-	KcUp:        {K: "\x1b[A", P: "\x1bOA"},
-	KcDown:      {K: "\x1b[B", P: "\x1bOB"},
-	KcRight:     {K: "\x1b[C", P: "\x1bOC"},
-	KcLeft:      {K: "\x1b[D", P: "\x1bOD"},
-	KcHome:      {K: "\x1b[H", P: "\x1bOH"},
-	KcEnd:       {K: "\x1b[F", P: "\x1bOF"},
+	KcUp:        {K: "\x1b[A", A: "\x1bOA"},
+	KcDown:      {K: "\x1b[B", A: "\x1bOB"},
+	KcRight:     {K: "\x1b[C", A: "\x1bOC"},
+	KcLeft:      {K: "\x1b[D", A: "\x1bOD"},
+	KcHome:      {K: "\x1b[H", A: "\x1bOH"},
+	KcEnd:       {K: "\x1b[F", A: "\x1bOF"},
 	KcPgUp:      {K: "\x1b[5~"},
 	KcPgDn:      {K: "\x1b[6~"},
 	KcDel:       {K: "\x1b[3~"},
@@ -1156,8 +1159,11 @@ func (em *emulator) keyLegacy(ev KbdEvent) {
 		match := false
 		switch ev.Mod & (ModShift | ModCtrl) {
 		case ModNone:
-			// TODO: key for keypad mode
-			str = v.K
+			if em.getPrivateMode(PmAppCursor) == ModeOn && v.A != "" {
+				str = v.A
+			} else {
+				str = v.K
+			}
 			match = true
 		case ModShift:
 			if str = v.S; str != "" {
