@@ -107,6 +107,7 @@ type emulator struct {
 	attr      Attr
 	utfLen    int
 	pos       Coord
+	autoWrap  bool       // next character will wrap (auto margin, deferred until char emitted)
 	sevenOnly bool       // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
 	name      string     // name of this emulator (used for extended attributes)
 	vers      string     // version string of this emulator (used for extended attributes)
@@ -125,7 +126,7 @@ func (em *emulator) inbInit(b byte) {
 	// hot path - just doing ASCII directly.
 	if b >= ' ' && b < 0x7f {
 		// plain ascii
-		em.putc(rune(b))
+		em.putRune(rune(b))
 		return
 	}
 
@@ -150,7 +151,7 @@ func (em *emulator) inbInit(b byte) {
 		em.beep()
 	case 0x08: // BS (backspace)
 		em.moveLeft()
-	case 0x09: // horizontal tab
+	case 0x09: // horizontal tab (does not clear auto wrap)
 		em.nextTab()
 	case 0x0a: // NL (newline)
 		em.nextLine()
@@ -202,12 +203,14 @@ func (em *emulator) inbEsc(b byte) {
 	case '_': // application program command (APC)
 		em.inb = em.inbStr
 	case 'D': // down one line (IND)
+		em.autoWrap = false
+		// TODO: should scroll if needed
 		em.moveDown()
 	case 'E': // next line (NEL)
 		em.nextLine()
 	case 'H': // set tab stop (HTS)
 		em.setTabStop(em.getPosition().X)
-	case 'M': // up one line (RI)
+	case 'M': // up one line (RI) - note does not reset autoWrap
 		em.moveUp()
 	case 'N': // single shift two (SS2) (TODO)
 	case 'O': // single shift three (SS3) (TODO)
@@ -222,9 +225,17 @@ func (em *emulator) inbEsc(b byte) {
 	case '6': // back index (DECBI, VT420, not widely supported)
 		em.moveLeft()
 	case '7': // save cursor (DECSC, VT100)
+		// TODO: Save the following
+		// Cursor row and column in absolute screen coordinates
+		// Character sets
+		// Pending wrap state
+		// SGR attributes
+		// Origin mode (DEC Mode 6)
 		em.savedPos = em.getPosition()
 	case '8': // restore cursor (DECRC, VT100)
+		// TODO: restore all the content indicated above
 		em.pos = em.savedPos
+		em.autoWrap = false
 		em.setPosition(em.pos)
 	case '9': // forward index (DECFI, VT420, not widely supported)
 		em.moveRight()
@@ -251,14 +262,15 @@ func (em *emulator) inbNF(b byte) {
 	switch em.inBuf.String() {
 	case "#8": // DECALN - fill screen with 'E'
 		size := em.be.GetSize()
-		pos := em.getPosition()
+		em.autoWrap = false
 		em.setPosition(Coord{0, 0})
 		for row := range size.Y {
 			for col := range size.X {
 				em.be.PutAbs(Coord{X: col, Y: row}, 'E', em.attr)
 			}
 		}
-		em.setPosition(pos)
+		// most implementations leave the cursor at home for this
+		em.setPosition(Coord{0, 0})
 
 		// case "%@": // TODO: select 8859-1
 		// case "%G": // TODO: select UTF-8
@@ -337,7 +349,7 @@ func (em *emulator) inbUTF(b byte) {
 			if err != nil {
 				em.beep()
 			} else {
-				em.putc(r)
+				em.putRune(r)
 			}
 		}
 	} else {
@@ -353,14 +365,11 @@ func (em *emulator) beep() {
 }
 
 // numericParams splits the string consisting of numeric parameters into integers.
-// It ensures a minimum number are present (needed for some safety cases), and ensures
-// that default values are filled in, if the individual value is an empty string
-func numericParams(str string, minimumLen int, defaultValue int) ([]int, error) {
+// It ensures a minimum number are present (needed for some safety cases).
+// Empty strings default to zero.
+func numericParams(str string, minimumLen int) ([]int, error) {
 	ps := strings.Split(str, ";")
 	pi := make([]int, max(len(ps), minimumLen))
-	for i := range pi {
-		pi[i] = defaultValue
-	}
 	for i, str := range ps {
 		if str != "" {
 			if iv, err := strconv.Atoi(str); err != nil {
@@ -511,6 +520,133 @@ func (em *emulator) processSgr(str string) {
 	}
 }
 
+// processCursorUp implements CUU.
+func (em *emulator) processCursorUp(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		em.moveUpN(Row(max(1, pi[0])))
+	}
+}
+
+// processCursorDown implements CUD.
+func (em *emulator) processCursorDown(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		em.moveDownN(Row(max(1, pi[0])))
+	}
+}
+
+// processCursorForward implements CUF.
+func (em *emulator) processCursorForward(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		em.moveRightN(Col(max(1, pi[0])))
+	}
+}
+
+// processCursorBackward implements CUB.
+func (em *emulator) processCursorBackward(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.moveLeftN(Col(max(1, pi[0])))
+	}
+}
+
+// processCursorNextLine implements CNL.
+func (em *emulator) processCursorNextLine(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		em.moveDownN(Row(max(1, pi[0])))
+		pos := em.getPosition()
+		pos.X = 0
+		em.setPosition(pos)
+	}
+}
+
+// processCursorPreviousLine implements CPL.
+func (em *emulator) processCursorPreviousLine(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		em.moveUpN(Row(max(1, pi[0])))
+		pos := em.getPosition()
+		pos.X = 0
+		em.setPosition(pos)
+	}
+}
+
+// processCursorColumn implements CHA.
+func (em *emulator) processCursorColumn(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		pos := em.getPosition()
+		pos.X = min(Col(max(1, pi[0])), em.be.GetSize().X) - 1
+		em.setPosition(pos)
+	}
+}
+
+// processCursorPosition implements CUP, and also HVP.
+func (em *emulator) processCursorPosition(str string) {
+	if pi, err := numericParams(str, 2); err == nil {
+		em.autoWrap = false
+		pos := em.getPosition()
+		wsz := em.be.GetSize()
+		row := Row(max(1, pi[0]))
+		col := Col(max(1, pi[1]))
+		row = max(1, min(row, wsz.Y))
+		col = max(1, min(col, wsz.X))
+		pos.X = col - 1
+		pos.Y = row - 1
+		em.setPosition(pos)
+	}
+}
+
+// processCursorTab implements CHT.
+func (em *emulator) processCursorTab(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		for range max(1, pi[0]) {
+			em.nextTab()
+		}
+	}
+}
+
+// processCursorBackTab implements CBT.
+func (em *emulator) processCursorBackTab(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		for range max(1, pi[0]) {
+			em.prevTab()
+		}
+	}
+}
+
+// processEraseDisplay implements ED.
+func (em *emulator) processEraseDisplay(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		switch pi[0] {
+		case 0: // erase below
+			em.eraseBelow()
+		case 1: // erase above
+			em.eraseAbove()
+		case 2: // erase all
+			em.eraseAll()
+			// others not supported (3 is erase saved lines)
+		}
+	}
+}
+
+// processEraseLine implements EL.
+func (em *emulator) processEraseLine(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		switch pi[0] {
+		case 0:
+			em.eraseToLineEnd()
+		case 1:
+			em.eraseToLineStart()
+		case 2:
+			em.eraseLine()
+		}
+	}
+}
+
 // processCsi processes CSI sequences.
 func (em *emulator) processCsi(final byte) {
 	// CSI sequences are supported in several different possible ways:
@@ -537,100 +673,49 @@ func (em *emulator) processCsi(final byte) {
 	str := em.inBuf.String()
 	switch cmd {
 
-	case "A": // up n times (CUU)
-		if pi, err := numericParams(str, 1, 1); err == nil && pi[0] > 0 {
-			em.moveUpN(Row(pi[0]))
-		}
-	case "B": // down n times (CUD)
-		if pi, err := numericParams(str, 1, 1); err == nil && pi[0] > 0 {
-			em.moveDownN(Row(pi[0]))
-		}
-	case "C": // forward n times (CUF)
-		if pi, err := numericParams(str, 1, 1); err == nil && pi[0] > 0 {
-			em.moveRightN(Col(pi[0]))
-		}
-	case "D": // back n times (CUB)
-		if pi, err := numericParams(str, 1, 1); err == nil && pi[0] > 0 {
-			em.moveLeftN(Col(pi[0]))
-		}
-	case "E": // down n times (and reset column) (CNL)
-		if pi, err := numericParams(str, 1, 1); err == nil && pi[0] > 0 {
-			em.moveDownN(Row(pi[0]))
-			pos := em.getPosition()
-			pos.X = 0
-			em.setPosition(pos)
-		}
-
-	case "F": // up n times (and reset column) (CPL)
-		if pi, err := numericParams(str, 1, 1); err == nil && pi[0] > 0 {
-			em.moveUpN(Row(pi[0]))
-			pos := em.getPosition()
-			pos.X = 0
-			em.setPosition(pos)
-		}
-
-	case "G": // cursor column (CHA)
-		if pi, err := numericParams(str, 1, 1); err == nil && pi[0] > 0 && pi[0] <= int(em.be.GetSize().X) {
-			pos := em.getPosition()
-			pos.X = Col(pi[0]) - 1
-			em.setPosition(pos)
-		}
-
-	case "H", "f": // cursor position (CUP), also (HVP)
-		if pi, err := numericParams(str, 2, 1); err == nil {
-			pos := em.getPosition()
-			wsz := em.be.GetSize()
-			row := Row(pi[0])
-			col := Col(pi[1])
-			row = max(1, min(row, wsz.Y))
-			col = max(1, min(col, wsz.X))
-			pos.X = col - 1
-			pos.Y = row - 1
-			em.setPosition(pos)
-		}
-	case "J": // erase in display (ED)
-		if pi, err := numericParams(str, 1, 0); err == nil {
-			switch pi[0] {
-			case 0: // erase below
-				em.eraseBelow()
-			case 1: // erase above
-				em.eraseAbove()
-			case 2: // erase all
-				em.eraseAll()
-				// others not supported (3 is erase saved lines)
-			}
-		}
-
-	case "K": // erase line (EL)
-		if pi, err := numericParams(str, 1, 0); err == nil {
-			switch pi[0] {
-			case 0:
-				em.eraseToLineEnd()
-			case 1:
-				em.eraseToLineStart()
-			case 2:
-				em.eraseLine()
-			}
-		}
+	case "A":
+		em.processCursorUp(str)
+	case "B":
+		em.processCursorDown(str)
+	case "C":
+		em.processCursorForward(str)
+	case "D":
+		em.processCursorBackward(str)
+	case "E":
+		em.processCursorNextLine(str)
+	case "F":
+		em.processCursorPreviousLine(str)
+	case "G":
+		em.processCursorColumn(str)
+	case "H", "f":
+		em.processCursorPosition(str)
+	case "I":
+		em.processCursorTab(str)
+	case "J":
+		em.processEraseDisplay(str)
+	case "K":
+		em.processEraseLine(str)
+	case "Z":
+		em.processCursorBackTab(str)
 
 	case "c":
-		if pi, err := numericParams(str, 1, 0); err == nil && pi[0] == 0 {
+		if pi, err := numericParams(str, 1); err == nil && pi[0] == 0 {
 			em.sendDA()
 		}
 	case "d": // move to specific row (VPA)
-		if pi, err := numericParams(str, 1, 1); err == nil {
+		if pi, err := numericParams(str, 1); err == nil {
 			pos := em.getPosition()
 			pos.Y = min(Row(max(1, pi[0])), em.be.GetSize().Y) - 1
 			em.setPosition(pos)
 		}
 	case "e": // advance by rows (VPR)
-		if pi, err := numericParams(str, 1, 1); err == nil {
+		if pi, err := numericParams(str, 1); err == nil {
 			pos := em.getPosition()
 			pos.Y = min(pos.Y+Row(max(1, pi[0])), em.be.GetSize().Y-1)
 			em.setPosition(pos)
 		}
 	case "g": // tab clear (TBC)
-		if pi, err := numericParams(str, 1, 0); err == nil {
+		if pi, err := numericParams(str, 1); err == nil {
 			switch pi[0] {
 			case 0: // clear stop at current column
 				em.clrTabStop(em.getPosition().X)
@@ -642,31 +727,19 @@ func (em *emulator) processCsi(final byte) {
 		em.processSgr(str)
 	case "n":
 		em.deviceReport(str)
-	case "I": // CHT - cursor forward Ps tab stops
-		if pi, err := numericParams(str, 1, 1); err == nil {
-			for range pi[0] {
-				em.nextTab()
-			}
-		}
-	case "Z": // CBT - back Ps tab stops
-		if pi, err := numericParams(str, 1, 1); err == nil {
-			for range pi[0] {
-				em.prevTab()
-			}
-		}
 	case "?W":
-		if pi, err := numericParams(str, 1, 0); err == nil && pi[0] == 5 {
+		if pi, err := numericParams(str, 1); err == nil && pi[0] == 5 {
 			// DECST8C - reset tab stops to default (VT510)
 			em.tabStops = nil
 		}
 	case "?h": // DECSET
-		if pi, err := numericParams(str, 1, 0); err == nil {
+		if pi, err := numericParams(str, 1); err == nil {
 			for _, pm := range pi {
 				em.setPrivateMode(PrivateMode(pm), ModeOn)
 			}
 		}
 	case "?l": // DECRST
-		if pi, err := numericParams(str, 1, 0); err == nil {
+		if pi, err := numericParams(str, 1); err == nil {
 			for _, pm := range pi {
 				em.setPrivateMode(PrivateMode(pm), ModeOff)
 			}
@@ -677,7 +750,7 @@ func (em *emulator) processCsi(final byte) {
 			em.SendRaw(fmt.Appendf(nil, "\x1b[?%d;%d$y", pm, status))
 		}
 	case ">q":
-		if pi, err := numericParams(str, 1, 0); err == nil && pi[0] == 0 && em.name != "" {
+		if pi, err := numericParams(str, 1); err == nil && pi[0] == 0 && em.name != "" {
 			em.SendRaw(fmt.Appendf(nil, "\x1bP>|%s %s\x1b\\", em.name, em.vers))
 		}
 	}
@@ -772,6 +845,7 @@ func (em *emulator) moveUp() {
 }
 
 func (em *emulator) moveLeft() {
+	em.autoWrap = false
 	pos := em.getPosition()
 	if pos.X > 0 {
 		pos.X--
@@ -788,14 +862,10 @@ func (em *emulator) moveRight() {
 	}
 }
 
+// nextLine is like CNL with 1, but it optionally also scrolls.
 func (em *emulator) nextLine() {
+	em.autoWrap = false
 	em.moveDown()
-	em.pos.X = 0
-	em.setPosition(em.pos)
-}
-
-func (em *emulator) prevLine() {
-	em.moveUp()
 	em.pos.X = 0
 	em.setPosition(em.pos)
 }
@@ -871,7 +941,11 @@ func (em *emulator) clrTabStop(ts Col) {
 	em.tabStops = slices.DeleteFunc(em.tabStops, func(x Col) bool { return x == ts })
 }
 
-func (em *emulator) putc(r rune) {
+func (em *emulator) putRune(r rune) {
+	if em.autoWrap {
+		// TODO: when we support grapheme clusters, this will need to be conditional
+		em.nextLine()
+	}
 	if p, ok := em.be.(Positioner); ok {
 		p.PutChar(r, em.attr)
 	} else {
@@ -885,7 +959,7 @@ func (em *emulator) putc(r rune) {
 		em.be.PutAbs(em.pos, r, em.attr)
 		em.moveRightN(Col(w))
 		if autoMargin && old.X+Col(w) >= em.be.GetSize().X {
-			em.nextLine()
+			em.autoWrap = true
 		}
 	}
 }
@@ -975,6 +1049,7 @@ func (em *emulator) softReset() {
 	// Set cursor
 	// Reset colors
 	em.tabStops = nil
+	em.autoWrap = false
 	em.attr = Plain
 	em.fg = color.None
 	em.bg = color.None

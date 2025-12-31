@@ -107,6 +107,12 @@ func TestCursorMovement(t *testing.T) {
 
 	writeF(t, trm, "\x1b[1F")
 	checkPos(t, trm, 0, 0)
+
+	writeF(t, trm, "\x1b9")
+	checkPos(t, trm, 1, 0)
+
+	writeF(t, trm, "\x1b6")
+	checkPos(t, trm, 0, 0)
 }
 
 // TestDECALN tests the DEC alignment test (screen filled with 'E').
@@ -354,6 +360,57 @@ func TestAutoMargin(t *testing.T) {
 	if s := string(trm.GetCell(vt.Coord{X: 79, Y: 2}).C); s != "D" {
 		t.Errorf("last column wrong: %q", s)
 	}
+
+	// turn it back on
+	writeF(t, trm, "\x1b[?7h")
+
+	// demonstrate that writing to the last column does not advance (pending)
+	writeF(t, trm, "\x1b[1;80HA")
+	checkPos(t, trm, 79, 0)
+
+	// but one more character does advance
+	writeF(t, trm, "\x1b[1;80HAB")
+	checkPos(t, trm, 1, 1)
+
+	// tab does not advance, but leaves pending state
+	writeF(t, trm, "\x1b[1;80HA\t")
+	checkPos(t, trm, 79, 0)
+	writeF(t, trm, "\x1b[1;80HA\tb")
+	checkPos(t, trm, 1, 1)
+
+	// up or down movement resets the pending state
+	writeF(t, trm, "\x1b[1;80HA\x1b[AB")
+	checkPos(t, trm, 79, 0)
+	writeF(t, trm, "\x1b[1;80HA\x1b[BB")
+	checkPos(t, trm, 79, 1)
+
+	// forward also resets pending state (which is clipped)
+	writeF(t, trm, "\x1b[1;80HA\x1b[CB")
+	checkPos(t, trm, 79, 0)
+	writeF(t, trm, "\x1b[1;80HA\x1b[CB")
+	checkPos(t, trm, 79, 0)
+
+	// explicit column also resets pending state (which is clipped)
+	writeF(t, trm, "\x1b[1;80HA\x1b[80GB")
+	checkPos(t, trm, 79, 0)
+	writeF(t, trm, "\x1b[1;80HA\x1b[80GB")
+	checkPos(t, trm, 79, 0)
+
+	// newline of course does as well (and its variants VT and FF)
+	writeF(t, trm, "\x1b[1;80HA\nB")
+	checkPos(t, trm, 1, 1)
+	writeF(t, trm, "\x1b[1;80HA\fB")
+	checkPos(t, trm, 1, 1)
+	writeF(t, trm, "\x1b[1;80HA\vB")
+	checkPos(t, trm, 1, 1)
+
+	// as does forward index
+	writeF(t, trm, "\x1b[1;80HA\x1bDB")
+	checkPos(t, trm, 79, 1)
+
+	// but not reverse index
+	writeF(t, trm, "\x1b[2;80HA\x1bMB")
+	checkPos(t, trm, 1, 1)
 }
 
 // TestUnicode tests basic placement of unicode glyphs.
