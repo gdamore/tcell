@@ -614,6 +614,18 @@ func (em *emulator) processCsi(final byte) {
 		if pi, err := numericParams(str, 1, 0); err == nil && pi[0] == 0 {
 			em.sendDA()
 		}
+	case "d": // move to specific row (VPA)
+		if pi, err := numericParams(str, 1, 1); err == nil {
+			pos := em.getPosition()
+			pos.Y = min(Row(max(1, pi[0])), em.be.GetSize().Y) - 1
+			em.setPosition(pos)
+		}
+	case "e": // advance by rows (VPR)
+		if pi, err := numericParams(str, 1, 1); err == nil {
+			pos := em.getPosition()
+			pos.Y = min(pos.Y+Row(max(1, pi[0])), em.be.GetSize().Y-1)
+			em.setPosition(pos)
+		}
 	case "g": // tab clear (TBC)
 		if pi, err := numericParams(str, 1, 0); err == nil {
 			switch pi[0] {

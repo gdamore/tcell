@@ -818,3 +818,47 @@ func TestTabs(t *testing.T) {
 		t.Errorf("wrong position: %d %d", pos.X, pos.Y)
 	}
 }
+
+func TestVerticalPos(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[2;2H")
+	writeF(t, trm, "\x1b[10d")
+	if pos := trm.Pos(); pos.X != 1 || pos.Y != 9 {
+		t.Errorf("wrong position: %d %d", pos.X, pos.Y)
+	}
+	writeF(t, trm, "\x1b[2e")
+	if pos := trm.Pos(); pos.X != 1 || pos.Y != 11 {
+		t.Errorf("wrong position; %d %d", pos.X, pos.Y)
+	}
+	writeF(t, trm, "\x1b[e")
+	if pos := trm.Pos(); pos.X != 1 || pos.Y != 12 {
+		t.Errorf("wrong position; %d %d", pos.X, pos.Y)
+	}
+	writeF(t, trm, "\x1b[0e")
+	if pos := trm.Pos(); pos.X != 1 || pos.Y != 13 {
+		t.Errorf("wrong position; %d %d", pos.X, pos.Y)
+	}
+	writeF(t, trm, "\x1b[50d")
+	if pos := trm.Pos(); pos.X != 1 || pos.Y != 23 {
+		t.Errorf("wrong position; %d %d", pos.X, pos.Y)
+	}
+	writeF(t, trm, "\x1b[50e")
+	if pos := trm.Pos(); pos.X != 1 || pos.Y != 23 {
+		t.Errorf("wrong position; %d %d", pos.X, pos.Y)
+	}
+	writeF(t, trm, "\x1b[0d")
+	if pos := trm.Pos(); pos.X != 1 || pos.Y != 0 {
+		t.Errorf("wrong position; %d %d", pos.X, pos.Y)
+	}
+	writeF(t, trm, "\x1b[10d")
+	if pos := trm.Pos(); pos.X != 1 || pos.Y != 9 {
+		t.Errorf("wrong position; %d %d", pos.X, pos.Y)
+	}
+	writeF(t, trm, "\x1b[1d")
+	if pos := trm.Pos(); pos.X != 1 || pos.Y != 0 {
+		t.Errorf("wrong position; %d %d", pos.X, pos.Y)
+	}
+}
