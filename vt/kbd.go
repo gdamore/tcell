@@ -17,7 +17,7 @@ package vt
 type KbdEvent struct {
 	Down   bool     // true if event is for key down event
 	Repeat int      // if > 1, a repeat count
-	Code   KeyCode  // logical key code (X11 keysm, e.g. 'A')
+	Code   KeyCode  // logical key code (X11 key symbol, e.g. 'A')
 	Base   KeyCode  // base key code (physical key, e.g 'a'), may be zero if same as code
 	Mod    Modifier // modifiers
 	Utf    string   // if non-empty, the unicode content for this
@@ -51,7 +51,7 @@ const (
 //
 // This should be sufficient to support all known keyboard protocols.
 //
-// Note that Windows defines key codes for mice and gamepads. Those should be treated
+// Note that Windows defines key codes for mice and game pads. Those should be treated
 // as different events entirely.
 type KeyCode rune
 

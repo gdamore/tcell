@@ -60,7 +60,7 @@ func TestStyle(t *testing.T) {
 		t.Errorf("reverse is true")
 	}
 	if s2.HasStrikeThrough() {
-		t.Errorf("strikethrough is true")
+		t.Errorf("strike-through is true")
 	}
 	if id, url := s2.GetUrl(); id != "" || url != "" {
 		t.Errorf("url not empty: %q %q", id, url)
@@ -76,8 +76,8 @@ func TestStyle(t *testing.T) {
 	if id, url := us.GetUrl(); id != "" || url != "http://example.com" {
 		t.Errorf("url wrong: %q %q", id, url)
 	}
-	us = us.Url("http://example.com").UrlId("someid")
-	if id, url := us.GetUrl(); id != "someid" || url != "http://example.com" {
+	us = us.Url("http://example.com").UrlId("someId")
+	if id, url := us.GetUrl(); id != "someId" || url != "http://example.com" {
 		t.Errorf("url wrong: %q %q", id, url)
 	}
 	us = us.Underline(UnderlineStyleDotted, color.Pink)

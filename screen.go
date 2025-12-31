@@ -39,7 +39,7 @@ type Screen interface {
 	// is called (or Sync).
 	Fill(rune, Style)
 
-	// Put writes the first graphme of the given string with th
+	// Put writes the first grapheme of the given string with th
 	// given style at the given coordinates. (Only the first grapheme
 	// occupying either one or two cells is stored.) It returns the
 	// remainder of the string, and the width displayed.
@@ -50,7 +50,7 @@ type Screen interface {
 	PutStr(x int, y int, str string)
 
 	// PutStrStyled writes a string starting at the given position, using
-	// the given style. The cont4ent is clipped to the screen dimensions.
+	// the given style. The content is clipped to the screen dimensions.
 	PutStrStyled(x int, y int, str string, style Style)
 
 	// Get the contents at the given location.  If the

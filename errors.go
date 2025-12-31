@@ -21,7 +21,7 @@ import (
 var (
 	// ErrNoScreen indicates that no suitable screen could be found.
 	// This may result from attempting to run on a platform where there
-	// is no support for either termios or console I/O (such as nacl),
+	// is no support for either termios or console I/O (such as js),
 	// or from running in an environment where there is no access to
 	// a suitable console/terminal device.  (For example, running on
 	// without a controlling TTY or with no /dev/tty on POSIX platforms.)

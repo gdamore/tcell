@@ -114,7 +114,7 @@ func (s Style) Reverse(on bool) Style {
 	return s.setAttrs(AttrReverse, on)
 }
 
-// StrikeThrough sets strikethrough mode.
+// StrikeThrough sets strike-through mode.
 func (s Style) StrikeThrough(on bool) Style {
 	return s.setAttrs(AttrStrikeThrough, on)
 }
@@ -190,7 +190,7 @@ func (s Style) Attributes(attrs AttrMask) Style {
 }
 
 // GetAttributes gets the attributes for a style.
-// Deprecated: Use individual property accessors instead.
+// Deprecated: Use individual properties instead.
 func (s Style) GetAttributes() AttrMask {
 	return s.attrs
 }
@@ -258,7 +258,7 @@ func (s Style) HasDim() bool {
 	return s.attrs&AttrDim != 0
 }
 
-// HasStrikeThrough returns true if the style striked out / crossed-out text.
+// HasStrikeThrough returns true if the style indicates crossed-out text.
 func (s Style) HasStrikeThrough() bool {
 	return s.attrs&AttrStrikeThrough != 0
 }

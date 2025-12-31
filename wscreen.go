@@ -467,7 +467,7 @@ func (t *wScreen) Suspend() error {
 	t.clearScreen()
 	t.enableMouse(0)
 	t.enablePasting(false)
-	js.Global().Set("onKeyEvent", js.FuncOf(t.unset)) // stop keypresses
+	js.Global().Set("onKeyEvent", js.FuncOf(t.unset)) // stop key presses
 	return nil
 }
 

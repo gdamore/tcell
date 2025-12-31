@@ -40,7 +40,7 @@ func (c *cell) setDirty(dirty bool) {
 }
 
 // CellBuffer represents a two-dimensional array of character cells.
-// This is primarily intended for use by Screen implementors; it
+// This is primarily intended for use by Screen implementers; it
 // contains much of the common code they need.  To create one, just
 // declare a variable of its type; no explicit initialization is necessary.
 //
@@ -53,7 +53,7 @@ type CellBuffer struct {
 
 // Put a single styled grapheme using the given string and style
 // at the same location.  Note that only the first grapheme in the string
-// will bre displayed, using only the 1 or 2 (depending on width) cells
+// will be displayed, using only the 1 or 2 (depending on width) cells
 // located at x, y. It returns the rest of the string, and the width used.
 func (cb *CellBuffer) Put(x int, y int, str string, style Style) (string, int) {
 	var width int = 0
@@ -75,7 +75,7 @@ func (cb *CellBuffer) Put(x int, y int, str string, style Style) (string, int) {
 		// both cells as dirty together.  We only need to do this
 		// if we're changing content
 		if width > 0 && cl != c.currStr {
-			// Prevent unnecessary boundchecks for first cell, since we already
+			// Prevent unnecessary bounds checks for first cell, since we already
 			// received that one.
 			c.setDirty(true)
 			for i := 1; i < width; i++ {

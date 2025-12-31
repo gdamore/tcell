@@ -46,7 +46,7 @@ type Emulator interface {
 	KeyEvent(ev KbdEvent)
 
 	// ResizeEvent is called by a backend when the terminal has resized
-	// This will send inband resize notifications if the client has requested them.
+	// This will send in-band resize notifications if the client has requested them.
 	ResizeEvent()
 
 	// Drain waits until any queued but not processed input has finished processing.
@@ -131,7 +131,7 @@ func (em *emulator) inbInit(b byte) {
 
 	// For 8-bit encodings, we treat these as Fe sequences.
 	// Basically the same as ESC followed by (b - 0x40).
-	// TODO: conditionalize this so that we do not do this if
+	// TODO: condition this so that we do not do this if
 	// the encoding cannot support it (UTF, 8859, and EUC encodings
 	// are all fine here, but others like ShiftJIS or KOI8 might not be).
 	if b >= 0x80 && b <= 0x9F && !em.sevenOnly {
@@ -267,7 +267,7 @@ func (em *emulator) inbNF(b byte) {
 		// case "(C", "(5": // TODO: select G0 as Finnish
 		// case "(H", "(7": // TODO: select G0 as Swedish
 		// case "(K": // TODO: select G0 as German
-		// case "(Q", "(9": // TODO: select G0 as French Candian
+		// case "(Q", "(9": // TODO: select G0 as French Canadian
 		// case "(R", "(f": // TODO: select G0 as French
 		// case "(Y": // TODO: select G0 as Italian
 	}
@@ -397,7 +397,7 @@ func splitSgrArgs(args []string, words []string) ([]string, []string) {
 	return nil, nil
 }
 
-// processSgr processes SGR commmands (things that change how characters are displayed).
+// processSgr processes SGR commands (things that change how characters are displayed).
 func (em *emulator) processSgr(str string) {
 	words := strings.Split(str, ";")
 
@@ -926,7 +926,7 @@ func (em *emulator) eraseAbove() {
 	em.setPosition(pos)
 }
 
-// eraseAll erases the entire screen. It uses the color, but resets all other atributes.
+// eraseAll erases the entire screen. It uses the color, but resets all other attributes.
 func (em *emulator) eraseAll() {
 	size := em.be.GetSize()
 	pos := em.getPosition()
@@ -1134,9 +1134,9 @@ var legacyKeys = map[KeyCode]struct {
 	KeyCode('?'): {K: "?", C: "\x1f"},
 }
 
-// toAsciiUpper returns the equivalent upper case ASCII (and true),
+// toASCIIUpper returns the equivalent upper case ASCII (and true),
 // if the input is an ASCII letter.  Otherwise it returns 0, false.
-func toAsciiUpper(r rune) (rune, bool) {
+func toASCIIUpper(r rune) (rune, bool) {
 	if r >= 'a' && r <= 'z' {
 		return (r - 32), true
 	} else if r >= 'A' && r <= 'Z' {
@@ -1183,7 +1183,7 @@ func (em *emulator) keyLegacy(ev KbdEvent) {
 			// one for SS3 based keys and another for CSI based keys.  SS3 based
 			// keys are converted to CSI - 1 ; mod ; final
 			// Note: legacy encoding does not use modifiers for alt or super - alt will be
-			// determined by sending an esc prefix.
+			// determined by sending an escape prefix.
 			mod := 0
 			if ev.Mod&ModShift != 0 {
 				mod |= 1
@@ -1198,7 +1198,7 @@ func (em *emulator) keyLegacy(ev KbdEvent) {
 			}
 		}
 		if ev.Mod&ModAlt != 0 {
-			em.SendRaw(append([]byte{'\x1b'}, []byte(str)...)) // alt sends leading esc
+			em.SendRaw(append([]byte{'\x1b'}, []byte(str)...)) // alt sends leading escape
 		} else {
 			em.SendRaw([]byte(str))
 		}
@@ -1206,7 +1206,7 @@ func (em *emulator) keyLegacy(ev KbdEvent) {
 	}
 
 	// fallback control key handling
-	if u, ok := toAsciiUpper(rune(ev.Code)); ok && ev.Mod&ModCtrl != 0 {
+	if u, ok := toASCIIUpper(rune(ev.Code)); ok && ev.Mod&ModCtrl != 0 {
 		b := byte(u) - 'A' + 1
 		if ev.Mod&ModAlt != 0 {
 			em.SendRaw([]byte{'\x1b', b})
@@ -1314,7 +1314,7 @@ func (em *emulator) Read(data []byte) (n int, err error) {
 		return 0, errors.New("terminal emulator stopped")
 	case v := <-readQ:
 		// The data arriving in the channel may be a byte, or it might be a bool
-		// trying to force a wakeup.  Note that the bool may be intermingled with other
+		// trying to force a wake up.  Note that the bool may be intermingled with other
 		// bytes, so we check it. Also data may have arrived since the bool was posted,
 		// so make sure we don't terminate until we have collected all the relevant data
 		// that we can (up to the limit of what was requested.)
