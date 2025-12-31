@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -108,6 +109,7 @@ type emulator struct {
 	vers      string     // version string of this emulator (used for extended attributes)
 	savedPos  Coord      // saved via DECSC
 	sendLock  sync.Mutex // ensures that send data cannot be intermixed
+	tabStops  []Col      // tab stops, ordered. if nil every 8th position is used
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 }
@@ -145,7 +147,8 @@ func (em *emulator) inbInit(b byte) {
 		em.beep()
 	case 0x08: // BS (backspace)
 		em.moveLeft()
-	case 0x09: // TODO: tab
+	case 0x09: // horizontal tab
+		em.nextTab()
 	case 0x0a: // NL (newline)
 		em.nextLine()
 	case 0x0b: // VT (vertical tab, treat as LF)
@@ -199,6 +202,8 @@ func (em *emulator) inbEsc(b byte) {
 		em.moveDown()
 	case 'E': // next line (NEL)
 		em.nextLine()
+	case 'H': // set tab stop (HTS)
+		em.setTabStop(em.getPosition().X)
 	case 'M': // up one line (RI)
 		em.moveUp()
 	case 'N': // single shift two (SS2) (TODO)
@@ -604,14 +609,41 @@ func (em *emulator) processCsi(final byte) {
 				em.eraseLine()
 			}
 		}
+
 	case "c":
 		if pi, err := numericParams(str, 1, 0); err == nil && pi[0] == 0 {
 			em.sendDA()
+		}
+	case "g": // tab clear (TBC)
+		if pi, err := numericParams(str, 1, 0); err == nil {
+			switch pi[0] {
+			case 0: // clear stop at current column
+				em.clrTabStop(em.getPosition().X)
+			case 3: // clear all columns
+				em.tabStops = []Col{} // this is distinct from nil
+			}
 		}
 	case "m":
 		em.processSgr(str)
 	case "n":
 		em.deviceReport(str)
+	case "I": // CHT - cursor forward Ps tab stops
+		if pi, err := numericParams(str, 1, 1); err == nil {
+			for range pi[0] {
+				em.nextTab()
+			}
+		}
+	case "Z": // CBT - back Ps tab stops
+		if pi, err := numericParams(str, 1, 1); err == nil {
+			for range pi[0] {
+				em.prevTab()
+			}
+		}
+	case "?W":
+		if pi, err := numericParams(str, 1, 0); err == nil && pi[0] == 5 {
+			// DECST8C - reset tab stops to default (VT510)
+			em.tabStops = nil
+		}
 	case "?h": // DECSET
 		if pi, err := numericParams(str, 1, 0); err == nil {
 			for _, pm := range pi {
@@ -753,6 +785,77 @@ func (em *emulator) prevLine() {
 	em.setPosition(em.pos)
 }
 
+// nextTab advances to the next tab stop, or the end of
+// the line if there is no further tab.
+func (em *emulator) nextTab() {
+	maxX := em.be.GetSize().X - 1
+	curX := em.getPosition().X
+	if curX == maxX { // already at end
+		return
+	}
+	nextX := maxX
+	if em.tabStops == nil {
+		// just advance to the next one
+		nextX = min((curX+8)&^7, maxX)
+	} else {
+		for _, p := range em.tabStops {
+			if p > curX {
+				nextX = p
+				break
+			}
+		}
+	}
+	em.setPosition(Coord{X: nextX, Y: em.pos.Y})
+}
+
+func (em *emulator) prevTab() {
+	curX := em.getPosition().X
+	if curX == 0 {
+		return
+	}
+	nextX := curX - 1
+	if em.tabStops == nil {
+		nextX &^= 7
+	} else if i, exist := slices.BinarySearch(em.tabStops, nextX); exist {
+		nextX = em.tabStops[i]
+	} else if i > 0 {
+		nextX = em.tabStops[i-1]
+	} else {
+		nextX = 0
+	}
+	em.setPosition(Coord{X: nextX, Y: em.pos.Y})
+}
+
+// initTabStops initializes the tab stops assuming every 8th column
+// is a tab stop.  This should only be called if the user is intentionally
+// changing the tab stops, because it will no longer support expanding
+// tab stops on resizing.
+func (em *emulator) initTabStops() {
+	if em.tabStops == nil {
+		// no tab stop at offset 0 since that would be pointless
+		em.tabStops = make([]Col, 0, int(em.be.GetSize().X/8)+1)
+		for col := Col(8); col < em.be.GetSize().X; col += 8 {
+			em.tabStops = append(em.tabStops, col)
+		}
+	}
+}
+
+// setTabStop sets a tab stop at the given location.
+// This calls  initTabStops - please see the description of that function for ramifications.
+func (em *emulator) setTabStop(ts Col) {
+	em.initTabStops()
+	if index, exist := slices.BinarySearch(em.tabStops, ts); !exist {
+		em.tabStops = slices.Insert(em.tabStops, index, ts)
+	}
+}
+
+// clrTabStop clears the tab stop at the given column.  This calls
+// initTabStops - please see the description of that function for ramifications.
+func (em *emulator) clrTabStop(ts Col) {
+	em.initTabStops()
+	em.tabStops = slices.DeleteFunc(em.tabStops, func(x Col) bool { return x == ts })
+}
+
 func (em *emulator) putc(r rune) {
 	if p, ok := em.be.(Positioner); ok {
 		p.PutChar(r, em.attr)
@@ -856,6 +959,7 @@ func (em *emulator) softReset() {
 	// Select default character sets
 	// Set cursor
 	// Reset colors
+	em.tabStops = nil
 	em.attr = Plain
 	em.fg = color.None
 	em.bg = color.None

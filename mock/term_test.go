@@ -731,3 +731,90 @@ func TestResize(t *testing.T) {
 		t.Errorf("key responses failed: %q", result)
 	}
 }
+
+// TestTabs tests tab stop funtionality.
+func TestTabs(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "a\tC")
+	if s := string(trm.GetCell(vt.Coord{X: 8, Y: 0}).C); s != "C" {
+		t.Errorf("tab did not work: %q", s)
+	}
+	writeF(t, trm, "\x1b[3I")
+	if x := trm.Pos().X; x != 32 {
+		t.Errorf("wrong position %d", x)
+	}
+
+	writeF(t, trm, "\x1b[2Z")
+	if x := trm.Pos().X; x != 16 {
+		t.Errorf("wrong position %d", x)
+	}
+
+	writeF(t, trm, "\x1b[3g") // clear all tabs
+	writeF(t, trm, "\x1b[I")  // one tab, should go to right margin
+	if x := trm.Pos().X; x != 79 {
+		t.Errorf("wrong position: %d", x)
+	}
+
+	writeF(t, trm, "\x1b[Z")
+	if x := trm.Pos().X; x != 0 {
+		t.Errorf("wrong position: %d", x)
+	}
+
+	// reset tabs
+	writeF(t, trm, "\x1b[?5W")
+
+	writeF(t, trm, "\t")
+	if x := trm.Pos().X; x != 8 {
+		t.Errorf("wrong position: %d", x)
+	}
+	// clear this position, advance one
+	writeF(t, trm, "\x1b[gA")
+	if x := trm.Pos().X; x != 9 {
+		t.Errorf("wrong position: %d", x)
+	}
+	writeF(t, trm, "\x1bH")
+	writeF(t, trm, "\t")
+	if x := trm.Pos().X; x != 16 {
+		t.Errorf("wrong position: %d", x)
+	}
+	writeF(t, trm, "\x1b[Z")
+	if x := trm.Pos().X; x != 9 {
+		t.Errorf("wrong position: %d", x)
+	}
+	writeF(t, trm, "\x1b[Z")
+	if x := trm.Pos().X; x != 0 {
+		t.Errorf("wrong position: %d", x)
+	}
+	writeF(t, trm, "\x1b[1;10H") // goto position 9
+	if x := trm.Pos().X; x != 9 {
+		t.Errorf("wrong position: %d", x)
+	}
+	// delete this one (do it twice to exericse the does not exist flow)
+	writeF(t, trm, "\x1b[0g")
+	writeF(t, trm, "\x1b[0g")
+
+	// advance to next tab, then back, we should go to 0
+	writeF(t, trm, "\t")
+	if x := trm.Pos().X; x != 16 {
+		t.Errorf("wrong position: %d", x)
+	}
+	writeF(t, trm, "\x1b[Z")
+	if x := trm.Pos().X; x != 0 {
+		t.Errorf("wrong position: %d", x)
+	}
+	writeF(t, trm, "\x1b[20I")
+	writeF(t, trm, "\t\t")
+	if pos := trm.Pos(); pos.X != 79 || pos.Y != 0 {
+		t.Errorf("wrong position: %d %d", pos.X, pos.Y)
+	}
+
+	// now backwards
+	writeF(t, trm, "\x1b[20Z")
+	writeF(t, trm, "\x1b[Z")
+	if pos := trm.Pos(); pos.X != 0 || pos.Y != 0 {
+		t.Errorf("wrong position: %d %d", pos.X, pos.Y)
+	}
+}
