@@ -1142,3 +1142,89 @@ func TestGraphemeCluster(t *testing.T) {
 	checkContent(t, trm, 9, 0, "🇨🇭")
 	checkContent(t, trm, 0, 1, "A")
 }
+
+func TestEraseAbove(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 5})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b#8")
+	writeF(t, trm, "\x1b[3;5H")
+
+	writeF(t, trm, "\x1b[31;1;42m") // set some colors and bold
+	writeF(t, trm, "\x1b[1J")
+	// cursor is at 4,2
+	for row := range Row(5) {
+		for col := range Col(10) {
+			if row < 2 || row == 2 && col < 5 {
+				checkContent(t, trm, col, row, "")
+				checkAttrs(t, trm, col, row, Bold)
+				checkColors(t, trm, col, row, color.XTerm1, color.XTerm2)
+			} else {
+				checkContent(t, trm, col, row, "E")
+				checkAttrs(t, trm, col, row, Plain)
+				checkColors(t, trm, col, row, color.Silver, color.Black)
+			}
+		}
+	}
+}
+
+func TestEraseLine(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 5})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b#8")
+
+	// erase to end
+	writeF(t, trm, "\x1b[31;1;42m") // set some colors and bold
+	writeF(t, trm, "\x1b[1;5H")
+	writeF(t, trm, "\x1b[0K")
+	// cursor is at 4,0
+	checkPos(t, trm, 4, 0)
+	for col := range Col(10) {
+		row := Row(0)
+		if col < 4 {
+			checkContent(t, trm, col, row, "E")
+			checkAttrs(t, trm, col, row, Plain)
+			checkColors(t, trm, col, row, color.Silver, color.Black)
+		} else {
+			checkContent(t, trm, col, row, "")
+			checkAttrs(t, trm, col, row, Bold)
+			checkColors(t, trm, col, row, color.XTerm1, color.XTerm2)
+		}
+	}
+	checkPos(t, trm, 4, 0)
+
+	// erase to beginning
+	writeF(t, trm, "\x1b[2;5H")
+	writeF(t, trm, "\x1b[1K")
+	// cursor is at 4,1
+	checkPos(t, trm, 4, 1)
+	for col := range Col(10) {
+		row := Row(1)
+		if col > 4 {
+			checkContent(t, trm, col, row, "E")
+			checkAttrs(t, trm, col, row, Plain)
+			checkColors(t, trm, col, row, color.Silver, color.Black)
+		} else {
+			checkContent(t, trm, col, row, "")
+			checkAttrs(t, trm, col, row, Bold)
+			checkColors(t, trm, col, row, color.XTerm1, color.XTerm2)
+		}
+	}
+	checkPos(t, trm, 4, 1)
+
+	// erase entire line
+	writeF(t, trm, "\x1b[3;5H")
+	writeF(t, trm, "\x1b[2K")
+	// cursor is at 4,2
+	checkPos(t, trm, 4, 2)
+	for col := range Col(10) {
+		row := Row(2)
+		checkContent(t, trm, col, row, "")
+		checkAttrs(t, trm, col, row, Bold)
+		checkColors(t, trm, col, row, color.XTerm1, color.XTerm2)
+	}
+	checkPos(t, trm, 4, 2)
+}
