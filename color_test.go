@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/gdamore/tcell/v3/color"
-	"github.com/gdamore/tcell/v3/mock"
+	"github.com/gdamore/tcell/v3/vt"
 )
 
 // TestColorWrappers just tests the legacy API wrappers.
@@ -52,7 +52,7 @@ func TestColorWrappers(t *testing.T) {
 }
 
 func TestColorNone(t *testing.T) {
-	_, s := NewMockScreen(t, mock.MockOptSize{X: 80, Y: 24})
+	_, s := NewMockScreen(t, vt.MockOptSize{X: 80, Y: 24})
 	defer s.Fini()
 
 	st := StyleDefault.Foreground(ColorBlack).Background(ColorWhite)

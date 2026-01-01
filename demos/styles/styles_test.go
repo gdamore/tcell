@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v3"
-	"github.com/gdamore/tcell/v3/mock"
 	"github.com/gdamore/tcell/v3/vt"
 )
 
@@ -15,7 +14,7 @@ import (
 // manually by running the program with a real terminal.
 func TestStyles(t *testing.T) {
 
-	mt := mock.NewMockTerm()
+	mt := vt.NewMockTerm()
 	scr, err := tcell.NewTerminfoScreenFromTty(mt)
 	if err != nil {
 		t.Fatalf("failed to create screen: %v", err)
@@ -43,7 +42,7 @@ func TestStyles(t *testing.T) {
 	var lastAttr vt.Attr
 	for y := range vt.Row(24) {
 		for x := range vt.Col(80) {
-			if attr := mt.GetCell(vt.Coord{X: vt.Col(x), Y: vt.Row(y)}).Attr; attr != lastAttr {
+			if attr := mt.GetCell(vt.Coord{X: vt.Col(x), Y: vt.Row(y)}).S.Attr(); attr != lastAttr {
 				attrs++
 				lastAttr = attr
 			}

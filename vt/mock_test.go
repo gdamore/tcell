@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mock
+package vt
 
 import (
 	"fmt"
@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v3/color"
-	"github.com/gdamore/tcell/v3/vt"
 )
 
 // writeF writes the string, and ensures it is fully flushed
@@ -69,32 +68,32 @@ func mustStart(t *testing.T, trm MockTerm) {
 	assertF(t, err == nil, "start failed: %v", err)
 }
 
-func checkPos(t *testing.T, trm MockTerm, x vt.Col, y vt.Row) {
+func checkPos(t *testing.T, trm MockTerm, x Col, y Row) {
 	t.Helper()
 	verifyF(t, trm.Pos().X == x && trm.Pos().Y == y,
 		"bad position %d,%d (expected %d,%d)", trm.Pos().X, trm.Pos().Y, x, y)
 }
 
-func checkContent(t *testing.T, trm MockTerm, x vt.Col, y vt.Row, s string) {
+func checkContent(t *testing.T, trm MockTerm, x Col, y Row, s string) {
 	t.Helper()
-	if actual := string(trm.GetCell(vt.Coord{X: x, Y: y}).C); actual != s {
+	if actual := string(trm.GetCell(Coord{X: x, Y: y}).C); actual != s {
 		t.Errorf("bad content %d,%d (expected %q got %q)", x, y, s, actual)
 	}
 }
 
-func checkAttrs(t *testing.T, trm MockTerm, x vt.Col, y vt.Row, a vt.Attr) {
+func checkAttrs(t *testing.T, trm MockTerm, x Col, y Row, a Attr) {
 	t.Helper()
-	if actual := trm.GetCell(vt.Coord{X: x, Y: y}).Attr; actual != a {
+	if actual := trm.GetCell(Coord{X: x, Y: y}).S.Attr(); actual != a {
 		t.Errorf("bad attr %d,%d (expected %x got %x)", x, y, a, actual)
 	}
 }
 
-func checkColors(t *testing.T, trm MockTerm, x vt.Col, y vt.Row, fg color.Color, bg color.Color) {
+func checkColors(t *testing.T, trm MockTerm, x Col, y Row, fg color.Color, bg color.Color) {
 	t.Helper()
-	if actual := trm.GetCell(vt.Coord{X: x, Y: y}).Fg; actual != fg {
+	if actual := trm.GetCell(Coord{X: x, Y: y}).S.Fg(); actual != fg {
 		t.Errorf("bad foreground %d,%d (expected %s got %s)", x, y, fg.String(), actual.String())
 	}
-	if actual := trm.GetCell(vt.Coord{X: x, Y: y}).Bg; actual != bg {
+	if actual := trm.GetCell(Coord{X: x, Y: y}).S.Bg(); actual != bg {
 		t.Errorf("bad background %d,%d (expected %s got %s)", x, y, bg.String(), actual.String())
 	}
 }
@@ -161,43 +160,28 @@ func TestDECALN(t *testing.T) {
 
 	writeF(t, trm, "\x1b#8")
 
-	for y := range vt.Row(3) {
-		for x := range vt.Col(5) {
-			cell := trm.GetCell(vt.Coord{X: x, Y: y})
-			if cell.Attr != vt.Plain {
-				t.Errorf("wrong attr at %d,%d: %x", x, y, cell.Attr)
-			}
-			if string(cell.C) != "E" {
-				t.Errorf("wrong content at %d,%d: %q", x, y, string(cell.C))
-			}
+	for y := range Row(3) {
+		for x := range Col(5) {
+			checkAttrs(t, trm, x, y, Plain)
+			checkContent(t, trm, x, y, "E")
 		}
 	}
 
 	// clear screen
 	writeF(t, trm, "\x1b[H\x1b[J")
 
-	for y := range vt.Row(3) {
-		for x := range vt.Col(5) {
-			cell := trm.GetCell(vt.Coord{X: x, Y: y})
-			if cell.Attr != vt.Plain {
-				t.Errorf("wrong attr at %d,%d: %x", x, y, cell.Attr)
-			}
-			if string(cell.C) != "" {
-				t.Errorf("wrong content at %d,%d: %q", x, y, string(cell.C))
-			}
+	for y := range Row(3) {
+		for x := range Col(5) {
+			checkAttrs(t, trm, x, y, Plain)
+			checkContent(t, trm, x, y, "")
 		}
 	}
 
 	writeF(t, trm, "\x1b[1m\x1b#8") // bold, DECALN
-	for y := range vt.Row(3) {
-		for x := range vt.Col(5) {
-			cell := trm.GetCell(vt.Coord{X: x, Y: y})
-			if cell.Attr != vt.Bold {
-				t.Errorf("wrong attr at %d,%d: %x", x, y, cell.Attr)
-			}
-			if string(cell.C) != "E" {
-				t.Errorf("wrong content at %d,%d: %q", x, y, string(cell.C))
-			}
+	for y := range Row(3) {
+		for x := range Col(5) {
+			checkAttrs(t, trm, x, y, Bold)
+			checkContent(t, trm, x, y, "E")
 		}
 	}
 }
@@ -373,10 +357,10 @@ func TestAutoMargin(t *testing.T) {
 	writeF(t, trm, "\x1b[2J") // clear the screen
 	writeF(t, trm, "\x1b[1;80HAB")
 	checkPos(t, trm, 1, 1)
-	if s := string(trm.GetCell(vt.Coord{X: 79, Y: 0}).C); s != "A" {
+	if s := string(trm.GetCell(Coord{X: 79, Y: 0}).C); s != "A" {
 		t.Errorf("last column wrong: %q", s)
 	}
-	if s := string(trm.GetCell(vt.Coord{X: 0, Y: 1}).C); s != "B" {
+	if s := string(trm.GetCell(Coord{X: 0, Y: 1}).C); s != "B" {
 		t.Errorf("auto wrap did not work: %q", s)
 	}
 
@@ -386,7 +370,7 @@ func TestAutoMargin(t *testing.T) {
 	// mess with 3rd row
 	writeF(t, trm, "\x1b[3;80HCD")
 	checkPos(t, trm, 79, 2)
-	if s := string(trm.GetCell(vt.Coord{X: 79, Y: 2}).C); s != "D" {
+	if s := string(trm.GetCell(Coord{X: 79, Y: 2}).C); s != "D" {
 		t.Errorf("last column wrong: %q", s)
 	}
 
@@ -425,7 +409,7 @@ func TestAutoMargin(t *testing.T) {
 	writeF(t, trm, "\x1b[1;80HA\x1b[80GBC")
 	checkPos(t, trm, 1, 1)
 
-	// newline of course does as well (and its variants VT and FF)
+	// newline of course does as well (and its variants and FF)
 	writeF(t, trm, "\x1b[1;80HA\nB")
 	checkPos(t, trm, 1, 1)
 	writeF(t, trm, "\x1b[1;80HA\fB")
@@ -454,16 +438,16 @@ func TestUnicode(t *testing.T) {
 	checkPos(t, trm, 1, 1)
 	writeF(t, trm, "åßcπ")
 	checkPos(t, trm, 5, 1)
-	if s := string(trm.GetCell(vt.Coord{X: 1, Y: 1}).C); s != "å" {
+	if s := string(trm.GetCell(Coord{X: 1, Y: 1}).C); s != "å" {
 		t.Errorf("decode error wrong: %q", s)
 	}
-	if s := string(trm.GetCell(vt.Coord{X: 2, Y: 1}).C); s != "ß" {
+	if s := string(trm.GetCell(Coord{X: 2, Y: 1}).C); s != "ß" {
 		t.Errorf("decode error wrong: %q", s)
 	}
-	if s := string(trm.GetCell(vt.Coord{X: 3, Y: 1}).C); s != "c" {
+	if s := string(trm.GetCell(Coord{X: 3, Y: 1}).C); s != "c" {
 		t.Errorf("decode error wrong: %q", s)
 	}
-	if s := string(trm.GetCell(vt.Coord{X: 4, Y: 1}).C); s != "π" {
+	if s := string(trm.GetCell(Coord{X: 4, Y: 1}).C); s != "π" {
 		t.Errorf("decode error wrong: %q", s)
 	}
 }
@@ -479,19 +463,19 @@ func TestUnicodeWide(t *testing.T) {
 	checkPos(t, trm, 1, 1)
 	writeF(t, trm, "å宽cπ")
 	checkPos(t, trm, 6, 1)
-	if s := string(trm.GetCell(vt.Coord{X: 1, Y: 1}).C); s != "å" {
+	if s := string(trm.GetCell(Coord{X: 1, Y: 1}).C); s != "å" {
 		t.Errorf("decode error wrong: %q", s)
 	}
-	if s := string(trm.GetCell(vt.Coord{X: 2, Y: 1}).C); s != "宽" {
+	if s := string(trm.GetCell(Coord{X: 2, Y: 1}).C); s != "宽" {
 		t.Errorf("decode error wrong: %q", s)
 	}
-	if s := string(trm.GetCell(vt.Coord{X: 3, Y: 1}).C); s != "" {
+	if s := string(trm.GetCell(Coord{X: 3, Y: 1}).C); s != "" {
 		t.Errorf("decode error wrong: %q", s)
 	}
-	if s := string(trm.GetCell(vt.Coord{X: 4, Y: 1}).C); s != "c" {
+	if s := string(trm.GetCell(Coord{X: 4, Y: 1}).C); s != "c" {
 		t.Errorf("decode error wrong: %q", s)
 	}
-	if s := string(trm.GetCell(vt.Coord{X: 5, Y: 1}).C); s != "π" {
+	if s := string(trm.GetCell(Coord{X: 5, Y: 1}).C); s != "π" {
 		t.Errorf("decode error wrong: %q", s)
 	}
 }
@@ -502,13 +486,13 @@ func TestKbdEventLegacy(t *testing.T) {
 	defer mustClose(t, trm)
 	mustStart(t, trm)
 
-	trm.KeyEvent(vt.KbdEvent{Code: 'a', Base: 'a', Down: true})
-	trm.KeyEvent(vt.KbdEvent{Code: 'A', Base: 'a', Mod: vt.ModShift, Down: false})
-	trm.KeyEvent(vt.KbdEvent{Code: 'B', Base: 'b', Mod: vt.ModShift, Down: true})
-	trm.KeyEvent(vt.KbdEvent{Code: 'B', Base: 'b', Mod: vt.ModShift, Down: false})
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcReturn, Down: true})
-	trm.KeyEvent(vt.KbdEvent{Code: 'i', Down: true, Mod: vt.ModCtrl})
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcEsc, Down: true})
+	trm.KeyEvent(KbdEvent{Code: 'a', Base: 'a', Down: true})
+	trm.KeyEvent(KbdEvent{Code: 'A', Base: 'a', Mod: ModShift, Down: false})
+	trm.KeyEvent(KbdEvent{Code: 'B', Base: 'b', Mod: ModShift, Down: true})
+	trm.KeyEvent(KbdEvent{Code: 'B', Base: 'b', Mod: ModShift, Down: false})
+	trm.KeyEvent(KbdEvent{Code: KcReturn, Down: true})
+	trm.KeyEvent(KbdEvent{Code: 'i', Down: true, Mod: ModCtrl})
+	trm.KeyEvent(KbdEvent{Code: KcEsc, Down: true})
 
 	buf := make([]byte, 256)
 	n, err := trm.Read(buf)
@@ -523,12 +507,12 @@ func TestKbdEventLegacy(t *testing.T) {
 
 	// SS3 based F-keys
 	clear(buf)
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF1, Down: true})                                            // SS3 P
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF1, Down: false})                                           // none
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF1, Mod: vt.ModShift, Down: true})                          // CSI 1 ; 2 P
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF2, Mod: vt.ModCtrl, Down: true})                           // CSI 1 ; 5 Q
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF3, Mod: vt.ModAlt | vt.ModShift | vt.ModCtrl, Down: true}) // ESC CSI 1 ; 6 R
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF4, Mod: vt.ModAlt | vt.ModCtrl, Down: true})               // ESC CSI 1 ; 5 S
+	trm.KeyEvent(KbdEvent{Code: KcF1, Down: true})                                   // SS3 P
+	trm.KeyEvent(KbdEvent{Code: KcF1, Down: false})                                  // none
+	trm.KeyEvent(KbdEvent{Code: KcF1, Mod: ModShift, Down: true})                    // CSI 1 ; 2 P
+	trm.KeyEvent(KbdEvent{Code: KcF2, Mod: ModCtrl, Down: true})                     // CSI 1 ; 5 Q
+	trm.KeyEvent(KbdEvent{Code: KcF3, Mod: ModAlt | ModShift | ModCtrl, Down: true}) // ESC CSI 1 ; 6 R
+	trm.KeyEvent(KbdEvent{Code: KcF4, Mod: ModAlt | ModCtrl, Down: true})            // ESC CSI 1 ; 5 S
 	want = "\x1bOP"
 	want += "\x1b[1;2P"
 	want += "\x1b[1;5Q"
@@ -545,16 +529,16 @@ func TestKbdEventLegacy(t *testing.T) {
 
 	// CSI based F-keys
 	buf = make([]byte, 256)
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF5, Down: true})                                            // CSI 15 ~
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF5, Down: false})                                           // none
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF6, Mod: vt.ModShift, Down: true})                          // CSI 17 ; 2 ~
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF7, Mod: vt.ModCtrl, Down: true})                           // CSI 18 ; 5 ~
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF8, Mod: vt.ModAlt | vt.ModShift | vt.ModCtrl, Down: true}) // ESC CSI 19 ; 6 ~
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF9, Mod: vt.ModAlt | vt.ModCtrl, Down: true})               // ESC CSI 20 ; 5 ~
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF20, Mod: vt.ModNone, Down: true})                          // CSI 34 ~
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcHelp, Mod: vt.ModNone, Down: true})                         // CSI 28 ~
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcF15, Mod: vt.ModNone, Down: true})                          // CSI 28 ~
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcMenu, Mod: vt.ModNone, Down: true})                         // CSI 29 ~
+	trm.KeyEvent(KbdEvent{Code: KcF5, Down: true})                                   // CSI 15 ~
+	trm.KeyEvent(KbdEvent{Code: KcF5, Down: false})                                  // none
+	trm.KeyEvent(KbdEvent{Code: KcF6, Mod: ModShift, Down: true})                    // CSI 17 ; 2 ~
+	trm.KeyEvent(KbdEvent{Code: KcF7, Mod: ModCtrl, Down: true})                     // CSI 18 ; 5 ~
+	trm.KeyEvent(KbdEvent{Code: KcF8, Mod: ModAlt | ModShift | ModCtrl, Down: true}) // ESC CSI 19 ; 6 ~
+	trm.KeyEvent(KbdEvent{Code: KcF9, Mod: ModAlt | ModCtrl, Down: true})            // ESC CSI 20 ; 5 ~
+	trm.KeyEvent(KbdEvent{Code: KcF20, Mod: ModNone, Down: true})                    // CSI 34 ~
+	trm.KeyEvent(KbdEvent{Code: KcHelp, Mod: ModNone, Down: true})                   // CSI 28 ~
+	trm.KeyEvent(KbdEvent{Code: KcF15, Mod: ModNone, Down: true})                    // CSI 28 ~
+	trm.KeyEvent(KbdEvent{Code: KcMenu, Mod: ModNone, Down: true})                   // CSI 29 ~
 	want = "\x1b[15~"
 	want += "\x1b[17;2~"
 	want += "\x1b[18;5~"
@@ -565,75 +549,63 @@ func TestKbdEventLegacy(t *testing.T) {
 	want += "\x1b[28~"
 	want += "\x1b[29~"
 	n, err = trm.Read(buf)
-	if err != nil {
-		t.Errorf("failed read: %v", err)
-	}
+	assertF(t, err == nil, "failed read: %v", err)
+
 	result = string(buf[:n])
-	if result != want {
-		t.Errorf("key responses failed: %q != %q", result, want)
-	}
+	verifyF(t, result == want, "key responses failed: %q != %q", result, want)
 
 	// Misc other keys
 	clear(buf)
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcReturn, Down: true})                                   // \r
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcTab, Down: true})                                      // \t
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcTab, Mod: vt.ModShift, Down: true})                    // CSI Z
-	trm.KeyEvent(vt.KbdEvent{Code: 'm', Mod: vt.ModCtrl, Down: true})                          // \r
-	trm.KeyEvent(vt.KbdEvent{Code: 'l', Mod: vt.ModCtrl, Down: true})                          // \x0c
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcBackspace, Down: true})                                // \x7f
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcBackspace, Mod: vt.ModCtrl, Down: true})               // \x08
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcBackspace, Mod: vt.ModShift | vt.ModCtrl, Down: true}) // \x08
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcSpace, Mod: vt.ModCtrl, Down: true})                   // \x00
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcSpace, Down: true})                                    // ' '
-	trm.KeyEvent(vt.KbdEvent{Code: 'a', Mod: vt.ModAlt, Down: true})                           // \x1b a
-	trm.KeyEvent(vt.KbdEvent{Code: 'a', Mod: vt.ModHyper, Down: true})                         // none
-	trm.KeyEvent(vt.KbdEvent{Code: 'a', Mod: vt.ModMeta, Down: true})                          // none
-	trm.KeyEvent(vt.KbdEvent{Code: 'j', Mod: vt.ModAlt | vt.ModCtrl, Down: true})              // \x1b\n
-	trm.KeyEvent(vt.KbdEvent{Code: 'L', Mod: vt.ModCtrl, Down: true})                          // \x0c
-	trm.KeyEvent(vt.KbdEvent{Code: '[', Mod: vt.ModCtrl, Down: true})                          // \x0c
+	trm.KeyEvent(KbdEvent{Code: KcReturn, Down: true})                             // \r
+	trm.KeyEvent(KbdEvent{Code: KcTab, Down: true})                                // \t
+	trm.KeyEvent(KbdEvent{Code: KcTab, Mod: ModShift, Down: true})                 // CSI Z
+	trm.KeyEvent(KbdEvent{Code: 'm', Mod: ModCtrl, Down: true})                    // \r
+	trm.KeyEvent(KbdEvent{Code: 'l', Mod: ModCtrl, Down: true})                    // \x0c
+	trm.KeyEvent(KbdEvent{Code: KcBackspace, Down: true})                          // \x7f
+	trm.KeyEvent(KbdEvent{Code: KcBackspace, Mod: ModCtrl, Down: true})            // \x08
+	trm.KeyEvent(KbdEvent{Code: KcBackspace, Mod: ModShift | ModCtrl, Down: true}) // \x08
+	trm.KeyEvent(KbdEvent{Code: KcSpace, Mod: ModCtrl, Down: true})                // \x00
+	trm.KeyEvent(KbdEvent{Code: KcSpace, Down: true})                              // ' '
+	trm.KeyEvent(KbdEvent{Code: 'a', Mod: ModAlt, Down: true})                     // \x1b a
+	trm.KeyEvent(KbdEvent{Code: 'a', Mod: ModHyper, Down: true})                   // none
+	trm.KeyEvent(KbdEvent{Code: 'a', Mod: ModMeta, Down: true})                    // none
+	trm.KeyEvent(KbdEvent{Code: 'j', Mod: ModAlt | ModCtrl, Down: true})           // \x1b\n
+	trm.KeyEvent(KbdEvent{Code: 'L', Mod: ModCtrl, Down: true})                    // \x0c
+	trm.KeyEvent(KbdEvent{Code: '[', Mod: ModCtrl, Down: true})                    // \x0c
 
 	want = "\r\t\x1b[Z\r\x0c\x7f\x08\x08\x00 \x1ba\x1b\n\x0c\x1b"
 	n, err = trm.Read(buf)
-	if err != nil {
-		t.Errorf("failed read: %v", err)
-	}
+	assertF(t, err == nil, "failed read: %v", err)
+
 	result = string(buf[:n])
-	if result != want {
-		t.Errorf("key responses failed: %q != %q", result, want)
-	}
+	verifyF(t, result == want, "key responses failed: %q != %q", result, want)
 
 	// Legacy control key mappings (weird ones)
 	// 	clear(buf)
-	trm.KeyEvent(vt.KbdEvent{Code: '8', Mod: vt.ModCtrl, Down: true}) // \x7F
-	trm.KeyEvent(vt.KbdEvent{Code: '4', Mod: vt.ModCtrl, Down: true}) // \x1c
-	trm.KeyEvent(vt.KbdEvent{Code: '?', Mod: vt.ModCtrl, Down: true}) // \x1f
-	trm.KeyEvent(vt.KbdEvent{Code: '7', Mod: vt.ModCtrl, Down: true}) // \x1f
-	trm.KeyEvent(vt.KbdEvent{Code: '7', Mod: vt.ModNone, Down: true}) // 7
-	trm.KeyEvent(vt.KbdEvent{Code: '?', Mod: vt.ModNone, Down: true}) // ?
-	trm.KeyEvent(vt.KbdEvent{Code: '[', Mod: vt.ModCtrl, Down: true}) // \x1b
+	trm.KeyEvent(KbdEvent{Code: '8', Mod: ModCtrl, Down: true}) // \x7F
+	trm.KeyEvent(KbdEvent{Code: '4', Mod: ModCtrl, Down: true}) // \x1c
+	trm.KeyEvent(KbdEvent{Code: '?', Mod: ModCtrl, Down: true}) // \x1f
+	trm.KeyEvent(KbdEvent{Code: '7', Mod: ModCtrl, Down: true}) // \x1f
+	trm.KeyEvent(KbdEvent{Code: '7', Mod: ModNone, Down: true}) // 7
+	trm.KeyEvent(KbdEvent{Code: '?', Mod: ModNone, Down: true}) // ?
+	trm.KeyEvent(KbdEvent{Code: '[', Mod: ModCtrl, Down: true}) // \x1b
 	want = "\x7f\x1c\x1f\x1f7?\x1b"
 	n, err = trm.Read(buf)
-	if err != nil {
-		t.Errorf("failed read: %v", err)
-	}
+	assertF(t, err == nil, "failed read: %v", err)
+
 	result = string(buf[:n])
-	if result != want {
-		t.Errorf("key responses failed: %q != %q", result, want)
-	}
+	verifyF(t, result == want, "key responses failed: %q != %q", result, want)
 
 	// Application cursor keys
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcUp, Down: true})
+	trm.KeyEvent(KbdEvent{Code: KcUp, Down: true})
 	writeF(t, trm, "\x1b[?1h")
-	trm.KeyEvent(vt.KbdEvent{Code: vt.KcDown, Down: true})
+	trm.KeyEvent(KbdEvent{Code: KcDown, Down: true})
 	want = "\x1b[A\x1bOB"
 	n, err = trm.Read(buf)
-	if err != nil {
-		t.Errorf("failed read: %v", err)
-	}
+	assertF(t, err == nil, "failed read: %v", err)
+
 	result = string(buf[:n])
-	if result != want {
-		t.Errorf("key responses failed: %q != %q", result, want)
-	}
+	verifyF(t, result == want, "key responses failed: %q != %q", result, want)
 }
 
 // TestSgrAttr tests a variety of combinations of Sgr settings.
@@ -644,77 +616,76 @@ func TestSgrAttr(t *testing.T) {
 
 	writeF(t, trm, "\x1b[H")
 	writeF(t, trm, "\x1b[1mA") // bold
-	if attr := trm.GetCell(vt.Coord{X: 0, Y: 0}).Attr; attr != vt.Bold {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[2mB")                                          // dim
-	if attr := trm.GetCell(vt.Coord{X: 1, Y: 0}).Attr; attr != vt.Dim { // dim is exclusive of bold
-		t.Errorf("wrong attr: %x", attr)
-	}
+	checkAttrs(t, trm, 0, 0, Bold)
+	checkContent(t, trm, 0, 0, "A")
+
+	writeF(t, trm, "\x1b[2mB") // dim
+	checkAttrs(t, trm, 1, 0, Dim)
+	checkContent(t, trm, 1, 0, "B")
+
 	writeF(t, trm, "\x1b[22mC") // clear both
-	if attr := trm.GetCell(vt.Coord{X: 2, Y: 0}).Attr; attr != vt.Plain {
-		t.Errorf("wrong attr: %x", attr)
-	}
+	checkAttrs(t, trm, 2, 0, Plain)
+	checkContent(t, trm, 2, 0, "C")
+
 	writeF(t, trm, "\x1b[3;2mD") // italic, dim
-	if attr := trm.GetCell(vt.Coord{X: 3, Y: 0}).Attr; attr != vt.Italic|vt.Dim {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[22mE") // dim, should leave italic
-	if attr := trm.GetCell(vt.Coord{X: 4, Y: 0}).Attr; attr != vt.Italic {
-		t.Errorf("wrong attr: %x", attr)
-	}
+	checkAttrs(t, trm, 3, 0, Italic|Dim)
+	checkContent(t, trm, 3, 0, "D")
+
+	writeF(t, trm, "\x1b[22mE") // remove dim, should leave italic
+	checkAttrs(t, trm, 4, 0, Italic)
+	checkContent(t, trm, 4, 0, "E")
+
 	writeF(t, trm, "\x1b[23mF") // clear italic
-	if attr := trm.GetCell(vt.Coord{X: 5, Y: 0}).Attr; attr != vt.Plain {
-		t.Errorf("wrong attr: %x", attr)
-	}
+	checkAttrs(t, trm, 5, 0, Plain)
+	checkContent(t, trm, 5, 0, "F")
+
 	writeF(t, trm, "\x1b[3;4mG") // simple underline
-	if attr := trm.GetCell(vt.Coord{X: 6, Y: 0}).Attr; attr != vt.Italic|vt.Underline {
-		t.Errorf("wrong attr: %x", attr)
-	}
+	checkAttrs(t, trm, 6, 0, Italic|Underline)
+	checkContent(t, trm, 6, 0, "G")
+
 	writeF(t, trm, "\x1b[21mH") // double underline (ECMA)
-	if attr := trm.GetCell(vt.Coord{X: 7, Y: 0}).Attr; attr != vt.Italic|vt.DoubleUnderline {
-		t.Errorf("wrong attr: %x", attr)
-	}
+	checkAttrs(t, trm, 7, 0, Italic|DoubleUnderline)
+	checkContent(t, trm, 7, 0, "H")
+
 	writeF(t, trm, "\x1b[4mI") // simple underline
-	if attr := trm.GetCell(vt.Coord{X: 8, Y: 0}).Attr; attr != vt.Italic|vt.Underline {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[4:2mJ") // simple underline
-	if attr := trm.GetCell(vt.Coord{X: 9, Y: 0}).Attr; attr != vt.Italic|vt.DoubleUnderline {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[4:3mI") // curly underline
-	if attr := trm.GetCell(vt.Coord{X: 10, Y: 0}).Attr; attr != vt.Italic|vt.CurlyUnderline {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[4:4mJ") // dotted underline
-	if attr := trm.GetCell(vt.Coord{X: 11, Y: 0}).Attr; attr != vt.Italic|vt.DottedUnderline {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[4:5mK") // dashed underline
-	if attr := trm.GetCell(vt.Coord{X: 12, Y: 0}).Attr; attr != vt.Italic|vt.DashedUnderline {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[4:9mL") // junk treats as plain
-	if attr := trm.GetCell(vt.Coord{X: 13, Y: 0}).Attr; attr != vt.Italic|vt.Underline {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[4:5;24mM") // clustering, clear it
-	if attr := trm.GetCell(vt.Coord{X: 14, Y: 0}).Attr; attr != vt.Italic {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[0;9;7;53mN") // clear, strikethrough, reverse, overlined
-	if attr := trm.GetCell(vt.Coord{X: 15, Y: 0}).Attr; attr != vt.StrikeThrough|vt.Reverse|vt.Overline {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[5;27;29;55mO")
-	if attr := trm.GetCell(vt.Coord{X: 16, Y: 0}).Attr; attr != vt.Blink {
-		t.Errorf("wrong attr: %x", attr)
-	}
-	writeF(t, trm, "\x1b[25mP")
-	if attr := trm.GetCell(vt.Coord{X: 17, Y: 0}).Attr; attr != vt.Plain {
-		t.Errorf("wrong attr: %x", attr)
-	}
+	checkAttrs(t, trm, 8, 0, Italic|Underline)
+	checkContent(t, trm, 8, 0, "I")
+
+	writeF(t, trm, "\x1b[4:2mJ") // double underline
+	checkAttrs(t, trm, 9, 0, Italic|DoubleUnderline)
+	checkContent(t, trm, 9, 0, "J")
+
+	writeF(t, trm, "\x1b[4:3mK") // curly underline
+	checkAttrs(t, trm, 10, 0, Italic|CurlyUnderline)
+	checkContent(t, trm, 10, 0, "K")
+
+	writeF(t, trm, "\x1b[4:4mL") // dotted underline
+	checkAttrs(t, trm, 11, 0, Italic|DottedUnderline)
+	checkContent(t, trm, 11, 0, "L")
+
+	writeF(t, trm, "\x1b[4:5mM") // dashed underline
+	checkAttrs(t, trm, 12, 0, Italic|DashedUnderline)
+	checkContent(t, trm, 12, 0, "M")
+
+	writeF(t, trm, "\x1b[4:9mN") // junk treats as plain underline
+	checkAttrs(t, trm, 13, 0, Italic|Underline)
+	checkContent(t, trm, 13, 0, "N")
+
+	writeF(t, trm, "\x1b[4:5;24mO") // clustering, clear it
+	checkAttrs(t, trm, 14, 0, Italic)
+	checkContent(t, trm, 14, 0, "O")
+
+	writeF(t, trm, "\x1b[0;9;7;53mP") // clear, strike-through, reverse, over-lined
+	checkAttrs(t, trm, 15, 0, StrikeThrough|Reverse|Overline)
+	checkContent(t, trm, 15, 0, "P")
+
+	writeF(t, trm, "\x1b[5;27;29;55mQ")
+	checkAttrs(t, trm, 16, 0, Blink)
+	checkContent(t, trm, 16, 0, "Q")
+
+	writeF(t, trm, "\x1b[25mR")
+	checkAttrs(t, trm, 17, 0, Plain)
+	checkContent(t, trm, 17, 0, "R")
 }
 
 // TestSgrColor8 tests simple ECMA 48 ANSI color (only 8 possible color values.)
@@ -724,43 +695,21 @@ func TestSgrColor8(t *testing.T) {
 	mustStart(t, trm)
 
 	writeF(t, trm, "\x1b[36;42m\x1b#8")
-	if fg := trm.GetCell(vt.Coord{X: 0, Y: 0}).Fg; fg != color.Teal {
-		t.Errorf("wrong fg: %s\n", fg.String())
-	}
-	if bg := trm.GetCell(vt.Coord{X: 0, Y: 0}).Bg; bg != color.Green {
-		t.Errorf("wrong bg: %s\n", bg.String())
-	}
+	checkColors(t, trm, 0, 0, color.Teal, color.Green)
+
 	writeF(t, trm, "\x1b[H\x1b[39mA")
-	if fg := trm.GetCell(vt.Coord{X: 0, Y: 0}).Fg; fg != color.Silver {
-		t.Errorf("wrong fg: %s\n", fg.String())
-	}
-	if bg := trm.GetCell(vt.Coord{X: 0, Y: 0}).Bg; bg != color.Green {
-		t.Errorf("wrong bg: %s\n", bg.String())
-	}
+	checkColors(t, trm, 0, 0, color.Silver, color.Green)
+
 	writeF(t, trm, "\x1b[49mA")
-	if fg := trm.GetCell(vt.Coord{X: 1, Y: 0}).Fg; fg != color.Silver {
-		t.Errorf("wrong fg: %s\n", fg.String())
-	}
-	if bg := trm.GetCell(vt.Coord{X: 1, Y: 0}).Bg; bg != color.Black {
-		t.Errorf("wrong bg: %s\n", bg.String())
-	}
+	checkColors(t, trm, 1, 0, color.Silver, color.Black)
 
 	// verify zero clears colors, first write some non zero colors
 	writeF(t, trm, "\x1b[36;42mD")
-	if fg := trm.GetCell(vt.Coord{X: 2, Y: 0}).Fg; fg != color.Teal {
-		t.Errorf("wrong fg: %s\n", fg.String())
-	}
-	if bg := trm.GetCell(vt.Coord{X: 2, Y: 0}).Bg; bg != color.Green {
-		t.Errorf("wrong bg: %s\n", bg.String())
-	}
+	checkColors(t, trm, 2, 0, color.Teal, color.Green)
+
 	// then send zero, should go to default colors
 	writeF(t, trm, "\x1b[0mA")
-	if fg := trm.GetCell(vt.Coord{X: 3, Y: 0}).Fg; fg != color.Silver {
-		t.Errorf("wrong fg: %s\n", fg.String())
-	}
-	if bg := trm.GetCell(vt.Coord{X: 3, Y: 0}).Bg; bg != color.Black {
-		t.Errorf("wrong bg: %s\n", bg.String())
-	}
+	checkColors(t, trm, 3, 0, color.Silver, color.Black)
 }
 
 // TestTitler tests that we can set a window title.
@@ -797,20 +746,20 @@ func TestResize(t *testing.T) {
 	resizeQ := make(chan bool, 1)
 	trm.NotifyResize(resizeQ)
 
-	trm.SetSize(vt.Coord{X: 132, Y: 24})
+	trm.SetSize(Coord{X: 132, Y: 24})
 	if sz, err := trm.WindowSize(); err != nil || sz.Height != 24 || sz.Width != 132 {
 		t.Errorf("resize did not occur: %v %d %d", err, sz.Height, sz.Width)
 	}
-	for y := range vt.Row(24) {
-		for x := range vt.Col(80) {
-			if s := string(trm.GetCell(vt.Coord{X: x, Y: y}).C); s != "E" {
+	for y := range Row(24) {
+		for x := range Col(80) {
+			if s := string(trm.GetCell(Coord{X: x, Y: y}).C); s != "E" {
 				t.Errorf("resize content at %d,%d wrong: %q", x, y, s)
 			}
 		}
 	}
-	for y := range vt.Row(24) {
-		for x := vt.Col(80); x < 132; x++ {
-			if s := string(trm.GetCell(vt.Coord{X: x, Y: y}).C); s != "" {
+	for y := range Row(24) {
+		for x := Col(80); x < 132; x++ {
+			if s := string(trm.GetCell(Coord{X: x, Y: y}).C); s != "" {
 				t.Errorf("resize content at %d,%d wrong: %q", x, y, s)
 			}
 		}
@@ -839,7 +788,7 @@ func TestTabs(t *testing.T) {
 	mustStart(t, trm)
 
 	writeF(t, trm, "a\tC")
-	if s := string(trm.GetCell(vt.Coord{X: 8, Y: 0}).C); s != "C" {
+	if s := string(trm.GetCell(Coord{X: 8, Y: 0}).C); s != "C" {
 		t.Errorf("tab did not work: %q", s)
 	}
 	writeF(t, trm, "\x1b[3I")
@@ -1020,9 +969,9 @@ func TestSaveCursorSgr(t *testing.T) {
 	checkContent(t, trm, 0, 0, "A")
 	checkContent(t, trm, 1, 0, "X")
 	checkContent(t, trm, 2, 0, "E")
-	checkAttrs(t, trm, 0, 0, vt.Bold|vt.Underline)
-	checkAttrs(t, trm, 1, 0, vt.Bold|vt.Underline)
-	checkAttrs(t, trm, 2, 0, vt.Plain)
+	checkAttrs(t, trm, 0, 0, Bold|Underline)
+	checkAttrs(t, trm, 1, 0, Bold|Underline)
+	checkAttrs(t, trm, 2, 0, Plain)
 	checkColors(t, trm, 0, 0, color.XTerm3, color.XTerm4)
 	checkColors(t, trm, 1, 0, color.XTerm3, color.XTerm4)
 	checkColors(t, trm, 2, 0, color.Silver, color.Black)
@@ -1041,9 +990,9 @@ func TestReset(t *testing.T) {
 	writeF(t, trm, "\x1b[?7l") // disable automargin
 	writeF(t, trm, "\x1bc")
 	checkPos(t, trm, 0, 0)
-	for row := range vt.Row(24) {
-		for col := range vt.Col(80) {
-			checkAttrs(t, trm, col, row, vt.Plain)
+	for row := range Row(24) {
+		for col := range Col(80) {
+			checkAttrs(t, trm, col, row, Plain)
 			checkContent(t, trm, col, row, "")
 			checkColors(t, trm, col, row, color.Silver, color.Black)
 		}
@@ -1051,7 +1000,7 @@ func TestReset(t *testing.T) {
 	writeF(t, trm, "\x1b8") // restore cursor
 	checkPos(t, trm, 0, 0)
 	writeF(t, trm, "X")
-	checkAttrs(t, trm, 0, 0, vt.Plain)
+	checkAttrs(t, trm, 0, 0, Plain)
 	checkContent(t, trm, 0, 0, "X")
 	checkColors(t, trm, 0, 0, color.Silver, color.Black)
 	writeF(t, trm, "\x1b[?7$p")
@@ -1068,7 +1017,7 @@ func TestReset(t *testing.T) {
 }
 
 // backendBox makes a backend box, filled with increasing letters (modulo 16)
-func backendBox(t *testing.T, mb MockBackend, tl vt.Coord, br vt.Coord, attr vt.Attr) {
+func backendBox(t *testing.T, mb MockBackend, tl Coord, br Coord, attr Attr) {
 	t.Helper()
 	mb.SetAttr(attr)
 	hex := []rune{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'}
@@ -1076,7 +1025,7 @@ func backendBox(t *testing.T, mb MockBackend, tl vt.Coord, br vt.Coord, attr vt.
 	i := 0
 	for row := tl.Y; row <= br.Y; row++ {
 		for col := tl.X; col <= br.X; col++ {
-			mb.PutRune(vt.Coord{Y: row, X: col}, hex[i%16], 1)
+			mb.PutRune(Coord{Y: row, X: col}, hex[i%16], 1)
 			i++
 		}
 	}
@@ -1090,7 +1039,7 @@ func TestBackendBlit(t *testing.T) {
 	mb := trm.Backend()
 	assertF(t, mb != nil, "backend is nil")
 
-	backendBox(t, mb, vt.Coord{X: 0, Y: 0}, vt.Coord{X: 1, Y: 1}, vt.Bold)
+	backendBox(t, mb, Coord{X: 0, Y: 0}, Coord{X: 1, Y: 1}, Bold)
 	checkContent(t, trm, 0, 0, "A")
 	checkContent(t, trm, 1, 0, "B")
 	checkContent(t, trm, 2, 0, "")
@@ -1100,10 +1049,10 @@ func TestBackendBlit(t *testing.T) {
 	checkContent(t, trm, 0, 2, "")
 	checkContent(t, trm, 1, 2, "")
 	checkContent(t, trm, 2, 2, "")
-	checkAttrs(t, trm, 2, 2, vt.Plain)
+	checkAttrs(t, trm, 2, 2, Plain)
 
 	// blit the entire box down and right 1
-	mb.Blit(vt.Coord{X: 0, Y: 0}, vt.Coord{X: 1, Y: 1}, vt.Coord{X: 2, Y: 2})
+	mb.Blit(Coord{X: 0, Y: 0}, Coord{X: 1, Y: 1}, Coord{X: 2, Y: 2})
 	checkContent(t, trm, 0, 0, "A")
 	checkContent(t, trm, 1, 0, "B")
 	checkContent(t, trm, 2, 0, "")
@@ -1115,7 +1064,7 @@ func TestBackendBlit(t *testing.T) {
 	checkContent(t, trm, 2, 2, "D")
 
 	// spot check attributes
-	checkAttrs(t, trm, 2, 2, vt.Bold)
+	checkAttrs(t, trm, 2, 2, Bold)
 }
 
 func TestBackendBlitReverse(t *testing.T) {
@@ -1126,7 +1075,7 @@ func TestBackendBlitReverse(t *testing.T) {
 	mb := trm.Backend()
 	assertF(t, mb != nil, "backend is nil")
 
-	backendBox(t, mb, vt.Coord{X: 1, Y: 1}, vt.Coord{X: 2, Y: 2}, vt.Bold)
+	backendBox(t, mb, Coord{X: 1, Y: 1}, Coord{X: 2, Y: 2}, Bold)
 	checkContent(t, trm, 0, 0, "")
 	checkContent(t, trm, 1, 0, "")
 	checkContent(t, trm, 2, 0, "")
@@ -1136,10 +1085,10 @@ func TestBackendBlitReverse(t *testing.T) {
 	checkContent(t, trm, 0, 2, "")
 	checkContent(t, trm, 1, 2, "C")
 	checkContent(t, trm, 2, 2, "D")
-	checkAttrs(t, trm, 0, 0, vt.Plain)
+	checkAttrs(t, trm, 0, 0, Plain)
 
 	// blit the entire box down and right 1
-	mb.Blit(vt.Coord{X: 1, Y: 1}, vt.Coord{X: 0, Y: 0}, vt.Coord{X: 2, Y: 2})
+	mb.Blit(Coord{X: 1, Y: 1}, Coord{X: 0, Y: 0}, Coord{X: 2, Y: 2})
 	checkContent(t, trm, 0, 0, "A")
 	checkContent(t, trm, 1, 0, "B")
 	checkContent(t, trm, 2, 0, "")
@@ -1151,7 +1100,7 @@ func TestBackendBlitReverse(t *testing.T) {
 	checkContent(t, trm, 2, 2, "D")
 
 	// spot check attributes
-	checkAttrs(t, trm, 2, 2, vt.Bold)
+	checkAttrs(t, trm, 2, 2, Bold)
 }
 
 func TestGraphemeCluster(t *testing.T) {

@@ -7,14 +7,13 @@ import (
 
 	"github.com/gdamore/tcell/v3"
 	"github.com/gdamore/tcell/v3/color"
-	"github.com/gdamore/tcell/v3/mock"
 	"github.com/gdamore/tcell/v3/vt"
 )
 
 func TestHello(t *testing.T) {
 	// ensure we only use 8 color ANSI for now
 
-	mt := mock.NewMockTerm(mock.MockOptColors(8))
+	mt := vt.NewMockTerm(vt.MockOptColors(8))
 	scr, err := tcell.NewTerminfoScreenFromTty(mt, tcell.OptColors(8), tcell.OptTerm("ansi"))
 	if err != nil {
 		t.Fatalf("failed to create screen: %v", err)
@@ -80,14 +79,14 @@ func TestHello(t *testing.T) {
 		if v.C != string(cell.C) {
 			t.Errorf("Mismatch string at %d,%d: %q != %q", v.X, v.Y, string(cell.C), v.C)
 		}
-		if v.Fg != cell.Fg {
-			t.Errorf("Mismatch foreground at %d,%d: %s != %s", v.X, v.Y, cell.Fg.String(), v.Fg.String())
+		if v.Fg != cell.S.Fg() {
+			t.Errorf("Mismatch foreground at %d,%d: %s != %s", v.X, v.Y, cell.S.Fg().String(), v.Fg.String())
 		}
-		if v.Bg != cell.Bg {
-			t.Errorf("Mismatch background at %d,%d: %s != %s", v.X, v.Y, cell.Bg.String(), v.Bg.String())
+		if v.Bg != cell.S.Bg() {
+			t.Errorf("Mismatch background at %d,%d: %s != %s", v.X, v.Y, cell.S.Bg().String(), v.Bg.String())
 		}
-		if v.Attr != cell.Attr {
-			t.Errorf("Mismatch attr at %d,%d: %x != %x", v.X, v.Y, cell.Attr, v.Attr)
+		if v.Attr != cell.S.Attr() {
+			t.Errorf("Mismatch attr at %d,%d: %x != %x", v.X, v.Y, cell.S.Attr(), v.Attr)
 		}
 	}
 

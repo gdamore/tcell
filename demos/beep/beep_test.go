@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v3"
-	"github.com/gdamore/tcell/v3/mock"
 	"github.com/gdamore/tcell/v3/vt"
 )
 
 func TestBeep(t *testing.T) {
 
-	mt := mock.NewMockTerm()
+	mt := vt.NewMockTerm()
 	scr, err := tcell.NewTerminfoScreenFromTty(mt)
 	if err != nil {
 		t.Fatalf("failed to create screen: %v", err)

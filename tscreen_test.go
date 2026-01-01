@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gdamore/tcell/v3/mock"
+	"github.com/gdamore/tcell/v3/vt"
 )
 
 // This just offers some very basic tests that do not require a full mock.
@@ -69,13 +69,13 @@ func TestNoColorEnv(t *testing.T) {
 	drainInput()
 }
 
-func NewMockScreen(t *testing.T, opts ...mock.MockOpt) (mock.MockTerm, Screen) {
+func NewMockScreen(t *testing.T, opts ...vt.MockOpt) (vt.MockTerm, Screen) {
 	t.Helper()
 	if runtime.GOOS == "js" {
 		t.Skip("not supported on webasm")
 		return nil, nil
 	}
-	mt := mock.NewMockTerm(opts...)
+	mt := vt.NewMockTerm(opts...)
 	scr, err := NewTerminfoScreenFromTty(mt)
 	if err != nil {
 		t.Fatalf("failed to get terminal: %v", err)
