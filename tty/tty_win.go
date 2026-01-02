@@ -189,7 +189,7 @@ func (w *winTty) getConsoleInput() error {
 		rv, _, er := procGetNumberOfConsoleInputEvents.Call(
 			uintptr(w.in),
 			uintptr(unsafe.Pointer(&nrec)))
-		rec := make([]inputRecord, nrec)
+		rec := make([]inputRecord, max(nrec, 1))
 		rv, _, er = procReadConsoleInput.Call(
 			uintptr(w.in),
 			uintptr(unsafe.Pointer(&rec[0])),
@@ -328,8 +328,12 @@ func NewStdIoTty() (Tty, error) {
 	w.buf = make(chan byte, 128)
 
 	_, _, _ = procGetConsoleScreenBufferInfo.Call(uintptr(w.out), uintptr(unsafe.Pointer(&w.oscreen)))
-	_, _, _ = procGetConsoleMode.Call(uintptr(w.out), uintptr(unsafe.Pointer(&w.oomode)))
-	_, _, _ = procGetConsoleMode.Call(uintptr(w.in), uintptr(unsafe.Pointer(&w.oimode)))
+	if r, _, err := procGetConsoleMode.Call(uintptr(w.out), uintptr(unsafe.Pointer(&w.oomode))); r == 0 || err != nil {
+		return nil, errors.New("output is not a terminal")
+	}
+	if r, _, err := procGetConsoleMode.Call(uintptr(w.in), uintptr(unsafe.Pointer(&w.oimode))); r == 0 || err != nil {
+		return nil, errors.New("input is not a terminal")
+	}
 	w.rows = uint16(w.oscreen.size.y)
 	w.cols = uint16(w.oscreen.size.x)
 

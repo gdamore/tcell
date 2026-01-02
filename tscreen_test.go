@@ -58,10 +58,13 @@ func TestInitScreenStdio(t *testing.T) {
 	tty, err := tty.NewStdIoTty()
 	if err != nil {
 		t.Skip("maybe stdin is not a tty?")
+		return
 	}
 	s, err := NewTerminfoScreenFromTty(tty)
 	if err := s.Init(); err != nil {
 		t.Skip("failed to initialize screen", err)
+		tty.Close()
+		return
 	}
 	defer s.Fini()
 
