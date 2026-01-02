@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gdamore/tcell/v3/tty"
 	"github.com/gdamore/tcell/v3/vt"
 )
 
@@ -49,6 +50,33 @@ func TestInitScreen(t *testing.T) {
 	}
 
 	drainInput()
+}
+
+// TestInitScreenStdio just tries to initialze the default screen using standard I/O.
+// It requires a working tty.
+func TestInitScreenStdio(t *testing.T) {
+	tty, err := tty.NewStdIoTty()
+	if err != nil {
+		t.Skip("maybe stdin is not a tty?")
+	}
+	s, err := NewTerminfoScreenFromTty(tty)
+	if err := s.Init(); err != nil {
+		t.Skip("failed to initialize screen", err)
+	}
+	defer s.Fini()
+
+	if s.CharacterSet() != "UTF-8" {
+		t.Fatalf("Character Set (%v) not UTF-8", s.CharacterSet())
+	}
+	drainInput()
+}
+
+func TestNotDevNull(t *testing.T) {
+	tty, err := tty.NewDevTtyFromDev("/dev/null")
+	if err == nil {
+		tty.Close()
+		t.Error("open /dev/null as tty should not have passed")
+	}
 }
 
 func TestNoColorEnv(t *testing.T) {
