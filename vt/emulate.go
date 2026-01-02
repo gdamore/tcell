@@ -531,7 +531,7 @@ func (em *emulator) processSgr(str string) {
 		case 0:
 			em.style = BaseStyle
 			em.be.SetAttr(Plain)
-			if c, ok := em.be.(Colorer); ok {
+			if c, ok := em.be.(Colorer); ok && c.Colors() > 0 {
 				c.SetFgColor(color.Reset)
 				c.SetBgColor(color.Reset)
 			}
@@ -593,26 +593,26 @@ func (em *emulator) processSgr(str string) {
 			em.be.SetAttr(em.style.Attr())
 
 		case 30, 31, 32, 33, 34, 35, 36, 37: // simple foreground colors
-			if c, ok := em.be.(Colorer); ok {
+			if c, ok := em.be.(Colorer); ok && c.Colors() > 0 {
 				em.style = em.style.WithFg(color.Black + color.Color(v-30))
 				c.SetFgColor(em.style.Fg())
 			}
 		case 38:
 			args, words = splitSgrArgs(args, words)
 		case 39:
-			if c, ok := em.be.(Colorer); ok {
+			if c, ok := em.be.(Colorer); ok && c.Colors() > 0 {
 				em.style = em.style.WithFg(color.Reset)
 				c.SetFgColor(em.style.Fg())
 			}
 		case 40, 41, 42, 43, 44, 45, 46, 47: // simple background colors
-			if c, ok := em.be.(Colorer); ok {
+			if c, ok := em.be.(Colorer); ok && c.Colors() > 0 {
 				em.style = em.style.WithBg(color.Black + color.Color(v-40))
 				c.SetBgColor(em.style.Bg())
 			}
 		case 48: // TODO:
 			args, words = splitSgrArgs(args, words)
 		case 49:
-			if c, ok := em.be.(Colorer); ok {
+			if c, ok := em.be.(Colorer); ok && c.Colors() > 0 {
 				em.style = em.style.WithBg(color.Reset)
 				c.SetBgColor(em.style.Bg())
 			}
