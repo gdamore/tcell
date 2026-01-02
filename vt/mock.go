@@ -299,44 +299,16 @@ func (mb *mockBackend) SetPosition(pos Coord) {
 	mb.pos = pos
 }
 
-func (mb *mockBackend) pickColor(c color.Color, def color.Color) (color.Color, bool) {
-	if mb.colors == 0 {
-		return color.None, false
-	}
-	if c.Valid() {
-		if c.IsRGB() {
-			if mb.colors > 256 {
-				return c, true
-			}
-		}
-		if (int(c) & 255) < mb.colors {
-			return c, true
-		}
-	}
-	if c == color.Reset {
-		return def, true
-	}
-	return color.None, false
-}
-
 func (mb *mockBackend) Colors() int {
 	return mb.colors
 }
 
-func (mb *mockBackend) SetFgColor(c color.Color) {
-	if c, ok := mb.pickColor(c, mb.defaultStyle.Fg()); ok {
-		mb.style = mb.style.WithFg(c)
-	}
+func (mb *mockBackend) SetStyle(style Style) {
+	mb.style = style
 }
 
-func (mb *mockBackend) SetBgColor(c color.Color) {
-	if c, ok := mb.pickColor(c, mb.defaultStyle.Bg()); ok {
-		mb.style = mb.style.WithBg(c)
-	}
-}
-
-func (mb *mockBackend) SetAttr(attr Attr) {
-	mb.style = mb.style.WithAttr(attr)
+func (mb *mockBackend) GetStyle() Style {
+	return mb.style
 }
 
 // SetWindowTitle implements the Titler interface.

@@ -131,12 +131,13 @@ type Cell struct {
 func NewEmulator(be Backend) Emulator {
 	stopQ := make(chan bool)
 	em := &emulator{
-		be:     be,
-		inBuf:  &bytes.Buffer{},
-		writeQ: make(chan any),
-		readQ:  make(chan any, 1024),
-		stopQ:  stopQ,
-		style:  BaseStyle,
+		be:           be,
+		inBuf:        &bytes.Buffer{},
+		writeQ:       make(chan any),
+		readQ:        make(chan any, 1024),
+		stopQ:        stopQ,
+		style:        be.GetStyle(),
+		defaultStyle: be.GetStyle(),
 		localModes: map[PrivateMode]ModeStatus{
 			PmAppCursor:  ModeOff,
 			PmAutoMargin: ModeOn,
@@ -155,25 +156,26 @@ func NewEmulator(be Backend) Emulator {
 // a Backend.  It implements the common escape sequence handling and high
 // level functionality that a real terminal emulator, or a mock, would need.
 type emulator struct {
-	stopQ     chan bool
-	writeQ    chan any // queues data from application to emulator
-	readQ     chan any // queues data from emulator to application
-	be        Backend
-	inBuf     *bytes.Buffer // buffer queued for input
-	inb       func(byte)    // input byte function (faster than state switch)
-	style     Style
-	utfLen    int
-	pos       Coord
-	autoWrap  bool        // next character will wrap (auto margin, deferred until char emitted)
-	sevenOnly bool        // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
-	name      string      // name of this emulator (used for extended attributes)
-	vers      string      // version string of this emulator (used for extended attributes)
-	savedPos  Coord       // saved via DECSC
-	saved     savedCursor // data saved by save cursor (DECSC)
-	sendLock  sync.Mutex  // ensures that send data cannot be intermixed
-	tabStops  []Col       // tab stops, ordered. if nil every 8th position is used
-	lastIndex int         // index of last cell written + 1 (for grapheme clustering) (zero means none)
-	cells     []Cell      // content of cells, we have to maintain our own copy (backend might or might not)
+	stopQ        chan bool
+	writeQ       chan any // queues data from application to emulator
+	readQ        chan any // queues data from emulator to application
+	be           Backend
+	inBuf        *bytes.Buffer // buffer queued for input
+	inb          func(byte)    // input byte function (faster than state switch)
+	style        Style
+	defaultStyle Style
+	utfLen       int
+	pos          Coord
+	autoWrap     bool        // next character will wrap (auto margin, deferred until char emitted)
+	sevenOnly    bool        // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
+	name         string      // name of this emulator (used for extended attributes)
+	vers         string      // version string of this emulator (used for extended attributes)
+	savedPos     Coord       // saved via DECSC
+	saved        savedCursor // data saved by save cursor (DECSC)
+	sendLock     sync.Mutex  // ensures that send data cannot be intermixed
+	tabStops     []Col       // tab stops, ordered. if nil every 8th position is used
+	lastIndex    int         // index of last cell written + 1 (for grapheme clustering) (zero means none)
+	cells        []Cell      // content of cells, we have to maintain our own copy (backend might or might not)
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 }
@@ -199,11 +201,7 @@ func (em *emulator) restoreCursor() {
 	em.setPosition(em.saved.pos)
 	em.autoWrap = em.saved.autoWrap
 	em.style = em.saved.style
-	em.be.SetAttr(em.style.Attr())
-	if c, ok := em.be.(Colorer); ok {
-		c.SetFgColor(em.style.Fg())
-		c.SetBgColor(em.style.Bg())
-	}
+	em.be.SetStyle(em.style)
 }
 
 // inbInit processes bytes received in the "default" state. Most often these are just
@@ -353,7 +351,7 @@ func (em *emulator) inbNF(b byte) {
 		size := em.be.GetSize()
 		em.autoWrap = false
 		em.setPosition(Coord{0, 0})
-		em.be.SetAttr(em.style.Attr())
+		em.be.SetStyle(em.style)
 		for row := range size.Y {
 			for col := range size.X {
 				em.be.PutRune(Coord{X: col, Y: row}, 'E', 1)
@@ -496,6 +494,27 @@ func splitSgrArgs(args []string, words []string) ([]string, []string) {
 	return nil, nil
 }
 
+func (em *emulator) pickColor(c color.Color, def color.Color) (color.Color, bool) {
+	numColors := em.be.Colors()
+	if numColors == 0 {
+		return color.None, false
+	}
+	if c.Valid() {
+		if c.IsRGB() {
+			if numColors > 256 {
+				return c, true
+			}
+		}
+		if (int(c) & 255) < numColors {
+			return c, true
+		}
+	}
+	if c == color.Reset {
+		return def, true
+	}
+	return color.None, false
+}
+
 // processSgr processes SGR commands (things that change how characters are displayed).
 func (em *emulator) processSgr(str string) {
 	words := strings.Split(str, ";")
@@ -529,21 +548,17 @@ func (em *emulator) processSgr(str string) {
 		}
 		switch v {
 		case 0:
-			em.style = BaseStyle
-			em.be.SetAttr(Plain)
-			if c, ok := em.be.(Colorer); ok && em.be.Colors() > 0 {
-				c.SetFgColor(color.Reset)
-				c.SetBgColor(color.Reset)
-			}
+			em.style = em.defaultStyle
+			em.be.SetStyle(em.style)
 		case 1:
 			em.style = em.style.WithAttr((em.style.Attr() &^ Dim) | Bold)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 2:
 			em.style = em.style.WithAttr((em.style.Attr() &^ Bold) | Dim)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 3:
 			em.style = em.style.WithAttr(em.style.Attr() | Italic)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 4:
 			em.style = em.style.WithAttr((em.style.Attr() &^ UnderlineMask) | Underline)
 
@@ -559,69 +574,69 @@ func (em *emulator) processSgr(str string) {
 					em.style = em.style.WithAttr(em.style.Attr() | DashedUnderline)
 				}
 			}
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 5, 6:
 			em.style = em.style.WithAttr(em.style.Attr() | Blink)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 7:
 			em.style = em.style.WithAttr(em.style.Attr() | Reverse)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 8: // ignore, its for invisible
 		case 9:
 			em.style = em.style.WithAttr(em.style.Attr() | StrikeThrough)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 21: // Doubly underlined, per ECMA
 			em.style = em.style.WithAttr((em.style.Attr() &^ UnderlineMask) | DoubleUnderline)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 22:
 			em.style = em.style.WithAttr(em.style.Attr() &^ (Bold | Dim))
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 23:
 			em.style = em.style.WithAttr(em.style.Attr() &^ Italic)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 24:
 			em.style = em.style.WithAttr(em.style.Attr() &^ UnderlineMask)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 25:
 			em.style = em.style.WithAttr(em.style.Attr() &^ Blink)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 27:
 			em.style = em.style.WithAttr(em.style.Attr() &^ Reverse)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 29:
 			em.style = em.style.WithAttr(em.style.Attr() &^ StrikeThrough)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 
 		case 30, 31, 32, 33, 34, 35, 36, 37: // simple foreground colors
-			if c, ok := em.be.(Colorer); ok && em.be.Colors() > 0 {
-				em.style = em.style.WithFg(color.Black + color.Color(v-30))
-				c.SetFgColor(em.style.Fg())
+			if c, ok := em.pickColor(color.Black+color.Color(v-30), em.defaultStyle.Fg()); ok {
+				em.style = em.style.WithFg(c)
+				em.be.SetStyle(em.style)
 			}
 		case 38:
 			args, words = splitSgrArgs(args, words)
 		case 39:
-			if c, ok := em.be.(Colorer); ok && em.be.Colors() > 0 {
-				em.style = em.style.WithFg(color.Reset)
-				c.SetFgColor(em.style.Fg())
+			if c, ok := em.pickColor(color.Reset, em.defaultStyle.Fg()); ok {
+				em.style = em.style.WithFg(c)
+				em.be.SetStyle(em.style)
 			}
 		case 40, 41, 42, 43, 44, 45, 46, 47: // simple background colors
-			if c, ok := em.be.(Colorer); ok && em.be.Colors() > 0 {
-				em.style = em.style.WithBg(color.Black + color.Color(v-40))
-				c.SetBgColor(em.style.Bg())
+			if c, ok := em.pickColor(color.Black+color.Color(v-40), em.defaultStyle.Bg()); ok {
+				em.style = em.style.WithBg(c)
+				em.be.SetStyle(em.style)
 			}
 		case 48: // TODO:
 			args, words = splitSgrArgs(args, words)
 		case 49:
-			if c, ok := em.be.(Colorer); ok && em.be.Colors() > 0 {
-				em.style = em.style.WithBg(color.Reset)
-				c.SetBgColor(em.style.Bg())
+			if c, ok := em.pickColor(color.Reset, em.defaultStyle.Bg()); ok {
+				em.style = em.style.WithBg(c)
+				em.be.SetStyle(em.style)
 			}
 		case 53:
 			em.style = em.style.WithAttr(em.style.Attr() | Overline)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		case 55:
 			em.style = em.style.WithAttr(em.style.Attr() &^ Overline)
-			em.be.SetAttr(em.style.Attr())
+			em.be.SetStyle(em.style)
 		}
 	}
 }
@@ -1060,7 +1075,7 @@ func (em *emulator) index(c Coord) int {
 // which case it will be emitted together with the preceding base character.
 func (em *emulator) putRune(r rune) {
 	dim := em.be.GetSize()
-	em.be.SetAttr(em.style.Attr())
+	em.be.SetStyle(em.style)
 
 	if lastIdx := em.lastIndex; lastIdx != 0 {
 		lastIdx--
@@ -1201,8 +1216,8 @@ func (em *emulator) softReset() {
 	// Select default character sets
 	em.tabStops = nil
 	em.autoWrap = false
-	em.style = BaseStyle
-	em.saved = savedCursor{style: BaseStyle}
+	em.style = em.defaultStyle
+	em.saved = savedCursor{style: em.defaultStyle}
 	em.be.Reset()
 	// start by resetting all modes
 	for pm := range em.localModes {
@@ -1219,7 +1234,7 @@ func (em *emulator) softReset() {
 func (em *emulator) sendDA() {
 	buf := &bytes.Buffer{}
 	_, _ = fmt.Fprintf(buf, "\x1b[?63")
-	if _, ok := em.be.(Colorer); ok {
+	if em.be.Colors() > 0 {
 		fmt.Fprintf(buf, ";22")
 	}
 	// 9 for NRC?

@@ -14,8 +14,6 @@
 
 package vt
 
-import "github.com/gdamore/tcell/v3/color"
-
 // Backend describes the backend of a terminal.
 // This can be used to create a real emulator, while allowing the processor
 // front end to handle the common details of parsing escape sequences, the state
@@ -34,8 +32,11 @@ type Backend interface {
 	// The X and Y are counts, so the bottom right cell should be at coordinate (X-1, Y-1).
 	GetSize() Coord
 
-	// SetAttr is used to set the current attributes. It will be used for subsequent writes.
-	SetAttr(Attr)
+	// SetStyle replaces the current style with the one indicated.
+	SetStyle(Style)
+
+	// GetStyle returns the style in use.  This should return a reasonable value at reset.
+	GetStyle() Style
 
 	// Colors returns the number of colors this terminal can support.  For direct color,
 	// return 1<<24. The XTerm palette is assumed. Monochrome terminals should return 0.
@@ -67,17 +68,6 @@ type Backend interface {
 // This is typically done in response to a 0x07 bell.
 type Beeper interface {
 	Beep()
-}
-
-// Colorer can select the colors used.  This interface is stateful, so that
-// an implementation needs to remember the values and use them.
-type Colorer interface {
-
-	// SetFgColor sets the foreground color.
-	SetFgColor(color.Color)
-
-	// SetBgColor sets the background color.
-	SetBgColor(color.Color)
 }
 
 // Resizer adds notifications when the window size changes.
