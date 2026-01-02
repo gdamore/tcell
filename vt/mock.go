@@ -187,18 +187,17 @@ type MockBackend interface {
 // It implements the following interfaces:
 // vt.Backend, vt.Beeper, vt.Colorer, vt.Titler, vt.Resizer, vt.Blitter
 type mockBackend struct {
-	cells     []MockCell // Content of cells
-	size      Coord
-	pos       Coord
-	colors    int
-	style     Style
-	defaultFg color.Color
-	defaultBg color.Color
-	resizeQ   chan<- bool
-	modes     map[PrivateMode]ModeStatus
-	bells     int
-	errs      int
-	title     string
+	cells        []MockCell // Content of cells
+	size         Coord
+	pos          Coord
+	colors       int
+	style        Style
+	defaultStyle Style
+	resizeQ      chan<- bool
+	modes        map[PrivateMode]ModeStatus
+	bells        int
+	errs         int
+	title        string
 }
 
 func (mb *mockBackend) GetSize() Coord { return mb.size }
@@ -325,13 +324,13 @@ func (mb *mockBackend) Colors() int {
 }
 
 func (mb *mockBackend) SetFgColor(c color.Color) {
-	if c, ok := mb.pickColor(c, mb.defaultFg); ok {
+	if c, ok := mb.pickColor(c, mb.defaultStyle.Fg()); ok {
 		mb.style = mb.style.WithFg(c)
 	}
 }
 
 func (mb *mockBackend) SetBgColor(c color.Color) {
-	if c, ok := mb.pickColor(c, mb.defaultBg); ok {
+	if c, ok := mb.pickColor(c, mb.defaultStyle.Bg()); ok {
 		mb.style = mb.style.WithBg(c)
 	}
 }
@@ -389,10 +388,7 @@ func (mb *mockBackend) SetSize(size Coord) {
 
 // Reset the terminal to startup defaults.
 func (mb *mockBackend) Reset() {
-	mb.style = BaseStyle
-	if mb.colors > 0 {
-		mb.style = mb.style.WithFg(mb.defaultFg).WithBg(mb.defaultBg).WithUc(mb.defaultFg)
-	}
+	mb.style = mb.defaultStyle
 
 	mb.title = ""
 	mb.errs = 0
@@ -477,11 +473,10 @@ func (o MockOptColors) SetMockOpt(mb *mockBackend) { mb.colors = int(o) }
 // The default is a fully featured 256-color backend with initial size 80x24.
 func NewMockBackend(options ...MockOpt) MockBackend {
 	mb := &mockBackend{
-		size:      Coord{X: 80, Y: 24},
-		colors:    256,
-		defaultFg: color.Silver,
-		defaultBg: color.Black,
-		style:     BaseStyle,
+		size:         Coord{X: 80, Y: 24},
+		colors:       256,
+		style:        BaseStyle,
+		defaultStyle: BaseStyle.WithFg(color.Silver).WithBg(color.Black),
 	}
 
 	for _, opt := range options {
@@ -490,7 +485,7 @@ func NewMockBackend(options ...MockOpt) MockBackend {
 	}
 
 	if mb.colors > 0 {
-		mb.style = mb.style.WithFg(mb.defaultFg).WithBg(mb.defaultBg).WithUc(mb.defaultFg)
+		mb.style = mb.defaultStyle
 	}
 	mb.cells = make([]MockCell, int(mb.size.X)*int(mb.size.Y))
 	for i := range mb.cells {
