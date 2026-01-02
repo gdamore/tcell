@@ -79,15 +79,6 @@ type Colorer interface {
 	SetBgColor(color.Color)
 }
 
-// UnderlineColorer adds underline color management to the Colorer.
-type UnderlineColorer interface {
-	Colorer
-
-	// SetUlColor sets the underline color.
-	// If color.None is chosen, then default foreground color is used.
-	SetUlColor(color.Color)
-}
-
 // Resizer adds notifications when the window size changes.
 type Resizer interface {
 	// NotifyResize registers a channel to be posted to if the window size changes.

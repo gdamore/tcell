@@ -204,9 +204,6 @@ func (em *emulator) restoreCursor() {
 		c.SetFgColor(em.style.Fg())
 		c.SetBgColor(em.style.Bg())
 	}
-	if c, ok := em.be.(UnderlineColorer); ok {
-		c.SetUlColor(em.style.Uc())
-	}
 }
 
 // inbInit processes bytes received in the "default" state. Most often these are just
@@ -537,9 +534,6 @@ func (em *emulator) processSgr(str string) {
 			if c, ok := em.be.(Colorer); ok {
 				c.SetFgColor(color.Reset)
 				c.SetBgColor(color.Reset)
-			}
-			if c, ok := em.be.(UnderlineColorer); ok {
-				c.SetUlColor(color.Reset)
 			}
 		case 1:
 			em.style = em.style.WithAttr((em.style.Attr() &^ Dim) | Bold)
