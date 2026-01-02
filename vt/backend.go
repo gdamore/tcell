@@ -37,6 +37,10 @@ type Backend interface {
 	// SetAttr is used to set the current attributes. It will be used for subsequent writes.
 	SetAttr(Attr)
 
+	// Colors returns the number of colors this terminal can support.  For direct color,
+	// return 1<<24. The XTerm palette is assumed. Monochrome terminals should return 0.
+	Colors() int
+
 	// Put a single rune at a specific position, using the current attributes and colors.
 	// If the rune is 0, then this is an erase and no content should be displayed.
 	// The display width is the size in cells for this rune.
@@ -68,9 +72,6 @@ type Beeper interface {
 // Colorer can select the colors used.  This interface is stateful, so that
 // an implementation needs to remember the values and use them.
 type Colorer interface {
-	// Colors returns the number of colors this terminal can support.  For direct color,
-	// return 1<<24. The XTerm palette is assumed. Monochrome terminals should return 0.
-	Colors() int
 
 	// SetFgColor sets the foreground color.
 	SetFgColor(color.Color)
