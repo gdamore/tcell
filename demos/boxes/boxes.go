@@ -1,6 +1,3 @@
-//go:build ignore
-// +build ignore
-
 // Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +13,7 @@
 // limitations under the License.
 
 // boxes just displays random colored boxes on your terminal screen.
-// Press ESC to exit the program.
+// Press escape or control-q to exit the program.
 package main
 
 import (
@@ -29,7 +26,7 @@ import (
 	"github.com/gdamore/tcell/v3/color"
 )
 
-func makebox(s tcell.Screen) {
+func makeBox(s tcell.Screen) {
 	w, h := s.Size()
 
 	if w == 0 || h == 0 {
@@ -54,13 +51,19 @@ func makebox(s tcell.Screen) {
 		gl = glyphs[rand.Int()%len(glyphs)]
 	}
 
-	for row := 0; row < lh; row++ {
-		for col := 0; col < lw; col++ {
+	for row := range lh {
+		for col := range lw {
 			s.PutStrStyled(lx+col, ly+row, gl, st)
 		}
 	}
 	s.Show()
 }
+
+var (
+	count    = 0
+	interval = time.Millisecond * 5
+	drawTime time.Duration
+)
 
 func main() {
 
@@ -80,41 +83,30 @@ func main() {
 		Background(color.White))
 	s.Clear()
 
-	quit := make(chan struct{})
-	go func() {
-		for {
-			ev := <-s.EventQ()
+loop:
+	for {
+		select {
+		case ev := <-s.EventQ():
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Key() {
-				case tcell.KeyEscape, tcell.KeyEnter:
-					close(quit)
-					return
+				case tcell.KeyEscape, tcell.KeyCtrlQ:
+					break loop
 				case tcell.KeyCtrlL:
 					s.Sync()
 				}
 			case *tcell.EventResize:
 				s.Sync()
 			}
-		}
-	}()
-
-	cnt := 0
-	dur := time.Duration(0)
-loop:
-	for {
-		select {
-		case <-quit:
-			break loop
-		case <-time.After(time.Millisecond * 50):
+		case <-time.After(interval):
 		}
 		start := time.Now()
-		makebox(s)
-		cnt++
-		dur += time.Now().Sub(start)
+		makeBox(s)
+		count++
+		drawTime += time.Since(start)
 	}
 
 	s.Fini()
-	fmt.Printf("Finished %d boxes in %s\n", cnt, dur)
-	fmt.Printf("Average is %0.3f ms / box\n", (float64(dur)/float64(cnt))/1000000.0)
+	fmt.Printf("Finished %d boxes in %s (drawing time only)\n", count, drawTime)
+	fmt.Printf("Average is %0.3f ms / box\n", (float64(drawTime)/float64(count))/1000000.0)
 }
