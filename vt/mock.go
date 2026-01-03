@@ -377,6 +377,7 @@ func (mb *mockBackend) NotifyResize(rq chan<- bool) {
 // added are treated as empty, while cells that are removed are just lost.
 // (Note that at least one other emulator erases content on a resize.  There is no
 // standard for what to do here.) This is done inline when calculating the index.
+// The caller is expected to hold mb.lock.
 func (mb *mockBackend) checkSize() {
 	if !mb.resized {
 		return
