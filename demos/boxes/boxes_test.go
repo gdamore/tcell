@@ -44,13 +44,13 @@ func TestBoxes(t *testing.T) {
 				t.Errorf("Too few boxes: %d", count)
 			}
 			if drawTime < time.Microsecond {
-				t.Errorf("Interval too short: %s", drawTime)
+				t.Errorf("Draw time too short: %s", drawTime)
 			}
 
 			// It should not take 10 milliseconds to draw a box,
 			// as we generally see values sub millisecond here.
 			if drawTime > 10*time.Millisecond*time.Duration(count) {
-				t.Errorf("Interval too long: %s", drawTime)
+				t.Errorf("Draw time too long: %s", drawTime)
 			}
 		})
 	}
