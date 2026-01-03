@@ -23,6 +23,7 @@ func TestBoxes(t *testing.T) {
 			var wg sync.WaitGroup
 			wg.Add(1)
 			count = 0
+			drawTime = 0
 			interval = time.Microsecond * 100
 
 			go func() {
@@ -45,7 +46,10 @@ func TestBoxes(t *testing.T) {
 			if drawTime < time.Microsecond {
 				t.Errorf("Interval too short: %s", drawTime)
 			}
-			if drawTime > 100*time.Millisecond { // longer because CI/CD timekeeping is awful
+
+			// It should not take 10 milliseconds to draw a box,
+			// as we generally see values sub millisecond here.
+			if drawTime > 10*time.Millisecond*time.Duration(count) {
 				t.Errorf("Interval too long: %s", drawTime)
 			}
 		})

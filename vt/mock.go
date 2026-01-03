@@ -15,6 +15,7 @@
 package vt
 
 import (
+	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v3/color"
@@ -109,7 +110,7 @@ func (mt *mockTerm) GetTitle() string {
 // SetSize is used to change the terminal size.
 func (mt *mockTerm) SetSize(size Coord) {
 	mt.mb.SetSize(size)
-	mt.em.ResizeEvent()
+	mt.em.ResizeEvent(size)
 }
 
 // Backend returns the backend for testing.
@@ -193,22 +194,29 @@ type mockBackend struct {
 	colors       int
 	style        Style
 	defaultStyle Style
-	resizeQ      chan<- bool
+	notifyQ      chan<- bool
+	resized      bool
+	newSize      Coord
 	modes        map[PrivateMode]ModeStatus
 	bells        int
 	errs         int
 	title        string
+	lock         sync.Mutex
 }
 
-func (mb *mockBackend) GetSize() Coord { return mb.size }
+func (mb *mockBackend) GetSize() Coord { mb.checkSize(); return mb.size }
 func (mb *mockBackend) Beep()          { mb.bells++ }
 
 func (mb *mockBackend) GetPrivateMode(pm PrivateMode) ModeStatus {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
 	// note default (zero) value is ModeNA
 	return mb.modes[pm]
 }
 
 func (mb *mockBackend) SetPrivateMode(pm PrivateMode, status ModeStatus) error {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
 	if old := mb.modes[pm]; old == ModeOn || old == ModeOff {
 		if status == ModeOn || status == ModeOff {
 			mb.modes[pm] = status
@@ -222,6 +230,10 @@ func (mb *mockBackend) SetPrivateMode(pm PrivateMode, status ModeStatus) error {
 }
 
 func (mb *mockBackend) PutRune(pos Coord, r rune, width int) {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+	mb.checkSize()
+
 	if index := mb.index(pos); index >= 0 {
 		if r == 0 {
 			mb.cells[index].C = ""
@@ -244,6 +256,10 @@ func (mb *mockBackend) PutRune(pos Coord, r rune, width int) {
 }
 
 func (mb *mockBackend) PutGrapheme(pos Coord, grapheme string, width int) {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+	mb.checkSize()
+
 	if index := mb.index(pos); index >= 0 {
 		if grapheme == "" || width == 0 {
 			mb.cells[index].C = ""
@@ -266,12 +282,16 @@ func (mb *mockBackend) PutGrapheme(pos Coord, grapheme string, width int) {
 }
 
 func (mb *mockBackend) isPositionValid(pos Coord) bool {
+	mb.checkSize()
+
 	return pos.X < mb.size.X && pos.Y < mb.size.Y && pos.X >= 0 && pos.Y >= 0
 }
 
 // index calculates the index in the cells array.  If the coordinates are invalid,
 // -1 will be returned.
 func (mb *mockBackend) index(pos Coord) int {
+	mb.checkSize()
+
 	if !mb.isPositionValid(pos) {
 		return -1
 	}
@@ -279,6 +299,9 @@ func (mb *mockBackend) index(pos Coord) int {
 }
 
 func (mb *mockBackend) GetCell(pos Coord) MockCell {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+
 	if index := mb.index(pos); index >= 0 {
 		return mb.cells[index]
 	}
@@ -286,14 +309,22 @@ func (mb *mockBackend) GetCell(pos Coord) MockCell {
 }
 
 func (mb *mockBackend) Bells() int {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
 	return mb.bells
 }
 
 func (mb *mockBackend) GetPosition() Coord {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+	mb.checkSize()
 	return mb.pos
 }
 
 func (mb *mockBackend) SetPosition(pos Coord) {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+	mb.checkSize()
 	pos.X = min(mb.size.X-1, max(0, pos.X))
 	pos.Y = min(mb.size.Y-1, max(0, pos.Y))
 	mb.pos = pos
@@ -304,34 +335,53 @@ func (mb *mockBackend) Colors() int {
 }
 
 func (mb *mockBackend) SetStyle(style Style) {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+
 	mb.style = style
 }
 
 func (mb *mockBackend) GetStyle() Style {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+
 	return mb.style
 }
 
 // SetWindowTitle implements the Titler interface.
 func (mb *mockBackend) SetWindowTitle(title string) {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+
 	mb.title = title
 }
 
 // GetTitle allows test code to observe what was set with SetWindowTitle.
 func (mb *mockBackend) GetTitle() string {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+
 	return mb.title
 }
 
 // NotifyResize registers a channel to be written to (non-blocking) if the
 // backend changes size.
 func (mb *mockBackend) NotifyResize(rq chan<- bool) {
-	mb.resizeQ = rq
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+
+	mb.notifyQ = rq
 }
 
-// SetSize is used to change the size of the virtual terminal. Cells that are
+// checkSize performs a possible terminal resize. Cells that are
 // added are treated as empty, while cells that are removed are just lost.
-// (Note that at least one other emulator erases content on a resize.  There is
-// standard for what to do here.)
-func (mb *mockBackend) SetSize(size Coord) {
+// (Note that at least one other emulator erases content on a resize.  There is no
+// standard for what to do here.) This is done inline when calculating the index.
+func (mb *mockBackend) checkSize() {
+	if !mb.resized {
+		return
+	}
+	size := mb.newSize
 	old := mb.cells
 	ox := int(mb.size.X)
 	oy := int(mb.size.Y)
@@ -350,7 +400,13 @@ func (mb *mockBackend) SetSize(size Coord) {
 	mb.size = size
 	mb.pos.X = min(mb.pos.X, size.X-1)
 	mb.pos.Y = min(mb.pos.Y, size.Y-1)
-	if rq := mb.resizeQ; rq != nil {
+}
+
+func (mb *mockBackend) RaiseResize() {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+
+	if rq := mb.notifyQ; rq != nil {
 		select {
 		case rq <- true:
 		default:
@@ -358,8 +414,19 @@ func (mb *mockBackend) SetSize(size Coord) {
 	}
 }
 
+// SetSize is used to change the size of the virtual terminal.
+func (mb *mockBackend) SetSize(size Coord) {
+	mb.lock.Lock()
+	mb.resized = true
+	mb.newSize = size
+	mb.lock.Unlock()
+}
+
 // Reset the terminal to startup defaults.
 func (mb *mockBackend) Reset() {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+
 	mb.style = mb.defaultStyle
 
 	mb.title = ""
@@ -371,6 +438,11 @@ func (mb *mockBackend) Reset() {
 }
 
 func (mb *mockBackend) Blit(src, dst, dim Coord) {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+
+	mb.checkSize()
+
 	// clip to visible source
 	if dim.X+src.X > mb.size.X {
 		dim.X = mb.size.X - src.X

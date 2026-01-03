@@ -861,6 +861,8 @@ func TestResize(t *testing.T) {
 	case <-time.After(time.Millisecond * 100):
 		t.Errorf("resize signal failure")
 	}
+	// this forces a flush of the write queue
+	trm.Write([]byte{})
 
 	buf := make([]byte, 128)
 	n, err := trm.Read(buf)

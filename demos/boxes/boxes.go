@@ -108,5 +108,7 @@ loop:
 
 	s.Fini()
 	fmt.Printf("Finished %d boxes in %s (drawing time only)\n", count, drawTime)
-	fmt.Printf("Average is %0.3f ms / box\n", (float64(drawTime)/float64(count))/1000000.0)
+	if count > 0 {
+		fmt.Printf("Average is %0.3f ms / box\n", (float64(drawTime)/float64(count))/1000000.0)
+	}
 }

@@ -62,6 +62,11 @@ type Backend interface {
 
 	// Reset resets the terminal to default state.
 	Reset()
+
+	// RaiseResize is called by the emulation layer when it has completed its own internal resizing.
+	// The backend is responsible for sending a signal (if needed) to child processes as part of this
+	// function.  (The emulation layer knows nothing of child processes.)
+	RaiseResize()
 }
 
 // Beeper can be implemented by a backend to indicate it can ring the bell or beep.

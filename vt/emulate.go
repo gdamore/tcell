@@ -47,7 +47,7 @@ type Emulator interface {
 
 	// ResizeEvent is called by a backend when the terminal has resized
 	// This will send in-band resize notifications if the client has requested them.
-	ResizeEvent()
+	ResizeEvent(Coord)
 
 	// Drain waits until any queued but not processed input has finished processing.
 	// It also wakes the reader.
@@ -1344,13 +1344,10 @@ func (em *emulator) KeyEvent(ev KbdEvent) {
 // ResizeEvent is called by the backend when a resize occurs.  A real backend with a child
 // process (essentially a "real emulator") should probably also fire SIGWINCH if appropriate.
 // That would be the job of something other than this code.
-func (em *emulator) ResizeEvent() {
-	// reload our position it may have changed
-	em.pos = em.getPosition()
-	if em.getPrivateMode(PmResizeReports) == ModeOn { // NB: we never support "ModeOnLocked"
-		newSz := em.be.GetSize()
-		// NB: for now we do not support pixel sizes
-		em.SendRaw(fmt.Appendf(nil, "\x1b[48;%d;%d;0;0t", newSz.Y, newSz.X))
+func (em *emulator) ResizeEvent(size Coord) {
+	select {
+	case em.writeQ <- size:
+	case <-em.stopQ:
 	}
 }
 
@@ -1632,6 +1629,25 @@ func (em *emulator) run(stopQ <-chan bool) {
 				}
 			case chan bool:
 				close(d)
+
+			case Coord: // resize notification
+				// reload our position it may have changed
+				size := d
+
+				// resize clobbers our content, until it is redrawn
+				em.cells = make([]Cell, int(size.X)*int(size.Y))
+				for i := range em.cells {
+					em.cells[i].S = em.defaultStyle
+				}
+
+				em.pos = em.getPosition()
+				if em.getPrivateMode(PmResizeReports) == ModeOn { // NB: we never support "ModeOnLocked"
+					// NB: for now we do not support pixel sizes
+					em.SendRaw(fmt.Appendf(nil, "\x1b[48;%d;%d;0;0t", size.Y, size.X))
+				}
+
+				// Send a SIGWINCH or similar.
+				em.be.RaiseResize()
 			}
 		case <-stopQ:
 			return
