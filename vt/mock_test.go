@@ -712,6 +712,98 @@ func TestSgrColor8(t *testing.T) {
 	checkColors(t, trm, 3, 0, color.Silver, color.Black)
 }
 
+// TestSgrColor256 tests simple ECMA 48 ANSI color (256 possible color values.)
+func TestSgrColor256(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(256))
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	// foreground
+	writeF(t, trm, "\x1b[38:5:6m\x1b[42m\x1b#8")
+	checkColors(t, trm, 0, 0, color.Teal, color.Green)
+	writeF(t, trm, "\x1b[38;5;5m\x1b[42mA")
+	checkColors(t, trm, 0, 0, color.XTerm5, color.Green)
+
+	writeF(t, trm, "\x1b[38;5;212;1mB")
+	checkColors(t, trm, 1, 0, color.XTerm212, color.Green)
+	checkAttrs(t, trm, 1, 0, Bold)
+
+	// background
+	writeF(t, trm, "\x1b[48;5;2mA")
+	checkColors(t, trm, 2, 0, color.XTerm212, color.XTerm2)
+	checkAttrs(t, trm, 2, 0, Bold)
+
+	writeF(t, trm, "\x1b[48:5:134;2mC")
+	checkColors(t, trm, 3, 0, color.XTerm212, color.XTerm134)
+	checkAttrs(t, trm, 3, 0, Dim)
+
+	// mix background and foreground using colons
+	writeF(t, trm, "\x1b[48:5:135;38:5:22mC")
+	checkColors(t, trm, 4, 0, color.XTerm22, color.XTerm135)
+
+	// and using semicolons
+	writeF(t, trm, "\x1b[48;5;136;38;5;23mC")
+	checkColors(t, trm, 5, 0, color.XTerm23, color.XTerm136)
+
+	// underline colors - it uses the same parser so we won't check
+	// all the variations
+	writeF(t, trm, "\x1b[58;5;21;4mC")
+	verifyF(t, trm.GetCell(Coord{X: 6, Y: 0}).S.Uc() == color.XTerm21, "underline color is wrong")
+
+	writeF(t, trm, "\x1b[H\x1b[39;49mA")
+	checkColors(t, trm, 0, 0, color.Silver, color.Black)
+
+	// verify zero clears colors, first write some non zero colors
+	writeF(t, trm, "\x1b[H\x1b[36;42mA")
+	checkColors(t, trm, 0, 0, color.Teal, color.Green)
+
+	// then send zero, should go to default colors
+	writeF(t, trm, "\x1b[H\x1b[0mA")
+	checkColors(t, trm, 0, 0, color.Silver, color.Black)
+
+	// fuzz some things
+	writeF(t, trm, "\x1b[m\x1b[H")
+	writeF(t, trm, "\x1b[38:3m")
+	writeF(t, trm, "\x1b[38;3m")
+	writeF(t, trm, "\x1b[38;2m")
+	writeF(t, trm, "\x1b[38;2:300m")
+	writeF(t, trm, "\x1b[38;5m")
+	writeF(t, trm, "\x1b[38;5:300m")
+	writeF(t, trm, "\x1b[38:2m")
+	writeF(t, trm, "\x1b[38:5m")
+	writeF(t, trm, "\x1b[38:2;1;1;1m")
+	writeF(t, trm, "\x1b[38:2:1:1m")
+	writeF(t, trm, "A")
+	checkColors(t, trm, 0, 0, color.Silver, color.Black)
+}
+
+// TestSgrColorRGB tests simple ECMA 48 ANSI color (full 24-bit color.)
+func TestSgrColorRGB(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(1<<24))
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	// foreground
+	writeF(t, trm, "\x1b[m\x1b[H\x1b[38:2:255:0:0mA")
+	checkColors(t, trm, 0, 0, color.NewRGBColor(255, 0, 0), color.Black)
+
+	writeF(t, trm, "\x1b[m\x1b[H\x1b[38;2;2;0;0mA")
+	checkColors(t, trm, 0, 0, color.NewRGBColor(2, 0, 0), color.Black)
+
+	// background
+	writeF(t, trm, "\x1b[m\x1b[H\x1b[48:2:1:2:3mA")
+	checkColors(t, trm, 0, 0, color.Silver, color.NewRGBColor(1, 2, 3))
+
+	writeF(t, trm, "\x1b[m\x1b[H\x1b[48;2;4;5;6mA")
+	checkColors(t, trm, 0, 0, color.Silver, color.NewRGBColor(4, 5, 6))
+
+	// full colors
+	writeF(t, trm, "\x1b[m\x1b[H\x1b[38;2;99;88;77;48;2;4;5;6;58;2;99;98;91;1mA")
+	checkColors(t, trm, 0, 0, color.NewRGBColor(99, 88, 77), color.NewRGBColor(4, 5, 6))
+	verifyF(t, trm.GetCell(Coord{X: 0, Y: 0}).S.Uc() == color.NewRGBColor(99, 98, 91), "underline color is wrong")
+	checkAttrs(t, trm, 0, 0, Bold)
+}
+
 // TestTitler tests that we can set a window title.
 func TestTitler(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 80, Y: 24})

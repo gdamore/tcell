@@ -470,28 +470,56 @@ func numericParams(str string, minimumLen int) ([]int, error) {
 	return pi, nil
 }
 
-// splitSgrArgs grabs either 2 arguments, or 4 arguments for palette or rgb values
-// used with SGR 38 and 48.
-func splitSgrArgs(args []string, words []string) ([]string, []string) {
-	if len(args) > 0 {
-		return args, words
-	}
-	if len(words) == 0 {
-		return nil, nil
-	}
-	switch i, _ := strconv.Atoi(words[0]); i {
-	case 2: // RGB value follows, 3 parameters
-		if len(words) < 4 {
-			return nil, nil
+// parseSgrColor grabs either 2 arguments, or 4 arguments for palette or rgb values
+// used with SGR 38 and 48. The arguments must be numbers, and are returned as such.
+func (em *emulator) parseSgrColor(args []string, words []string) (color.Color, []string, error) {
+	if len(args) == 0 {
+		if len(words) == 0 {
+			return color.None, nil, errors.New("invalid color specification")
 		}
-		return words[:4], words[4:]
-	case 5: // single palette index follows
-		if len(words) < 2 {
-			return nil, nil
+
+		switch words[0] {
+		case "2": // RGB (direct)
+			if len(words) < 4 {
+				return color.None, nil, errors.New("invalid color specification")
+			}
+			args = words[:4]
+			words = words[4:]
+		case "5": // palette index
+			if len(words) < 2 {
+				return color.None, nil, errors.New("invalid color specification")
+			}
+			args = words[:2]
+			words = words[2:]
+		default:
+			return color.None, nil, errors.New("invalid color specification")
 		}
-		return words[:2], words[2:]
 	}
-	return nil, nil
+
+	switch args[0] {
+	case "2": // RGB color
+		if len(args) < 4 || em.be.Colors() <= 256 {
+			return color.None, nil, errors.New("invalid color specification")
+		}
+		r, re := strconv.Atoi(args[1])
+		g, ge := strconv.Atoi(args[2])
+		b, be := strconv.Atoi(args[3])
+		if re != nil || ge != nil || be != nil || r > 255 || g > 255 || b > 255 || r < 0 || g < 0 || b < 0 {
+			return color.None, nil, errors.New("invalid color specification")
+		}
+		return color.NewRGBColor(int32(r), int32(g), int32(b)), words, nil
+	case "5": // palette index
+		if len(args) < 2 {
+			return color.None, nil, errors.New("invalid color specification")
+		}
+		p, e := strconv.Atoi(args[1])
+		if e != nil || p < 0 || p >= em.be.Colors() {
+			return color.None, nil, errors.New("invalid color specification")
+		}
+		return color.IsValid | color.Color(p&0xff), words, nil
+	}
+
+	return color.None, nil, errors.New("invalid color specification")
 }
 
 func (em *emulator) pickColor(c color.Color, def color.Color) (color.Color, bool) {
@@ -613,7 +641,11 @@ func (em *emulator) processSgr(str string) {
 				em.be.SetStyle(em.style)
 			}
 		case 38:
-			args, words = splitSgrArgs(args, words)
+			if c, rest, err := em.parseSgrColor(args, words); err == nil {
+				words = rest
+				em.style = em.style.WithFg(c)
+				em.be.SetStyle(em.style)
+			}
 		case 39:
 			if c, ok := em.pickColor(color.Reset, em.defaultStyle.Fg()); ok {
 				em.style = em.style.WithFg(c)
@@ -624,8 +656,12 @@ func (em *emulator) processSgr(str string) {
 				em.style = em.style.WithBg(c)
 				em.be.SetStyle(em.style)
 			}
-		case 48: // TODO:
-			args, words = splitSgrArgs(args, words)
+		case 48:
+			if c, rest, err := em.parseSgrColor(args, words); err == nil {
+				words = rest
+				em.style = em.style.WithBg(c)
+				em.be.SetStyle(em.style)
+			}
 		case 49:
 			if c, ok := em.pickColor(color.Reset, em.defaultStyle.Bg()); ok {
 				em.style = em.style.WithBg(c)
@@ -637,6 +673,12 @@ func (em *emulator) processSgr(str string) {
 		case 55:
 			em.style = em.style.WithAttr(em.style.Attr() &^ Overline)
 			em.be.SetStyle(em.style)
+		case 58:
+			if c, rest, err := em.parseSgrColor(args, words); err == nil {
+				words = rest
+				em.style = em.style.WithUc(c)
+				em.be.SetStyle(em.style)
+			}
 		}
 	}
 }
