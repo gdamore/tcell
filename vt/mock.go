@@ -102,6 +102,10 @@ func (mt *mockTerm) KeyEvent(ev KbdEvent) {
 	}
 }
 
+func (mt *mockTerm) MouseEvent(ev MouseEvent) {
+	mt.em.MouseEvent(ev)
+}
+
 // GetTitle returns the current window title.
 func (mt *mockTerm) GetTitle() string {
 	return mt.mb.GetTitle()
@@ -137,6 +141,9 @@ type MockTerm interface {
 	// Inject a keyboard event.
 	KeyEvent(KbdEvent)
 
+	// Inject a mouse event.
+	MouseEvent(MouseEvent)
+
 	// GetTitle obtains the current window title.
 	GetTitle() string
 
@@ -168,6 +175,7 @@ type MockCell struct {
 type MockBackend interface {
 	Backend
 	Blitter
+	Mouser
 
 	// GetCell returns the cell at the given position, or the zero value if the
 	// position is out of the bounds of the window.
@@ -204,8 +212,9 @@ type mockBackend struct {
 	lock         sync.Mutex
 }
 
-func (mb *mockBackend) GetSize() Coord { mb.checkSize(); return mb.size }
-func (mb *mockBackend) Beep()          { mb.bells++ }
+func (mb *mockBackend) GetSize() Coord          { mb.checkSize(); return mb.size }
+func (mb *mockBackend) Beep()                   { mb.bells++ }
+func (mb *mockBackend) SetMouse(MouseReporting) {}
 
 func (mb *mockBackend) GetPrivateMode(pm PrivateMode) ModeStatus {
 	mb.lock.Lock()

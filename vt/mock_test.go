@@ -40,6 +40,16 @@ func writeF(t *testing.T, trm MockTerm, str string, args ...any) {
 	}
 }
 
+func readF(t *testing.T, trm MockTerm) string {
+	buf := make([]byte, 128)
+	n, err := trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+		return ""
+	}
+	return string(buf[:n])
+}
+
 // verifyF validates the condition, printing the message on failure.
 func verifyF(t *testing.T, b bool, fmt string, args ...any) {
 	t.Helper()
@@ -244,7 +254,7 @@ func TestPrimaryDA(t *testing.T) {
 	}
 }
 
-// TestExtendedAttr requests ther terminal ID using CSI > q.
+// TestExtendedAttr requests the terminal ID using CSI > q.
 func TestExtendedAttr(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 5, Y: 3}, MockOptColors(0))
 	defer mustClose(t, trm)

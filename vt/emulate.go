@@ -49,6 +49,9 @@ type Emulator interface {
 	// This will send in-band resize notifications if the client has requested them.
 	ResizeEvent(Coord)
 
+	// MouseEvent is called by a backend to report mouse activity.
+	MouseEvent(ev MouseEvent)
+
 	// Drain waits until any queued but not processed input has finished processing.
 	// It also wakes the reader.
 	Drain() error
@@ -142,10 +145,21 @@ func NewEmulator(be Backend) Emulator {
 			PmAppCursor:  ModeOff,
 			PmAutoMargin: ModeOn,
 		},
+		mouseReports: MouseDisabled,
 	}
 	if _, ok := be.(Resizer); ok {
 		em.localModes[PmResizeReports] = ModeOff
 	}
+
+	// add mouse modes
+	if _, ok := be.(Mouser); ok {
+		em.localModes[PmMouseX10] = ModeOff
+		em.localModes[PmMouseButton] = ModeOff
+		em.localModes[PmMouseDrag] = ModeOff
+		em.localModes[PmMouseMotion] = ModeOff
+		em.localModes[PmMouseSgr] = ModeOff
+	}
+
 	em.cells = make([]Cell, int(be.GetSize().X)*int(be.GetSize().Y))
 	close(stopQ)
 	em.inb = em.inbInit
@@ -166,16 +180,17 @@ type emulator struct {
 	defaultStyle Style
 	utfLen       int
 	pos          Coord
-	autoWrap     bool        // next character will wrap (auto margin, deferred until char emitted)
-	sevenOnly    bool        // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
-	name         string      // name of this emulator (used for extended attributes)
-	vers         string      // version string of this emulator (used for extended attributes)
-	savedPos     Coord       // saved via DECSC
-	saved        savedCursor // data saved by save cursor (DECSC)
-	sendLock     sync.Mutex  // ensures that send data cannot be intermixed
-	tabStops     []Col       // tab stops, ordered. if nil every 8th position is used
-	lastIndex    int         // index of last cell written + 1 (for grapheme clustering) (zero means none)
-	cells        []Cell      // content of cells, we have to maintain our own copy (backend might or might not)
+	autoWrap     bool           // next character will wrap (auto margin, deferred until char emitted)
+	sevenOnly    bool           // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
+	name         string         // name of this emulator (used for extended attributes)
+	vers         string         // version string of this emulator (used for extended attributes)
+	savedPos     Coord          // saved via DECSC
+	saved        savedCursor    // data saved by save cursor (DECSC)
+	sendLock     sync.Mutex     // ensures that send data cannot be intermixed
+	tabStops     []Col          // tab stops, ordered. if nil every 8th position is used
+	lastIndex    int            // index of last cell written + 1 (for grapheme clustering) (zero means none)
+	cells        []Cell         // content of cells, we have to maintain our own copy (backend might or might not)
+	mouseReports MouseReporting // whether we have enabled mouse reports
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 }
@@ -1294,13 +1309,37 @@ func (em *emulator) getPrivateMode(pm PrivateMode) ModeStatus {
 	return em.be.GetPrivateMode(pm)
 }
 
+func (em *emulator) updateMouseReporting() {
+	mi, ok := em.be.(Mouser)
+	if !ok {
+		return
+	}
+	if em.localModes[PmMouseButton] == ModeOn {
+		em.mouseReports = MouseButtons
+		if em.localModes[PmMouseMotion] == ModeOn {
+			em.mouseReports = MouseMotion
+		} else if em.localModes[PmMouseDrag] == ModeOn {
+			em.mouseReports = MouseDrag
+		}
+	} else if em.localModes[PmMouseX10] == ModeOn {
+		em.mouseReports = MouseButtons
+	} else {
+		em.mouseReports = MouseDisabled
+	}
+	mi.SetMouse(em.mouseReports)
+}
+
 // setPrivateMode sets the DEC private mode.
 func (em *emulator) setPrivateMode(pm PrivateMode, ms ModeStatus) {
 	if ms != ModeOn && ms != ModeOff {
 		return
 	}
-	if old, ok := em.localModes[pm]; ok && (old == ModeOn || old == ModeOff) {
+	if old, ok := em.localModes[pm]; ok && old.Changeable() {
 		em.localModes[pm] = ms
+		switch pm {
+		case PmMouseButton, PmMouseDrag, PmMouseMotion, PmMouseSgr, PmMouseSgrPixel, PmMouseX10:
+			em.updateMouseReporting()
+		}
 	} else {
 		_ = em.be.SetPrivateMode(pm, ms)
 	}
@@ -1501,6 +1540,57 @@ func (em *emulator) keyLegacy(ev KbdEvent) {
 		}
 		em.SendRaw([]byte{byte(ev.Code)})
 		return
+	}
+}
+
+func (em *emulator) MouseEvent(ev MouseEvent) {
+	if pm := em.getPrivateMode(PmMouseButton); pm == ModeOn {
+
+		if em.getPrivateMode(PmMouseDrag) != ModeOn && em.getPrivateMode(PmMouseMotion) != ModeOn {
+			// suppress motion events if the user didn't request
+			if ev.Button == NoButton {
+				return // if entire event was just motion, bail
+			}
+			ev.Motion = false
+		}
+
+		if pm = em.getPrivateMode(PmMouseSgr); pm == ModeOn {
+			btn := ev.encodeButton()
+			if ev.Down {
+				em.SendRaw(fmt.Appendf(nil, "\x1b[<%d;%d;%dM", btn, ev.Position.X+1, ev.Position.Y+1))
+			} else {
+				em.SendRaw(fmt.Appendf(nil, "\x1b[<%d;%d;%dm", btn, ev.Position.X+1, ev.Position.Y+1))
+			}
+		} else {
+			// Old style reporting (via 1000h).
+			// Limitations of legacy VT200 reporting are that the coordinates must be between
+			// 1 and 223 inclusive, and that once any release occurs all buttons are assumed
+			// to be released.  (Please use SGR mode if at all possible.)
+			// Further, this mode is not CSI compliant as the encoded values that arrive ahead of
+			// the final character may be within the range of technically legal CSI final bytes.
+			if ev.Down == false {
+				ev.Button = NoButton
+			}
+			btn := ev.encodeButton()
+			data := append([]byte{'\x1b', '[', 'M', btn + 32},
+				byte(min(ev.Position.X+1, 223)+32),
+				byte(min(ev.Position.Y+1, 223)+32))
+			em.SendRaw(data)
+		}
+
+	} else if pm := em.getPrivateMode(PmMouseX10); pm == ModeOn && ev.Down {
+		// legacy X10 reporting only
+		x := byte(min(ev.Position.X+1, 223)) + 32
+		y := byte(min(ev.Position.Y+1, 223)) + 32
+		// NB: we intentionally reverse buttons 2 & 3 (for xterm compatibility)
+		switch ev.Button {
+		case Button1:
+			em.SendRaw([]byte{'\x1b', '[', 'M', ' ', x, y})
+		case Button2:
+			em.SendRaw([]byte{'\x1b', '[', 'M', '"', x, y})
+		case Button3:
+			em.SendRaw([]byte{'\x1b', '[', 'M', '!', x, y})
+		}
 	}
 }
 

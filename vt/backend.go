@@ -90,6 +90,21 @@ type Titler interface {
 	SetWindowTitle(string)
 }
 
+// MouseReporting determines what mouse events the backend reports.
+type MouseReporting int
+
+const (
+	MouseDisabled = MouseReporting(iota) // No mouse reports at all.
+	MouseButtons                         // Report button events only.
+	MouseDrag                            // Report drag events.
+	MouseMotion                          // Report motion events (movement).
+)
+
+// Mouser adds support configuring mouse reporting.
+type Mouser interface {
+	SetMouse(MouseReporting)
+}
+
 // Blitter implements a cell-level blit, where a rectangular range of cells is copied from one
 // location to another.  The source and destination may overlap.  The old locations will remain
 // unchanged except of course or cells overwritten by the blit. The content will also be clipped

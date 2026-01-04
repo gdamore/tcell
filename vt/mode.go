@@ -26,6 +26,7 @@ const (
 	PmAppCursor        PrivateMode = 1 // application cursor keys
 	PmAutoMargin       PrivateMode = 7
 	PmAltScreen        PrivateMode = 1049 // 47 and 1047 are alternates, but we use 1049
+	PmMouseX10         PrivateMode = 9
 	PmBlinkCursor      PrivateMode = 12
 	PmShowCursor       PrivateMode = 25
 	PmMouseButton      PrivateMode = 1000
