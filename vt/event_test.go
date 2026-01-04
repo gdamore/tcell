@@ -105,6 +105,26 @@ func TestMouseX10(t *testing.T) {
 	want = "\x1b[M #$"
 	verifyF(t, result == want, "wrong mouse event: %q != %q", result, want)
 
+	// button 3 mouse click
+	term.MouseEvent(MouseEvent{
+		Position: Coord{X: 2, Y: 3},
+		Button:   Button3,
+		Down:     true,
+		Motion:   false,
+		Mod:      ModNone,
+	})
+	term.MouseEvent(MouseEvent{
+		Position: Coord{X: 2, Y: 3},
+		Button:   Button3,
+		Down:     false,
+		Motion:   false,
+		Mod:      ModNone,
+	})
+
+	result = readF(t, term)
+	want = "\x1b[M!#$"
+	verifyF(t, result == want, "wrong mouse event: %q != %q", result, want)
+
 	// modified drag (10x10 square) - we only see the start
 	term.MouseEvent(MouseEvent{
 		Position: Coord{X: 2, Y: 3},
