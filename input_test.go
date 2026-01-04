@@ -533,6 +533,7 @@ func TestSpecialKeys(t *testing.T) {
 	}{
 		{"Esc", []byte{'\x1b'}, KeyEscape, ModNone, ""},
 		{"Esc-Esc", []byte{'\x1b', '\x1b'}, KeyEscape, ModAlt, ""},
+		{"Esc-Y", []byte{'\x1b', 'Y'}, KeyRune, ModAlt, "Y"},
 		{"Tab", []byte{'\t'}, KeyTab, ModNone, ""},
 		{"NL", []byte{'\n'}, KeyCtrlJ, ModCtrl, ""},
 		{"CR", []byte{'\r'}, KeyEnter, ModNone, ""},
