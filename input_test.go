@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -529,57 +529,93 @@ func TestSpecialKeys(t *testing.T) {
 		input       []byte
 		expectedKey Key
 		expectedMod ModMask
+		expectedStr string
 	}{
-		{"Esc", []byte{'\x1b'}, KeyEscape, ModNone},
-		{"Esc-Esc", []byte{'\x1b', '\x1b'}, KeyEscape, ModAlt},
-		{"Tab", []byte{'\t'}, KeyTab, ModNone},
-		{"NL", []byte{'\n'}, KeyCtrlJ, ModCtrl},
-		{"CR", []byte{'\r'}, KeyEnter, ModNone},
-		{"Backspace", []byte{'\b'}, KeyBackspace, ModNone},
-		{"Delete", []byte{'\x7f'}, KeyBackspace, ModNone},
-		{"CSI-A", []byte{'\x1b', '[', 'A'}, KeyUp, ModNone},
-		{"CSI-B", []byte{'\x1b', '[', 'B'}, KeyDown, ModNone},
-		{"CSI-C", []byte{'\x1b', '[', 'C'}, KeyRight, ModNone},
-		{"CSI-D", []byte{'\x1b', '[', 'D'}, KeyLeft, ModNone},
-		{"CSI-F", []byte{'\x1b', '[', 'F'}, KeyEnd, ModNone},
-		{"CSI-H", []byte{'\x1b', '[', 'H'}, KeyHome, ModNone},
-		{"CSI-L", []byte{'\x1b', '[', 'L'}, KeyInsert, ModNone},
-		{"CSI-P", []byte{'\x1b', '[', 'P'}, KeyF1, ModNone},
-		{"CSI-Q", []byte{'\x1b', '[', 'Q'}, KeyF2, ModNone},
-		{"CSI-S", []byte{'\x1b', '[', 'S'}, KeyF4, ModNone},
-		{"CSI-Z", []byte{'\x1b', '[', 'Z'}, KeyBacktab, ModNone},
-		{"CSI-a", []byte{'\x1b', '[', 'a'}, KeyUp, ModShift},
-		{"CSI-b", []byte{'\x1b', '[', 'b'}, KeyDown, ModShift},
-		{"CSI-c", []byte{'\x1b', '[', 'c'}, KeyRight, ModShift},
-		{"CSI-d", []byte{'\x1b', '[', 'd'}, KeyLeft, ModShift},
-		{"CSI-15~", []byte{'\x1b', '[', '1', '5', '~'}, KeyF5, ModNone},
-		{"CSI-17~", []byte{'\x1b', '[', '1', '7', '~'}, KeyF6, ModNone},
-		{"CSI-18~", []byte{'\x1b', '[', '1', '8', '~'}, KeyF7, ModNone},
-		{"CSI-19~", []byte{'\x1b', '[', '1', '9', '~'}, KeyF8, ModNone},
-		{"CSI-20~", []byte{'\x1b', '[', '2', '0', '~'}, KeyF9, ModNone},
-		{"CSI-21~", []byte{'\x1b', '[', '2', '1', '~'}, KeyF10, ModNone},
-		{"CSI-23~", []byte{'\x1b', '[', '2', '3', '~'}, KeyF11, ModNone},
-		{"CSI-24~", []byte{'\x1b', '[', '2', '4', '~'}, KeyF12, ModNone},
-		{"CSI-1-$", []byte{'\x1b', '[', '1', '$'}, KeyHome, ModShift}, // rxvt bs
-		{"SS3-F1", []byte{'\x1b', 'O', 'P'}, KeyF1, ModNone},
-		{"SS3-F2", []byte{'\x1b', 'O', 'Q'}, KeyF2, ModNone},
-		{"SS3-F3", []byte{'\x1b', 'O', 'R'}, KeyF3, ModNone},
-		{"SS3-F4", []byte{'\x1b', 'O', 'S'}, KeyF4, ModNone},
-		{"SS3-F4-Shift", []byte{'\x1b', 'O', '1', ';', '2', 'S'}, KeyF4, ModShift},
-		{"SS3-F4-Ctrl", []byte{'\x1b', 'O', '1', ';', '5', 'S'}, KeyF4, ModCtrl},
-		{"SS3-F4-Ctrl-Short", []byte{'\x1b', 'O', '5', 'S'}, KeyF4, ModCtrl},
-		{"SS3-F4-Ctrl-Shift", []byte{'\x1b', 'O', ';', '6', 'S'}, KeyF4, ModCtrl | ModShift},
-		{"SS3-F2-Meta", []byte{'\x1b', 'O', ';', '9', 'Q'}, KeyF2, ModMeta},
-		{"CSI-F2-Alt", []byte{'\x1b', '[', '1', ';', '3', 'Q'}, KeyF2, ModAlt},
-		{"CSI-F2-Hyper", []byte{'\x1b', '[', '1', ';', '1', '7', 'Q'}, KeyF2, ModHyper},
-		{"CSI-F2-Super", []byte{'\x1b', '[', '1', ';', '3', '3', 'Q'}, KeyF2, ModMeta},
-		{"SS3-Home", []byte{'\x1b', 'O', 'H'}, KeyHome, ModNone},
-		{"ESC-Tab", []byte{'\x1b', '\t'}, KeyBacktab, ModNone}, // linux console special
-		{"Linux-F1", []byte{'\x1b', '[', '[', 'A'}, KeyF1, ModNone},
-		{"Linux-F2", []byte{'\x1b', '[', '[', 'B'}, KeyF2, ModNone},
-		{"Linux-F3", []byte{'\x1b', '[', '[', 'C'}, KeyF3, ModNone},
-		{"Linux-F4", []byte{'\x1b', '[', '[', 'D'}, KeyF4, ModNone},
-		{"Linux-F5", []byte{'\x1b', '[', '[', 'E'}, KeyF5, ModNone},
+		{"Esc", []byte{'\x1b'}, KeyEscape, ModNone, ""},
+		{"Esc-Esc", []byte{'\x1b', '\x1b'}, KeyEscape, ModAlt, ""},
+		{"Tab", []byte{'\t'}, KeyTab, ModNone, ""},
+		{"NL", []byte{'\n'}, KeyCtrlJ, ModCtrl, ""},
+		{"CR", []byte{'\r'}, KeyEnter, ModNone, ""},
+		{"Backspace", []byte{'\b'}, KeyBackspace, ModNone, ""},
+		{"Delete", []byte{'\x7f'}, KeyBackspace, ModNone, ""},
+		{"CSI-A", []byte{'\x1b', '[', 'A'}, KeyUp, ModNone, ""},
+		{"CSI-B", []byte{'\x1b', '[', 'B'}, KeyDown, ModNone, ""},
+		{"CSI-C", []byte{'\x1b', '[', 'C'}, KeyRight, ModNone, ""},
+		{"CSI-D", []byte{'\x1b', '[', 'D'}, KeyLeft, ModNone, ""},
+		{"CSI-F", []byte{'\x1b', '[', 'F'}, KeyEnd, ModNone, ""},
+		{"CSI-H", []byte{'\x1b', '[', 'H'}, KeyHome, ModNone, ""},
+		{"CSI-L", []byte{'\x1b', '[', 'L'}, KeyInsert, ModNone, ""},
+		{"CSI-P", []byte{'\x1b', '[', 'P'}, KeyF1, ModNone, ""},
+		{"CSI-Q", []byte{'\x1b', '[', 'Q'}, KeyF2, ModNone, ""},
+		{"CSI-S", []byte{'\x1b', '[', 'S'}, KeyF4, ModNone, ""},
+		{"CSI-Z", []byte{'\x1b', '[', 'Z'}, KeyBacktab, ModNone, ""},
+		{"CSI-a", []byte{'\x1b', '[', 'a'}, KeyUp, ModShift, ""},
+		{"CSI-b", []byte{'\x1b', '[', 'b'}, KeyDown, ModShift, ""},
+		{"CSI-c", []byte{'\x1b', '[', 'c'}, KeyRight, ModShift, ""},
+		{"CSI-d", []byte{'\x1b', '[', 'd'}, KeyLeft, ModShift, ""},
+		{"CSI-15~", []byte{'\x1b', '[', '1', '5', '~'}, KeyF5, ModNone, ""},
+		{"CSI-17~", []byte{'\x1b', '[', '1', '7', '~'}, KeyF6, ModNone, ""},
+		{"CSI-18~", []byte{'\x1b', '[', '1', '8', '~'}, KeyF7, ModNone, ""},
+		{"CSI-19~", []byte{'\x1b', '[', '1', '9', '~'}, KeyF8, ModNone, ""},
+		{"CSI-20~", []byte{'\x1b', '[', '2', '0', '~'}, KeyF9, ModNone, ""},
+		{"CSI-21~", []byte{'\x1b', '[', '2', '1', '~'}, KeyF10, ModNone, ""},
+		{"CSI-23~", []byte{'\x1b', '[', '2', '3', '~'}, KeyF11, ModNone, ""},
+		{"CSI-24~", []byte{'\x1b', '[', '2', '4', '~'}, KeyF12, ModNone, ""},
+		{"CSI-1-$", []byte{'\x1b', '[', '1', '$'}, KeyHome, ModShift, ""}, // rxvt bs
+		{"SS3-F1", []byte{'\x1b', 'O', 'P'}, KeyF1, ModNone, ""},
+		{"SS3-F2", []byte{'\x1b', 'O', 'Q'}, KeyF2, ModNone, ""},
+		{"SS3-F3", []byte{'\x1b', 'O', 'R'}, KeyF3, ModNone, ""},
+		{"SS3-F4", []byte{'\x1b', 'O', 'S'}, KeyF4, ModNone, ""},
+		{"SS3-F4-Shift", []byte{'\x1b', 'O', '1', ';', '2', 'S'}, KeyF4, ModShift, ""},
+		{"SS3-F4-Ctrl", []byte{'\x1b', 'O', '1', ';', '5', 'S'}, KeyF4, ModCtrl, ""},
+		{"SS3-F4-Ctrl-Short", []byte{'\x1b', 'O', '5', 'S'}, KeyF4, ModCtrl, ""},
+		{"SS3-F4-Ctrl-Shift", []byte{'\x1b', 'O', ';', '6', 'S'}, KeyF4, ModCtrl | ModShift, ""},
+		{"SS3-F2-Meta", []byte{'\x1b', 'O', ';', '9', 'Q'}, KeyF2, ModMeta, ""},
+		{"CSI-F2-Alt", []byte{'\x1b', '[', '1', ';', '3', 'Q'}, KeyF2, ModAlt, ""},
+		{"CSI-F2-Hyper", []byte{'\x1b', '[', '1', ';', '1', '7', 'Q'}, KeyF2, ModHyper, ""},
+		{"CSI-F2-Super", []byte{'\x1b', '[', '1', ';', '3', '3', 'Q'}, KeyF2, ModMeta, ""},
+		{"SS3-Home", []byte{'\x1b', 'O', 'H'}, KeyHome, ModNone, ""},
+		{"ESC-Tab", []byte{'\x1b', '\t'}, KeyBacktab, ModNone, ""}, // linux console special
+		{"Linux-F1", []byte{'\x1b', '[', '[', 'A'}, KeyF1, ModNone, ""},
+		{"Linux-F2", []byte{'\x1b', '[', '[', 'B'}, KeyF2, ModNone, ""},
+		{"Linux-F3", []byte{'\x1b', '[', '[', 'C'}, KeyF3, ModNone, ""},
+		{"Linux-F4", []byte{'\x1b', '[', '[', 'D'}, KeyF4, ModNone, ""},
+		{"Linux-F5", []byte{'\x1b', '[', '[', 'E'}, KeyF5, ModNone, ""},
+		{"XTerm-Alt-Tab", []byte{'\x1b', '[', '2', '7', ';', '3', ';', '9', '~'}, KeyTab, ModAlt, ""}, // modifyOtherKeys == 1
+		{"Alt-F7", []byte{'\x1b', '[', '1', '8', ';', '3', '~'}, KeyF7, ModAlt, ""},
+		{"XTerm-Shift-Tab", []byte{'\x1b', '[', '2', '7', ';', '2', ';', '9', '~'}, KeyBacktab, ModNone, ""}, // modifyOtherKeys == 2
+		{"XTerm-Space", []byte{'\x1b', '[', '2', '7', ';', '1', ';', '3', '2', '~'}, KeyRune, ModNone, " "},  // modifyOtherKeys == 3
+		{"Kitty-Esc", []byte{'\x1b', '[', '2', '7', 'u'}, KeyEsc, ModNone, ""},
+		{"Kitty-Control-I", []byte{'\x1b', '[', '1', '0', '5', ';', '5', 'u'}, 'I', ModCtrl, ""},
+		{"Win-Shift-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '6', '5', ';', '1', ';', '1', '6', '_'}, KeyRune, ModNone, "A"},
+		{"Win-Ctrl-Up", []byte{'\x1b', '[', '3', '8', ';', '0', ';', '0', ';', '1', ';', '8', '_'}, KeyUp, ModCtrl, ""},
+		{"Win-Ctrl-Up-2", []byte{'\x1b', '[', '3', '8', ';', '0', ';', '0', ';', '1', ';', '4', '_'}, KeyUp, ModCtrl, ""},
+		{"Win-Alt-F1", []byte{'\x1b', '[', '1', '1', '2', ';', '0', ';', '0', ';', '1', ';', '1', '_'}, KeyF1, ModAlt, ""},
+		{"Win-Alt-F1-2", []byte{'\x1b', '[', '1', '1', '2', ';', '0', ';', '0', ';', '1', ';', '2', '_'}, KeyF1, ModAlt, ""},
+		{"Win-AltGr-E", []byte{'\x1b', '[', '6', '9', ';', '0', ';', '6', '9', ';', '1', ';', '5', '_'}, KeyRune, ModNone, "E"},
+		{"Win-Ignore-Release", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '6', '5', ';', '0', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
+		{"Win-Mod-Ignore-11", []byte{'\x1b', '[', '1', '1', ';', '0', ';', '1', '1', ';', '0', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
+		{"Win-Mod-Ignore-13", []byte{'\x1b', '[', '1', '3', ';', '0', ';', '1', '3', ';', '0', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
+		{"Win-Mod-Ignore-14", []byte{'\x1b', '[', '1', '4', ';', '0', ';', '1', '4', ';', '0', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
+		{"Win-Nested-Shift-B", []byte{
+			'\x1b', '[', '0', ';', '0', ';', '2', '7', ';', '1', ';', '0', ';', '0', '_', // ESC
+			'\x1b', '[', '0', ';', '0', ';', '9', '1', ';', '1', ';', '0', ';', '0', '_', // [
+			'\x1b', '[', '0', ';', '0', ';', '5', '4', ';', '1', ';', '0', ';', '0', '_', // 6
+			'\x1b', '[', '0', ';', '0', ';', '5', '4', ';', '1', ';', '0', ';', '0', '_', // 6
+			'\x1b', '[', '0', ';', '0', ';', '5', '9', ';', '1', ';', '0', ';', '0', '_', // ;
+			'\x1b', '[', '0', ';', '0', ';', '4', '8', ';', '1', ';', '0', ';', '0', '_', // 0
+			'\x1b', '[', '0', ';', '0', ';', '5', '9', ';', '1', ';', '0', ';', '0', '_', // ;
+			'\x1b', '[', '0', ';', '0', ';', '5', '4', ';', '1', ';', '0', ';', '0', '_', // 6
+			'\x1b', '[', '0', ';', '0', ';', '5', '4', ';', '1', ';', '0', ';', '0', '_', // 6
+			'\x1b', '[', '0', ';', '0', ';', '5', '9', ';', '1', ';', '0', ';', '0', '_', // ;
+			'\x1b', '[', '0', ';', '0', ';', '4', '9', ';', '1', ';', '0', ';', '0', '_', // 1
+			'\x1b', '[', '0', ';', '0', ';', '5', '9', ';', '1', ';', '0', ';', '0', '_', // ;
+			'\x1b', '[', '0', ';', '0', ';', '4', '9', ';', '1', ';', '0', ';', '0', '_', // 1
+			'\x1b', '[', '0', ';', '0', ';', '5', '4', ';', '1', ';', '0', ';', '0', '_', // 6
+			'\x1b', '[', '0', ';', '0', ';', '5', '9', ';', '1', ';', '0', ';', '0', '_', // ;
+			'\x1b', '[', '0', ';', '0', ';', '4', '9', ';', '1', ';', '0', ';', '0', '_', // 1
+			'\x1b', '[', '0', ';', '0', ';', '9', '5', ';', '1', ';', '0', ';', '0', '_', // _
+		}, KeyRune, ModNone, "B"},
 	}
 
 	for _, tt := range tests {
@@ -594,8 +630,10 @@ func TestSpecialKeys(t *testing.T) {
 			select {
 			case ev := <-evch:
 				if kev, ok := ev.(*EventKey); ok {
-					if kev.Key() != tt.expectedKey || kev.Modifiers() != tt.expectedMod {
-						t.Errorf("Expected %q, got %q", expected.Name(), kev.Name())
+					if kev.Key() != tt.expectedKey || kev.Modifiers() != tt.expectedMod || kev.Str() != string(tt.expectedStr) {
+						t.Errorf("Expected %q, got %q (rune expected %q got %q)", expected.Name(), kev.Name(), string(tt.expectedStr), kev.Str())
+					} else {
+						t.Logf("Key %s ok", kev.Name())
 					}
 				} else {
 					t.Errorf("Expected EventKey, got %T", ev)

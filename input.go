@@ -831,8 +831,10 @@ func (ip *inputParser) handleWinKey(P []int) {
 	}
 
 	for range rpt {
-		if key != KeyRune || chr != 0 {
-			ip.post(NewEventKey(key, string(chr), mod))
+		if key != KeyRune {
+			ip.post(NewEventKey(key, "", mod))
+		} else if chr != 0 {
+			ip.post(NewEventKey(KeyRune, string(chr), mod))
 		}
 	}
 }
@@ -971,7 +973,11 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 			if len(P) > 1 {
 				mod = calcModifier(P[1])
 			}
-			ip.post(NewEventKey(key, string(chr), mod))
+			if key != KeyRune {
+				ip.post(NewEventKey(key, "", mod))
+			} else if chr != 0 {
+				ip.post(NewEventKey(KeyRune, string(chr), mod))
+			}
 			return
 		}
 	case '_':
