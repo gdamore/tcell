@@ -321,6 +321,7 @@ func TestInputUTF8Characters(t *testing.T) {
 		{"Emoji", []byte("😀"), "😀"},
 		{"Cyrillic", []byte("Ж"), "Ж"},
 		{"Arabic", []byte("ع"), "ع"},
+		{"SMP", []byte("🝁"), "🝁"}, // needs full 4 character UTF-8
 	}
 
 	for _, tt := range tests {
