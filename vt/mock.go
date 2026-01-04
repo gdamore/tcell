@@ -93,7 +93,7 @@ func (mt *mockTerm) Bells() int {
 	return mt.mb.Bells()
 }
 
-func (mt *mockTerm) KeyEvent(ev KbdEvent) {
+func (mt *mockTerm) KeyEvent(ev KeyEvent) {
 	mt.em.KeyEvent(ev)
 	if ev.Code == KcEsc {
 		// Inject a delay to simulate human typing.
@@ -145,7 +145,7 @@ type MockTerm interface {
 	Bells() int
 
 	// Inject a keyboard event.
-	KeyEvent(KbdEvent)
+	KeyEvent(KeyEvent)
 
 	// Inject a mouse event.
 	MouseEvent(MouseEvent)

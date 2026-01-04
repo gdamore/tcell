@@ -43,7 +43,7 @@ type Emulator interface {
 
 	// KeyEvent injects a keyboard event into the emulator, which will ultimately
 	// result in data being sent via SendRaw.
-	KeyEvent(ev KbdEvent)
+	KeyEvent(ev KeyEvent)
 
 	// ResizeEvent is called by a backend when the terminal has resized
 	// This will send in-band resize notifications if the client has requested them.
@@ -1374,8 +1374,8 @@ func (em *emulator) SendRaw(b []byte) {
 	}
 }
 
-// KbdEvent injects a keyboard event into the emulator
-func (em *emulator) KeyEvent(ev KbdEvent) {
+// KeyEvent injects a keyboard event into the emulator
+func (em *emulator) KeyEvent(ev KeyEvent) {
 	// TODO: more add support for other keyboard protocols, right now we only do legacy
 	em.keyLegacy(ev)
 }
@@ -1464,7 +1464,7 @@ func toASCIIUpper(r rune) (rune, bool) {
 }
 
 // keyLegacy handles a keyboard event when in legacy vt220 style mode.
-func (em *emulator) keyLegacy(ev KbdEvent) {
+func (em *emulator) keyLegacy(ev KeyEvent) {
 	if !ev.Down { // legacy protocol does not support key release
 		return
 	}

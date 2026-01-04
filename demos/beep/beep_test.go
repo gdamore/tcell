@@ -32,21 +32,21 @@ func TestBeep(t *testing.T) {
 	mt.Drain()
 
 	// simulate two presses of B
-	mt.KeyEvent(vt.KbdEvent{Code: 'b', Down: true})
-	mt.KeyEvent(vt.KbdEvent{Code: 'b', Down: false})
+	mt.KeyEvent(vt.KeyEvent{Code: 'b', Down: true})
+	mt.KeyEvent(vt.KeyEvent{Code: 'b', Down: false})
 	time.Sleep(time.Millisecond * 100)
-	mt.KeyEvent(vt.KbdEvent{Code: 'b', Down: true})
-	mt.KeyEvent(vt.KbdEvent{Code: 'b', Down: false})
+	mt.KeyEvent(vt.KeyEvent{Code: 'b', Down: true})
+	mt.KeyEvent(vt.KeyEvent{Code: 'b', Down: false})
 
 	// control L (forces sync)
-	mt.KeyEvent(vt.KbdEvent{Code: 'l', Down: true, Mod: vt.ModCtrl})
-	mt.KeyEvent(vt.KbdEvent{Code: 'l', Down: false, Mod: vt.ModCtrl})
+	mt.KeyEvent(vt.KeyEvent{Code: 'l', Down: true, Mod: vt.ModCtrl})
+	mt.KeyEvent(vt.KeyEvent{Code: 'l', Down: false, Mod: vt.ModCtrl})
 
 	// sleep at least 3 seconds to get the time driven beep
 	time.Sleep(time.Millisecond * 3500)
 
-	mt.KeyEvent(vt.KbdEvent{Code: 'q', Down: true, Mod: vt.ModCtrl})
-	mt.KeyEvent(vt.KbdEvent{Code: 'q', Down: false, Mod: vt.ModCtrl})
+	mt.KeyEvent(vt.KeyEvent{Code: 'q', Down: true, Mod: vt.ModCtrl})
+	mt.KeyEvent(vt.KeyEvent{Code: 'q', Down: false, Mod: vt.ModCtrl})
 
 	wg.Wait()
 

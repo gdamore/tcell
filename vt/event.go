@@ -14,8 +14,8 @@
 
 package vt
 
-// KbdEvent is a key event.
-type KbdEvent struct {
+// KeyEvent is a key event.
+type KeyEvent struct {
 	Down   bool     // true if event is for key down event
 	Repeat int      // if > 1, a repeat count
 	Code   KeyCode  // logical key code (X11 key symbol, e.g. 'A')

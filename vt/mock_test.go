@@ -490,19 +490,19 @@ func TestUnicodeWide(t *testing.T) {
 	}
 }
 
-// TestKbdEventLegacy tests key events when using the default legacy key protocol.
-func TestKbdEventLegacy(t *testing.T) {
+// TestKeyEventLegacy tests key events when using the default legacy key protocol.
+func TestKeyEventLegacy(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
 	defer mustClose(t, trm)
 	mustStart(t, trm)
 
-	trm.KeyEvent(KbdEvent{Code: 'a', Base: 'a', Down: true})
-	trm.KeyEvent(KbdEvent{Code: 'A', Base: 'a', Mod: ModShift, Down: false})
-	trm.KeyEvent(KbdEvent{Code: 'B', Base: 'b', Mod: ModShift, Down: true})
-	trm.KeyEvent(KbdEvent{Code: 'B', Base: 'b', Mod: ModShift, Down: false})
-	trm.KeyEvent(KbdEvent{Code: KcReturn, Down: true})
-	trm.KeyEvent(KbdEvent{Code: 'i', Down: true, Mod: ModCtrl})
-	trm.KeyEvent(KbdEvent{Code: KcEsc, Down: true})
+	trm.KeyEvent(KeyEvent{Code: 'a', Base: 'a', Down: true})
+	trm.KeyEvent(KeyEvent{Code: 'A', Base: 'a', Mod: ModShift, Down: false})
+	trm.KeyEvent(KeyEvent{Code: 'B', Base: 'b', Mod: ModShift, Down: true})
+	trm.KeyEvent(KeyEvent{Code: 'B', Base: 'b', Mod: ModShift, Down: false})
+	trm.KeyEvent(KeyEvent{Code: KcReturn, Down: true})
+	trm.KeyEvent(KeyEvent{Code: 'i', Down: true, Mod: ModCtrl})
+	trm.KeyEvent(KeyEvent{Code: KcEsc, Down: true})
 
 	buf := make([]byte, 256)
 	n, err := trm.Read(buf)
@@ -517,12 +517,12 @@ func TestKbdEventLegacy(t *testing.T) {
 
 	// SS3 based F-keys
 	clear(buf)
-	trm.KeyEvent(KbdEvent{Code: KcF1, Down: true})                                   // SS3 P
-	trm.KeyEvent(KbdEvent{Code: KcF1, Down: false})                                  // none
-	trm.KeyEvent(KbdEvent{Code: KcF1, Mod: ModShift, Down: true})                    // CSI 1 ; 2 P
-	trm.KeyEvent(KbdEvent{Code: KcF2, Mod: ModCtrl, Down: true})                     // CSI 1 ; 5 Q
-	trm.KeyEvent(KbdEvent{Code: KcF3, Mod: ModAlt | ModShift | ModCtrl, Down: true}) // ESC CSI 1 ; 6 R
-	trm.KeyEvent(KbdEvent{Code: KcF4, Mod: ModAlt | ModCtrl, Down: true})            // ESC CSI 1 ; 5 S
+	trm.KeyEvent(KeyEvent{Code: KcF1, Down: true})                                   // SS3 P
+	trm.KeyEvent(KeyEvent{Code: KcF1, Down: false})                                  // none
+	trm.KeyEvent(KeyEvent{Code: KcF1, Mod: ModShift, Down: true})                    // CSI 1 ; 2 P
+	trm.KeyEvent(KeyEvent{Code: KcF2, Mod: ModCtrl, Down: true})                     // CSI 1 ; 5 Q
+	trm.KeyEvent(KeyEvent{Code: KcF3, Mod: ModAlt | ModShift | ModCtrl, Down: true}) // ESC CSI 1 ; 6 R
+	trm.KeyEvent(KeyEvent{Code: KcF4, Mod: ModAlt | ModCtrl, Down: true})            // ESC CSI 1 ; 5 S
 	want = "\x1bOP"
 	want += "\x1b[1;2P"
 	want += "\x1b[1;5Q"
@@ -539,16 +539,16 @@ func TestKbdEventLegacy(t *testing.T) {
 
 	// CSI based F-keys
 	buf = make([]byte, 256)
-	trm.KeyEvent(KbdEvent{Code: KcF5, Down: true})                                   // CSI 15 ~
-	trm.KeyEvent(KbdEvent{Code: KcF5, Down: false})                                  // none
-	trm.KeyEvent(KbdEvent{Code: KcF6, Mod: ModShift, Down: true})                    // CSI 17 ; 2 ~
-	trm.KeyEvent(KbdEvent{Code: KcF7, Mod: ModCtrl, Down: true})                     // CSI 18 ; 5 ~
-	trm.KeyEvent(KbdEvent{Code: KcF8, Mod: ModAlt | ModShift | ModCtrl, Down: true}) // ESC CSI 19 ; 6 ~
-	trm.KeyEvent(KbdEvent{Code: KcF9, Mod: ModAlt | ModCtrl, Down: true})            // ESC CSI 20 ; 5 ~
-	trm.KeyEvent(KbdEvent{Code: KcF20, Mod: ModNone, Down: true})                    // CSI 34 ~
-	trm.KeyEvent(KbdEvent{Code: KcHelp, Mod: ModNone, Down: true})                   // CSI 28 ~
-	trm.KeyEvent(KbdEvent{Code: KcF15, Mod: ModNone, Down: true})                    // CSI 28 ~
-	trm.KeyEvent(KbdEvent{Code: KcMenu, Mod: ModNone, Down: true})                   // CSI 29 ~
+	trm.KeyEvent(KeyEvent{Code: KcF5, Down: true})                                   // CSI 15 ~
+	trm.KeyEvent(KeyEvent{Code: KcF5, Down: false})                                  // none
+	trm.KeyEvent(KeyEvent{Code: KcF6, Mod: ModShift, Down: true})                    // CSI 17 ; 2 ~
+	trm.KeyEvent(KeyEvent{Code: KcF7, Mod: ModCtrl, Down: true})                     // CSI 18 ; 5 ~
+	trm.KeyEvent(KeyEvent{Code: KcF8, Mod: ModAlt | ModShift | ModCtrl, Down: true}) // ESC CSI 19 ; 6 ~
+	trm.KeyEvent(KeyEvent{Code: KcF9, Mod: ModAlt | ModCtrl, Down: true})            // ESC CSI 20 ; 5 ~
+	trm.KeyEvent(KeyEvent{Code: KcF20, Mod: ModNone, Down: true})                    // CSI 34 ~
+	trm.KeyEvent(KeyEvent{Code: KcHelp, Mod: ModNone, Down: true})                   // CSI 28 ~
+	trm.KeyEvent(KeyEvent{Code: KcF15, Mod: ModNone, Down: true})                    // CSI 28 ~
+	trm.KeyEvent(KeyEvent{Code: KcMenu, Mod: ModNone, Down: true})                   // CSI 29 ~
 	want = "\x1b[15~"
 	want += "\x1b[17;2~"
 	want += "\x1b[18;5~"
@@ -566,22 +566,22 @@ func TestKbdEventLegacy(t *testing.T) {
 
 	// Misc other keys
 	clear(buf)
-	trm.KeyEvent(KbdEvent{Code: KcReturn, Down: true})                             // \r
-	trm.KeyEvent(KbdEvent{Code: KcTab, Down: true})                                // \t
-	trm.KeyEvent(KbdEvent{Code: KcTab, Mod: ModShift, Down: true})                 // CSI Z
-	trm.KeyEvent(KbdEvent{Code: 'm', Mod: ModCtrl, Down: true})                    // \r
-	trm.KeyEvent(KbdEvent{Code: 'l', Mod: ModCtrl, Down: true})                    // \x0c
-	trm.KeyEvent(KbdEvent{Code: KcBackspace, Down: true})                          // \x7f
-	trm.KeyEvent(KbdEvent{Code: KcBackspace, Mod: ModCtrl, Down: true})            // \x08
-	trm.KeyEvent(KbdEvent{Code: KcBackspace, Mod: ModShift | ModCtrl, Down: true}) // \x08
-	trm.KeyEvent(KbdEvent{Code: KcSpace, Mod: ModCtrl, Down: true})                // \x00
-	trm.KeyEvent(KbdEvent{Code: KcSpace, Down: true})                              // ' '
-	trm.KeyEvent(KbdEvent{Code: 'a', Mod: ModAlt, Down: true})                     // \x1b a
-	trm.KeyEvent(KbdEvent{Code: 'a', Mod: ModHyper, Down: true})                   // none
-	trm.KeyEvent(KbdEvent{Code: 'a', Mod: ModMeta, Down: true})                    // none
-	trm.KeyEvent(KbdEvent{Code: 'j', Mod: ModAlt | ModCtrl, Down: true})           // \x1b\n
-	trm.KeyEvent(KbdEvent{Code: 'L', Mod: ModCtrl, Down: true})                    // \x0c
-	trm.KeyEvent(KbdEvent{Code: '[', Mod: ModCtrl, Down: true})                    // \x0c
+	trm.KeyEvent(KeyEvent{Code: KcReturn, Down: true})                             // \r
+	trm.KeyEvent(KeyEvent{Code: KcTab, Down: true})                                // \t
+	trm.KeyEvent(KeyEvent{Code: KcTab, Mod: ModShift, Down: true})                 // CSI Z
+	trm.KeyEvent(KeyEvent{Code: 'm', Mod: ModCtrl, Down: true})                    // \r
+	trm.KeyEvent(KeyEvent{Code: 'l', Mod: ModCtrl, Down: true})                    // \x0c
+	trm.KeyEvent(KeyEvent{Code: KcBackspace, Down: true})                          // \x7f
+	trm.KeyEvent(KeyEvent{Code: KcBackspace, Mod: ModCtrl, Down: true})            // \x08
+	trm.KeyEvent(KeyEvent{Code: KcBackspace, Mod: ModShift | ModCtrl, Down: true}) // \x08
+	trm.KeyEvent(KeyEvent{Code: KcSpace, Mod: ModCtrl, Down: true})                // \x00
+	trm.KeyEvent(KeyEvent{Code: KcSpace, Down: true})                              // ' '
+	trm.KeyEvent(KeyEvent{Code: 'a', Mod: ModAlt, Down: true})                     // \x1b a
+	trm.KeyEvent(KeyEvent{Code: 'a', Mod: ModHyper, Down: true})                   // none
+	trm.KeyEvent(KeyEvent{Code: 'a', Mod: ModMeta, Down: true})                    // none
+	trm.KeyEvent(KeyEvent{Code: 'j', Mod: ModAlt | ModCtrl, Down: true})           // \x1b\n
+	trm.KeyEvent(KeyEvent{Code: 'L', Mod: ModCtrl, Down: true})                    // \x0c
+	trm.KeyEvent(KeyEvent{Code: '[', Mod: ModCtrl, Down: true})                    // \x0c
 
 	want = "\r\t\x1b[Z\r\x0c\x7f\x08\x08\x00 \x1ba\x1b\n\x0c\x1b"
 	n, err = trm.Read(buf)
@@ -592,13 +592,13 @@ func TestKbdEventLegacy(t *testing.T) {
 
 	// Legacy control key mappings (weird ones)
 	// 	clear(buf)
-	trm.KeyEvent(KbdEvent{Code: '8', Mod: ModCtrl, Down: true}) // \x7F
-	trm.KeyEvent(KbdEvent{Code: '4', Mod: ModCtrl, Down: true}) // \x1c
-	trm.KeyEvent(KbdEvent{Code: '?', Mod: ModCtrl, Down: true}) // \x1f
-	trm.KeyEvent(KbdEvent{Code: '7', Mod: ModCtrl, Down: true}) // \x1f
-	trm.KeyEvent(KbdEvent{Code: '7', Mod: ModNone, Down: true}) // 7
-	trm.KeyEvent(KbdEvent{Code: '?', Mod: ModNone, Down: true}) // ?
-	trm.KeyEvent(KbdEvent{Code: '[', Mod: ModCtrl, Down: true}) // \x1b
+	trm.KeyEvent(KeyEvent{Code: '8', Mod: ModCtrl, Down: true}) // \x7F
+	trm.KeyEvent(KeyEvent{Code: '4', Mod: ModCtrl, Down: true}) // \x1c
+	trm.KeyEvent(KeyEvent{Code: '?', Mod: ModCtrl, Down: true}) // \x1f
+	trm.KeyEvent(KeyEvent{Code: '7', Mod: ModCtrl, Down: true}) // \x1f
+	trm.KeyEvent(KeyEvent{Code: '7', Mod: ModNone, Down: true}) // 7
+	trm.KeyEvent(KeyEvent{Code: '?', Mod: ModNone, Down: true}) // ?
+	trm.KeyEvent(KeyEvent{Code: '[', Mod: ModCtrl, Down: true}) // \x1b
 	want = "\x7f\x1c\x1f\x1f7?\x1b"
 	n, err = trm.Read(buf)
 	assertF(t, err == nil, "failed read: %v", err)
@@ -607,9 +607,9 @@ func TestKbdEventLegacy(t *testing.T) {
 	verifyF(t, result == want, "key responses failed: %q != %q", result, want)
 
 	// Application cursor keys
-	trm.KeyEvent(KbdEvent{Code: KcUp, Down: true})
+	trm.KeyEvent(KeyEvent{Code: KcUp, Down: true})
 	writeF(t, trm, "\x1b[?1h")
-	trm.KeyEvent(KbdEvent{Code: KcDown, Down: true})
+	trm.KeyEvent(KeyEvent{Code: KcDown, Down: true})
 	want = "\x1b[A\x1bOB"
 	n, err = trm.Read(buf)
 	assertF(t, err == nil, "failed read: %v", err)

@@ -35,8 +35,8 @@ func TestStyles(t *testing.T) {
 	mt.Drain()
 
 	// control L (forces sync)
-	mt.KeyEvent(vt.KbdEvent{Code: 'l', Down: true, Mod: vt.ModCtrl})
-	mt.KeyEvent(vt.KbdEvent{Code: 'l', Down: false, Mod: vt.ModCtrl})
+	mt.KeyEvent(vt.KeyEvent{Code: 'l', Down: true, Mod: vt.ModCtrl})
+	mt.KeyEvent(vt.KeyEvent{Code: 'l', Down: false, Mod: vt.ModCtrl})
 
 	attrs := 0
 	var lastAttr vt.Attr
@@ -48,8 +48,8 @@ func TestStyles(t *testing.T) {
 			}
 		}
 	}
-	mt.KeyEvent(vt.KbdEvent{Code: 'q', Down: true, Mod: vt.ModCtrl})
-	mt.KeyEvent(vt.KbdEvent{Code: 'q', Down: false, Mod: vt.ModCtrl})
+	mt.KeyEvent(vt.KeyEvent{Code: 'q', Down: true, Mod: vt.ModCtrl})
+	mt.KeyEvent(vt.KeyEvent{Code: 'q', Down: false, Mod: vt.ModCtrl})
 
 	wg.Wait()
 	if attrs < 8 {

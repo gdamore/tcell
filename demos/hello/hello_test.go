@@ -90,6 +90,6 @@ func TestHello(t *testing.T) {
 		}
 	}
 
-	mt.KeyEvent(vt.KbdEvent{Code: vt.KcEsc, Base: vt.KcEsc, Down: true})
+	mt.KeyEvent(vt.KeyEvent{Code: vt.KcEsc, Base: vt.KcEsc, Down: true})
 	wg.Wait()
 }
