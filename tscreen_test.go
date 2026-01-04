@@ -33,7 +33,7 @@ func drainInput() {
 	time.Sleep(time.Millisecond * 30)
 }
 
-// TestInitScreen just tries to initialze the default screen.
+// TestInitScreen just tries to initialize the default screen.
 // It requires a working tty.
 func TestInitScreen(t *testing.T) {
 	s, err := NewTerminfoScreen()
@@ -52,7 +52,7 @@ func TestInitScreen(t *testing.T) {
 	drainInput()
 }
 
-// TestInitScreenStdio just tries to initialze the default screen using standard I/O.
+// TestInitScreenStdio just tries to initialize the default screen using standard I/O.
 // It requires a working tty.
 func TestInitScreenStdio(t *testing.T) {
 	tty, err := tty.NewStdIoTty()
