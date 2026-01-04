@@ -411,11 +411,16 @@ func (ip *inputParser) scan() {
 		ip.buf = ip.buf[1:]
 		ip.escChar = 0
 		ip.keyTime = time.Now()
-		if r > 0x7F {
+		if r >= 0xA0 {
 			// 8-bit extended Unicode we just treat as such - this will swallow anything else queued up
 			ip.state = istInit
 			ip.post(NewEventKey(KeyRune, string(r), ModNone))
 			continue
+		} else if r >= 0x80 {
+			// ISO 2022 control chars
+			ip.state = istEsc
+			r -= 0x40
+			// we fall through so it will be treated as the 7-bit equivalent
 		}
 		switch ip.state {
 		case istInit:
@@ -1050,17 +1055,19 @@ func (ip *inputParser) ScanUTF8(b []byte) {
 
 	ip.utfBuf = append(ip.utfBuf, b...)
 	for len(ip.utfBuf) > 0 {
-		// fast path, basic ascii
-		if ip.utfBuf[0] < 0x7F {
+		// fast path, basic ascii, also includes ISO2022 8-bit controls
+		if ip.utfBuf[0] < 0xA0 {
 			ip.buf = append(ip.buf, rune(ip.utfBuf[0]))
 			ip.utfBuf = ip.utfBuf[1:]
 		} else {
 			r, utfLen := utf8.DecodeRune(ip.utfBuf)
 			if r == utf8.RuneError {
-				r = rune(ip.utfBuf[0])
+				// discard the leading byte as bad,
+				// hopefully it will recover.
 				utfLen = 1
+			} else {
+				ip.buf = append(ip.buf, r)
 			}
-			ip.buf = append(ip.buf, r)
 			ip.utfBuf = ip.utfBuf[utfLen:]
 		}
 	}

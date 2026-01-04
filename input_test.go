@@ -702,3 +702,52 @@ func TestDecPrivateModeResponse(t *testing.T) {
 		})
 	}
 }
+
+func TestIgnoredSequences(t *testing.T) {
+	tests := []struct {
+		name  string
+		bytes string
+	}{
+		{"LoneST", "\x9c"}, // 7 bit version would be confused with Alt-\
+		{"SoS", "\x1bXdata\x1b\\"},
+		{"SoS-Bell", "\x1bXdata\x07"},
+		{"PM", "\x1b^data\x07"},
+		{"PM8", "\x9edata\x07"},
+		{"PM-Bell", "\x1b^data\x07"},
+		{"APC", "\x1b_data\x07"},
+		{"APC8", "\x9fdata\x07"},
+		{"APC-Bell", "\x1b_data\x07"},
+		{"OSC", "\x1b]junk\x1b\\"},
+		{"OSC8", "\x9djunk\x1b\\"},
+		{"OSC-Bell", "\x1b]junk\x07"},
+		{"DCS", "\x1bPjunk\x1b\\"},
+		{"DCS8", "\x90junk\x1b\\"},
+		{"DCS-Bell", "\x1bPjunk\x07"},
+		{"SS2", "\x1bN1"},
+		{"SS28", "\x8e1"},
+		{"BadCSI", "\x1b[\x07"},
+		{"BadUTF8", "\xe0\xff"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			evch := make(chan Event, 10)
+			ip := newInputParser(evch)
+
+			// send event plus DECID so we get a final event
+			ip.ScanUTF8(append([]byte(test.bytes), '\x1B', '[', '?', '6', 'c'))
+			select {
+			case ev := <-evch:
+				if _, ok := ev.(*eventPrimaryAttributes); ok {
+					return
+				} else {
+					t.Errorf("Got unexpected event %T", ev)
+					if ev, ok := ev.(*EventKey); ok {
+						t.Logf("Key %s", ev.Name())
+					}
+				}
+			case <-time.After(100 * time.Millisecond):
+				t.Fatal("Timeout")
+			}
+		})
+	}
+}
