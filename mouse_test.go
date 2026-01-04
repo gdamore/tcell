@@ -17,6 +17,8 @@ package tcell
 import (
 	"testing"
 	"time"
+
+	"github.com/gdamore/tcell/v3/vt"
 )
 
 func TestMouseEventFields(t *testing.T) {
@@ -36,5 +38,61 @@ func TestMouseEventFields(t *testing.T) {
 	}
 	if x, y := ev.Position(); x != 4 || y != 5 {
 		t.Errorf("wrong position %d %d", x, y)
+	}
+}
+
+func getMouseEvent(t *testing.T, s Screen) (*EventMouse, bool) {
+	t.Helper()
+	for {
+		select {
+		case ev := <-s.EventQ():
+			if me, ok := ev.(*EventMouse); ok {
+				return me, true
+			}
+			t.Logf("Got different event: %T", ev)
+		case <-time.After(time.Second):
+			t.Fatal("timeout waiting for mouse event")
+			return nil, false
+		}
+	}
+}
+
+func TestMouseEvents(t *testing.T) {
+	term, s := NewMockScreen(t)
+	defer s.Fini()
+
+	s.EnableMouse(MouseMotionEvents)
+	time.Sleep(time.Millisecond * 10)
+
+	// simple mouse click
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button1,
+		Down:     true,
+		Motion:   false,
+		Mod:      vt.ModNone,
+	})
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button1,
+		Down:     false,
+		Motion:   false,
+		Mod:      vt.ModNone,
+	})
+
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button1 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	}
+
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != ButtonNone {
+		t.Errorf("still got buttons")
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
 	}
 }
