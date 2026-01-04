@@ -892,7 +892,7 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	t.Print(vt.PmMouseMotion.Disable())
 	t.Print(vt.PmMouseSgr.Disable())
 
-	if f&MouseButtonEvents != 0 {
+	if f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) != 0 {
 		t.Print(vt.PmMouseButton.Enable())
 	}
 	if f&MouseDragEvents != 0 {
