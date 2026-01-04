@@ -101,6 +101,7 @@ const (
 )
 
 // Mouser adds support configuring mouse reporting.
+// We also assume that a mouse reporter can report focus events.
 type Mouser interface {
 	SetMouse(MouseReporting)
 }

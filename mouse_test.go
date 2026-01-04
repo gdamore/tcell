@@ -57,6 +57,22 @@ func getMouseEvent(t *testing.T, s Screen) (*EventMouse, bool) {
 	}
 }
 
+func getFocusEvent(t *testing.T, s Screen) (*EventFocus, bool) {
+	t.Helper()
+	for {
+		select {
+		case ev := <-s.EventQ():
+			if fe, ok := ev.(*EventFocus); ok {
+				return fe, true
+			}
+			t.Logf("Got different event: %T", ev)
+		case <-time.After(time.Second):
+			t.Fatal("timeout waiting for focus event")
+			return nil, false
+		}
+	}
+}
+
 func TestMouseEvents(t *testing.T) {
 	term, s := NewMockScreen(t)
 	defer s.Fini()
@@ -394,5 +410,34 @@ func TestMouseEvents(t *testing.T) {
 		return
 	} else if me.Buttons() != ButtonNone {
 		t.Errorf("wrong buttons: %x", me.Buttons())
+	}
+}
+
+func TestFocusEvents(t *testing.T) {
+	term, s := NewMockScreen(t)
+	defer s.Fini()
+
+	s.EnableFocus()
+	time.Sleep(time.Millisecond * 10)
+
+	term.FocusEvent(true)
+	if ev, ok := getFocusEvent(t, s); !ok {
+		return
+	} else if !ev.Focused {
+		t.Error("focused was not set")
+	}
+
+	term.FocusEvent(false)
+	if ev, ok := getFocusEvent(t, s); !ok {
+		return
+	} else if ev.Focused {
+		t.Error("focused was set")
+	}
+
+	term.FocusEvent(true)
+	if ev, ok := getFocusEvent(t, s); !ok {
+		return
+	} else if !ev.Focused {
+		t.Error("focused was not set")
 	}
 }

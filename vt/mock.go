@@ -106,6 +106,10 @@ func (mt *mockTerm) MouseEvent(ev MouseEvent) {
 	mt.em.MouseEvent(ev)
 }
 
+func (mt *mockTerm) FocusEvent(focused bool) {
+	mt.em.FocusEvent(focused)
+}
+
 // GetTitle returns the current window title.
 func (mt *mockTerm) GetTitle() string {
 	return mt.mb.GetTitle()
@@ -149,6 +153,9 @@ type MockTerm interface {
 
 	// Inject a mouse event.
 	MouseEvent(MouseEvent)
+
+	// Inject a focus event.
+	FocusEvent(bool)
 
 	// GetTitle obtains the current window title.
 	GetTitle() string

@@ -52,6 +52,9 @@ type Emulator interface {
 	// MouseEvent is called by a backend to report mouse activity.
 	MouseEvent(ev MouseEvent)
 
+	// FocusEvent is called by a backend to report that focus is gained (true) or lost (false).
+	FocusEvent(bool)
+
 	// Drain waits until any queued but not processed input has finished processing.
 	// It also wakes the reader.
 	Drain() error
@@ -151,13 +154,14 @@ func NewEmulator(be Backend) Emulator {
 		em.localModes[PmResizeReports] = ModeOff
 	}
 
-	// add mouse modes
+	// add mouse modes - we also add focus reporting mode
 	if _, ok := be.(Mouser); ok {
 		em.localModes[PmMouseX10] = ModeOff
 		em.localModes[PmMouseButton] = ModeOff
 		em.localModes[PmMouseDrag] = ModeOff
 		em.localModes[PmMouseMotion] = ModeOff
 		em.localModes[PmMouseSgr] = ModeOff
+		em.localModes[PmFocusReports] = ModeOff
 	}
 
 	em.cells = make([]Cell, int(be.GetSize().X)*int(be.GetSize().Y))
@@ -1590,6 +1594,16 @@ func (em *emulator) MouseEvent(ev MouseEvent) {
 			em.SendRaw([]byte{'\x1b', '[', 'M', '"', x, y})
 		case Button3:
 			em.SendRaw([]byte{'\x1b', '[', 'M', '!', x, y})
+		}
+	}
+}
+
+func (em *emulator) FocusEvent(focused bool) {
+	if pm := em.getPrivateMode(PmFocusReports); pm == ModeOn {
+		if focused {
+			em.SendRaw([]byte{'\x1b', '[', 'I'})
+		} else {
+			em.SendRaw([]byte{'\x1b', '[', 'O'})
 		}
 	}
 }
