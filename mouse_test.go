@@ -91,7 +91,7 @@ func TestMouseEvents(t *testing.T) {
 	if me, ok := getMouseEvent(t, s); !ok {
 		return
 	} else if me.Buttons() != ButtonNone {
-		t.Errorf("still got buttons")
+		t.Errorf("still got buttons %x", me.Buttons())
 	} else if x, y := me.Position(); x != 2 || y != 3 {
 		t.Errorf("wrong position %d,%d != 2,3", x, y)
 	}
@@ -176,6 +176,7 @@ func TestMouseEvents(t *testing.T) {
 		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
 	}
 
+	// this will be a chord of buttons 2 and 3
 	term.MouseEvent(vt.MouseEvent{
 		Position: vt.Coord{X: 2, Y: 3},
 		Button:   vt.Button3,
@@ -184,12 +185,35 @@ func TestMouseEvents(t *testing.T) {
 	})
 	if me, ok := getMouseEvent(t, s); !ok {
 		return
-	} else if me.Buttons() != Button3 {
+	} else if me.Buttons() != Button3|Button2 {
 		t.Errorf("wrong buttons: %x", me.Buttons())
 	} else if x, y := me.Position(); x != 2 || y != 3 {
 		t.Errorf("wrong position %d,%d != 2,3", x, y)
 	} else if me.Modifiers() != ModShift {
 		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button3,
+		Down:     false,
+		Mod:      vt.ModShift,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button2 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	}
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button2,
+		Down:     false,
+		Mod:      vt.ModShift,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != ButtonNone {
+		t.Errorf("wrong buttons: %x", me.Buttons())
 	}
 
 	term.MouseEvent(vt.MouseEvent{
@@ -235,5 +259,140 @@ func TestMouseEvents(t *testing.T) {
 	case ev := <-s.EventQ():
 		t.Fatalf("Got unexpected event: %T", ev)
 	case <-time.After(time.Millisecond * 50):
+	}
+
+	// Now try the upper buttons (uncommon)
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button4,
+		Down:     true,
+		Mod:      vt.ModShift,
+		Motion:   false,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button4 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button4,
+		Down:     false,
+		Mod:      vt.ModShift,
+		Motion:   false,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != ButtonNone {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button5,
+		Down:     true,
+		Mod:      vt.ModShift,
+		Motion:   false,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button5 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	// chord with 5
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button6,
+		Down:     true,
+		Mod:      vt.ModShift,
+		Motion:   false,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button6|Button5 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	// and now adding the final chord with button 7
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button7,
+		Down:     true,
+		Mod:      vt.ModShift,
+		Motion:   false,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button5|Button6|Button7 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	// and release them out of order
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button6,
+		Down:     false,
+		Mod:      vt.ModShift,
+		Motion:   false,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button5|Button7 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	}
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button5,
+		Down:     false,
+		Mod:      vt.ModShift,
+		Motion:   false,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button7 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	}
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button7,
+		Down:     false,
+		Mod:      vt.ModShift,
+		Motion:   false,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != ButtonNone {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	}
+
+	// Spurious release event
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button7,
+		Down:     false,
+		Mod:      vt.ModShift,
+		Motion:   false,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != ButtonNone {
+		t.Errorf("wrong buttons: %x", me.Buttons())
 	}
 }

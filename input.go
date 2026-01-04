@@ -74,6 +74,7 @@ type inputParser struct {
 	escChar   byte         // last byte for escape
 	escaped   bool         // true if next key should be modified by ESC
 	btnDown   bool         // mouse button tracking for broken terms
+	btnsDown  ButtonMask   // mouse buttons down (excludes wheel buttons)
 	state     inputState   // tracks processor state
 	strState  inputState   // saved str state (needed for ST)
 	l         sync.Mutex   // protects local state
@@ -684,29 +685,9 @@ func (ip *inputParser) handleMouse(mode rune, params []int) {
 	// to the screen in that case.
 	x := max(min(params[1]-1, ip.cols-1), 0)
 	y := max(min(params[2]-1, ip.rows-1), 0)
-	motion := (btn & 0x20) != 0
-	scroll := (btn & 0x42) == 0x40
-	btn &^= 0x20
-	if mode == 'm' {
-		// mouse release, clear all buttons
-		btn |= 3
-		btn &^= 0x40
-		ip.btnDown = false
-	} else if motion {
-		/*
-		 * Some broken terminals appear to send
-		 * mouse button one motion events, instead of
-		 * encoding 35 (no buttons) into these events.
-		 * We resolve these by looking for a non-motion
-		 * event first.
-		 */
-		if !ip.btnDown {
-			btn |= 3
-			btn &^= 0x40
-		}
-	} else if !scroll {
-		ip.btnDown = true
-	}
+	// motion := (btn & 0x20) != 0    // motion sets 0x20
+	// scroll := (btn & 0xC0) == 0x40 // wheel actions use 0x40
+	btn &^= 0x20 // clear motion flag
 
 	button := ButtonNone
 	mod := ModNone
@@ -715,7 +696,7 @@ func (ip *inputParser) handleMouse(mode rune, params []int) {
 	// that wheel events are sometimes misdelivered as mouse button events
 	// during a click-drag, so we debounce these, considering them to be
 	// button press events unless we see an intervening release event.
-	switch btn & 0x43 {
+	switch btn & 0xC3 {
 	case 0:
 		button = Button1
 	case 1:
@@ -732,6 +713,33 @@ func (ip *inputParser) handleMouse(mode rune, params []int) {
 		button = WheelLeft
 	case 0x43:
 		button = WheelRight
+	case 0x80:
+		button = Button4
+	case 0x81:
+		button = Button5
+	case 0x82:
+		button = Button6
+	case 0x83:
+		button = Button7
+	}
+
+	switch mode {
+	case 'm':
+		if (ip.btnsDown & button) == 0 {
+			// a release without a corresponding press, so clear it
+			button = ButtonNone
+		} else {
+			ip.btnsDown &^= button
+			button = ip.btnsDown
+		}
+
+	case 'M':
+		// record this press
+		ip.btnsDown |= button
+		// and use the full set so can see chords
+		button = ip.btnsDown
+		// mice wheel do not have release events
+		ip.btnsDown &^= (WheelDown | WheelUp | WheelLeft | WheelRight)
 	}
 
 	if btn&0x4 != 0 {
