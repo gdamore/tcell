@@ -122,6 +122,12 @@ func (mt *mockTerm) Backend() MockBackend {
 	return mt.mb
 }
 
+// SendRaw is used to inject raw bytes to the read stream of the app.
+// Use this for fuzz testing.
+func (mt *mockTerm) SendRaw(data []byte) {
+	mt.em.SendRaw(data)
+}
+
 // MockTerm is a mock terminal (emulator).  It can be used to
 // test the emulator itself, or to test applications (or tcell) that
 // uses the terminal.  It also implements the Tty interface used
@@ -149,6 +155,10 @@ type MockTerm interface {
 
 	// SetSize is used to resize the terminal.
 	SetSize(Coord)
+
+	// SendRaw is used to send raw data to the application.
+	// This is mostly intended to facilitate fuzz testing the application.
+	SendRaw([]byte)
 
 	// Backend returns the backend (used for testing).
 	Backend() MockBackend

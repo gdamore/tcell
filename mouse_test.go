@@ -95,4 +95,145 @@ func TestMouseEvents(t *testing.T) {
 	} else if x, y := me.Position(); x != 2 || y != 3 {
 		t.Errorf("wrong position %d,%d != 2,3", x, y)
 	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.WheelUp,
+		Down:     true,
+		Mod:      vt.ModAlt,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != WheelUp {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModAlt {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModAlt)
+	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.WheelDown,
+		Down:     true,
+		Mod:      vt.ModMeta | vt.ModCtrl,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != WheelDown {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModCtrl|ModAlt { // NB: ModAlt used for Meta in mouse events
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModAlt|ModCtrl)
+	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.WheelLeft,
+		Down:     true,
+		Mod:      vt.ModShift,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != WheelLeft {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.WheelRight,
+		Down:     true,
+		Mod:      vt.ModShift,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != WheelRight {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button2,
+		Down:     true,
+		Mod:      vt.ModShift,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button2 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button3,
+		Down:     true,
+		Mod:      vt.ModShift,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button3 {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.NoButton,
+		Down:     true,
+		Mod:      vt.ModShift,
+		Motion:   true,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != ButtonNone {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	// this simulates a certain kind of broken report
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button1,
+		Down:     false,
+		Mod:      vt.ModShift,
+		Motion:   true,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != ButtonNone {
+		t.Errorf("wrong buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	} else if me.Modifiers() != ModShift {
+		t.Errorf("wrong modifiers %x != %x", me.Modifiers(), ModShift)
+	}
+
+	// send malformed mouse events (fuzz testing)
+	term.SendRaw([]byte("\x1b[<3M"))
+	term.SendRaw([]byte("\x1b[<3;2m"))
+
+	select {
+	case ev := <-s.EventQ():
+		t.Fatalf("Got unexpected event: %T", ev)
+	case <-time.After(time.Millisecond * 50):
+	}
 }
