@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -73,7 +73,6 @@ type inputParser struct {
 	csiInterm []byte       // accrued intermediate bytes for CSI
 	escChar   byte         // last byte for escape
 	escaped   bool         // true if next key should be modified by ESC
-	btnDown   bool         // mouse button tracking for broken terms
 	btnsDown  ButtonMask   // mouse buttons down (excludes wheel buttons)
 	state     inputState   // tracks processor state
 	strState  inputState   // saved str state (needed for ST)
@@ -685,9 +684,6 @@ func (ip *inputParser) handleMouse(mode rune, params []int) {
 	// to the screen in that case.
 	x := max(min(params[1]-1, ip.cols-1), 0)
 	y := max(min(params[2]-1, ip.rows-1), 0)
-	// motion := (btn & 0x20) != 0    // motion sets 0x20
-	// scroll := (btn & 0xC0) == 0x40 // wheel actions use 0x40
-	btn &^= 0x20 // clear motion flag
 
 	button := ButtonNone
 	mod := ModNone
@@ -696,6 +692,7 @@ func (ip *inputParser) handleMouse(mode rune, params []int) {
 	// that wheel events are sometimes misdelivered as mouse button events
 	// during a click-drag, so we debounce these, considering them to be
 	// button press events unless we see an intervening release event.
+	// This excludes motion (bit 5) and modifiers (bits 2, 3, 4) for now.
 	switch btn & 0xC3 {
 	case 0:
 		button = Button1
