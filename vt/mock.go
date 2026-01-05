@@ -171,11 +171,23 @@ type MockTerm interface {
 	Backend() MockBackend
 }
 
+type noMockBlit struct {
+	MockBackend
+	Blit struct{} // prevents use as Blitter
+}
+
 // NewMockTerm gives a mock terminal emulator.
 func NewMockTerm(opts ...MockOpt) MockTerm {
 	mt := &mockTerm{}
 	mt.mb = NewMockBackend(opts...)
-	mt.em = NewEmulator(mt.mb)
+	var be MockBackend = mt.mb
+	for _, o := range opts {
+		switch o.(type) {
+		case MockOptNoBlit:
+			be = &noMockBlit{be, struct{}{}}
+		}
+	}
+	mt.em = NewEmulator(be)
 	mt.em.SetId("TcellMock", "1.0")
 	return mt
 }
@@ -191,8 +203,6 @@ type MockCell struct {
 // This is meant to facilitate test cases
 type MockBackend interface {
 	Backend
-	Blitter
-	Mouser
 
 	// GetCell returns the cell at the given position, or the zero value if the
 	// position is out of the bounds of the window.
@@ -506,7 +516,7 @@ func (mb *mockBackend) Blit(src, dst, dim Coord) {
 			si += gap
 			di += gap
 		}
-	} else { // source appears later, so we have to reverse copy
+	} else { // source appears earlier, so we have to reverse copy
 		src.Y += dim.Y - 1
 		dst.Y += dim.Y - 1
 		src.X += dim.X - 1
@@ -539,6 +549,11 @@ func (o MockOptSize) SetMockOpt(mb *mockBackend) { mb.size = Coord(o) }
 type MockOptColors int
 
 func (o MockOptColors) SetMockOpt(mb *mockBackend) { mb.colors = int(o) }
+
+// MockOptNoBlit suppresses the blitter interface.
+type MockOptNoBlit struct{}
+
+func (MockOptNoBlit) SetMockOpt(mb *mockBackend) {}
 
 // NewMockBackend returns a MockBackend modified by the given options.
 // The default is a fully featured 256-color backend with initial size 80x24.

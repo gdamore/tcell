@@ -164,7 +164,10 @@ func NewEmulator(be Backend) Emulator {
 		em.localModes[PmFocusReports] = ModeOff
 	}
 
-	em.cells = make([]Cell, int(be.GetSize().X)*int(be.GetSize().Y))
+	em.size = em.be.GetSize()
+	em.topMargin = 0
+	em.botMargin = em.size.Y - 1
+	em.cells = make([]Cell, int(em.size.X)*int(em.size.Y))
 	close(stopQ)
 	em.inb = em.inbInit
 	return em
@@ -195,6 +198,9 @@ type emulator struct {
 	lastIndex    int            // index of last cell written + 1 (for grapheme clustering) (zero means none)
 	cells        []Cell         // content of cells, we have to maintain our own copy (backend might or might not)
 	mouseReports MouseReporting // whether we have enabled mouse reports
+	size         Coord          // physical window size
+	topMargin    Row            // top margin
+	botMargin    Row            // bottom margin
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 }
@@ -320,7 +326,6 @@ func (em *emulator) inbEsc(b byte) {
 	case '_': // application program command (APC)
 		em.inb = em.inbStr
 	case 'D': // down one line (IND) - note does not reset auto wrap
-		// TODO: should scroll if needed
 		em.moveDown()
 	case 'E': // next line (NEL)
 		em.nextLine()
@@ -367,7 +372,7 @@ func (em *emulator) inbNF(b byte) {
 	em.inb = em.inbInit
 	switch em.inBuf.String() {
 	case "#8": // DECALN - fill screen with 'E'
-		size := em.be.GetSize()
+		size := em.size
 		em.autoWrap = false
 		em.setPosition(Coord{0, 0})
 		em.be.SetStyle(em.style)
@@ -761,7 +766,7 @@ func (em *emulator) processCursorColumn(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
 		em.autoWrap = false
 		pos := em.getPosition()
-		pos.X = min(Col(max(1, pi[0])), em.be.GetSize().X) - 1
+		pos.X = min(Col(max(1, pi[0])), em.size.X) - 1
 		em.setPosition(pos)
 	}
 }
@@ -771,7 +776,7 @@ func (em *emulator) processCursorPosition(str string) {
 	if pi, err := numericParams(str, 2); err == nil {
 		em.autoWrap = false
 		pos := em.getPosition()
-		wsz := em.be.GetSize()
+		wsz := em.size
 		row := Row(max(1, pi[0]))
 		col := Col(max(1, pi[1]))
 		row = max(1, min(row, wsz.Y))
@@ -831,6 +836,28 @@ func (em *emulator) processEraseLine(str string) {
 	}
 }
 
+// processScrollUp implements SU (VT420.)
+func (em *emulator) processScrollUp(str string) {
+	if pi, err := numericParams(str, 1); err == nil && pi[0] > 0 {
+		for range pi[0] {
+			// TODO: consider faster jump scroll.
+			// This should be something tunable as well.
+			em.scrollUp()
+		}
+	}
+}
+
+// processScrollDown implements SD (VT420.)
+func (em *emulator) processScrollDown(str string) {
+	if pi, err := numericParams(str, 1); err == nil && pi[0] > 0 {
+		for range pi[0] {
+			// TODO: consider faster jump scroll.
+			// This should be something tunable as well.
+			em.scrollDown()
+		}
+	}
+}
+
 // processCsi processes CSI sequences.
 func (em *emulator) processCsi(final byte) {
 	// CSI sequences are supported in several different possible ways:
@@ -879,6 +906,10 @@ func (em *emulator) processCsi(final byte) {
 		em.processEraseDisplay(str)
 	case "K":
 		em.processEraseLine(str)
+	case "S":
+		em.processScrollUp(str)
+	case "T":
+		em.processScrollDown(str)
 	case "Z":
 		em.processCursorBackTab(str)
 
@@ -889,13 +920,13 @@ func (em *emulator) processCsi(final byte) {
 	case "d": // move to specific row (VPA)
 		if pi, err := numericParams(str, 1); err == nil {
 			pos := em.getPosition()
-			pos.Y = min(Row(max(1, pi[0])), em.be.GetSize().Y) - 1
+			pos.Y = min(Row(max(1, pi[0])), em.size.Y) - 1
 			em.setPosition(pos)
 		}
 	case "e": // advance by rows (VPR)
 		if pi, err := numericParams(str, 1); err == nil {
 			pos := em.getPosition()
-			pos.Y = min(pos.Y+Row(max(1, pi[0])), em.be.GetSize().Y-1)
+			pos.Y = min(pos.Y+Row(max(1, pi[0])), em.size.Y-1)
 			em.setPosition(pos)
 		}
 	case "g": // tab clear (TBC)
@@ -1009,9 +1040,9 @@ func (em *emulator) moveRightN(count Col) {
 
 func (em *emulator) moveDown() {
 	pos := em.getPosition()
-	win := em.be.GetSize()
+	win := em.size
 	if pos.Y == win.Y-1 {
-		// TODO: scroll
+		em.scrollUp()
 	} else {
 		pos.Y++
 		em.setPosition(pos)
@@ -1021,7 +1052,7 @@ func (em *emulator) moveDown() {
 func (em *emulator) moveUp() {
 	pos := em.getPosition()
 	if pos.Y == 0 {
-		// TODO: scroll
+		em.scrollDown()
 	} else {
 		pos.Y--
 		em.setPosition(pos)
@@ -1039,7 +1070,7 @@ func (em *emulator) moveLeft() {
 
 func (em *emulator) moveRight() {
 	pos := em.getPosition()
-	win := em.be.GetSize()
+	win := em.size
 	if pos.X < win.X-1 {
 		pos.X++
 		em.setPosition(pos)
@@ -1054,10 +1085,126 @@ func (em *emulator) nextLine() {
 	em.setPosition(em.pos)
 }
 
+// blit performs a data move operation.  It does ignores margins.
+func (em *emulator) blit(src, dst, dim Coord) {
+
+	// save the source and destination for the backend blit
+	bsrc := src
+	bdst := dst
+
+	lim := em.size
+
+	// clip to visible source
+	if dim.X+src.X > lim.X {
+		dim.X = lim.X - src.X
+	}
+	if dim.Y+src.Y > lim.Y {
+		dim.Y = lim.Y - src.Y
+	}
+	// and clip to final destination
+	if dim.X+dst.X > lim.X {
+		dim.X = lim.X - dst.X
+	}
+	if dim.Y+dst.Y > lim.Y {
+		dim.Y = lim.Y - dst.Y
+	}
+
+	// gap represents decrement when shifting to the next row --
+	// skipping over the irrelevant cells. (The increment in the
+	// index when going from last cell of row to first cell of next row,
+	// or vice versa.)
+	gap := int(lim.X - dim.X)
+
+	// the following logic is carefully constructed to avoid expensive
+	// operations in the loops (only addition or subtraction)
+	if em.index(src) > em.index(dst) { // source appears later, so we can forward copy
+		si := em.index(src)
+		di := em.index(dst)
+		for range dim.Y {
+			for range dim.X {
+				em.cells[di] = em.cells[si]
+				di++
+				si++
+			}
+			// advance to next row
+			si += gap
+			di += gap
+		}
+	} else { // source appears earlier, so we have to reverse copy
+		src.Y += dim.Y - 1
+		dst.Y += dim.Y - 1
+		src.X += dim.X - 1
+		dst.X += dim.X - 1
+		si := em.index(src)
+		di := em.index(dst)
+
+		for range dim.Y {
+			for range dim.X {
+				em.cells[di] = em.cells[si]
+				si--
+				di--
+			}
+			si -= gap
+			di -= gap
+		}
+	}
+
+	// Now we possibly blit underneath.  We'll use the underlying
+	// implementation's blit operation if it has one, else we'll
+	// just rewrite the cells in linear order.
+	if b, ok := em.be.(Blitter); ok {
+		// The backend implements what should be a fast blit.
+		b.Blit(bsrc, bdst, dim)
+	} else {
+		// This does math for each cell, so you're looking at a lot of multiplications
+		// for a bit display -- 100x100 means 10,000x2 multiplications.  This could be
+		// optimized, but this is really a fallback as every backend really *should* have
+		// an efficient blit operation. (The ones that don't probably don't keep their own
+		// state, such as a wrappers on top of TTYs.)  In these cases the cost of writing
+		// the content is probably substantially dominant anyway.
+		for row := range dim.Y {
+			for col := range dim.X {
+				pos := bdst
+				pos.X += col
+				pos.Y += row
+				cell := em.cells[em.index(pos)]
+				em.be.SetStyle(cell.S)
+				em.be.PutGrapheme(pos, cell.C, uniseg.StringWidth(cell.C))
+			}
+		}
+	}
+}
+
+func (em *emulator) scrollUp() {
+	// TODO: margins
+	dim := em.size
+	src := Coord{X: 0, Y: 1}
+	dst := Coord{X: 0, Y: 0}
+
+	pos := em.pos
+	em.blit(src, dst, dim)
+	em.setPosition(Coord{X: 0, Y: dim.Y - 1})
+	em.eraseLine()
+	em.setPosition(pos)
+}
+
+func (em *emulator) scrollDown() {
+	// TODO: margins
+	dim := em.size
+	src := Coord{X: 0, Y: 0}
+	dst := Coord{X: 0, Y: 1}
+
+	pos := em.pos
+	em.blit(src, dst, dim)
+	em.setPosition(Coord{X: 0, Y: 0})
+	em.eraseLine()
+	em.setPosition(pos)
+}
+
 // nextTab advances to the next tab stop, or the end of
 // the line if there is no further tab.
 func (em *emulator) nextTab() {
-	maxX := em.be.GetSize().X - 1
+	maxX := em.size.X - 1
 	curX := em.getPosition().X
 	if curX == maxX { // already at end
 		return
@@ -1102,8 +1249,8 @@ func (em *emulator) prevTab() {
 func (em *emulator) initTabStops() {
 	if em.tabStops == nil {
 		// no tab stop at offset 0 since that would be pointless
-		em.tabStops = make([]Col, 0, int(em.be.GetSize().X/8)+1)
-		for col := Col(8); col < em.be.GetSize().X; col += 8 {
+		em.tabStops = make([]Col, 0, int(em.size.X/8)+1)
+		for col := Col(8); col < em.size.X; col += 8 {
 			em.tabStops = append(em.tabStops, col)
 		}
 	}
@@ -1128,14 +1275,13 @@ func (em *emulator) clrTabStop(ts Col) {
 // index obtains the index in the cells slice for the given coordinates,
 // which must be within the bounds of the display size.
 func (em *emulator) index(c Coord) int {
-	dim := em.be.GetSize()
-	return int(c.Y)*int(dim.X) + int(c.X)
+	return int(c.Y)*int(em.size.X) + int(c.X)
 }
 
 // putRune puts out a single rune.  This might be a subsequent part of a grapheme cluster, in
 // which case it will be emitted together with the preceding base character.
 func (em *emulator) putRune(r rune) {
-	dim := em.be.GetSize()
+	dim := em.size
 	em.be.SetStyle(em.style)
 
 	if lastIdx := em.lastIndex; lastIdx != 0 {
@@ -1202,7 +1348,7 @@ func (em *emulator) eraseCell(c Coord) {
 
 // eraseBelow erases from (and including) the current cursor position to the end of the window.
 func (em *emulator) eraseBelow() {
-	size := em.be.GetSize()
+	size := em.size
 	pos := em.getPosition()
 	for x := pos.X; x < size.X; x++ {
 		em.eraseCell(Coord{X: x, Y: pos.Y})
@@ -1217,7 +1363,7 @@ func (em *emulator) eraseBelow() {
 
 // eraseAbove erases from the origin to (and including) the current cursor position.
 func (em *emulator) eraseAbove() {
-	size := em.be.GetSize()
+	size := em.size
 	pos := em.getPosition()
 	for y := Row(0); y < pos.Y; y++ {
 		for x := Col(0); x < size.X; x++ {
@@ -1232,7 +1378,7 @@ func (em *emulator) eraseAbove() {
 
 // eraseAll erases the entire screen. It uses the color, but resets all other attributes.
 func (em *emulator) eraseAll() {
-	size := em.be.GetSize()
+	size := em.size
 	pos := em.getPosition()
 	for y := Row(0); y < size.Y; y++ {
 		for x := Col(0); x < size.X; x++ {
@@ -1244,7 +1390,7 @@ func (em *emulator) eraseAll() {
 
 // eraseToLineEnd erases to the end of the line, including the cursor position.
 func (em *emulator) eraseToLineEnd() {
-	size := em.be.GetSize()
+	size := em.size
 	pos := em.getPosition()
 	for x := pos.X; x < size.X; x++ {
 		em.eraseCell(Coord{x, pos.Y})
@@ -1263,7 +1409,7 @@ func (em *emulator) eraseToLineStart() {
 
 // eraseLine erases the entire line.
 func (em *emulator) eraseLine() {
-	size := em.be.GetSize()
+	size := em.size
 	pos := em.getPosition()
 	for x := range size.X {
 		em.eraseCell(Coord{x, pos.Y})
@@ -1279,6 +1425,8 @@ func (em *emulator) softReset() {
 	em.autoWrap = false
 	em.style = em.defaultStyle
 	em.saved = savedCursor{style: em.defaultStyle}
+	em.topMargin = 0
+	em.botMargin = em.size.Y - 1
 	em.be.Reset()
 	// start by resetting all modes
 	for pm := range em.localModes {
@@ -1736,10 +1884,13 @@ func (em *emulator) run(stopQ <-chan bool) {
 
 			case Coord: // resize notification
 				// reload our position it may have changed
-				size := d
 
 				// resize clobbers our content, until it is redrawn
-				em.cells = make([]Cell, int(size.X)*int(size.Y))
+				em.size = d
+				// resizing resets the margins
+				em.topMargin = 0
+				em.botMargin = em.size.Y - 1
+				em.cells = make([]Cell, int(em.size.X)*int(em.size.Y))
 				for i := range em.cells {
 					em.cells[i].S = em.defaultStyle
 				}
@@ -1747,7 +1898,7 @@ func (em *emulator) run(stopQ <-chan bool) {
 				em.pos = em.getPosition()
 				if em.getPrivateMode(PmResizeReports) == ModeOn { // NB: we never support "ModeOnLocked"
 					// NB: for now we do not support pixel sizes
-					em.SendRaw(fmt.Appendf(nil, "\x1b[48;%d;%d;0;0t", size.Y, size.X))
+					em.SendRaw(fmt.Appendf(nil, "\x1b[48;%d;%d;0;0t", em.size.Y, em.size.X))
 				}
 
 				// Send a SIGWINCH or similar.

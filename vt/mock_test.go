@@ -1156,7 +1156,7 @@ func TestBackendBlit(t *testing.T) {
 	checkAttrs(t, trm, 2, 2, Plain)
 
 	// blit the entire box down and right 1
-	mb.Blit(Coord{X: 0, Y: 0}, Coord{X: 1, Y: 1}, Coord{X: 2, Y: 2})
+	mb.(Blitter).Blit(Coord{X: 0, Y: 0}, Coord{X: 1, Y: 1}, Coord{X: 2, Y: 2})
 	checkContent(t, trm, 0, 0, "A")
 	checkContent(t, trm, 1, 0, "B")
 	checkContent(t, trm, 2, 0, "")
@@ -1192,7 +1192,7 @@ func TestBackendBlitReverse(t *testing.T) {
 	checkAttrs(t, trm, 0, 0, Plain)
 
 	// blit the entire box down and right 1
-	mb.Blit(Coord{X: 1, Y: 1}, Coord{X: 0, Y: 0}, Coord{X: 2, Y: 2})
+	mb.(Blitter).Blit(Coord{X: 1, Y: 1}, Coord{X: 0, Y: 0}, Coord{X: 2, Y: 2})
 	checkContent(t, trm, 0, 0, "A")
 	checkContent(t, trm, 1, 0, "B")
 	checkContent(t, trm, 2, 0, "")
@@ -1331,4 +1331,124 @@ func TestEraseLine(t *testing.T) {
 		checkColors(t, trm, col, row, color.XTerm1, color.XTerm2)
 	}
 	checkPos(t, trm, 4, 2)
+}
+
+// TestNewLineScroll tests scrolling with a new line.
+// This is one of the most fundamental operations for a terminal.
+func TestNewLineScroll(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 5})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[H\x1b[J") // home and clear
+	writeF(t, trm, "\x1b[1;1HA")
+	writeF(t, trm, "\x1b[2;1HB")
+	writeF(t, trm, "\x1b[5;1HC") // first column on last row
+	checkContent(t, trm, 0, 4, "C")
+	writeF(t, trm, "\n") // new line should scroll
+	checkPos(t, trm, 0, 4)
+	checkContent(t, trm, 0, 0, "B")
+	checkContent(t, trm, 0, 1, "")
+	checkContent(t, trm, 0, 4, "")
+	checkContent(t, trm, 0, 3, "C")
+}
+
+// TestNewLineScrollNoBlitter tests scrolling with a new line,
+// using the fallback copy for backends without Blit support.
+func TestNewLineScrollNoBlitter(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 5}, MockOptNoBlit{})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[H\x1b[J") // home and clear
+	writeF(t, trm, "\x1b[1;1HA")
+	writeF(t, trm, "\x1b[2;1HB")
+	writeF(t, trm, "\x1b[5;1HC") // first column on last row
+	checkContent(t, trm, 0, 4, "C")
+	writeF(t, trm, "\n") // new line should scroll
+	checkPos(t, trm, 0, 4)
+	checkContent(t, trm, 0, 0, "B")
+	checkContent(t, trm, 0, 1, "")
+	checkContent(t, trm, 0, 4, "")
+	checkContent(t, trm, 0, 3, "C")
+}
+
+// TestScrollUp tests scrolling up. The cursor position is retained.
+func TestScrollUp(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 5})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[H\x1b[J") // home and clear
+	writeF(t, trm, "\x1b[1;1HA")
+	writeF(t, trm, "\x1b[2;1HB")
+	writeF(t, trm, "\x1b[5;1HC") // first column on last row
+	checkContent(t, trm, 0, 4, "C")
+	writeF(t, trm, "\x1b[5;5H") // fifth column on last row
+	checkPos(t, trm, 4, 4)
+	writeF(t, trm, "\x1bD")
+	checkPos(t, trm, 4, 4)
+	checkContent(t, trm, 0, 0, "B")
+	checkContent(t, trm, 0, 1, "")
+	checkContent(t, trm, 0, 4, "")
+	checkContent(t, trm, 0, 3, "C")
+	writeF(t, trm, "\x1bE") // this is like a newline
+	checkPos(t, trm, 0, 4)
+	checkContent(t, trm, 0, 2, "C")
+	checkContent(t, trm, 0, 3, "")
+	checkContent(t, trm, 0, 4, "")
+
+	writeF(t, trm, "\x1b[H\x1bJ")
+	writeF(t, trm, "\x1b[1;1HA")
+	writeF(t, trm, "\x1b[2;1HB")
+	writeF(t, trm, "\x1b[3;1HC")
+	writeF(t, trm, "\x1b[4;1HD")
+	writeF(t, trm, "\x1b[5;1HE")
+	writeF(t, trm, "\x1b[3;3H")
+	writeF(t, trm, "\x1b[3S") // scroll in place, leaves cursor where it is
+	checkContent(t, trm, 0, 0, "D")
+	checkContent(t, trm, 0, 1, "E")
+	checkContent(t, trm, 0, 2, "")
+	checkContent(t, trm, 0, 3, "")
+	checkContent(t, trm, 0, 4, "")
+	checkPos(t, trm, 2, 2)
+}
+
+// TestScrollDown tests scrolling down. The cursor position is retained.
+func TestScrollDown(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 5})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[H\x1b[J") // home and clear
+	writeF(t, trm, "\x1b[1;1HA")
+	writeF(t, trm, "\x1b[2;1HB")
+	writeF(t, trm, "\x1b[4;1HC") // first column on penultimate row
+	writeF(t, trm, "\x1b[5;1HD") // first column on last row
+	checkContent(t, trm, 0, 3, "C")
+	checkContent(t, trm, 0, 4, "D")
+	writeF(t, trm, "\x1b[1;5H") // fifth column on first row
+	checkPos(t, trm, 4, 0)
+	writeF(t, trm, "\x1bM")
+	checkPos(t, trm, 4, 0)
+	checkContent(t, trm, 0, 0, "")
+	checkContent(t, trm, 0, 1, "A")
+	checkContent(t, trm, 0, 2, "B")
+	checkContent(t, trm, 0, 3, "")
+	checkContent(t, trm, 0, 4, "C")
+
+	writeF(t, trm, "\x1b[H\x1bJ")
+	writeF(t, trm, "\x1b[1;1HA")
+	writeF(t, trm, "\x1b[2;1HB")
+	writeF(t, trm, "\x1b[3;1HC")
+	writeF(t, trm, "\x1b[4;1HD")
+	writeF(t, trm, "\x1b[5;1HE")
+	writeF(t, trm, "\x1b[3;3H")
+	writeF(t, trm, "\x1b[3T") // scroll in place, leaves cursor where it is
+	checkContent(t, trm, 0, 0, "")
+	checkContent(t, trm, 0, 1, "")
+	checkContent(t, trm, 0, 2, "")
+	checkContent(t, trm, 0, 3, "A")
+	checkContent(t, trm, 0, 4, "B")
+	checkPos(t, trm, 2, 2)
 }
