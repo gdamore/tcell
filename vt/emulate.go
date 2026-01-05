@@ -199,8 +199,8 @@ type emulator struct {
 	cells        []Cell         // content of cells, we have to maintain our own copy (backend might or might not)
 	mouseReports MouseReporting // whether we have enabled mouse reports
 	size         Coord          // physical window size
-	topMargin    Row            // top margin
-	botMargin    Row            // bottom margin
+	topMargin    Row            // top margin, scrollable region includes this row
+	botMargin    Row            // bottom margin, scrollable region includes this row
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 }
@@ -326,13 +326,13 @@ func (em *emulator) inbEsc(b byte) {
 	case '_': // application program command (APC)
 		em.inb = em.inbStr
 	case 'D': // down one line (IND) - note does not reset auto wrap
-		em.moveDown()
+		em.processIndex()
 	case 'E': // next line (NEL)
 		em.nextLine()
 	case 'H': // set tab stop (HTS) - VT52 is go home, but we do not support VT52
 		em.setTabStop(em.getPosition().X)
 	case 'M': // up one line (RI) - note does not reset autoWrap
-		em.moveUp()
+		em.processReverseIndex()
 	case 'N': // single shift two (SS2) (TODO)
 	case 'O': // single shift three (SS3) (TODO)
 	case 'P':
@@ -374,7 +374,11 @@ func (em *emulator) inbNF(b byte) {
 	case "#8": // DECALN - fill screen with 'E'
 		size := em.size
 		em.autoWrap = false
+		em.topMargin = 0
+		em.botMargin = em.size.Y - 1
 		em.setPosition(Coord{0, 0})
+		// TODO: Set clear attributes (but leave color)
+		// TODO: Reset DECOM (when we implement origin mode)
 		em.be.SetStyle(em.style)
 		for row := range size.Y {
 			for col := range size.X {
@@ -838,8 +842,8 @@ func (em *emulator) processEraseLine(str string) {
 
 // processScrollUp implements SU (VT420.)
 func (em *emulator) processScrollUp(str string) {
-	if pi, err := numericParams(str, 1); err == nil && pi[0] > 0 {
-		for range pi[0] {
+	if pi, err := numericParams(str, 1); err == nil {
+		for range max(pi[0], 1) {
 			// TODO: consider faster jump scroll.
 			// This should be something tunable as well.
 			em.scrollUp()
@@ -849,12 +853,56 @@ func (em *emulator) processScrollUp(str string) {
 
 // processScrollDown implements SD (VT420.)
 func (em *emulator) processScrollDown(str string) {
-	if pi, err := numericParams(str, 1); err == nil && pi[0] > 0 {
-		for range pi[0] {
+	if pi, err := numericParams(str, 1); err == nil {
+		for range max(pi[0], 1) {
 			// TODO: consider faster jump scroll.
 			// This should be something tunable as well.
 			em.scrollDown()
 		}
+	}
+}
+
+// processVerticalMargins implements DECSTBM (set top and bottom margins, VT220.)
+func (em *emulator) processVerticalMargins(str string) {
+	if pi, err := numericParams(str, 2); err == nil {
+		pi[0] = max(1, pi[0])
+		if pi[1] == 0 {
+			pi[1] = int(em.size.Y)
+		}
+		pi[0]--
+		pi[1]--
+
+		top := min(Row(pi[0]), em.size.Y-1)
+		bot := min(Row(pi[1]), em.size.Y-1)
+
+		// no change if values are out of range
+		if bot > top {
+			em.topMargin = top
+			em.botMargin = bot
+			em.setPosition(Coord{X: 0, Y: em.topMargin})
+		}
+	}
+}
+
+// processIndex moves down, unless already on the bottom margin, in which case it scrolls Up.
+func (em *emulator) processIndex() {
+	pos := em.getPosition()
+	if pos.Y == em.botMargin {
+		em.scrollUp()
+	} else if pos.Y < em.size.Y-1 {
+		pos.Y++
+		em.setPosition(pos)
+	}
+}
+
+// processReverseIndex moves up, unless already on the top margin, in which case it scrolls down.
+func (em *emulator) processReverseIndex() {
+	pos := em.getPosition()
+	if pos.Y == em.topMargin {
+		em.scrollDown()
+	} else if pos.Y > 0 {
+		pos.Y--
+		em.setPosition(pos)
 	}
 }
 
@@ -942,6 +990,9 @@ func (em *emulator) processCsi(final byte) {
 		em.processSgr(str)
 	case "n":
 		em.deviceReport(str)
+	case "r":
+		em.processVerticalMargins(str)
+
 	case "?W":
 		if pi, err := numericParams(str, 1); err == nil && pi[0] == 5 {
 			// DECST8C - reset tab stops to default (VT510)
@@ -1038,25 +1089,25 @@ func (em *emulator) moveRightN(count Col) {
 	}
 }
 
+// moveDown moves down, to the limit of either bottom margin, or the bottom of the screen if outside the margin.
 func (em *emulator) moveDown() {
 	pos := em.getPosition()
 	win := em.size
-	if pos.Y == win.Y-1 {
-		em.scrollUp()
-	} else {
-		pos.Y++
-		em.setPosition(pos)
+	if pos.Y == em.botMargin || pos.Y == win.Y-1 {
+		return
 	}
+	pos.Y++
+	em.setPosition(pos)
 }
 
+// moveUp moves up, to the limit of either top margin, or zero if outside the margin.
 func (em *emulator) moveUp() {
 	pos := em.getPosition()
-	if pos.Y == 0 {
-		em.scrollDown()
-	} else {
-		pos.Y--
-		em.setPosition(pos)
+	if pos.Y == 0 || pos.Y == em.topMargin {
+		return
 	}
+	pos.Y--
+	em.setPosition(pos)
 }
 
 func (em *emulator) moveLeft() {
@@ -1080,6 +1131,9 @@ func (em *emulator) moveRight() {
 // nextLine is like CNL with 1, but it optionally also scrolls.
 func (em *emulator) nextLine() {
 	em.autoWrap = false
+	if em.pos.Y == em.botMargin {
+		em.scrollUp()
+	}
 	em.moveDown()
 	em.pos.X = 0
 	em.setPosition(em.pos)
@@ -1176,27 +1230,25 @@ func (em *emulator) blit(src, dst, dim Coord) {
 }
 
 func (em *emulator) scrollUp() {
-	// TODO: margins
-	dim := em.size
-	src := Coord{X: 0, Y: 1}
-	dst := Coord{X: 0, Y: 0}
+	dim := Coord{X: em.size.X, Y: em.botMargin - em.topMargin}
+	src := Coord{X: 0, Y: em.topMargin + 1}
+	dst := Coord{X: 0, Y: em.topMargin}
 
 	pos := em.pos
 	em.blit(src, dst, dim)
-	em.setPosition(Coord{X: 0, Y: dim.Y - 1})
+	em.setPosition(Coord{X: 0, Y: em.botMargin})
 	em.eraseLine()
 	em.setPosition(pos)
 }
 
 func (em *emulator) scrollDown() {
-	// TODO: margins
-	dim := em.size
-	src := Coord{X: 0, Y: 0}
-	dst := Coord{X: 0, Y: 1}
+	dim := Coord{X: em.size.X, Y: em.botMargin - em.topMargin}
+	src := Coord{X: 0, Y: em.topMargin}
+	dst := Coord{X: 0, Y: em.topMargin + 1}
 
 	pos := em.pos
 	em.blit(src, dst, dim)
-	em.setPosition(Coord{X: 0, Y: 0})
+	em.setPosition(Coord{X: 0, Y: em.topMargin})
 	em.eraseLine()
 	em.setPosition(pos)
 }
