@@ -147,6 +147,7 @@ func NewEmulator(be Backend) Emulator {
 		localModes: map[PrivateMode]ModeStatus{
 			PmAppCursor:  ModeOff,
 			PmAutoMargin: ModeOn,
+			PmVT52:       ModeOnLocked, // we never support VT52 mode
 		},
 		mouseReports: MouseDisabled,
 	}
@@ -1482,7 +1483,7 @@ func (em *emulator) softReset() {
 	em.be.Reset()
 	// start by resetting all modes
 	for pm := range em.localModes {
-		em.setPrivateMode(pm, ModeOff)
+		em.setPrivateMode(pm, ModeOff) // NB: No effect for non-changeable modes
 	}
 	// and set any that should reset on (auto-margin)
 	em.setPrivateMode(PmAutoMargin, ModeOn)
@@ -1535,7 +1536,7 @@ func (em *emulator) updateMouseReporting() {
 
 // setPrivateMode sets the DEC private mode.
 func (em *emulator) setPrivateMode(pm PrivateMode, ms ModeStatus) {
-	if ms != ModeOn && ms != ModeOff {
+	if !ms.Changeable() {
 		return
 	}
 	if old, ok := em.localModes[pm]; ok && old.Changeable() {
@@ -1544,7 +1545,7 @@ func (em *emulator) setPrivateMode(pm PrivateMode, ms ModeStatus) {
 		case PmMouseButton, PmMouseDrag, PmMouseMotion, PmMouseSgr, PmMouseSgrPixel, PmMouseX10:
 			em.updateMouseReporting()
 		}
-	} else {
+	} else if em.be.GetPrivateMode(pm).Changeable() {
 		_ = em.be.SetPrivateMode(pm, ms)
 	}
 }
