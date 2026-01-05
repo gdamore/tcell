@@ -23,22 +23,31 @@ import "fmt"
 type PrivateMode int
 
 const (
-	PmAppCursor        PrivateMode = 1 // application cursor keys
-	PmAutoMargin       PrivateMode = 7
+	PmAppCursor        PrivateMode = 1    // Application cursor keys.
+	PmVT52             PrivateMode = 2    // Clear to enable VT52 compatibility (not supported).
+	PmColumns          PrivateMode = 3    // Set to enable 132 columns, reset for 80 columns.
+	PmScrolling        PrivateMode = 4    // Smooth scrolling (jump by default).
+	PmScreen           PrivateMode = 5    // Set to reverse dark and light on screen.
+	PmOrigin           PrivateMode = 6    // Coordinates are relative to margins.
+	PmAutoMargin       PrivateMode = 7    // Automatically wrap at margin.
+	PmAutoRepeat       PrivateMode = 8    // Enable automatic key repeat.
+	PmMouseX10         PrivateMode = 9    // Legacy (X10) mouse reporting.
+	PmBlinkCursor      PrivateMode = 12   // Blinking (on) or steady (off) cursor.
+	PmPrintFF          PrivateMode = 18   // Print form feed after printing screen.
+	PmPrintExtent      PrivateMode = 19   // Print full screen (on) or scrolling region (off).
+	PmShowCursor       PrivateMode = 25   // Show the cursor (default on).
+	PmCharSet          PrivateMode = 42   // Enable national (on) or multinational (off) character sets.
+	PmMouseButton      PrivateMode = 1000 // Report mouse button events.
+	PmMouseDrag        PrivateMode = 1002 // Report mouse motion events when button depressed, requires PmMouseButton.
+	PmMouseMotion      PrivateMode = 1003 // Report mouse motion events, requires PmMouseButton.
+	PmFocusReports     PrivateMode = 1004 // Send focus gained or lost reports.
+	PmMouseSgr         PrivateMode = 1006 // Use SGR sequences for mouse reports.
+	PmMouseSgrPixel    PrivateMode = 1016 // Use SGR sequences for mouse reports, using pixel-level coordinates.
 	PmAltScreen        PrivateMode = 1049 // 47 and 1047 are alternates, but we use 1049
-	PmMouseX10         PrivateMode = 9
-	PmBlinkCursor      PrivateMode = 12
-	PmShowCursor       PrivateMode = 25
-	PmMouseButton      PrivateMode = 1000
-	PmMouseDrag        PrivateMode = 1002
-	PmMouseMotion      PrivateMode = 1003
-	PmFocusReports     PrivateMode = 1004
-	PmMouseSgr         PrivateMode = 1006
-	PmMouseSgrPixel    PrivateMode = 1016
-	PmBracketedPaste   PrivateMode = 2004
-	PmSyncOutput       PrivateMode = 2026
-	PmGraphemeClusters PrivateMode = 2027 // enable support for grapheme cluster handling
-	PmResizeReports    PrivateMode = 2048 // send in-band resize reports
+	PmBracketedPaste   PrivateMode = 2004 // Bracket pasted text with bracketed paste escape sequences.
+	PmSyncOutput       PrivateMode = 2026 // Buffer output when enabled, updating screen when reset.
+	PmGraphemeClusters PrivateMode = 2027 // Support for grapheme cluster handling.
+	PmResizeReports    PrivateMode = 2048 // Send in-band resize reports.
 )
 
 // Enable returns the string used to enable this private mode.
@@ -63,6 +72,17 @@ func (pm PrivateMode) Reply(status ModeStatus) string {
 
 // ModeStatus represents the status of the mode.
 type ModeStatus int
+
+// AnsiMode are modes standardized in ECMA-48.
+// They use CSI-h and CSI-l (no question mark).
+type AnsiMode int
+
+const (
+	AmKeyboardAction AnsiMode = 2  // Lock the keyboard.
+	AmInsertReplace  AnsiMode = 4  // Insert or replace characters when a new character is added.
+	AmSendReceive    AnsiMode = 12 // XON or XOFF.
+	AmNewLineMode    AnsiMode = 20 // If true, LF emits CR as well, and Return sends both CR and LF.
+)
 
 const (
 	ModeNA        ModeStatus = 0 // Mode is not supported (or unknown)
