@@ -310,6 +310,31 @@ func TestCursorReport(t *testing.T) {
 	}
 }
 
+// TestAnsiModes tests the private mode feature.
+func TestAnsiModes(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
+	defer mustClose(t, trm)
+
+	mustStart(t, trm)
+
+	writeF(t, trm, "\x1b[20$p") // query for newline mode
+	writeF(t, trm, "\x1b[20h")  // turn it on
+	writeF(t, trm, "\x1b[20$p") // should readback on
+	writeF(t, trm, "\x1b[20l")  // turn it back off
+	writeF(t, trm, "\x1b[20$p") // should read back off
+
+	buf := make([]byte, 128)
+	n, err := trm.Read(buf)
+	if err != nil {
+		t.Errorf("failed read: %v", err)
+	}
+	result := string(buf[:n])
+	want := "\x1b[20;2$y" + "\x1b[20;1$y" + "\x1b[20;2$y"
+	if result != want {
+		t.Errorf("wrong response: %q != %q", result, want)
+	}
+}
+
 // TestPrivateModes tests the private mode feature.
 func TestPrivateModes(t *testing.T) {
 	trm := NewMockTerm(MockOptSize{X: 80, Y: 24}, MockOptColors(0))
@@ -1371,6 +1396,61 @@ func TestNewLineScrollNoBlitter(t *testing.T) {
 	checkContent(t, trm, 0, 1, "")
 	checkContent(t, trm, 0, 4, "")
 	checkContent(t, trm, 0, 3, "C")
+}
+
+func TestNewLineModes(t *testing.T) {
+	trm := NewMockTerm(MockOptSize{X: 10, Y: 4})
+	defer mustClose(t, trm)
+	mustStart(t, trm)
+	writeF(t, trm, "\x1b[H\x1b[J")
+	writeF(t, trm, "ABC\n")
+	checkPos(t, trm, 3, 1)
+	trm.KeyEvent(KeyEvent{Code: KcReturn, Down: true})
+	trm.KeyEvent(KeyEvent{Code: KcReturn, Down: false})
+	writeF(t, trm, "\x1b[20h")
+	trm.KeyEvent(KeyEvent{Code: KcReturn, Down: true})
+	trm.KeyEvent(KeyEvent{Code: KcReturn, Down: false})
+	writeF(t, trm, "DEF")
+	checkPos(t, trm, 6, 1)
+	writeF(t, trm, "\n")
+	checkPos(t, trm, 0, 2)
+	writeF(t, trm, "GHI")
+	checkPos(t, trm, 3, 2)
+	writeF(t, trm, "\x1b[20l")
+	writeF(t, trm, "\n")
+	checkPos(t, trm, 3, 3)
+	trm.KeyEvent(KeyEvent{Code: KcReturn, Down: true})
+	trm.KeyEvent(KeyEvent{Code: KcReturn, Down: false})
+
+	// |ABC_____|
+	// |___DEF__|
+	// |GHI_____|
+	// |___c____|
+	//
+	// input stream contains \r\r\n\r
+
+	checkContent(t, trm, 0, 0, "A")
+	checkContent(t, trm, 1, 0, "B")
+	checkContent(t, trm, 2, 0, "C")
+	checkContent(t, trm, 3, 0, "")
+	checkContent(t, trm, 4, 0, "")
+	checkContent(t, trm, 5, 0, "")
+	checkContent(t, trm, 0, 1, "")
+	checkContent(t, trm, 1, 1, "")
+	checkContent(t, trm, 2, 1, "")
+	checkContent(t, trm, 3, 1, "D")
+	checkContent(t, trm, 4, 1, "E")
+	checkContent(t, trm, 5, 1, "F")
+	checkContent(t, trm, 0, 2, "G")
+	checkContent(t, trm, 1, 2, "H")
+	checkContent(t, trm, 2, 2, "I")
+	checkContent(t, trm, 3, 2, "")
+	checkContent(t, trm, 4, 2, "")
+	checkContent(t, trm, 5, 2, "")
+
+	result := readF(t, trm)
+	want := "\r\r\n\r"
+	verifyF(t, result == want, "response incorrect: %q != %q", result, want)
 }
 
 // TestScrollUp tests scrolling up. The cursor position is retained.

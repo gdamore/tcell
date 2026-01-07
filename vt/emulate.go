@@ -144,10 +144,13 @@ func NewEmulator(be Backend) Emulator {
 		stopQ:        stopQ,
 		style:        be.GetStyle(),
 		defaultStyle: be.GetStyle(),
+		ansiModes: map[AnsiMode]ModeStatus{
+			AmNewLineMode: ModeOff,
+		},
 		localModes: map[PrivateMode]ModeStatus{
 			PmAppCursor:  ModeOff,
 			PmAutoMargin: ModeOn,
-			PmVT52:       ModeOnLocked, // we never support VT52 mode
+			PmVT52:       ModeOnLocked, // we never support VT52 mode (note ON means ANSI mode)
 		},
 		mouseReports: MouseDisabled,
 	}
@@ -204,6 +207,7 @@ type emulator struct {
 	botMargin    Row            // bottom margin, scrollable region includes this row
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
+	ansiModes  map[AnsiMode]ModeStatus    // some modes we handle locally
 }
 
 // savedCursor is the content we save when saving the cursor,
@@ -248,7 +252,6 @@ func (em *emulator) inbInit(b byte) {
 	// the encoding cannot support it (UTF, 8859, and EUC encodings
 	// are all fine here, but others like ShiftJIS or KOI8 might not be).
 	if b >= 0x80 && b <= 0x9F && !em.sevenOnly {
-		em.lastIndex = 0
 		em.inbEsc(b - 0x40)
 		return
 	}
@@ -263,18 +266,13 @@ func (em *emulator) inbInit(b byte) {
 	case 0x07: // BEL (bell)
 		em.beep()
 	case 0x08: // BS (backspace)
-		em.lastIndex = 0
 		em.moveLeft()
 	case 0x09: // horizontal tab
-		em.lastIndex = 0
 		em.nextTab()
 	case 0x0a, 0x0b, 0x0c: // LF (line feed), VF, FF
-		// TODO: New line mode.
-		em.lastIndex = 0
-		em.processIndex()
+		em.processLineFeed()
 	case 0x0d: // CR (carriage return)
-		em.lastIndex = 0
-		em.setPosition(Coord{0, em.getPosition().Y})
+		em.processCarriageReturn()
 	case 0x0e: // TODO: SO
 		em.lastIndex = 0
 	case 0x0f: // TODO: SI
@@ -893,6 +891,21 @@ func (em *emulator) processIndex() {
 	}
 }
 
+// processCarriageReturn handle CR.
+func (em *emulator) processCarriageReturn() {
+	em.lastIndex = 0
+	em.setPosition(Coord{0, em.getPosition().Y})
+}
+
+// processLineFeed is like IND, but if ANSI mode 20 is set, then a CR is appended as well.
+func (em *emulator) processLineFeed() {
+	em.lastIndex = 0
+	em.processIndex()
+	if em.getAnsiMode(AmNewLineMode) == ModeOn {
+		em.processCarriageReturn()
+	}
+}
+
 // processReverseIndex moves up, unless already on the top margin, in which case it scrolls down.
 // Note that RI does *not* reset the auto-state.
 func (em *emulator) processReverseIndex() {
@@ -902,6 +915,115 @@ func (em *emulator) processReverseIndex() {
 	} else if pos.Y > 0 {
 		pos.Y--
 		em.setPosition(pos)
+	}
+}
+
+// processCursorRow implements VPA (set vertical position absolute)
+func (em *emulator) processCursorRow(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		pos := em.getPosition()
+		pos.Y = min(Row(max(1, pi[0])), em.size.Y) - 1
+		em.setPosition(pos)
+	}
+}
+
+// processCursorRowAdvance implements VPR (vertical position relative).
+func (em *emulator) processCursorRowAdvance(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		pos := em.getPosition()
+		pos.Y = min(pos.Y+Row(max(1, pi[0])), em.size.Y-1)
+		em.setPosition(pos)
+	}
+}
+
+// processSetMode implements SM (set ANSI mode).
+func (em *emulator) processSetMode(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		for _, pm := range pi {
+			em.setAnsiMode(AnsiMode(pm), ModeOn)
+		}
+	}
+}
+
+// processResetMode implements RM (reset ANSI mode).
+func (em *emulator) processResetMode(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		for _, pm := range pi {
+			em.setAnsiMode(AnsiMode(pm), ModeOff)
+		}
+	}
+}
+
+// processRequestMode implements DECRQM for ANSI modes.
+// Only a single numeric parameter (mode number) can be supplied (VT300+)
+func (em *emulator) processRequestMode(str string) {
+	if m, err := strconv.Atoi(str); err == nil {
+		am := AnsiMode(m)
+		status := em.getAnsiMode(am)
+		em.SendRaw([]byte(am.Reply(status)))
+	}
+}
+
+// processSetPrivateMode implements DECSET (set private mode).
+func (em *emulator) processSetPrivateMode(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		for _, pm := range pi {
+			em.setPrivateMode(PrivateMode(pm), ModeOn)
+		}
+	}
+}
+
+// processResetPrivateMode implements DECRST (reset private mode).
+func (em *emulator) processResetPrivateMode(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		for _, pm := range pi {
+			em.setPrivateMode(PrivateMode(pm), ModeOff)
+		}
+	}
+}
+
+// processRequestPrivateMode implements DECRQM for private modes.
+// Only a single numeric parameter (mode number) can be supplied (VT300+)
+func (em *emulator) processRequestPrivateMode(str string) {
+	if m, err := strconv.Atoi(str); err == nil {
+		pm := PrivateMode(m)
+		status := em.getPrivateMode(pm)
+		em.SendRaw([]byte(pm.Reply(status)))
+	}
+}
+
+// processTabReset implements DECST8C (set tab stops to every 8 chars)
+func (em *emulator) processTabReset(str string) {
+	if pi, err := numericParams(str, 1); err == nil && pi[0] == 5 {
+		em.tabStops = nil
+	}
+}
+
+// processTabClear implements TBC (clear horizontal tab).
+func (em *emulator) processTabClear(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		switch pi[0] {
+		case 0: // clear stop at current column
+			em.clrTabStop(em.getPosition().X)
+		case 3: // clear all columns
+			em.tabStops = []Col{} // this is distinct from nil
+		}
+	}
+}
+
+// processPrimaryAttributes implements send DA.
+func (em *emulator) processPrimaryAttributes(str string) {
+	if pi, err := numericParams(str, 1); err == nil && pi[0] == 0 {
+		em.sendDA()
+	}
+}
+
+// processExtendedAttributes implements XTVERSION (send terminal name and version).
+func (em *emulator) processExtendedAttributes(str string) {
+	if pi, err := numericParams(str, 1); err == nil && pi[0] == 0 && em.name != "" {
+		em.SendRaw(fmt.Appendf(nil, "\x1bP>|%s %s\x1b\\", em.name, em.vers))
 	}
 }
 
@@ -959,65 +1081,36 @@ func (em *emulator) processCsi(final byte) {
 		em.processScrollDown(str)
 	case "Z":
 		em.processCursorBackTab(str)
-
 	case "c":
-		if pi, err := numericParams(str, 1); err == nil && pi[0] == 0 {
-			em.sendDA()
-		}
-	case "d": // move to specific row (VPA)
-		if pi, err := numericParams(str, 1); err == nil {
-			pos := em.getPosition()
-			pos.Y = min(Row(max(1, pi[0])), em.size.Y) - 1
-			em.setPosition(pos)
-		}
-	case "e": // advance by rows (VPR)
-		if pi, err := numericParams(str, 1); err == nil {
-			pos := em.getPosition()
-			pos.Y = min(pos.Y+Row(max(1, pi[0])), em.size.Y-1)
-			em.setPosition(pos)
-		}
-	case "g": // tab clear (TBC)
-		if pi, err := numericParams(str, 1); err == nil {
-			switch pi[0] {
-			case 0: // clear stop at current column
-				em.clrTabStop(em.getPosition().X)
-			case 3: // clear all columns
-				em.tabStops = []Col{} // this is distinct from nil
-			}
-		}
+		em.processPrimaryAttributes(str)
+	case "d":
+		em.processCursorRow(str)
+	case "e":
+		em.processCursorRowAdvance(str)
+	case "g":
+		em.processTabClear(str)
+	case "h":
+		em.processSetMode(str)
+	case "l":
+		em.processResetMode(str)
 	case "m":
 		em.processSgr(str)
 	case "n":
 		em.deviceReport(str)
 	case "r":
 		em.processVerticalMargins(str)
-
 	case "?W":
-		if pi, err := numericParams(str, 1); err == nil && pi[0] == 5 {
-			// DECST8C - reset tab stops to default (VT510)
-			em.tabStops = nil
-		}
-	case "?h": // DECSET
-		if pi, err := numericParams(str, 1); err == nil {
-			for _, pm := range pi {
-				em.setPrivateMode(PrivateMode(pm), ModeOn)
-			}
-		}
-	case "?l": // DECRST
-		if pi, err := numericParams(str, 1); err == nil {
-			for _, pm := range pi {
-				em.setPrivateMode(PrivateMode(pm), ModeOff)
-			}
-		}
-	case "?$p": // DECRQM - only a single numeric parameter (mode number) can be supplied (VT300+)
-		if pm, err := strconv.Atoi(str); err == nil {
-			status := em.getPrivateMode(PrivateMode(pm))
-			em.SendRaw(fmt.Appendf(nil, "\x1b[?%d;%d$y", pm, status))
-		}
+		em.processTabReset(str)
+	case "?h":
+		em.processSetPrivateMode(str)
+	case "?l":
+		em.processResetPrivateMode(str)
+	case "$p":
+		em.processRequestMode(str)
+	case "?$p":
+		em.processRequestPrivateMode(str)
 	case ">q":
-		if pi, err := numericParams(str, 1); err == nil && pi[0] == 0 && em.name != "" {
-			em.SendRaw(fmt.Appendf(nil, "\x1bP>|%s %s\x1b\\", em.name, em.vers))
-		}
+		em.processExtendedAttributes(str)
 	}
 }
 
@@ -1111,6 +1204,7 @@ func (em *emulator) moveUp() {
 
 func (em *emulator) moveLeft() {
 	em.autoWrap = false
+	em.lastIndex = 0
 	pos := em.getPosition()
 	if pos.X > 0 {
 		pos.X--
@@ -1255,6 +1349,7 @@ func (em *emulator) scrollDown() {
 // nextTab advances to the next tab stop, or the end of
 // the line if there is no further tab.
 func (em *emulator) nextTab() {
+	em.lastIndex = 0
 	maxX := em.size.X - 1
 	curX := em.getPosition().X
 	if curX == maxX { // already at end
@@ -1480,6 +1575,9 @@ func (em *emulator) softReset() {
 	em.botMargin = em.size.Y - 1
 	em.be.Reset()
 	// start by resetting all modes
+	for am := range em.ansiModes {
+		em.setAnsiMode(am, ModeOff) // NB: No effect for non-changeable modes
+	}
 	for pm := range em.localModes {
 		em.setPrivateMode(pm, ModeOff) // NB: No effect for non-changeable modes
 	}
@@ -1502,6 +1600,20 @@ func (em *emulator) sendDA() {
 	// 52 for clipboard access?
 	buf.WriteRune('c')
 	em.SendRaw(buf.Bytes())
+}
+
+// setAnsiMode sets the ANSI mode.
+func (em *emulator) setAnsiMode(mode AnsiMode, ms ModeStatus) {
+	if !ms.Changeable() {
+		return
+	}
+	if old, ok := em.ansiModes[mode]; ok && old.Changeable() {
+		em.ansiModes[mode] = ms
+	}
+}
+
+func (em *emulator) getAnsiMode(mode AnsiMode) ModeStatus {
+	return em.ansiModes[mode]
 }
 
 // getPrivateMode returns the value of a DEC private mode.
@@ -1684,6 +1796,10 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 				str = v.A
 			} else {
 				str = v.K
+			}
+			// AnsiMode 20 sends newline, but only in legacy mode.
+			if str == "\r" && em.getAnsiMode(AmNewLineMode) == ModeOn {
+				str = "\r\n"
 			}
 			match = true
 		case ModShift:

@@ -77,6 +77,26 @@ type ModeStatus int
 // They use CSI-h and CSI-l (no question mark).
 type AnsiMode int
 
+// Enable returns the string used to enable this ANSI mode.
+func (pm AnsiMode) Enable() string {
+	return fmt.Sprintf("\x1b[%dh", pm)
+}
+
+// Disable returns the string used to disable this ANSI mode.
+func (pm AnsiMode) Disable() string {
+	return fmt.Sprintf("\x1b[%dl", pm)
+}
+
+// Query returns the string used to query the state of this ANSI mode.
+func (pm AnsiMode) Query() string {
+	return fmt.Sprintf("\x1b[%d$p", pm)
+}
+
+// Reply returns a string representing a query reply for the given mode and status.
+func (pm AnsiMode) Reply(status ModeStatus) string {
+	return fmt.Sprintf("\x1b[%d;%d$y", pm, status)
+}
+
 const (
 	AmKeyboardAction AnsiMode = 2  // Lock the keyboard.
 	AmInsertReplace  AnsiMode = 4  // Insert or replace characters when a new character is added.
