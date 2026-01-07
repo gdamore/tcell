@@ -153,6 +153,37 @@ func TestDECSTBMv4(t *testing.T) {
 	checkContent(t, term, 2, 3, "I")
 }
 
+// TestDECSLRMv1 tests full screen right and left margins.
+func TestDECSLRMv1(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 4})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[H")
+	writeF(t, term, "\033[J")
+	writeF(t, term, "ABC\n\r")
+	writeF(t, term, "DEF\n\r")
+	writeF(t, term, "GHI\n\r")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[s")
+	writeF(t, term, "\033[X")
+
+	checkPos(t, term, 0, 0)
+	checkContent(t, term, 0, 0, "")
+	checkContent(t, term, 1, 0, "B")
+	checkContent(t, term, 2, 0, "C")
+	checkContent(t, term, 0, 1, "D")
+	checkContent(t, term, 1, 1, "E")
+	checkContent(t, term, 2, 1, "F")
+	checkContent(t, term, 0, 2, "G")
+	checkContent(t, term, 1, 2, "H")
+	checkContent(t, term, 2, 2, "I")
+}
+
+// TODO: DECSLRMv3 left and right this makes use of insert line
+// TODO: DECSLRMv4 left and right equal
+// TODO: add tests for actual left and right scrolling!
+
 // TestRIv1 top of screen, no scroll
 func TestRIv1(t *testing.T) {
 	term := NewMockTerm(MockOptSize{X: 8, Y: 4})
@@ -469,8 +500,83 @@ func TestINDv5(t *testing.T) {
 	checkContent(t, term, 2, 4, "")
 }
 
-// TODO: INDv6 - outside of left/right scroll region (when we have them)
-// TODO: INDv7 - inside of left/right scroll region (when we have them)
+// TestINDv6 tests IND outside of left and right scroll region.
+func TestINDv6(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H") // move to top-left
+	writeF(t, term, "\033[0J")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[1;3r")
+	writeF(t, term, "\033[3;5s")
+	writeF(t, term, "\033[3;3H")
+	writeF(t, term, "A")
+	writeF(t, term, "\033[3;1H")
+	writeF(t, term, "\033D")
+	writeF(t, term, "X")
+
+	// |________|
+	// |________|
+	// |XcA_____|
+
+	checkPos(t, term, 1, 2)
+	checkContent(t, term, 0, 0, "")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "")
+	checkContent(t, term, 0, 1, "")
+	checkContent(t, term, 1, 1, "")
+	checkContent(t, term, 2, 1, "")
+	checkContent(t, term, 0, 2, "X")
+	checkContent(t, term, 1, 2, "")
+	checkContent(t, term, 2, 2, "A")
+	checkContent(t, term, 0, 3, "")
+	checkContent(t, term, 1, 3, "")
+	checkContent(t, term, 2, 3, "")
+}
+
+// TestINDv7 tests IND inside of left and right scroll region.
+func TestINDv7(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H") // move to top-left
+	writeF(t, term, "\033[0J")
+	writeF(t, term, "111111\n\r")
+	writeF(t, term, "222222\n\r")
+	writeF(t, term, "333333\n\r")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[1;3s")
+	writeF(t, term, "\033[1;3r")
+	writeF(t, term, "\033[3;1H")
+	writeF(t, term, "\033D")
+
+	// |222111__|
+	// |333222__|
+	// |c__333__|
+
+	checkPos(t, term, 0, 2)
+	checkContent(t, term, 0, 0, "2")
+	checkContent(t, term, 1, 0, "2")
+	checkContent(t, term, 2, 0, "2")
+	checkContent(t, term, 3, 0, "1")
+	checkContent(t, term, 4, 0, "1")
+	checkContent(t, term, 5, 0, "1")
+	checkContent(t, term, 0, 1, "3")
+	checkContent(t, term, 1, 1, "3")
+	checkContent(t, term, 2, 1, "3")
+	checkContent(t, term, 3, 1, "2")
+	checkContent(t, term, 4, 1, "2")
+	checkContent(t, term, 5, 1, "2")
+	checkContent(t, term, 0, 2, "")
+	checkContent(t, term, 1, 2, "")
+	checkContent(t, term, 2, 2, "")
+	checkContent(t, term, 3, 2, "3")
+	checkContent(t, term, 4, 2, "3")
+	checkContent(t, term, 5, 2, "3")
+}
 
 // TestCUDv1 - cursor down
 func TestCUDv1(t *testing.T) {

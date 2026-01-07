@@ -148,9 +148,10 @@ func NewEmulator(be Backend) Emulator {
 			AmNewLineMode: ModeOff,
 		},
 		localModes: map[PrivateMode]ModeStatus{
-			PmAppCursor:  ModeOff,
-			PmAutoMargin: ModeOn,
-			PmVT52:       ModeOnLocked, // we never support VT52 mode (note ON means ANSI mode)
+			PmAppCursor:       ModeOff,
+			PmAutoMargin:      ModeOn,
+			PmVT52:            ModeOnLocked, // we never support VT52 mode (note ON means ANSI mode)
+			PmLeftRightMargin: ModeOff,
 		},
 		mouseReports: MouseDisabled,
 	}
@@ -171,6 +172,8 @@ func NewEmulator(be Backend) Emulator {
 	em.size = em.be.GetSize()
 	em.topMargin = 0
 	em.botMargin = em.size.Y - 1
+	em.ltMargin = 0
+	em.rtMargin = em.size.X - 1
 	em.cells = make([]Cell, int(em.size.X)*int(em.size.Y))
 	close(stopQ)
 	em.inb = em.inbInit
@@ -205,6 +208,8 @@ type emulator struct {
 	size         Coord          // physical window size
 	topMargin    Row            // top margin, scrollable region includes this row
 	botMargin    Row            // bottom margin, scrollable region includes this row
+	ltMargin     Col            // left margin, scrollable region to the right
+	rtMargin     Col            // right margin, scrollable region to the left
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 	ansiModes  map[AnsiMode]ModeStatus    // some modes we handle locally
@@ -319,7 +324,7 @@ func (em *emulator) inbEsc(b byte) {
 		em.inb = em.inbStr
 	case '_': // application program command (APC)
 		em.inb = em.inbStr
-	case 'D': // down one line (IND) - note does not reset auto wrap
+	case 'D': // down one line (IND)
 		em.processIndex()
 	case 'E': // next line (NEL)
 		em.nextLine()
@@ -370,6 +375,8 @@ func (em *emulator) inbNF(b byte) {
 		em.autoWrap = false
 		em.topMargin = 0
 		em.botMargin = em.size.Y - 1
+		em.ltMargin = 0
+		em.rtMargin = em.size.X - 1
 		em.setPosition(Coord{0, 0})
 		em.style = em.style.WithAttr(Plain)
 		// TODO: Reset DECOM (when we implement origin mode)
@@ -834,6 +841,25 @@ func (em *emulator) processEraseLine(str string) {
 	}
 }
 
+// processEraseCharacter implements ECH.
+// This ignores the margin.
+func (em *emulator) processEraseCharacter(str string) {
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		pos := em.pos
+		// TODO: delete wide character if we are splitting it at the start
+		em.be.SetStyle(em.style.WithAttr(Plain))
+		for range max(1, pi[0]) {
+			em.eraseCell(pos)
+			pos.X++
+			if pos.X >= em.size.X {
+				break
+			}
+		}
+		em.be.SetStyle(em.style)
+	}
+}
+
 // processScrollUp implements SU (VT420.)
 func (em *emulator) processScrollUp(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
@@ -873,7 +899,37 @@ func (em *emulator) processVerticalMargins(str string) {
 		if bot > top {
 			em.topMargin = top
 			em.botMargin = bot
-			em.setPosition(Coord{X: 0, Y: em.topMargin})
+			em.setPosition(Coord{X: 0, Y: 0})
+		}
+	}
+}
+
+// processHorizontalMargins implements DECSLRM (set left and right margins, VT400.)
+// It only works if Private Mode 69 (Left and Right margins)
+func (em *emulator) processHorizontalMargins(str string) {
+	if em.getPrivateMode(PmLeftRightMargin) != ModeOn {
+		// For compat with SCO and ANSI.SYS.
+		if str == "" {
+			em.saveCursor()
+		}
+		return
+	}
+	if pi, err := numericParams(str, 2); err == nil {
+		pi[0] = max(1, pi[0])
+		if pi[1] == 0 {
+			pi[1] = int(em.size.X)
+		}
+		pi[0]--
+		pi[1]--
+
+		lm := min(Col(pi[0]), em.size.X-1)
+		rm := min(Col(pi[1]), em.size.X-1)
+
+		// no change if values are out of range
+		if rm > lm {
+			em.rtMargin = rm
+			em.ltMargin = lm
+			em.setPosition(Coord{X: 0, Y: 0})
 		}
 	}
 }
@@ -883,11 +939,10 @@ func (em *emulator) processVerticalMargins(str string) {
 func (em *emulator) processIndex() {
 	pos := em.getPosition()
 	em.autoWrap = false
-	if pos.Y == em.botMargin {
+	if pos.Y == em.botMargin && em.ltMargin <= pos.X && pos.X <= em.rtMargin {
 		em.scrollUp()
-	} else if pos.Y < em.size.Y-1 {
-		pos.Y++
-		em.setPosition(pos)
+	} else {
+		em.processCursorDown("")
 	}
 }
 
@@ -1079,6 +1134,8 @@ func (em *emulator) processCsi(final byte) {
 		em.processScrollUp(str)
 	case "T":
 		em.processScrollDown(str)
+	case "X":
+		em.processEraseCharacter(str)
 	case "Z":
 		em.processCursorBackTab(str)
 	case "c":
@@ -1099,6 +1156,8 @@ func (em *emulator) processCsi(final byte) {
 		em.deviceReport(str)
 	case "r":
 		em.processVerticalMargins(str)
+	case "s":
+		em.processHorizontalMargins(str)
 	case "?W":
 		em.processTabReset(str)
 	case "?h":
@@ -1323,26 +1382,33 @@ func (em *emulator) blit(src, dst, dim Coord) {
 }
 
 func (em *emulator) scrollUp() {
-	dim := Coord{X: em.size.X, Y: em.botMargin - em.topMargin}
-	src := Coord{X: 0, Y: em.topMargin + 1}
-	dst := Coord{X: 0, Y: em.topMargin}
+	dim := Coord{X: em.rtMargin - em.ltMargin + 1, Y: em.botMargin - em.topMargin}
+	src := Coord{X: em.ltMargin, Y: em.topMargin + 1}
+	dst := Coord{X: em.ltMargin, Y: em.topMargin}
 
 	pos := em.pos
 	em.blit(src, dst, dim)
-	em.setPosition(Coord{X: 0, Y: em.botMargin})
-	em.eraseLine()
+	bot := Coord{X: em.ltMargin, Y: em.botMargin}
+	for bot.X <= em.rtMargin {
+		em.eraseCell(bot)
+		bot.X++
+	}
 	em.setPosition(pos)
 }
 
 func (em *emulator) scrollDown() {
-	dim := Coord{X: em.size.X, Y: em.botMargin - em.topMargin}
-	src := Coord{X: 0, Y: em.topMargin}
-	dst := Coord{X: 0, Y: em.topMargin + 1}
+	dim := Coord{X: em.rtMargin - em.ltMargin + 1, Y: em.botMargin - em.topMargin}
+	src := Coord{X: em.ltMargin, Y: em.topMargin}
+	dst := Coord{X: em.ltMargin, Y: em.topMargin + 1}
 
 	pos := em.pos
 	em.blit(src, dst, dim)
-	em.setPosition(Coord{X: 0, Y: em.topMargin})
-	em.eraseLine()
+	em.setPosition(Coord{X: em.ltMargin, Y: em.topMargin})
+	top := Coord{X: em.ltMargin, Y: em.topMargin}
+	for top.X <= em.rtMargin {
+		em.eraseCell(top)
+		top.X++
+	}
 	em.setPosition(pos)
 }
 
@@ -1490,6 +1556,9 @@ func (em *emulator) putRune(r rune) {
 // It clears attributes, but leaves the colors intact.
 func (em *emulator) eraseCell(c Coord) {
 	em.be.PutRune(c, 0, 0)
+	index := em.index(c)
+	em.cells[index].C = ""
+	em.cells[index].S = em.style.WithAttr(Plain)
 }
 
 // eraseBelow erases from (and including) the current cursor position to the end of the window.
@@ -1573,6 +1642,8 @@ func (em *emulator) softReset() {
 	em.saved = savedCursor{style: em.defaultStyle}
 	em.topMargin = 0
 	em.botMargin = em.size.Y - 1
+	em.ltMargin = 0
+	em.rtMargin = em.size.X - 1
 	em.be.Reset()
 	// start by resetting all modes
 	for am := range em.ansiModes {
@@ -2057,6 +2128,8 @@ func (em *emulator) run(stopQ <-chan bool) {
 				// resizing resets the margins
 				em.topMargin = 0
 				em.botMargin = em.size.Y - 1
+				em.ltMargin = 0
+				em.rtMargin = em.size.X - 1
 				em.cells = make([]Cell, int(em.size.X)*int(em.size.Y))
 				for i := range em.cells {
 					em.cells[i].S = em.defaultStyle

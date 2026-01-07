@@ -37,6 +37,7 @@ const (
 	PmPrintExtent      PrivateMode = 19   // Print full screen (on) or scrolling region (off).
 	PmShowCursor       PrivateMode = 25   // Show the cursor (default on).
 	PmCharSet          PrivateMode = 42   // Enable national (on) or multinational (off) character sets.
+	PmLeftRightMargin  PrivateMode = 69   // Enable left and right margins
 	PmMouseButton      PrivateMode = 1000 // Report mouse button events.
 	PmMouseDrag        PrivateMode = 1002 // Report mouse motion events when button depressed, requires PmMouseButton.
 	PmMouseMotion      PrivateMode = 1003 // Report mouse motion events, requires PmMouseButton.
