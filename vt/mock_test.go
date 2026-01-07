@@ -190,7 +190,7 @@ func TestDECALN(t *testing.T) {
 	writeF(t, trm, "\x1b[1m\x1b#8") // bold, DECALN
 	for y := range Row(3) {
 		for x := range Col(5) {
-			checkAttrs(t, trm, x, y, Bold)
+			checkAttrs(t, trm, x, y, Plain)
 			checkContent(t, trm, x, y, "E")
 		}
 	}

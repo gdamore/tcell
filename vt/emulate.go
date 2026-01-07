@@ -371,7 +371,7 @@ func (em *emulator) inbNF(b byte) {
 		em.topMargin = 0
 		em.botMargin = em.size.Y - 1
 		em.setPosition(Coord{0, 0})
-		// TODO: Set clear attributes (but leave color)
+		em.style = em.style.WithAttr(Plain)
 		// TODO: Reset DECOM (when we implement origin mode)
 		em.be.SetStyle(em.style)
 		for row := range size.Y {
