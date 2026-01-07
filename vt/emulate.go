@@ -268,15 +268,10 @@ func (em *emulator) inbInit(b byte) {
 	case 0x09: // horizontal tab
 		em.lastIndex = 0
 		em.nextTab()
-	case 0x0a: // NL (newline)
+	case 0x0a, 0x0b, 0x0c: // LF (line feed), VF, FF
+		// TODO: New line mode.
 		em.lastIndex = 0
-		em.nextLine()
-	case 0x0b: // VT (vertical tab, treat as LF)
-		em.lastIndex = 0
-		em.nextLine()
-	case 0x0c: // FF (form feed, treat as LF)
-		em.lastIndex = 0
-		em.nextLine()
+		em.processIndex()
 	case 0x0d: // CR (carriage return)
 		em.lastIndex = 0
 		em.setPosition(Coord{0, em.getPosition().Y})
@@ -886,8 +881,10 @@ func (em *emulator) processVerticalMargins(str string) {
 }
 
 // processIndex moves down, unless already on the bottom margin, in which case it scrolls Up.
+// Unlike reverse index, it resets the auto-wrap state.
 func (em *emulator) processIndex() {
 	pos := em.getPosition()
+	em.autoWrap = false
 	if pos.Y == em.botMargin {
 		em.scrollUp()
 	} else if pos.Y < em.size.Y-1 {
@@ -897,6 +894,7 @@ func (em *emulator) processIndex() {
 }
 
 // processReverseIndex moves up, unless already on the top margin, in which case it scrolls down.
+// Note that RI does *not* reset the auto-state.
 func (em *emulator) processReverseIndex() {
 	pos := em.getPosition()
 	if pos.Y == em.topMargin {

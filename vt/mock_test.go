@@ -419,19 +419,19 @@ func TestAutoMargin(t *testing.T) {
 	writeF(t, trm, "\x1b[1;80HA\x1b[80GBC")
 	checkPos(t, trm, 1, 1)
 
-	// newline of course does as well (and its variants and FF)
+	// newline of course as well (and also VF and FF)
 	writeF(t, trm, "\x1b[1;80HA\nB")
-	checkPos(t, trm, 1, 1)
+	checkPos(t, trm, 79, 1)
 	writeF(t, trm, "\x1b[1;80HA\fB")
-	checkPos(t, trm, 1, 1)
+	checkPos(t, trm, 79, 1)
 	writeF(t, trm, "\x1b[1;80HA\vB")
-	checkPos(t, trm, 1, 1)
+	checkPos(t, trm, 79, 1)
 
-	// but not forward index
+	// and also index
 	writeF(t, trm, "\x1b[1;80HA\x1bDB")
-	checkPos(t, trm, 1, 2)
+	checkPos(t, trm, 79, 1)
 
-	// and not reverse index
+	// but not reverse index
 	writeF(t, trm, "\x1b[2;80HA\x1bMB")
 	checkPos(t, trm, 1, 1)
 }
@@ -1346,7 +1346,7 @@ func TestNewLineScroll(t *testing.T) {
 	writeF(t, trm, "\x1b[5;1HC") // first column on last row
 	checkContent(t, trm, 0, 4, "C")
 	writeF(t, trm, "\n") // new line should scroll
-	checkPos(t, trm, 0, 4)
+	checkPos(t, trm, 1, 4)
 	checkContent(t, trm, 0, 0, "B")
 	checkContent(t, trm, 0, 1, "")
 	checkContent(t, trm, 0, 4, "")
@@ -1366,7 +1366,7 @@ func TestNewLineScrollNoBlitter(t *testing.T) {
 	writeF(t, trm, "\x1b[5;1HC") // first column on last row
 	checkContent(t, trm, 0, 4, "C")
 	writeF(t, trm, "\n") // new line should scroll
-	checkPos(t, trm, 0, 4)
+	checkPos(t, trm, 1, 4)
 	checkContent(t, trm, 0, 0, "B")
 	checkContent(t, trm, 0, 1, "")
 	checkContent(t, trm, 0, 4, "")
@@ -1461,9 +1461,9 @@ func TestDECSTBMv1(t *testing.T) {
 
 	writeF(t, trm, "\033[1;1H") // move to top-left
 	writeF(t, trm, "\033[0J")   //  clear screen
-	writeF(t, trm, "ABC\n")
-	writeF(t, trm, "DEF\n")
-	writeF(t, trm, "GHI\n")
+	writeF(t, trm, "ABC\r\n")
+	writeF(t, trm, "DEF\r\n")
+	writeF(t, trm, "GHI\r\n")
 	writeF(t, trm, "\033[r") // scroll region top/bottom
 	writeF(t, trm, "\033[T") // scroll down one
 
@@ -1494,9 +1494,9 @@ func TestDECSTBMv2(t *testing.T) {
 
 	writeF(t, trm, "\033[1;1H") // move to top-left
 	writeF(t, trm, "\033[0J")   //  clear screen
-	writeF(t, trm, "ABC\n")
-	writeF(t, trm, "DEF\n")
-	writeF(t, trm, "GHI\n")
+	writeF(t, trm, "ABC\r\n")
+	writeF(t, trm, "DEF\r\n")
+	writeF(t, trm, "GHI\r\n")
 	writeF(t, trm, "\033[2;2r") // scroll region top/bottom
 	writeF(t, trm, "\033[T")    // scroll down one
 
@@ -1527,9 +1527,9 @@ func TestDECSTBMv3(t *testing.T) {
 
 	writeF(t, trm, "\033[1;1H") // move to top-left
 	writeF(t, trm, "\033[0J")   //  clear screen
-	writeF(t, trm, "ABC\n")
-	writeF(t, trm, "DEF\n")
-	writeF(t, trm, "GHI\n")
+	writeF(t, trm, "ABC\r\n")
+	writeF(t, trm, "DEF\r\n")
+	writeF(t, trm, "GHI\r\n")
 	writeF(t, trm, "\033[1;2r") // scroll region top/bottom
 	writeF(t, trm, "\033[T")    // scroll down one
 
@@ -1560,9 +1560,9 @@ func TestDECSTBMv4(t *testing.T) {
 
 	writeF(t, trm, "\033[1;1H")
 	writeF(t, trm, "\033[0J")
-	writeF(t, trm, "ABC\n")
-	writeF(t, trm, "DEF\n")
-	writeF(t, trm, "GHI\n")
+	writeF(t, trm, "ABC\r\n")
+	writeF(t, trm, "DEF\r\n")
+	writeF(t, trm, "GHI\r\n")
 	writeF(t, trm, "\033[2;2r")
 	writeF(t, trm, "\033[T")
 
@@ -1593,9 +1593,9 @@ func TestRIv1(t *testing.T) {
 
 	writeF(t, trm, "\033[1;1H")
 	writeF(t, trm, "\033[0J")
-	writeF(t, trm, "A\n")
-	writeF(t, trm, "B\n")
-	writeF(t, trm, "C\n")
+	writeF(t, trm, "A\r\n")
+	writeF(t, trm, "B\r\n")
+	writeF(t, trm, "C\r\n")
 	writeF(t, trm, "\033[1;1H")
 	writeF(t, trm, "\033M")
 	writeF(t, trm, "X")
@@ -1628,9 +1628,9 @@ func TestRIv2(t *testing.T) {
 
 	writeF(t, trm, "\033[1;1H")
 	writeF(t, trm, "\033[0J")
-	writeF(t, trm, "A\n")
-	writeF(t, trm, "B\n")
-	writeF(t, trm, "C\n")
+	writeF(t, trm, "A\r\n")
+	writeF(t, trm, "B\r\n")
+	writeF(t, trm, "C\r\n")
 	writeF(t, trm, "\033[2;1H")
 	writeF(t, trm, "\033M")
 	writeF(t, trm, "X")
@@ -1663,9 +1663,9 @@ func TestRIv3(t *testing.T) {
 
 	writeF(t, trm, "\033[1;1H") // move to top-left
 	writeF(t, trm, "\033[0J")   //  clear screen
-	writeF(t, trm, "A\n")
-	writeF(t, trm, "B\n")
-	writeF(t, trm, "C\n")
+	writeF(t, trm, "A\r\n")
+	writeF(t, trm, "B\r\n")
+	writeF(t, trm, "C\r\n")
 	writeF(t, trm, "\033[2;3r")
 	writeF(t, trm, "\033[2;1H")
 	writeF(t, trm, "\033M")
@@ -1698,9 +1698,9 @@ func TestRIv4(t *testing.T) {
 
 	writeF(t, trm, "\033[1;1H") // move to top-left
 	writeF(t, trm, "\033[0J")   //  clear screen
-	writeF(t, trm, "A\n")
-	writeF(t, trm, "B\n")
-	writeF(t, trm, "C\n")
+	writeF(t, trm, "A\r\n")
+	writeF(t, trm, "B\r\n")
+	writeF(t, trm, "C\r\n")
 	writeF(t, trm, "\033[2;3r")
 	writeF(t, trm, "\033[1;1H")
 	writeF(t, trm, "\033M")
