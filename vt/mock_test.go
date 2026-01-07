@@ -319,7 +319,7 @@ func TestAnsiModes(t *testing.T) {
 
 	writeF(t, trm, "\x1b[20$p") // query for newline mode
 	writeF(t, trm, "\x1b[20h")  // turn it on
-	writeF(t, trm, "\x1b[20$p") // should readback on
+	writeF(t, trm, "\x1b[20$p") // should read back on
 	writeF(t, trm, "\x1b[20l")  // turn it back off
 	writeF(t, trm, "\x1b[20$p") // should read back off
 
