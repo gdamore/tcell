@@ -990,6 +990,32 @@ func (em *emulator) processCursorRowAdvance(str string) {
 	}
 }
 
+// processDeleteLine implements DL.
+func (em *emulator) processDeleteLine(str string) {
+	// delete line only takes effect within the scrolling region
+	if em.pos.X < em.ltMargin || em.pos.X > em.rtMargin ||
+		em.pos.Y < em.topMargin || em.pos.Y > em.botMargin {
+		return
+	}
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		num := Row(max(1, pi[0]))
+		num = min(num, em.botMargin-em.pos.Y+1)
+		if num < 1 {
+			return
+		}
+		// process as a scroll up at our position.
+		top := em.topMargin
+		em.topMargin = em.pos.Y
+		for range num {
+			em.scrollUp()
+		}
+		em.topMargin = top
+		em.pos.X = 0
+		em.setPosition(em.pos)
+	}
+}
+
 // processSetMode implements SM (set ANSI mode).
 func (em *emulator) processSetMode(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
@@ -1127,6 +1153,8 @@ func (em *emulator) processCsi(final byte) {
 		em.processEraseDisplay(str)
 	case "K":
 		em.processEraseLine(str)
+	case "M":
+		em.processDeleteLine(str)
 	case "S":
 		em.processScrollUp(str)
 	case "T":
@@ -1383,6 +1411,7 @@ func (em *emulator) scrollUp() {
 	src := Coord{X: em.ltMargin, Y: em.topMargin + 1}
 	dst := Coord{X: em.ltMargin, Y: em.topMargin}
 
+	// TODO: deal with wide characters broken across the margin
 	pos := em.pos
 	em.blit(src, dst, dim)
 	bot := Coord{X: em.ltMargin, Y: em.botMargin}

@@ -979,3 +979,158 @@ func TestCPLv3(t *testing.T) {
 	checkContent(t, term, 1, 3, "")
 	checkContent(t, term, 2, 3, "")
 }
+
+// TestDLv1 tests a simple delete line.
+func TestDLv1(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "ABC\n\r")
+	writeF(t, term, "DEF\n\r")
+	writeF(t, term, "GHI\n\r")
+	writeF(t, term, "\033[2;2H")
+	writeF(t, term, "\033[M")
+
+	// |ABC_____|
+	// |GHI_____|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 0, 1)
+	checkContent(t, term, 0, 0, "A")
+	checkContent(t, term, 1, 0, "B")
+	checkContent(t, term, 2, 0, "C")
+	checkContent(t, term, 3, 0, "")
+	checkContent(t, term, 0, 1, "G")
+	checkContent(t, term, 1, 1, "H")
+	checkContent(t, term, 2, 1, "I")
+	checkContent(t, term, 3, 1, "")
+	checkContent(t, term, 0, 2, "")
+	checkContent(t, term, 1, 2, "")
+	checkContent(t, term, 2, 2, "")
+	checkContent(t, term, 2, 3, "")
+}
+
+// TestDLv2 delete line outside of the scroll region.
+func TestDLv2(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "ABC\n\r")
+	writeF(t, term, "DEF\n\r")
+	writeF(t, term, "GHI\n\r")
+	writeF(t, term, "\033[3;4r")
+	writeF(t, term, "\033[2;2H")
+	writeF(t, term, "\033[M")
+
+	// |ABC_____|
+	// |DEF_____|
+	// |GHI_____|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 1, 1)
+	checkContent(t, term, 0, 0, "A")
+	checkContent(t, term, 1, 0, "B")
+	checkContent(t, term, 2, 0, "C")
+	checkContent(t, term, 3, 0, "")
+	checkContent(t, term, 0, 1, "D")
+	checkContent(t, term, 1, 1, "E")
+	checkContent(t, term, 2, 1, "F")
+	checkContent(t, term, 3, 1, "")
+	checkContent(t, term, 0, 2, "G")
+	checkContent(t, term, 1, 2, "H")
+	checkContent(t, term, 2, 2, "I")
+	checkContent(t, term, 3, 2, "")
+}
+
+// TestDLv3 delete line with top and bottom scroll regions.
+func TestDLv3(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "ABC\n\r")
+	writeF(t, term, "DEF\n\r")
+	writeF(t, term, "GHI\n\r")
+	writeF(t, term, "123\n\r")
+	writeF(t, term, "\033[1;3r")
+	writeF(t, term, "\033[2;2H")
+	writeF(t, term, "\033[M")
+
+	// |ABC_____|
+	// |GHI_____|
+	// |________|
+	// |123_____|
+
+	checkPos(t, term, 0, 1)
+	checkContent(t, term, 0, 0, "A")
+	checkContent(t, term, 1, 0, "B")
+	checkContent(t, term, 2, 0, "C")
+	checkContent(t, term, 3, 0, "")
+	checkContent(t, term, 0, 1, "G")
+	checkContent(t, term, 1, 1, "H")
+	checkContent(t, term, 2, 1, "I")
+	checkContent(t, term, 3, 1, "")
+	checkContent(t, term, 0, 2, "")
+	checkContent(t, term, 1, 2, "")
+	checkContent(t, term, 2, 2, "")
+	checkContent(t, term, 3, 2, "")
+	checkContent(t, term, 0, 3, "1")
+	checkContent(t, term, 1, 3, "2")
+	checkContent(t, term, 2, 3, "3")
+	checkContent(t, term, 3, 3, "")
+}
+
+// TestDLv4 delete line with left and right margins.
+func TestDLv4(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "ABC123\n\r")
+	writeF(t, term, "DEF456\n\r")
+	writeF(t, term, "GHI789\n\r")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[2;4s")
+	writeF(t, term, "\033[2;2H")
+	writeF(t, term, "\033[M")
+
+	// |ABC123__|
+	// |DHI756__|
+	// |G___89__|
+	// |________|
+
+	checkPos(t, term, 0, 1)
+	checkContent(t, term, 0, 0, "A")
+	checkContent(t, term, 1, 0, "B")
+	checkContent(t, term, 2, 0, "C")
+	checkContent(t, term, 3, 0, "1")
+	checkContent(t, term, 4, 0, "2")
+	checkContent(t, term, 5, 0, "3")
+	checkContent(t, term, 0, 1, "D")
+	checkContent(t, term, 1, 1, "H")
+	checkContent(t, term, 2, 1, "I")
+	checkContent(t, term, 3, 1, "7")
+	checkContent(t, term, 4, 1, "5")
+	checkContent(t, term, 5, 1, "6")
+	checkContent(t, term, 0, 2, "G")
+	checkContent(t, term, 1, 2, "")
+	checkContent(t, term, 2, 2, "")
+	checkContent(t, term, 3, 2, "")
+	checkContent(t, term, 4, 2, "8")
+	checkContent(t, term, 5, 2, "9")
+	checkContent(t, term, 0, 3, "")
+	checkContent(t, term, 1, 3, "")
+	checkContent(t, term, 2, 3, "")
+	checkContent(t, term, 3, 3, "")
+	checkContent(t, term, 4, 3, "")
+	checkContent(t, term, 5, 3, "")
+}
