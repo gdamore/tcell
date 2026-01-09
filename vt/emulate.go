@@ -330,7 +330,7 @@ func (em *emulator) inbEsc(b byte) {
 		em.nextLine()
 	case 'H': // set tab stop (HTS) - VT52 is go home, but we do not support VT52
 		em.setTabStop(em.getPosition().X)
-	case 'M': // up one line (RI) - note does not reset autoWrap
+	case 'M': // up one line (RI)
 		em.processReverseIndex()
 	case 'N': // single shift two (SS2) (TODO)
 	case 'O': // single shift three (SS3) (TODO)
@@ -935,7 +935,6 @@ func (em *emulator) processHorizontalMargins(str string) {
 }
 
 // processIndex moves down, unless already on the bottom margin, in which case it scrolls Up.
-// Unlike reverse index, it resets the auto-wrap state.
 func (em *emulator) processIndex() {
 	pos := em.getPosition()
 	em.autoWrap = false
@@ -962,14 +961,12 @@ func (em *emulator) processLineFeed() {
 }
 
 // processReverseIndex moves up, unless already on the top margin, in which case it scrolls down.
-// Note that RI does *not* reset the auto-state.
 func (em *emulator) processReverseIndex() {
 	pos := em.getPosition()
 	if pos.Y == em.topMargin {
 		em.scrollDown()
-	} else if pos.Y > 0 {
-		pos.Y--
-		em.setPosition(pos)
+	} else {
+		em.processCursorUp("")
 	}
 }
 

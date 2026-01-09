@@ -456,9 +456,9 @@ func TestAutoMargin(t *testing.T) {
 	writeF(t, trm, "\x1b[1;80HA\x1bDB")
 	checkPos(t, trm, 79, 1)
 
-	// but not reverse index
+	// and also reverse index
 	writeF(t, trm, "\x1b[2;80HA\x1bMB")
-	checkPos(t, trm, 1, 1)
+	checkPos(t, trm, 79, 0)
 }
 
 // TestUnicode tests basic placement of unicode glyphs.
