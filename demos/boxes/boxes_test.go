@@ -24,7 +24,7 @@ func TestBoxes(t *testing.T) {
 			wg.Add(1)
 			count = 0
 			drawTime = 0
-			interval = time.Microsecond * 100
+			interval = time.Microsecond * 10
 
 			go func() {
 				defer wg.Done()
@@ -44,7 +44,9 @@ func TestBoxes(t *testing.T) {
 				t.Errorf("Too few boxes: %d", count)
 			}
 			if drawTime < time.Microsecond {
-				t.Errorf("Draw time too short: %s", drawTime)
+				// on windows this can happen because our tick counter is too coarse,
+				// and our mock screen is basically limited only by CPU.
+				t.Logf("Draw time very short: %s", drawTime)
 			}
 
 			// It should not take 10 milliseconds to draw a box,
