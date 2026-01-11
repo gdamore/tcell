@@ -1080,6 +1080,56 @@ func (em *emulator) processDeleteCharacter(str string) {
 	}
 }
 
+// processInsertCharacter implements ICH.
+func (em *emulator) processInsertCharacter(str string) {
+	em.autoWrap = false
+	// only takes effect within the scrolling region -- HOWEVER,
+	// ICH still resets auto-wrap in this case, unlike DCH.
+	if em.pos.X < em.ltMargin || em.pos.X > em.rtMargin ||
+		em.pos.Y < em.topMargin || em.pos.Y > em.botMargin {
+		return
+	}
+	if pi, err := numericParams(str, 1); err == nil {
+		num := Col(max(1, pi[0]))
+		num = min(num, em.rtMargin-em.pos.X+1)
+		if num < 1 {
+			return
+		}
+
+		// this is essentially a one line scroll right
+		pos := em.pos
+
+		// if we are breaking a wide rune, delete it
+		if em.pos.X > 0 {
+			if ix := em.index(em.pos); uniseg.StringWidth(em.cells[ix-1].C) > 1 {
+				em.be.SetStyle(em.cells[ix-1].S)
+				em.be.PutRune(Coord{X: em.pos.X - 1, Y: em.pos.Y}, 0, 0)
+				em.cells[ix-1].C = ""
+			}
+		}
+
+		for range num {
+			src := Coord{X: em.pos.X, Y: em.pos.Y}
+			dst := Coord{X: em.pos.X + 1, Y: em.pos.Y}
+			dim := Coord{X: em.rtMargin - em.pos.X, Y: 1}
+			em.blit(src, dst, dim)
+			// NB: We don't use eraseCell, because we need to preserve attributes.
+			em.be.SetStyle(em.style)
+			em.be.PutRune(Coord{X: em.pos.X, Y: em.pos.Y}, 0, 0)
+			em.cells[em.index(Coord{X: em.pos.X, Y: em.pos.Y})].C = ""
+			em.cells[em.index(Coord{X: em.pos.X, Y: em.pos.Y})].S = em.style
+		}
+
+		// if we clipped off the end of a wide character, then delete it.
+		if ix := em.index(Coord{X: em.rtMargin, Y: em.pos.Y}); uniseg.StringWidth(em.cells[ix].C) > 1 {
+			em.be.PutRune(Coord{X: em.rtMargin, Y: em.pos.Y}, 0, 0)
+		}
+
+		em.pos = pos
+		em.setPosition(em.pos)
+	}
+}
+
 // processSetMode implements SM (set ANSI mode).
 func (em *emulator) processSetMode(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
@@ -1195,6 +1245,8 @@ func (em *emulator) processCsi(final byte) {
 	str := em.inBuf.String()
 	switch cmd {
 
+	case "@":
+		em.processInsertCharacter(str)
 	case "A":
 		em.processCursorUp(str)
 	case "B":
@@ -1649,6 +1701,8 @@ func (em *emulator) putRune(r rune) {
 // eraseCell erases a single cell at the given offset.
 // It clears attributes, but leaves the colors intact.
 func (em *emulator) eraseCell(c Coord) {
+	s := em.style.WithAttr(Plain)
+	em.be.SetStyle(s)
 	em.be.PutRune(c, 0, 0)
 	index := em.index(c)
 	em.cells[index].C = ""

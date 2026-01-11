@@ -274,13 +274,11 @@ func (mb *mockBackend) PutRune(pos Coord, r rune, width int) {
 		if r == 0 {
 			mb.cells[index].C = ""
 			mb.cells[index].Width = 0
-			// delete cell resets attributes (but not colors)
-			mb.cells[index].S = mb.style.WithAttr(Plain)
 		} else {
 			mb.cells[index].C = string(r)
 			mb.cells[index].Width = width
-			mb.cells[index].S = mb.style
 		}
+		mb.cells[index].S = mb.style
 		if width == 2 && pos.X < mb.size.X-1 {
 			// wide characters delete the adjacent cell
 			index++

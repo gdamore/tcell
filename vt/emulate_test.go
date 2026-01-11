@@ -1437,3 +1437,271 @@ func TestDCv5(t *testing.T) {
 	checkContent(t, term, 5, 0, "")
 	checkContent(t, term, 6, 0, "")
 }
+
+// TestICHv1 tests insert character without a scroll region, fitting on screen.
+func TestICHv1(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "ABC")
+	writeF(t, term, "\033[1G")
+	writeF(t, term, "\x1b[2@")
+	writeF(t, term, "X")
+
+	// |XcABC___|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 1, 0)
+	checkContent(t, term, 0, 0, "X")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "A")
+	checkContent(t, term, 3, 0, "B")
+	checkContent(t, term, 4, 0, "C")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
+}
+
+// TestICHv2 tests insert character SGR state.
+func TestICHv2(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "ABC")
+	writeF(t, term, "\033[1G")
+	writeF(t, term, "\033[41m\033[7m")
+	writeF(t, term, "\x1b[2@")
+	writeF(t, term, "X")
+
+	// |XcABC___|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 1, 0)
+	checkContent(t, term, 0, 0, "X")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "A")
+	checkContent(t, term, 3, 0, "B")
+	checkContent(t, term, 4, 0, "C")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
+	checkAttrs(t, term, 0, 0, Reverse)
+	checkAttrs(t, term, 1, 0, Reverse)
+	checkAttrs(t, term, 2, 0, Plain)
+	checkAttrs(t, term, 3, 0, Plain)
+	checkAttrs(t, term, 4, 0, Plain)
+	checkColors(t, term, 0, 0, color.Silver, color.Maroon)
+	checkColors(t, term, 1, 0, color.Silver, color.Maroon)
+	checkColors(t, term, 2, 0, color.Silver, color.Black)
+	checkColors(t, term, 3, 0, color.Silver, color.Black)
+	checkColors(t, term, 4, 0, color.Silver, color.Black)
+}
+
+// TestICHv3 tests insert character shifting off screen
+func TestICHv3(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "\033[8G")
+	writeF(t, term, "\033[2D")
+	writeF(t, term, "ABC")
+	writeF(t, term, "\033[2D")
+	writeF(t, term, "\033[2@")
+	writeF(t, term, "X")
+
+	// |_____XcA|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 6, 0)
+	checkContent(t, term, 0, 0, "")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "")
+	checkContent(t, term, 3, 0, "")
+	checkContent(t, term, 4, 0, "")
+	checkContent(t, term, 5, 0, "X")
+	checkContent(t, term, 6, 0, "")
+	checkContent(t, term, 7, 0, "A")
+}
+
+// TestICHv4 tests insert character inside left and right scroll regions.
+func TestICHv4(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[3;5s")
+	writeF(t, term, "\033[3G")
+	writeF(t, term, "ABC")
+	writeF(t, term, "\033[3G")
+	writeF(t, term, "\033[2@")
+	writeF(t, term, "X")
+
+	// |__XcA___|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 3, 0)
+	checkContent(t, term, 0, 0, "")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "X")
+	checkContent(t, term, 3, 0, "")
+	checkContent(t, term, 4, 0, "A")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
+	checkContent(t, term, 7, 0, "")
+}
+
+// TestICHv5 tests insert character outside left and right scroll regions.
+func TestICHv5(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[3;5s")
+	writeF(t, term, "\033[3G")
+	writeF(t, term, "ABC")
+	writeF(t, term, "\033[1G")
+	writeF(t, term, "\033[2@")
+	writeF(t, term, "X")
+
+	// |XcABC___|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 1, 0)
+	checkContent(t, term, 0, 0, "X")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "A")
+	checkContent(t, term, 3, 0, "B")
+	checkContent(t, term, 4, 0, "C")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
+	checkContent(t, term, 7, 0, "")
+}
+
+// TestICHv5a tests insert character outside left and right scroll regions resets auto-wrap.
+func TestICHv5a(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[3;5s")
+	writeF(t, term, "\033[3G")
+	writeF(t, term, "ABC")
+	writeF(t, term, "\033[8G")
+	writeF(t, term, "X")
+	writeF(t, term, "\033[2@")
+	writeF(t, term, "Y")
+	writeF(t, term, "Z")
+
+	// |__ABC__Y|
+	// |Zc______|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 1, 1)
+	checkContent(t, term, 0, 0, "")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "A")
+	checkContent(t, term, 3, 0, "B")
+	checkContent(t, term, 4, 0, "C")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
+	checkContent(t, term, 7, 0, "Y")
+	checkContent(t, term, 0, 1, "Z")
+}
+
+// TestICHv6 tests insert character splitting a wide character on the right of the screen.
+func TestICHv6(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[8G")
+	writeF(t, term, "\033[1D")
+	writeF(t, term, "橋")
+	writeF(t, term, "\033[2D")
+	writeF(t, term, "\033[@")
+	writeF(t, term, "X")
+
+	// |_____Xc_|
+
+	checkPos(t, term, 6, 0)
+	checkContent(t, term, 0, 0, "")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "")
+	checkContent(t, term, 3, 0, "")
+	checkContent(t, term, 4, 0, "")
+	checkContent(t, term, 5, 0, "X")
+	checkContent(t, term, 6, 0, "")
+	checkContent(t, term, 7, 0, "")
+}
+
+// TestICHv6a tests insert character splitting a wide character at the right margin.
+func TestICHv6a(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[4G")
+	writeF(t, term, "橋")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[3;5s")
+	writeF(t, term, "\033[3G")
+	writeF(t, term, "\033[@")
+	writeF(t, term, "X")
+
+	// |__Xc____|
+
+	checkPos(t, term, 3, 0)
+	checkContent(t, term, 0, 0, "")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "X")
+	checkContent(t, term, 3, 0, "")
+	checkContent(t, term, 4, 0, "")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
+}
+
+// TestICHv6b tests insert character splitting a wide character at the left margin.
+func TestICHv6b(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[2G")
+	writeF(t, term, "橋")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[3;5s")
+	writeF(t, term, "\033[3G")
+	writeF(t, term, "\033[@")
+	writeF(t, term, "X")
+
+	// |__Xc____|
+
+	checkPos(t, term, 3, 0)
+	checkContent(t, term, 0, 0, "")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "X")
+	checkContent(t, term, 3, 0, "")
+	checkContent(t, term, 4, 0, "")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
+}
