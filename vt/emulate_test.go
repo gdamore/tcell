@@ -14,7 +14,11 @@
 
 package vt
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/gdamore/tcell/v3/color"
+)
 
 // This file implements various tests of the emulator.  Much of these tests
 // are "borrowed" (ported from) the tests from Ghostty - https://ghostty.org/docs/vt
@@ -1292,4 +1296,144 @@ func TestDLv4(t *testing.T) {
 	checkContent(t, term, 3, 3, "")
 	checkContent(t, term, 4, 3, "")
 	checkContent(t, term, 5, 3, "")
+}
+
+// TestDCv1 tests a simple delete character.
+func TestDCv1(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "ABC123")
+	writeF(t, term, "\033[3G")
+	writeF(t, term, "\033[2P")
+
+	// |AB23____|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 2, 0)
+	checkContent(t, term, 0, 0, "A")
+	checkContent(t, term, 1, 0, "B")
+	checkContent(t, term, 2, 0, "2")
+	checkContent(t, term, 3, 0, "3")
+	checkContent(t, term, 4, 0, "")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
+}
+
+// TestDCv2 tests delete character SGR state.
+func TestDCv2(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "ABC123")
+	writeF(t, term, "\033[3G")
+	writeF(t, term, "\033[41m")
+	writeF(t, term, "\x1b[1m")
+	writeF(t, term, "\033[2P")
+
+	// |AB23____|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 2, 0)
+	checkContent(t, term, 0, 0, "A")
+	checkContent(t, term, 1, 0, "B")
+	checkContent(t, term, 2, 0, "2")
+	checkContent(t, term, 3, 0, "3")
+	checkContent(t, term, 4, 0, "")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
+	checkAttrs(t, term, 6, 0, Plain)
+	checkAttrs(t, term, 7, 0, Plain)
+	checkColors(t, term, 6, 0, color.Silver, color.Maroon)
+	checkColors(t, term, 7, 0, color.Silver, color.Maroon)
+}
+
+// TestDCv3 tests delete outside the left/right scroll region.
+func TestDCv3(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "ABC123")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[3;5s")
+	writeF(t, term, "\x1b[2G")
+	writeF(t, term, "\033[P")
+
+	// |ABC123__|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 1, 0)
+	checkContent(t, term, 0, 0, "A")
+	checkContent(t, term, 1, 0, "B")
+	checkContent(t, term, 2, 0, "C")
+	checkContent(t, term, 3, 0, "1")
+	checkContent(t, term, 4, 0, "2")
+	checkContent(t, term, 5, 0, "3")
+	checkContent(t, term, 6, 0, "")
+}
+
+// TestDCv4 tests delete inside the left/right scroll region.
+func TestDCv4(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "ABC123")
+	writeF(t, term, "\033[?69h")
+	writeF(t, term, "\033[3;5s")
+	writeF(t, term, "\x1b[4G")
+	writeF(t, term, "\033[P")
+
+	// |ABC2_3__|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 3, 0)
+	checkContent(t, term, 0, 0, "A")
+	checkContent(t, term, 1, 0, "B")
+	checkContent(t, term, 2, 0, "C")
+	checkContent(t, term, 3, 0, "2")
+	checkContent(t, term, 4, 0, "")
+	checkContent(t, term, 5, 0, "3")
+	checkContent(t, term, 6, 0, "")
+}
+
+// TestDCv5 tests delete character splitting a wide character.
+func TestDCv5(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[1;1H\033[0J")
+	writeF(t, term, "A橋123")
+	writeF(t, term, "\x1b[3G")
+	writeF(t, term, "\033[P")
+
+	// |A_123___|
+	// |________|
+	// |________|
+	// |________|
+
+	checkPos(t, term, 2, 0)
+	checkContent(t, term, 0, 0, "A")
+	checkContent(t, term, 1, 0, "")
+	checkContent(t, term, 2, 0, "1")
+	checkContent(t, term, 3, 0, "2")
+	checkContent(t, term, 4, 0, "3")
+	checkContent(t, term, 5, 0, "")
+	checkContent(t, term, 6, 0, "")
 }

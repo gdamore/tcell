@@ -1287,7 +1287,7 @@ func TestEraseAbove(t *testing.T) {
 		for col := range Col(10) {
 			if row < 2 || row == 2 && col < 5 {
 				checkContent(t, trm, col, row, "")
-				checkAttrs(t, trm, col, row, Bold)
+				checkAttrs(t, trm, col, row, Plain)
 				checkColors(t, trm, col, row, color.XTerm1, color.XTerm2)
 			} else {
 				checkContent(t, trm, col, row, "E")
@@ -1319,7 +1319,7 @@ func TestEraseLine(t *testing.T) {
 			checkColors(t, trm, col, row, color.Silver, color.Black)
 		} else {
 			checkContent(t, trm, col, row, "")
-			checkAttrs(t, trm, col, row, Bold)
+			checkAttrs(t, trm, col, row, Plain)
 			checkColors(t, trm, col, row, color.XTerm1, color.XTerm2)
 		}
 	}
@@ -1338,7 +1338,7 @@ func TestEraseLine(t *testing.T) {
 			checkColors(t, trm, col, row, color.Silver, color.Black)
 		} else {
 			checkContent(t, trm, col, row, "")
-			checkAttrs(t, trm, col, row, Bold)
+			checkAttrs(t, trm, col, row, Plain)
 			checkColors(t, trm, col, row, color.XTerm1, color.XTerm2)
 		}
 	}
@@ -1352,7 +1352,7 @@ func TestEraseLine(t *testing.T) {
 	for col := range Col(10) {
 		row := Row(2)
 		checkContent(t, trm, col, row, "")
-		checkAttrs(t, trm, col, row, Bold)
+		checkAttrs(t, trm, col, row, Plain)
 		checkColors(t, trm, col, row, color.XTerm1, color.XTerm2)
 	}
 	checkPos(t, trm, 4, 2)

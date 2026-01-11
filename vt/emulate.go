@@ -771,6 +771,7 @@ func (em *emulator) processCursorColumn(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
 		em.autoWrap = false
 		pos := em.getPosition()
+		// TODO: possibly clip to margins (origin mode)
 		pos.X = min(Col(max(1, pi[0])), em.size.X) - 1
 		em.setPosition(pos)
 	}
@@ -1041,6 +1042,44 @@ func (em *emulator) processDeleteLine(str string) {
 	}
 }
 
+// processDeleteCharacter implements DCH.
+func (em *emulator) processDeleteCharacter(str string) {
+	// only takes effect within the scrolling region
+	if em.pos.X < em.ltMargin || em.pos.X > em.rtMargin ||
+		em.pos.Y < em.topMargin || em.pos.Y > em.botMargin {
+		return
+	}
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		num := Col(max(1, pi[0]))
+		num = min(num, em.rtMargin-em.pos.X+1)
+		if num < 1 {
+			return
+		}
+		// this is essentially a one line scroll left
+		pos := em.pos
+
+		// if we are breaking a wide rune, delete it
+		if em.pos.X > 0 {
+			if ix := em.index(em.pos); uniseg.StringWidth(em.cells[ix-1].C) > 1 {
+				em.be.SetStyle(em.cells[ix-1].S)
+				em.be.PutRune(Coord{X: em.pos.X - 1, Y: em.pos.Y}, 0, 0)
+				em.cells[ix-1].C = ""
+			}
+		}
+
+		for range num {
+			src := Coord{X: em.pos.X + 1, Y: em.pos.Y}
+			dst := Coord{X: em.pos.X, Y: em.pos.Y}
+			dim := Coord{X: em.rtMargin - em.pos.X, Y: 1}
+			em.blit(src, dst, dim)
+			em.eraseCell(Coord{X: em.rtMargin, Y: em.pos.Y})
+		}
+		em.pos = pos
+		em.setPosition(em.pos)
+	}
+}
+
 // processSetMode implements SM (set ANSI mode).
 func (em *emulator) processSetMode(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
@@ -1182,6 +1221,8 @@ func (em *emulator) processCsi(final byte) {
 		em.processInsertLine(str)
 	case "M":
 		em.processDeleteLine(str)
+	case "P":
+		em.processDeleteCharacter(str)
 	case "S":
 		em.processScrollUp(str)
 	case "T":
