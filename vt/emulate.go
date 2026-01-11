@@ -387,8 +387,13 @@ func (em *emulator) inbNF(b byte) {
 		// TODO: Reset DECOM (when we implement origin mode)
 		em.be.SetStyle(em.style)
 		for row := range size.Y {
+			ix := em.index(Coord{X: 0, Y: row})
 			for col := range size.X {
-				em.be.PutRune(Coord{X: col, Y: row}, 'E', 1)
+				em.cells[ix].S = em.style
+				em.cells[ix].C = "E"
+				em.cells[ix].W = 1
+				em.be.Put(Coord{X: col, Y: row}, em.cells[ix])
+				ix++
 			}
 		}
 		// most implementations leave the cursor at home for this
@@ -1063,13 +1068,12 @@ func (em *emulator) processDeleteCharacter(str string) {
 		// this is essentially a one line scroll left
 		pos := em.pos
 
-		// if we are breaking a wide rune, delete it
+		// if we are breaking a wide rune, delete it (but preserve style)
 		if em.pos.X > 0 {
 			if ix := em.index(em.pos); em.cells[ix-1].W > 1 {
-				em.be.SetStyle(em.cells[ix-1].S)
-				em.be.PutRune(Coord{X: em.pos.X - 1, Y: em.pos.Y}, 0, 0)
 				em.cells[ix-1].C = ""
 				em.cells[ix-1].W = 0
+				em.be.Put(Coord{X: em.pos.X - 1, Y: em.pos.Y}, em.cells[ix-1])
 			}
 		}
 
@@ -1108,9 +1112,9 @@ func (em *emulator) processInsertCharacter(str string) {
 		if em.pos.X > 0 {
 			if ix := em.index(em.pos); em.cells[ix-1].W > 1 {
 				em.be.SetStyle(em.cells[ix-1].S)
-				em.be.PutRune(Coord{X: em.pos.X - 1, Y: em.pos.Y}, 0, 0)
 				em.cells[ix-1].C = ""
 				em.cells[ix-1].W = 0
+				em.be.Put(Coord{X: em.pos.X - 1, Y: em.pos.Y}, em.cells[ix-1])
 			}
 		}
 
@@ -1119,16 +1123,19 @@ func (em *emulator) processInsertCharacter(str string) {
 			dst := Coord{X: em.pos.X + 1, Y: em.pos.Y}
 			dim := Coord{X: em.rtMargin - em.pos.X, Y: 1}
 			em.blit(src, dst, dim)
+			ix := em.index(Coord{X: em.pos.X, Y: em.pos.Y})
+			em.cells[ix].C = ""
+			em.cells[ix].W = 0
+			em.cells[ix].S = em.style
 			// NB: We don't use eraseCell, because we need to preserve attributes.
-			em.be.SetStyle(em.style)
-			em.be.PutRune(Coord{X: em.pos.X, Y: em.pos.Y}, 0, 0)
-			em.cells[em.index(Coord{X: em.pos.X, Y: em.pos.Y})].C = ""
-			em.cells[em.index(Coord{X: em.pos.X, Y: em.pos.Y})].S = em.style
+			em.be.Put(Coord{X: em.pos.X, Y: em.pos.Y}, em.cells[ix])
 		}
 
 		// if we clipped off the end of a wide character, then delete it.
 		if ix := em.index(Coord{X: em.rtMargin, Y: em.pos.Y}); em.cells[ix].W > 1 {
-			em.be.PutRune(Coord{X: em.rtMargin, Y: em.pos.Y}, 0, 0)
+			em.cells[ix].C = ""
+			em.cells[ix].W = 0
+			em.be.Put(Coord{X: em.rtMargin, Y: em.pos.Y}, em.cells[ix])
 		}
 
 		em.pos = pos
@@ -1526,7 +1533,7 @@ func (em *emulator) blit(src, dst, dim Coord) {
 				pos.Y += row
 				cell := em.cells[em.index(pos)]
 				em.be.SetStyle(cell.S)
-				em.be.PutGrapheme(pos, cell.C, int(cell.W))
+				em.be.Put(pos, cell)
 			}
 		}
 	}
@@ -1664,14 +1671,15 @@ func (em *emulator) putRune(r rune) {
 				if em.getPrivateMode(PmAutoMargin) == ModeOn && end >= dim.X {
 					em.autoWrap = true
 				}
-				if width == 2 && col < dim.X-1 {
+				if width == 2 && col < dim.X-1 && em.cells[lastIdx+1].W != 0 {
 					// erase the next cell before putting down a character
 					em.cells[lastIdx+1].C = ""
 					em.cells[lastIdx+1].S = em.cells[lastIdx].S
 					em.cells[lastIdx+1].W = 0
+					em.be.Put(Coord{X: col + 1, Y: row}, em.cells[lastIdx+1])
 				}
 				// we leave the em.lastIndex for now, we might keep extending this cluster
-				em.be.PutGrapheme(Coord{X: col, Y: row}, cs, width)
+				em.be.Put(Coord{X: col, Y: row}, em.cells[lastIdx])
 				em.setPosition(Coord{X: end, Y: row})
 				return
 			}
@@ -1693,7 +1701,7 @@ func (em *emulator) putRune(r rune) {
 	em.cells[index].C = string(r)
 	em.cells[index].S = em.style
 	em.cells[index].W = w
-	em.be.PutRune(em.pos, r, w)
+	em.be.Put(em.pos, em.cells[index])
 	em.lastIndex = index + 1
 
 	if w == 2 && pos.X < dim.X-1 {
@@ -1713,11 +1721,11 @@ func (em *emulator) putRune(r rune) {
 func (em *emulator) eraseCell(c Coord) {
 	s := em.style.WithAttr(Plain)
 	em.be.SetStyle(s)
-	em.be.PutRune(c, 0, 0)
 	index := em.index(c)
 	em.cells[index].C = ""
 	em.cells[index].S = s
 	em.cells[index].W = 0
+	em.be.Put(c, em.cells[index])
 }
 
 // eraseBelow erases from (and including) the current cursor position to the end of the window.

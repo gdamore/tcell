@@ -1148,13 +1148,14 @@ func TestReset(t *testing.T) {
 // backendBox makes a backend box, filled with increasing letters (modulo 16)
 func backendBox(t *testing.T, mb MockBackend, tl Coord, br Coord, attr Attr) {
 	t.Helper()
+	style := BaseStyle.WithAttr(attr)
 	mb.SetStyle(BaseStyle.WithAttr(attr))
 	hex := []rune{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'}
 	assertF(t, len(hex) == 16, "wrong hex string")
 	i := 0
 	for row := tl.Y; row <= br.Y; row++ {
 		for col := tl.X; col <= br.X; col++ {
-			mb.PutRune(Coord{Y: row, X: col}, hex[i%16], 1)
+			mb.Put(Coord{Y: row, X: col}, Cell{C: string(hex[i%16]), W: 1, S: style})
 			i++
 		}
 	}

@@ -42,16 +42,10 @@ type Backend interface {
 	// return 1<<24. The XTerm palette is assumed. Monochrome terminals should return 0.
 	Colors() int
 
-	// Put a single rune at a specific position, using the current attributes and colors.
-	// If the rune is 0, then this is an erase and no content should be displayed.
-	// The display width is the size in cells for this rune.
-	PutRune(Coord, rune, int)
-
-	// Put a grapheme cluster at a specific location, using the current attributes and colors.
-	// If the string is empty, then this is an erase and no content should be displayed.
-	// The width is supplied as the last parameter, and represents the number character cells expected
-	// to be consumed for this grapheme cluster.
-	PutGrapheme(Coord, string, int)
+	// Put content at the given location. The string in the cell might be a grapheme cluster, and the width can be
+	// 0, 1, or 2.  The backend should try to optimize by keeping style and last coordinates if needed.
+	// A graphical backend could use this and be completely stateless.
+	Put(Coord, Cell)
 
 	// GetPosition returns the cursor position.
 	GetPosition() Coord

@@ -84,7 +84,7 @@ func (mt *mockTerm) Pos() Coord {
 
 // GetCell returns the contents of the cell at the given coordinates, or a zero value
 // if the coordinates are out of range.
-func (mt *mockTerm) GetCell(pos Coord) MockCell {
+func (mt *mockTerm) GetCell(pos Coord) Cell {
 	return mt.mb.GetCell(pos)
 }
 
@@ -142,8 +142,9 @@ type MockTerm interface {
 	// Pos reports the current cursor position.
 	Pos() Coord
 
-	// GetCell returns the current cell.
-	GetCell(Coord) MockCell
+	// GetCell returns the cell at the given coordinates.
+	// The coordinates must be valid.
+	GetCell(Coord) Cell
 
 	// Bells returns the number of times the bell has been rung.
 	Bells() int
@@ -192,21 +193,14 @@ func NewMockTerm(opts ...MockOpt) MockTerm {
 	return mt
 }
 
-// MockCell is a representation of a display cell.
-// It only adds a width so we can use that for verification.
-type MockCell struct {
-	Cell
-	Width int // Display width of C.
-}
-
 // MockBackend provides additional mock-specific capabilities on top of Backend.
 // This is meant to facilitate test cases
 type MockBackend interface {
 	Backend
 
-	// GetCell returns the cell at the given position, or the zero value if the
+	// GetCell returns the cell at the given position, or an empty cell if the
 	// position is out of the bounds of the window.
-	GetCell(Coord) MockCell
+	GetCell(Coord) Cell
 
 	// Bells counts the number of bells rung.
 	Bells() int
@@ -223,7 +217,7 @@ type MockBackend interface {
 // It implements the following interfaces:
 // vt.Backend, vt.Beeper, vt.Colorer, vt.Titler, vt.Resizer, vt.Blitter
 type mockBackend struct {
-	cells        []MockCell // Content of cells
+	cells        []Cell // Content of cells
 	size         Coord
 	pos          Coord
 	colors       int
@@ -265,52 +259,26 @@ func (mb *mockBackend) SetPrivateMode(pm PrivateMode, status ModeStatus) error {
 	return nil
 }
 
-func (mb *mockBackend) PutRune(pos Coord, r rune, width int) {
+func (mb *mockBackend) Put(pos Coord, cell Cell) { // grapheme string, width int, style Style) {
 	mb.lock.Lock()
 	defer mb.lock.Unlock()
 	mb.checkSize()
 
 	if index := mb.index(pos); index >= 0 {
-		if r == 0 {
-			mb.cells[index].C = ""
-			mb.cells[index].Width = 0
-		} else {
-			mb.cells[index].C = string(r)
-			mb.cells[index].Width = width
-		}
-		mb.cells[index].S = mb.style
-		if width == 2 && pos.X < mb.size.X-1 {
-			// wide characters delete the adjacent cell
-			index++
-			mb.cells[index].C = ""
-			mb.cells[index].Width = 0
-			mb.cells[index].S = mb.style
-		}
-	} else {
-		mb.errs++
-	}
-}
+		mb.cells[index] = cell
 
-func (mb *mockBackend) PutGrapheme(pos Coord, grapheme string, width int) {
-	mb.lock.Lock()
-	defer mb.lock.Unlock()
-	mb.checkSize()
-
-	if index := mb.index(pos); index >= 0 {
-		if grapheme == "" || width == 0 {
-			mb.cells[index].C = ""
-			mb.cells[index].Width = 0
-		} else {
-			mb.cells[index].C = grapheme
-			mb.cells[index].Width = width
+		// writing to a cell right after a wide
+		// character clears that wide character (but leaves style/attributes)
+		if cell.W > 0 && pos.X > 0 && mb.cells[index-1].W > 1 {
+			mb.cells[index-1].C = ""
+			mb.cells[index-1].W = 0
 		}
-		mb.cells[index].S = mb.style
-		if width == 2 && pos.X < mb.size.X-1 {
-			// wide characters delete the adjacent cell
-			index++
-			mb.cells[index].C = ""
-			mb.cells[index].Width = 0
-			mb.cells[index].S = mb.style
+
+		// wide characters delete the next cell
+		if cell.W == 2 && pos.X < mb.size.X-1 {
+			mb.cells[index+1].C = ""
+			mb.cells[index+1].W = 0
+			mb.cells[index+1].S = cell.S
 		}
 	} else {
 		mb.errs++
@@ -334,14 +302,14 @@ func (mb *mockBackend) index(pos Coord) int {
 	return int(pos.X) + int(pos.Y)*int(mb.size.X)
 }
 
-func (mb *mockBackend) GetCell(pos Coord) MockCell {
+func (mb *mockBackend) GetCell(pos Coord) Cell {
 	mb.lock.Lock()
 	defer mb.lock.Unlock()
 
 	if index := mb.index(pos); index >= 0 {
 		return mb.cells[index]
 	}
-	return MockCell{}
+	return Cell{S: BaseStyle}
 }
 
 func (mb *mockBackend) Bells() int {
@@ -424,7 +392,7 @@ func (mb *mockBackend) checkSize() {
 	oy := int(mb.size.Y)
 	nx := int(size.X)
 	ny := int(size.Y)
-	cells := make([]MockCell, int(size.Y)*int(size.X))
+	cells := make([]Cell, int(size.Y)*int(size.X))
 	for i := range cells {
 		cells[i].S = BaseStyle
 	}
@@ -573,7 +541,7 @@ func NewMockBackend(options ...MockOpt) MockBackend {
 	if mb.colors > 0 {
 		mb.style = mb.defaultStyle
 	}
-	mb.cells = make([]MockCell, int(mb.size.X)*int(mb.size.Y))
+	mb.cells = make([]Cell, int(mb.size.X)*int(mb.size.Y))
 	for i := range mb.cells {
 		mb.cells[i].S = BaseStyle
 	}
