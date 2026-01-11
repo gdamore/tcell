@@ -84,6 +84,7 @@ type inputProcessor struct {
 	evch      chan<- Event
 	rows      int // used for clipping mouse coordinates
 	cols      int // used for clipping mouse coordinates
+	surrogate rune
 	nested    *inputProcessor
 }
 
@@ -348,8 +349,8 @@ var winKeys = map[int]Key{
 	0x03: KeyCancel,    // vkCancel
 	0x08: KeyBackspace, // vkBackspace
 	0x09: KeyTab,       // vkTab
+	0x0c: KeyClear,     // vClear
 	0x0d: KeyEnter,     // vkReturn
-	0x12: KeyClear,     // vClear
 	0x13: KeyPause,     // vkPause
 	0x1b: KeyEscape,    // vkEscape
 	0x21: KeyPgUp,      // vkPrior
@@ -731,10 +732,21 @@ func (ip *inputProcessor) handleWinKey(P []int) {
 	} else if chr < ' ' && P[0] >= 0x41 && P[0] <= 0x5a {
 		key = Key(P[0])
 		chr = 0
-	} else if key == 0x11 || key == 0x13 || key == 0x14 {
+
+	} else if chr >= 0xD800 && chr <= 0xDBFF {
+		// high surrogate pair
+		ip.surrogate = chr
+		return
+	} else if chr >= 0xDC00 && chr <= 0xDFFF {
+		// low surrogate pair
+		chr = utf16.DecodeRune(ip.surrogate, chr)
+	} else if P[0] == 0x10 || P[0] == 0x11 || P[0] == 0x12 || P[0] == 0x14 {
 		// lone modifiers
+		ip.surrogate = 0
 		return
 	}
+
+	ip.surrogate = 0
 
 	// Modifiers
 	if P[4]&0x010 != 0 {
