@@ -990,6 +990,31 @@ func (em *emulator) processCursorRowAdvance(str string) {
 	}
 }
 
+// processInsertLine implements IL.
+func (em *emulator) processInsertLine(str string) {
+	// insert line only takes effect within the scrolling region
+	if em.pos.X < em.ltMargin || em.pos.X > em.rtMargin ||
+		em.pos.Y < em.topMargin || em.pos.Y > em.botMargin {
+		return
+	}
+
+	if pi, err := numericParams(str, 1); err == nil {
+		em.autoWrap = false
+		num := Row(max(1, pi[0]))
+		num = min(num, em.botMargin-em.pos.Y+1)
+
+		// process as a scroll down at our position.
+		top := em.topMargin
+		em.topMargin = em.pos.Y
+		for range num {
+			em.scrollDown()
+		}
+		em.topMargin = top
+		em.pos.X = 0
+		em.setPosition(em.pos)
+	}
+}
+
 // processDeleteLine implements DL.
 func (em *emulator) processDeleteLine(str string) {
 	// delete line only takes effect within the scrolling region
@@ -1153,6 +1178,8 @@ func (em *emulator) processCsi(final byte) {
 		em.processEraseDisplay(str)
 	case "K":
 		em.processEraseLine(str)
+	case "L":
+		em.processInsertLine(str)
 	case "M":
 		em.processDeleteLine(str)
 	case "S":
