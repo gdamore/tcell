@@ -34,6 +34,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v3/vt"
@@ -82,15 +83,16 @@ type inputParser struct {
 	cols      int          // used for clipping mouse coordinates
 	keyTime   time.Time    // time of last key press / byte ingested
 	nested    *inputParser // for buggy win32-input-mode implementations
+	surrogate rune         // high surrogate pair seen (for Win32 input mode)
 }
 
 // Waiting returns true if the processor is waiting for
 // some more input (i.e. we are not in in the initial state.)
 // This can occur when we have ambiguous escape sequences, such
 // as the lone escape.  If this is typed, we expect at least a minimal
-// interkey delay before the next stroke occurs, and the caller
+// inter-key delay before the next stroke occurs, and the caller
 // should check for waiting, and call Scan() or ScanUTF8() to
-// finish the processing.  (Typically after a delay of around 100msec.)
+// finish the processing.  (Typically after a delay of around 100ms.)
 func (ip *inputParser) Waiting() bool {
 	ip.l.Lock()
 	defer ip.l.Unlock()
@@ -365,7 +367,6 @@ var winKeys = map[int]Key{
 	0x08: KeyBackspace, // vkBackspace
 	0x09: KeyTab,       // vkTab
 	0x0d: KeyEnter,     // vkReturn
-	0x12: KeyClear,     // vClear
 	0x13: KeyPause,     // vkPause
 	0x1b: KeyEscape,    // vkEscape
 	0x21: KeyPgUp,      // vkPrior
@@ -841,10 +842,20 @@ func (ip *inputParser) handleWinKey(P []int) {
 	} else if chr < ' ' && P[0] >= 0x41 && P[0] <= 0x5a {
 		key = Key(P[0])
 		chr = 0
-	} else if key == 0x11 || key == 0x13 || key == 0x14 {
+	} else if chr >= 0xD800 && chr <= 0xDBFF {
+		// high surrogate pair
+		ip.surrogate = chr
+		return
+	} else if chr >= 0xDC00 && chr <= 0xDFFF {
+		// low surrogate pair
+		chr = utf16.DecodeRune(ip.surrogate, chr)
+	} else if P[0] == 0x10 || P[0] == 0x11 || P[0] == 0x12 || P[0] == 0x14 {
 		// lone modifiers
+		ip.surrogate = 0
 		return
 	}
+
+	ip.surrogate = 0
 
 	// Modifiers
 	if P[4]&0x010 != 0 {

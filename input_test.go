@@ -590,15 +590,20 @@ func TestSpecialKeys(t *testing.T) {
 		{"Kitty-Esc", []byte{'\x1b', '[', '2', '7', 'u'}, KeyEsc, ModNone, ""},
 		{"Kitty-Control-I", []byte{'\x1b', '[', '1', '0', '5', ';', '5', 'u'}, 'I', ModCtrl, ""},
 		{"Win-Shift-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '6', '5', ';', '1', ';', '1', '6', '_'}, KeyRune, ModNone, "A"},
+		{"Win-Ctrl-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '1', ';', '1', ';', '8', '_'}, KeyCtrlA, ModCtrl, ""},
 		{"Win-Ctrl-Up", []byte{'\x1b', '[', '3', '8', ';', '0', ';', '0', ';', '1', ';', '8', '_'}, KeyUp, ModCtrl, ""},
 		{"Win-Ctrl-Up-2", []byte{'\x1b', '[', '3', '8', ';', '0', ';', '0', ';', '1', ';', '4', '_'}, KeyUp, ModCtrl, ""},
 		{"Win-Alt-F1", []byte{'\x1b', '[', '1', '1', '2', ';', '0', ';', '0', ';', '1', ';', '1', '_'}, KeyF1, ModAlt, ""},
 		{"Win-Alt-F1-2", []byte{'\x1b', '[', '1', '1', '2', ';', '0', ';', '0', ';', '1', ';', '2', '_'}, KeyF1, ModAlt, ""},
 		{"Win-AltGr-E", []byte{'\x1b', '[', '6', '9', ';', '0', ';', '6', '9', ';', '1', ';', '5', '_'}, KeyRune, ModNone, "E"},
 		{"Win-Ignore-Release", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '6', '5', ';', '0', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
-		{"Win-Mod-Ignore-11", []byte{'\x1b', '[', '1', '1', ';', '0', ';', '1', '1', ';', '0', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
-		{"Win-Mod-Ignore-13", []byte{'\x1b', '[', '1', '3', ';', '0', ';', '1', '3', ';', '0', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
-		{"Win-Mod-Ignore-14", []byte{'\x1b', '[', '1', '4', ';', '0', ';', '1', '4', ';', '0', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
+		{"Win-Mod-Ignore-Shift", []byte{'\x1b', '[', '1', '6', ';', '0', ';', '1', '1', ';', '1', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
+		{"Win-Mod-Ignore-Ctrl", []byte{'\x1b', '[', '1', '7', ';', '0', ';', '1', '3', ';', '1', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
+		{"Win-Mod-Ignore-Alt", []byte{'\x1b', '[', '1', '8', ';', '0', ';', '1', '4', ';', '1', ';', '1', '6', '_', 'C'}, KeyRune, ModNone, "C"},
+		{"Win-Surrogates", []byte{
+			'\x1b', '[', '0', ';', '0', ';', '5', '5', '3', '5', '6', ';', '1', ';', '0', ';', '0', '_',
+			'\x1b', '[', '0', ';', '0', ';', '5', '7', '2', '5', '6', ';', '1', ';', '0', ';', '0', '_',
+		}, KeyRune, ModNone, "🎨"},
 		{"Win-Nested-Shift-B", []byte{
 			'\x1b', '[', '0', ';', '0', ';', '2', '7', ';', '1', ';', '0', ';', '0', '_', // ESC
 			'\x1b', '[', '0', ';', '0', ';', '9', '1', ';', '1', ';', '0', ';', '0', '_', // [
@@ -727,6 +732,11 @@ func TestIgnoredSequences(t *testing.T) {
 		{"SS28", "\x8e1"},
 		{"BadCSI", "\x1b[\x07"},
 		{"BadUTF8", "\xe0\xff"},
+		{"Win32Shift", "\x1b[16;0;0;1;1;1_"},
+		{"Win32Ctrl", "\x1b[17;0;0;1;1;1_"},
+		{"Win32Alt", "\x1b[18;0;0;1;1;1_"},
+		{"Win32CapsLock", "\x1b[20;0;0;1;1;1_"},
+		{"Win32KeyUp", "\x1b[13;0;13;0;1;1_"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
