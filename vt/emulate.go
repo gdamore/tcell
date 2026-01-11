@@ -125,10 +125,15 @@ func (ss *styleStruct) Equal(other Style) bool {
 }
 
 // Cell is a representation of a display cell. Most consumers will not need this.
-// Storing the width out of band saves 7 bytes per cell.
+// Note, this is not the simplest possible representation, and a 256x256 cell
+// display is going to need about 3MB to store it all, but it's simple, and adequate
+// to retain pretty much all of what we need for Unicode.  We could save some memory
+// by using explicit struct pointers and by eliminating grapheme cluster support,
+// but modern users expect these features.
 type Cell struct {
 	C string // Content, it will be a grapheme cluster
 	S Style  // Style, a pointer is used efficiency
+	W int    // Display width (0, 1, or 2)
 }
 
 // NewEmulator creates an emulator instance on top of the given backend.
@@ -435,7 +440,6 @@ func (em *emulator) inbOSC(b byte) {
 	default:
 		em.inBuf.WriteByte(b)
 	}
-
 }
 
 // inbStr handles PM, SOS, and any other string we want to consume and discard.
@@ -1061,10 +1065,11 @@ func (em *emulator) processDeleteCharacter(str string) {
 
 		// if we are breaking a wide rune, delete it
 		if em.pos.X > 0 {
-			if ix := em.index(em.pos); uniseg.StringWidth(em.cells[ix-1].C) > 1 {
+			if ix := em.index(em.pos); em.cells[ix-1].W > 1 {
 				em.be.SetStyle(em.cells[ix-1].S)
 				em.be.PutRune(Coord{X: em.pos.X - 1, Y: em.pos.Y}, 0, 0)
 				em.cells[ix-1].C = ""
+				em.cells[ix-1].W = 0
 			}
 		}
 
@@ -1101,10 +1106,11 @@ func (em *emulator) processInsertCharacter(str string) {
 
 		// if we are breaking a wide rune, delete it
 		if em.pos.X > 0 {
-			if ix := em.index(em.pos); uniseg.StringWidth(em.cells[ix-1].C) > 1 {
+			if ix := em.index(em.pos); em.cells[ix-1].W > 1 {
 				em.be.SetStyle(em.cells[ix-1].S)
 				em.be.PutRune(Coord{X: em.pos.X - 1, Y: em.pos.Y}, 0, 0)
 				em.cells[ix-1].C = ""
+				em.cells[ix-1].W = 0
 			}
 		}
 
@@ -1121,7 +1127,7 @@ func (em *emulator) processInsertCharacter(str string) {
 		}
 
 		// if we clipped off the end of a wide character, then delete it.
-		if ix := em.index(Coord{X: em.rtMargin, Y: em.pos.Y}); uniseg.StringWidth(em.cells[ix].C) > 1 {
+		if ix := em.index(Coord{X: em.rtMargin, Y: em.pos.Y}); em.cells[ix].W > 1 {
 			em.be.PutRune(Coord{X: em.rtMargin, Y: em.pos.Y}, 0, 0)
 		}
 
@@ -1520,7 +1526,7 @@ func (em *emulator) blit(src, dst, dim Coord) {
 				pos.Y += row
 				cell := em.cells[em.index(pos)]
 				em.be.SetStyle(cell.S)
-				em.be.PutGrapheme(pos, cell.C, uniseg.StringWidth(cell.C))
+				em.be.PutGrapheme(pos, cell.C, int(cell.W))
 			}
 		}
 	}
@@ -1650,6 +1656,7 @@ func (em *emulator) putRune(r rune) {
 			if cs, rest, width, _ := uniseg.FirstGraphemeClusterInString(str, -1); rest == "" {
 				// we are adding to a cluster
 				em.cells[lastIdx].C = cs
+				em.cells[lastIdx].W = width
 				col := Col(lastIdx) % dim.X
 				row := Row(lastIdx / int(dim.X))
 				// we may have to move position if this switches to wide, so recalculate expected end
@@ -1661,6 +1668,7 @@ func (em *emulator) putRune(r rune) {
 					// erase the next cell before putting down a character
 					em.cells[lastIdx+1].C = ""
 					em.cells[lastIdx+1].S = em.cells[lastIdx].S
+					em.cells[lastIdx+1].W = 0
 				}
 				// we leave the em.lastIndex for now, we might keep extending this cluster
 				em.be.PutGrapheme(Coord{X: col, Y: row}, cs, width)
@@ -1684,6 +1692,7 @@ func (em *emulator) putRune(r rune) {
 	index := em.index(pos)
 	em.cells[index].C = string(r)
 	em.cells[index].S = em.style
+	em.cells[index].W = w
 	em.be.PutRune(em.pos, r, w)
 	em.lastIndex = index + 1
 
@@ -1691,6 +1700,7 @@ func (em *emulator) putRune(r rune) {
 		index++
 		em.cells[index].C = ""
 		em.cells[index].S = em.style
+		em.cells[index].W = 0
 	}
 	// Advance the cursor. This will stop at the margin.
 	// Note that if auto margin is enabled, we will have set
@@ -1706,7 +1716,8 @@ func (em *emulator) eraseCell(c Coord) {
 	em.be.PutRune(c, 0, 0)
 	index := em.index(c)
 	em.cells[index].C = ""
-	em.cells[index].S = em.style.WithAttr(Plain)
+	em.cells[index].S = s
+	em.cells[index].W = 0
 }
 
 // eraseBelow erases from (and including) the current cursor position to the end of the window.
