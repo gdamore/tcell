@@ -497,6 +497,9 @@ func (mb *mockBackend) Blit(src, dst, dim Coord) {
 	}
 }
 
+// Buffering is not supported by the mockBackend, and there is little point in it.
+func (mb *mockBackend) Buffering(bool) {}
+
 // MockOpt is an interface by which options can change the behavior of the mocked terminal.
 // This is intended to permit easier testing.
 type MockOpt interface{ SetMockOpt(mb *mockBackend) }
@@ -528,7 +531,6 @@ func NewMockBackend(options ...MockOpt) MockBackend {
 
 	for _, opt := range options {
 		opt.SetMockOpt(mb)
-		// TODO: possibly be could be "filtered" for some options (e.g. to hide colorer API, etc.)
 	}
 
 	if mb.colors > 0 {
@@ -542,5 +544,6 @@ func NewMockBackend(options ...MockOpt) MockBackend {
 	mb.modes = make(map[PrivateMode]ModeStatus)
 	mb.modes[PmShowCursor] = ModeOn
 	mb.modes[PmGraphemeClusters] = ModeOff
+	mb.modes[PmSyncOutput] = ModeOff
 	return mb
 }

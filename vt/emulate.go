@@ -200,6 +200,7 @@ type emulator struct {
 	defaultStyle Style
 	utfLen       int
 	pos          Coord
+	buffering    uint           // reference count - number of (re-entrant) buffering calls
 	autoWrap     bool           // next character will wrap (auto margin, deferred until char emitted)
 	sevenOnly    bool           // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
 	name         string         // name of this emulator (used for extended attributes)
@@ -242,6 +243,20 @@ func (em *emulator) restoreCursor() {
 	em.setPosition(em.saved.pos)
 	em.autoWrap = em.saved.autoWrap
 	em.style = em.saved.style
+}
+
+func (em *emulator) bufferingStart() {
+	em.buffering++
+	if em.buffering == 1 {
+		em.be.Buffering(true)
+	}
+}
+
+func (em *emulator) bufferingEnd() {
+	em.buffering--
+	if em.buffering == 0 {
+		em.be.Buffering(false)
+	}
 }
 
 // inbInit processes bytes received in the "default" state. Most often these are just
@@ -312,6 +327,7 @@ func (em *emulator) inbInit(b byte) {
 
 // inbEsc processes the next byte after an escape character is seen.
 func (em *emulator) inbEsc(b byte) {
+
 	// By default, reset to init state. Other states will be set explicitly as needed.
 	em.inb = em.inbInit
 	em.lastIndex = 0
@@ -800,6 +816,9 @@ func (em *emulator) processCursorBackTab(str string) {
 // processEraseDisplay implements ED.
 func (em *emulator) processEraseDisplay(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
+		em.bufferingStart()
+		defer em.bufferingEnd()
+
 		switch pi[0] {
 		case 0: // erase below
 			em.eraseBelow()
@@ -815,6 +834,9 @@ func (em *emulator) processEraseDisplay(str string) {
 // processEraseLine implements EL.
 func (em *emulator) processEraseLine(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
+		em.bufferingStart()
+		defer em.bufferingEnd()
+
 		switch pi[0] {
 		case 0:
 			em.eraseToLineEnd()
@@ -833,7 +855,10 @@ func (em *emulator) processEraseCharacter(str string) {
 		em.autoWrap = false
 		pos := em.pos
 		// TODO: delete wide character if we are splitting it at the start
+		em.bufferingStart()
+		defer em.bufferingEnd()
 		for range max(1, pi[0]) {
+
 			em.eraseCell(pos)
 			pos.X++
 			if pos.X >= em.size.X {
@@ -846,6 +871,8 @@ func (em *emulator) processEraseCharacter(str string) {
 // processScrollUp implements SU (VT420.)
 func (em *emulator) processScrollUp(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
+		em.bufferingStart()
+		defer em.bufferingEnd()
 		for range max(pi[0], 1) {
 			// TODO: consider faster jump scroll.
 			// This should be something tunable as well.
@@ -857,6 +884,8 @@ func (em *emulator) processScrollUp(str string) {
 // processScrollDown implements SD (VT420.)
 func (em *emulator) processScrollDown(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
+		em.bufferingStart()
+		defer em.bufferingEnd()
 		for range max(pi[0], 1) {
 			// TODO: consider faster jump scroll.
 			// This should be something tunable as well.
@@ -1031,6 +1060,9 @@ func (em *emulator) processDeleteCharacter(str string) {
 		em.pos.Y < em.topMargin || em.pos.Y > em.botMargin {
 		return
 	}
+	em.bufferingStart()
+	defer em.bufferingEnd()
+
 	if pi, err := numericParams(str, 1); err == nil {
 		em.autoWrap = false
 		num := Col(max(1, pi[0]))
@@ -1071,6 +1103,8 @@ func (em *emulator) processInsertCharacter(str string) {
 		em.pos.Y < em.topMargin || em.pos.Y > em.botMargin {
 		return
 	}
+	em.bufferingStart()
+	defer em.bufferingEnd()
 	if pi, err := numericParams(str, 1); err == nil {
 		num := Col(max(1, pi[0]))
 		num = min(num, em.rtMargin-em.pos.X+1)
@@ -1206,6 +1240,7 @@ func (em *emulator) processExtendedAttributes(str string) {
 
 // processCsi processes CSI sequences.
 func (em *emulator) processCsi(final byte) {
+
 	// CSI sequences are supported in several different possible ways:
 	// parameters may have a prefix character that is not numeric, typically
 	// indicating a whole different mode of operation than the final byte.
@@ -1306,6 +1341,9 @@ func (em *emulator) processCsi(final byte) {
 // processOSC processes an operating system command.
 // TODO: add support for these - e.g. OSC 8 for hyperlinks, OSC 52 for clipboard access, etc.
 func (em *emulator) processOSC() {
+	em.bufferingStart()
+	defer em.bufferingEnd()
+
 	// Every OSC we support has a number, semicolon, then string.
 	ns, str, ok := strings.Cut(em.inBuf.String(), ";")
 	if !ok {
@@ -1423,6 +1461,9 @@ func (em *emulator) nextLine() {
 
 // blit performs a data move operation.  It does ignores margins.
 func (em *emulator) blit(src, dst, dim Coord) {
+
+	em.bufferingStart()
+	defer em.bufferingEnd()
 
 	// save the source and destination for the backend blit
 	bsrc := src

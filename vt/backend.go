@@ -55,6 +55,12 @@ type Backend interface {
 	// The backend is responsible for sending a signal (if needed) to child processes as part of this
 	// function.  (The emulation layer knows nothing of child processes.)
 	RaiseResize()
+
+	// Buffering is called by the emulator to indicate that the backend should buffer contents because
+	// multiple updates are taking place.  This should be treated in addition to mode 2026, if the backend
+	// supports it.  (Mode 2026 should only be supported by the backend if it actually supports true
+	// double buffering.)
+	Buffering(bool)
 }
 
 // Beeper can be implemented by a backend to indicate it can ring the bell or beep.
