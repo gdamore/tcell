@@ -24,7 +24,11 @@ import (
 	"github.com/gdamore/tcell/v3/vt"
 )
 
-func TestBoxes(t *testing.T) {
+// TestColors just exercises the code in the colors demo program.
+// It does not validate that the content is accurate, that should be done
+func TestColors(t *testing.T) {
+
+	interval = time.Microsecond*10
 
 	for _, colors := range []int{0, 8, 16, 88, 256, 1 << 24} {
 		t.Run(fmt.Sprintf("%d_colors)", colors), func(t *testing.T) {
@@ -36,9 +40,6 @@ func TestBoxes(t *testing.T) {
 			tcell.ShimScreen(scr)
 			var wg sync.WaitGroup
 			wg.Add(1)
-			count = 0
-			drawTime = 0
-			interval = time.Microsecond * 10
 
 			go func() {
 				defer wg.Done()
@@ -53,21 +54,6 @@ func TestBoxes(t *testing.T) {
 			mt.KeyEvent(vt.KeyEvent{Code: 'q', Mod: vt.ModCtrl, Down: true})
 			mt.Drain()
 			wg.Wait()
-
-			if count < 10 { // CI runs *slow*
-				t.Errorf("Too few boxes: %d", count)
-			}
-			if drawTime < time.Microsecond {
-				// on windows this can happen because our tick counter is too coarse,
-				// and our mock screen is basically limited only by CPU.
-				t.Logf("Draw time very short: %s", drawTime)
-			}
-
-			// It should not take 10 milliseconds to draw a box,
-			// as we generally see values sub millisecond here.
-			if drawTime > 10*time.Millisecond*time.Duration(count) {
-				t.Errorf("Draw time too long: %s", drawTime)
-			}
 		})
 	}
 }

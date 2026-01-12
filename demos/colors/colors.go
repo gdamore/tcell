@@ -1,7 +1,4 @@
-//go:build ignore
-// +build ignore
-
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -40,8 +37,9 @@ var inc = int32(8) // rate of color change
 var redi = int32(inc)
 var grni = int32(inc)
 var blui = int32(inc)
+var interval = time.Millisecond*50
 
-func makebox(s tcell.Screen) {
+func makeBox(s tcell.Screen) {
 	w, h := s.Size()
 
 	if w == 0 || h == 0 {
@@ -80,15 +78,15 @@ func makebox(s tcell.Screen) {
 		}
 		st = st.Background(tcell.NewRGBColor(red, grn, blu))
 	}
-	for row := 0; row < lh; row++ {
-		for col := 0; col < lw; col++ {
+	for row := range lh {
+		for col := range lw {
 			s.Put(lx+col, ly+row, gl, st)
 		}
 	}
 	s.Show()
 }
 
-func flipcoin() bool {
+func flipCoin() bool {
 	if rand.Int()&1 == 0 {
 		return false
 	}
@@ -97,8 +95,6 @@ func flipcoin() bool {
 
 func main() {
 
-	rand.Seed(time.Now().UnixNano())
-	tcell.SetEncodingFallback(tcell.EncodingFallbackASCII)
 	s, e := tcell.NewScreen()
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
@@ -121,7 +117,7 @@ func main() {
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Key() {
-				case tcell.KeyEscape, tcell.KeyEnter:
+				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlQ:
 					close(quit)
 					return
 				case tcell.KeyCtrlL:
@@ -140,20 +136,20 @@ loop:
 		select {
 		case <-quit:
 			break loop
-		case <-time.After(time.Millisecond * 50):
+		case <-time.After(interval):
 		}
 		start := time.Now()
-		makebox(s)
-		dur += time.Now().Sub(start)
+		makeBox(s)
+		dur += time.Since(start)
 		cnt++
 		if cnt%(256/int(inc)) == 0 {
-			if flipcoin() {
+			if flipCoin() {
 				redi = -redi
 			}
-			if flipcoin() {
+			if flipCoin() {
 				grni = -grni
 			}
-			if flipcoin() {
+			if flipCoin() {
 				blui = -blui
 			}
 		}
