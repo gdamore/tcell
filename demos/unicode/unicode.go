@@ -1,7 +1,4 @@
-//go:build ignore
-// +build ignore
-
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -66,7 +63,7 @@ func main() {
 	quit := make(chan struct{})
 
 	style = bold
-	putln(s, "Press ESC to Exit")
+	putln(s, "Press Control-Q to Exit")
 	putln(s, "Character set: "+s.CharacterSet())
 	style = plain
 
@@ -104,7 +101,7 @@ func main() {
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				switch ev.Key() {
-				case tcell.KeyEscape, tcell.KeyEnter:
+				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlQ:
 					close(quit)
 					return
 				case tcell.KeyCtrlL:
