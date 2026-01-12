@@ -32,12 +32,6 @@ type Backend interface {
 	// The X and Y are counts, so the bottom right cell should be at coordinate (X-1, Y-1).
 	GetSize() Coord
 
-	// SetStyle replaces the current style with the one indicated.
-	SetStyle(Style)
-
-	// GetStyle returns the style in use.  This should return a reasonable value at reset.
-	GetStyle() Style
-
 	// Colors returns the number of colors this terminal can support.  For direct color,
 	// return 1<<24. The XTerm palette is assumed. Monochrome terminals should return 0.
 	Colors() int

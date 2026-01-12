@@ -1149,7 +1149,6 @@ func TestReset(t *testing.T) {
 func backendBox(t *testing.T, mb MockBackend, tl Coord, br Coord, attr Attr) {
 	t.Helper()
 	style := BaseStyle.WithAttr(attr)
-	mb.SetStyle(BaseStyle.WithAttr(attr))
 	hex := []rune{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'}
 	assertF(t, len(hex) == 16, "wrong hex string")
 	i := 0

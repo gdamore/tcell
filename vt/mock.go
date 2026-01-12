@@ -345,13 +345,6 @@ func (mb *mockBackend) SetStyle(style Style) {
 	mb.style = style
 }
 
-func (mb *mockBackend) GetStyle() Style {
-	mb.lock.Lock()
-	defer mb.lock.Unlock()
-
-	return mb.style
-}
-
 // SetWindowTitle implements the Titler interface.
 func (mb *mockBackend) SetWindowTitle(title string) {
 	mb.lock.Lock()
