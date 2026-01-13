@@ -37,7 +37,7 @@ var inc = int32(8) // rate of color change
 var redi = int32(inc)
 var grni = int32(inc)
 var blui = int32(inc)
-var interval = time.Millisecond*50
+var interval = time.Millisecond * 50
 
 func makeBox(s tcell.Screen) {
 	w, h := s.Size()

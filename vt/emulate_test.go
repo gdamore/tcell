@@ -1705,3 +1705,65 @@ func TestICHv6b(t *testing.T) {
 	checkContent(t, term, 5, 0, "")
 	checkContent(t, term, 6, 0, "")
 }
+
+// TestDECSCUSRv1 tests setting the cursor.
+func TestDECSCUSRv1(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[ q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingBlock, "")
+	writeF(t, term, "\033[0 q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingBlock, "")
+	writeF(t, term, "\033[1 q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingBlock, "")
+	writeF(t, term, "\033[2 q")
+	verifyF(t, term.Backend().GetCursor() == SteadyBlock, "")
+	writeF(t, term, "\033[3 q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingUnderline, "")
+	writeF(t, term, "\033[4 q")
+	verifyF(t, term.Backend().GetCursor() == SteadyUnderline, "")
+	writeF(t, term, "\033[5 q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingBar, "")
+	writeF(t, term, "\033[6 q")
+	verifyF(t, term.Backend().GetCursor() == SteadyBar, "")
+}
+
+// TestDECSCUSRv2 tests setting the cursor while hidden.
+func TestDECSCUSRv2(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[?25l")
+	writeF(t, term, "\033[ q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingBlock.Hide(), "")
+	writeF(t, term, "\033[0 q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingBlock.Hide(), "")
+	writeF(t, term, "\033[1 q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingBlock.Hide(), "")
+	writeF(t, term, "\033[2 q")
+	verifyF(t, term.Backend().GetCursor() == SteadyBlock.Hide(), "")
+	writeF(t, term, "\033[3 q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingUnderline.Hide(), "")
+	writeF(t, term, "\033[4 q")
+	verifyF(t, term.Backend().GetCursor() == SteadyUnderline.Hide(), "")
+	writeF(t, term, "\033[5 q")
+	verifyF(t, term.Backend().GetCursor() == BlinkingBar.Hide(), "")
+	writeF(t, term, "\033[6 q")
+	verifyF(t, term.Backend().GetCursor() == SteadyBar.Hide(), "")
+}
+
+// TestDECSCUSRv3 tests setting the blink private mode.
+func TestDECSCUSRv3(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033[0 q")
+	writeF(t, term, "\033[?12l")
+	verifyF(t, term.Backend().GetCursor() == SteadyBlock, "")
+	writeF(t, term, "\033[?12h")
+	verifyF(t, term.Backend().GetCursor() == BlinkingBlock, "")
+}

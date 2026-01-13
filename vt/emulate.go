@@ -158,6 +158,8 @@ func NewEmulator(be Backend) Emulator {
 			PmAutoMargin:      ModeOn,
 			PmVT52:            ModeOnLocked, // we never support VT52 mode (note ON means ANSI mode)
 			PmLeftRightMargin: ModeOff,
+			PmShowCursor:      ModeOn,
+			PmBlinkCursor:     ModeOn,
 		},
 		mouseReports: MouseDisabled,
 	}
@@ -183,6 +185,8 @@ func NewEmulator(be Backend) Emulator {
 	em.cells = make([]Cell, int(em.size.X)*int(em.size.Y))
 	close(stopQ)
 	em.inb = em.inbInit
+	em.cursor = BlinkingBlock
+	em.be.SetCursor(em.cursor)
 	return em
 }
 
@@ -217,6 +221,7 @@ type emulator struct {
 	botMargin    Row            // bottom margin, scrollable region includes this row
 	ltMargin     Col            // left margin, scrollable region to the right
 	rtMargin     Col            // right margin, scrollable region to the left
+	cursor       CursorStyle    // current cursor style (visibility, blink, shape)
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 	ansiModes  map[AnsiMode]ModeStatus    // some modes we handle locally
@@ -1238,6 +1243,32 @@ func (em *emulator) processExtendedAttributes(str string) {
 	}
 }
 
+// processCursorStyle implements DECSCUSR (set cursor style).
+func (em *emulator) processCursorStyle(str string) {
+	// get previous visibility state, as we don't change it with this call.
+	visible := em.cursor.IsVisible()
+	if pi, err := numericParams(str, 1); err == nil {
+		switch pi[0] {
+		case 0, 1:
+			em.cursor = BlinkingBlock
+		case 2:
+			em.cursor = SteadyBlock
+		case 3:
+			em.cursor = BlinkingUnderline
+		case 4:
+			em.cursor = SteadyUnderline
+		case 5:
+			em.cursor = BlinkingBar
+		case 6:
+			em.cursor = SteadyBar
+		}
+		if !visible {
+			em.cursor = em.cursor.Hide()
+		}
+		em.be.SetCursor(em.cursor)
+	}
+}
+
 // processCsi processes CSI sequences.
 func (em *emulator) processCsi(final byte) {
 
@@ -1323,6 +1354,8 @@ func (em *emulator) processCsi(final byte) {
 		em.processVerticalMargins(str)
 	case "s":
 		em.processHorizontalMargins(str)
+	case " q":
+		em.processCursorStyle(str)
 	case "?W":
 		em.processTabReset(str)
 	case "?h":
@@ -1832,6 +1865,10 @@ func (em *emulator) softReset() {
 	// and set any that should reset on (auto-margin)
 	em.setPrivateMode(PmAutoMargin, ModeOn)
 	em.setPrivateMode(PmShowCursor, ModeOn)
+	em.setPrivateMode(PmBlinkCursor, ModeOn)
+	// set default cursor - matches VT defaults
+	em.cursor = BlinkingBlock
+	em.be.SetCursor(em.cursor)
 	em.setPosition(Coord{0, 0})
 	em.eraseAll()
 }
@@ -1902,6 +1939,21 @@ func (em *emulator) setPrivateMode(pm PrivateMode, ms ModeStatus) {
 		switch pm {
 		case PmMouseButton, PmMouseDrag, PmMouseMotion, PmMouseSgr, PmMouseSgrPixel, PmMouseX10:
 			em.updateMouseReporting()
+		case PmShowCursor:
+			if ms == ModeOn {
+				em.cursor = em.cursor.Show()
+			} else {
+				em.cursor = em.cursor.Hide()
+			}
+			em.be.SetCursor(em.cursor)
+		case PmBlinkCursor:
+			if ms == ModeOn {
+				em.cursor = em.cursor.Blink()
+			} else {
+				em.cursor = em.cursor.Steady()
+
+			}
+			em.be.SetCursor(em.cursor)
 		}
 	} else if em.be.GetPrivateMode(pm).Changeable() {
 		_ = em.be.SetPrivateMode(pm, ms)

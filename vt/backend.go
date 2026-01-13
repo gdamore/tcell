@@ -61,6 +61,10 @@ type Backend interface {
 	// supports it.  (Mode 2026 should only be supported by the backend if it actually supports true
 	// double buffering.)
 	Buffering(bool)
+
+	// SetCursor is used to set the current cursor style.  If the backend does not support changing
+	// the cursor shape, it should implement at least hidden, steady, and blinking (typically as a block).
+	SetCursor(CursorStyle)
 }
 
 // Beeper can be implemented by a backend to indicate it can ring the bell or beep.

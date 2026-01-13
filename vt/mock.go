@@ -211,6 +211,9 @@ type MockBackend interface {
 	// SetSize is used to resize the window.
 	// Newly added cells are empty, and content in old cells that out of range is lost.
 	SetSize(Coord)
+
+	// GetCursor is used to obtain the current cursor style.
+	GetCursor() CursorStyle
 }
 
 // mockBackend is a mock of a backend device for use with the emulator.
@@ -230,6 +233,7 @@ type mockBackend struct {
 	bells        int
 	errs         int
 	title        string
+	cursor       CursorStyle
 	lock         sync.Mutex
 }
 
@@ -432,6 +436,7 @@ func (mb *mockBackend) Reset() {
 	mb.bells = 0
 	mb.pos = Coord{X: 0, Y: 0}
 	mb.modes[PmShowCursor] = ModeOn
+	mb.modes[PmBlinkCursor] = ModeOn
 	mb.modes[PmGraphemeClusters] = ModeOff
 }
 
@@ -500,6 +505,16 @@ func (mb *mockBackend) Blit(src, dst, dim Coord) {
 // Buffering is not supported by the mockBackend, and there is little point in it.
 func (mb *mockBackend) Buffering(bool) {}
 
+// SetCursor is used to set how the cursor is displayed.
+func (mb *mockBackend) SetCursor(cs CursorStyle) {
+	mb.cursor = cs
+}
+
+// GetCursor returns the current cursor style.
+func (mb *mockBackend) GetCursor() CursorStyle {
+	return mb.cursor
+}
+
 // MockOpt is an interface by which options can change the behavior of the mocked terminal.
 // This is intended to permit easier testing.
 type MockOpt interface{ SetMockOpt(mb *mockBackend) }
@@ -527,6 +542,7 @@ func NewMockBackend(options ...MockOpt) MockBackend {
 		colors:       256,
 		style:        BaseStyle,
 		defaultStyle: BaseStyle.WithFg(color.Silver).WithBg(color.Black),
+		cursor:       BlinkingBlock,
 	}
 
 	for _, opt := range options {
@@ -543,6 +559,7 @@ func NewMockBackend(options ...MockOpt) MockBackend {
 
 	mb.modes = make(map[PrivateMode]ModeStatus)
 	mb.modes[PmShowCursor] = ModeOn
+	mb.modes[PmBlinkCursor] = ModeOn
 	mb.modes[PmGraphemeClusters] = ModeOff
 	mb.modes[PmSyncOutput] = ModeOff
 	return mb
