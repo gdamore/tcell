@@ -214,6 +214,12 @@ type MockBackend interface {
 
 	// GetCursor is used to obtain the current cursor style.
 	GetCursor() CursorStyle
+
+	// SetClipboard sets the clipboard contents (copy buffer).
+	SetClipboard([]byte)
+
+	// GetClipboard returns the clipboard (copy buffer).
+	GetClipboard() []byte
 }
 
 // mockBackend is a mock of a backend device for use with the emulator.
@@ -233,6 +239,7 @@ type mockBackend struct {
 	bells        int
 	errs         int
 	title        string
+	clipboard    []byte
 	cursor       CursorStyle
 	lock         sync.Mutex
 }
@@ -513,6 +520,16 @@ func (mb *mockBackend) SetCursor(cs CursorStyle) {
 // GetCursor returns the current cursor style.
 func (mb *mockBackend) GetCursor() CursorStyle {
 	return mb.cursor
+}
+
+// SetClipboard sets the current clipboard contents.
+func (mb *mockBackend) SetClipboard(data []byte) {
+	mb.clipboard = data
+}
+
+// GetClipboard gets the current clipboard contents.
+func (mb *mockBackend) GetClipboard() []byte {
+	return mb.clipboard
 }
 
 // MockOpt is an interface by which options can change the behavior of the mocked terminal.
