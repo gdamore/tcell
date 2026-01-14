@@ -1913,11 +1913,13 @@ func (em *emulator) sendDA() {
 	buf := &bytes.Buffer{}
 	_, _ = fmt.Fprintf(buf, "\x1b[?63")
 	if em.be.Colors() > 0 {
-		fmt.Fprintf(buf, ";22")
+		_, _ = fmt.Fprintf(buf, ";22")
+	}
+	if _, ok := em.be.(Clipboard); ok {
+		_, _ = fmt.Fprintf(buf, ";52")
 	}
 	// 9 for NRC?
 	// 15 for graphics?
-	// 52 for clipboard access?
 	buf.WriteRune('c')
 	em.SendRaw(buf.Bytes())
 }
