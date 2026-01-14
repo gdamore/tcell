@@ -46,16 +46,37 @@ func TestDemo(t *testing.T) {
 
 	mt.KeyEvent(vt.KeyEvent{Code: '1', Base: '1', Down: true})
 	mt.Drain()
+	time.Sleep(time.Millisecond * 20)
 
 	mt.KeyEvent(vt.KeyEvent{Code: '2', Base: '2', Down: true})
 	mt.Drain()
-
-	mt.KeyEvent(vt.KeyEvent{Code: 'Q', Base: 'Q', Mod: vt.ModCtrl, Down: true})
-	mt.Backend().GetSize()
-	wg.Wait()
+	time.Sleep(time.Millisecond * 20)
 
 	expect := "Enjoy your new clipboard content!"
 	if result := string(mt.Backend().GetClipboard()); result != expect {
 		t.Errorf("clipboard content did not match! %q != %q", result, expect)
 	}
+
+	// a long string
+	mt.Backend().SetClipboard([]byte("The quick brown fox jumps over the lazy dog."))
+	mt.KeyEvent(vt.KeyEvent{Code: '2', Base: '2', Down: true})
+	mt.Drain()
+	time.Sleep(time.Millisecond * 20)
+
+	// stick some invalid utf-8
+	mt.Backend().SetClipboard([]byte{0xff})
+	mt.KeyEvent(vt.KeyEvent{Code: '2', Base: '2', Down: true})
+	mt.Drain()
+	time.Sleep(time.Millisecond * 20)
+
+	// now nil
+	mt.Backend().SetClipboard(nil)
+	mt.KeyEvent(vt.KeyEvent{Code: '2', Base: '2', Down: true})
+	mt.Drain()
+	time.Sleep(time.Millisecond * 20)
+
+	mt.KeyEvent(vt.KeyEvent{Code: 'Q', Base: 'Q', Mod: vt.ModCtrl, Down: true})
+	mt.Backend().GetSize()
+	wg.Wait()
+
 }
