@@ -111,3 +111,17 @@ type Mouser interface {
 type Blitter interface {
 	Blit(src, dst, dim Coord)
 }
+
+// Clipboard implements a clipboard or copy buffer for copy/paste activity.
+// The backend may prevent sending clipboard data by returning an empty string
+// for the clipboard.  Frequently this is done for security reasons.
+type Clipboard interface {
+
+	// SetClipboard sets the contents of the clipboard.
+	SetClipboard([]byte)
+
+	// GetClipboard gets the contents of the clipboard.
+	// It will return nil if the operation is not supported.
+	// An empty clipboard will be []byte{}
+	GetClipboard() []byte
+}

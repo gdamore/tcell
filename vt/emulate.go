@@ -16,6 +16,7 @@ package vt
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -1371,11 +1372,41 @@ func (em *emulator) processCsi(final byte) {
 	}
 }
 
+// processClipboard handles OSC 52 commands.
+func (em *emulator) processClipboard(str string) {
+	clipper, ok := em.be.(Clipboard)
+	if !ok {
+		return
+	}
+
+	// first parameter is the target.  We only have a single
+	// target, and alias all possibilities to the same.
+	parts := strings.SplitN(str, ";", 2)
+	if len(parts) != 2 {
+		return
+	}
+
+	if parts[1] == "?" {
+		// request for clipboard content
+		data := clipper.GetClipboard()
+		if data != nil {
+			em.SendRaw(fmt.Appendf(nil, "\x1b]52;c;%s\x1b\\", base64.StdEncoding.EncodeToString(data)))
+		}
+		return
+	}
+
+	buf := make([]byte, base64.StdEncoding.DecodedLen(len(parts[1])))
+	if n, err := base64.StdEncoding.Decode(buf, []byte(parts[1])); err == nil {
+		clipper.SetClipboard(buf[:n])
+		return
+	}
+
+	clipper.SetClipboard([]byte{})
+}
+
 // processOSC processes an operating system command.
-// TODO: add support for these - e.g. OSC 8 for hyperlinks, OSC 52 for clipboard access, etc.
+// TODO: add support for these - e.g. OSC 8 for hyperlinks, etc.
 func (em *emulator) processOSC() {
-	em.bufferingStart()
-	defer em.bufferingEnd()
 
 	// Every OSC we support has a number, semicolon, then string.
 	ns, str, ok := strings.Cut(em.inBuf.String(), ";")
@@ -1389,8 +1420,12 @@ func (em *emulator) processOSC() {
 		case 2: // Set window title
 			if t, ok := em.be.(Titler); ok {
 				// TODO: possibly validate the UTF-8 content?
+				em.bufferingStart()
+				defer em.bufferingEnd()
 				t.SetWindowTitle(str)
 			}
+		case 52:
+			em.processClipboard(str)
 		}
 	}
 }

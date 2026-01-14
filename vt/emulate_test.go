@@ -15,6 +15,8 @@
 package vt
 
 import (
+	"encoding/base64"
+	"fmt"
 	"testing"
 
 	"github.com/gdamore/tcell/v3/color"
@@ -1766,4 +1768,24 @@ func TestDECSCUSRv3(t *testing.T) {
 	verifyF(t, term.Backend().GetCursor() == SteadyBlock, "")
 	writeF(t, term, "\033[?12h")
 	verifyF(t, term.Backend().GetCursor() == BlinkingBlock, "")
+}
+
+// TestOSC52v1 tests pasting and retrieving the clipboard.
+func TestOSC52v1(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	str := "Hello, World."
+	enc := make([]byte, base64.StdEncoding.EncodedLen(len(str)))
+	base64.StdEncoding.Encode(enc, []byte(str))
+
+	writeF(t, term, "\033]52;c;%s\033\\", enc)
+	verifyF(t, string(term.Backend().GetClipboard()) == str, "clipboard contents did not match (%s != %s)",
+		string(term.Backend().GetClipboard()), str)
+	writeF(t, term, "\033]52;c;?\033\\")
+
+	response := readF(t, term)
+	expect := fmt.Sprintf("\033]52;c;%s\033\\", enc)
+	verifyF(t, response == expect, "retrieved value did not match (%q != %q)", response, expect)
 }
