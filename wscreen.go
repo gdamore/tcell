@@ -287,6 +287,10 @@ func (s *wScreen) GetClipboard() {
 func (s *wScreen) SetClipboard(_ []byte) {
 }
 
+func (s *wScreen) HasClipboard() bool {
+	return false
+}
+
 func (t *wScreen) Size() (int, int) {
 	t.Lock()
 	w, h := t.w, t.h

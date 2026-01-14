@@ -29,8 +29,20 @@ func displayHelloWorld(s tcell.Screen) {
 	w, h := s.Size()
 	s.Clear()
 	style := tcell.StyleDefault.Foreground(color.CadetBlue.TrueColor()).Background(color.White)
+	has := "does NOT claim"
+	if s.HasClipboard() {
+		has = "claims to"
+	}
+	term, version := s.Terminal()
+	termId := "(unidentified)"
+	if term != "" {
+		termId = fmt.Sprintf("(%s %s)", term, version)
+	}
+	line := fmt.Sprintf("Your terminal %s %s to allow clipboard access.", termId, has)
+
 	s.PutStrStyled(w/2-14, h/2, "Press 1 to set clipboard", style)
 	s.PutStrStyled(w/2-14, h/2+1, "Press 2 to get clipboard", style)
+	s.PutStr((w-len(line))/2, h/2+9, line)
 
 	msg := ""
 	if utf8.Valid(clipboard) {
@@ -45,7 +57,8 @@ func displayHelloWorld(s tcell.Screen) {
 		msg = "No clipboard data"
 	}
 	s.PutStr((w-len(msg))/2, h/2+3, msg)
-	s.PutStr(w/2-9, h/2+5, "Press Control-Q to exit.")
+	line = "Press Control-Q to exit."
+	s.PutStr((w-len(line))/2, h/2+5, line)
 	s.Show()
 }
 

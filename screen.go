@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -230,6 +230,7 @@ type Screen interface {
 	// SetClipboard is used to post arbitrary data to the system clipboard.
 	// This need not be UTF-8 string data.  It's up to the recipient to decode the
 	// data meaningfully.  Terminals may prevent this for security reasons.
+	// An empty byte or nil can be used to clear the clipboard.
 	SetClipboard([]byte)
 
 	// GetClipboard is used to request the clipboard contents.  It may be ignored.
@@ -237,6 +238,12 @@ type Screen interface {
 	// EventPaste with the clipboard content as the Data() field.  Terminals may
 	// prevent this for security reasons.
 	GetClipboard()
+
+	// HasClipboard is true if the screen claims to support the clipboard.
+	// Note that GetClipboard may still not work, but SetClipboard should be functional.
+	// Note that many terminals that support the clipboard don't actually report that they
+	// do, so a false indication is not necessarily conclusive.
+	HasClipboard() bool
 
 	// ShowNotification is used to show a desktop notification, when the terminal
 	// supports it.  Right now only terminals supporting OSC 777 support this.
@@ -336,6 +343,7 @@ type screenImpl interface {
 	Tty() (Tty, bool)
 	SetClipboard([]byte)
 	GetClipboard()
+	HasClipboard() bool
 	ShowNotification(string, string)
 	Terminal() (string, string)
 
