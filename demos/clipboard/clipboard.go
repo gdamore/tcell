@@ -1,7 +1,4 @@
-//go:build ignore
-// +build ignore
-
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,11 +45,13 @@ func displayHelloWorld(s tcell.Screen) {
 		msg = "No clipboard data"
 	}
 	s.PutStr((w-len(msg))/2, h/2+3, msg)
-	s.PutStr(w/2-9, h/2+5, "Press ESC to exit.")
+	s.PutStr(w/2-9, h/2+5, "Press Control-Q to exit.")
 	s.Show()
 }
 
-// This program just prints "Hello, World!".  Press ESC to exit.
+// This program demonstrates access to the clipboard.
+// Not all terminals support, and many only support write access.
+// (Read access to the clipboard is often restricted for security reasons.)
 func main() {
 
 	s, e := tcell.NewScreen()
@@ -64,6 +63,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
 		os.Exit(1)
 	}
+	defer s.Fini()
 
 	defStyle := tcell.StyleDefault.
 		Background(color.Black).
@@ -87,9 +87,8 @@ func main() {
 				case "2":
 					s.GetClipboard()
 				}
-			case tcell.KeyEscape:
-				s.Fini()
-				os.Exit(0)
+			case tcell.KeyEscape, tcell.KeyCtrlQ:
+				return
 			}
 		case *tcell.EventClipboard:
 			clipboard = ev.Data()
