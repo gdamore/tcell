@@ -1788,4 +1788,18 @@ func TestOSC52v1(t *testing.T) {
 	response := readF(t, term)
 	expect := fmt.Sprintf("\033]52;c;%s\033\\", enc)
 	verifyF(t, response == expect, "retrieved value did not match (%q != %q)", response, expect)
+
+	// any invalid base64 clears the clipboard
+	writeF(t, term, "\033]52;c;junk1\033\\")
+	verifyF(t, string(term.Backend().GetClipboard()) == "", "")
+
+	// empty clears the clipboard
+	term.Backend().SetClipboard([]byte("something"))
+	writeF(t, term, "\033]52;c;\033\\")
+	verifyF(t, string(term.Backend().GetClipboard()) == "", "")
+
+	// but a bogus sequence without two fields does nothing
+	term.Backend().SetClipboard([]byte("something"))
+	writeF(t, term, "\033]52;x\033\\")
+	verifyF(t, string(term.Backend().GetClipboard()) == "something", "")
 }
