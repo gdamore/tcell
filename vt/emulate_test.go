@@ -1770,6 +1770,32 @@ func TestDECSCUSRv3(t *testing.T) {
 	verifyF(t, term.Backend().GetCursor() == BlinkingBlock, "")
 }
 
+// TestOSC8v1 tests hyperlinks.
+func TestOSC8v1(t *testing.T) {
+	term := NewMockTerm(MockOptSize{X: 8, Y: 5})
+	defer mustClose(t, term)
+	mustStart(t, term)
+
+	writeF(t, term, "\033]8;bob=junk:id=123:junk;https://example.com\033\\")
+	writeF(t, term, "Hello")
+	writeF(t, term, "\033]8;;\033\\")
+	writeF(t, term, " World!")
+
+	term.Drain()
+	for col := range Col(10) {
+		cell := term.GetCell(Coord{X: col, Y: 0})
+		if col < 5 {
+			if u, i := cell.S.Url(); u != "https://example.com" || i != "123" {
+				t.Errorf("wrong data at column %d: url %q id %q", col, u, i)
+			}
+		} else {
+			if u, i := cell.S.Url(); u != "" || i != "" {
+				t.Errorf("wrong data at column %d: url %q id %q", col, u, i)
+			}
+		}
+	}
+}
+
 // TestOSC52v1 tests pasting and retrieving the clipboard.
 func TestOSC52v1(t *testing.T) {
 	term := NewMockTerm(MockOptSize{X: 8, Y: 5})

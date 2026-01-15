@@ -1404,8 +1404,29 @@ func (em *emulator) processClipboard(str string) {
 	clipper.SetClipboard([]byte{})
 }
 
+// processHyperLink handles OSC 8 commands.
+func (em *emulator) processHyperLink(str string) {
+	// format is params;URI params are colon separated key value pairs.
+	// if the URI is absent, then the link is terminated.
+	parts := strings.SplitN(str, ";", 2)
+	if len(parts) == 2 {
+		if parts[1] == "" {
+			// No URI
+			em.style = em.style.WithUrl("", "")
+			return
+		}
+		url := parts[1]
+		id := ""
+		for pair := range strings.SplitSeq(parts[0], ":") {
+			if val, ok := strings.CutPrefix(pair, "id="); ok {
+				id = val
+			}
+		}
+		em.style = em.style.WithUrl(url, id)
+	}
+}
+
 // processOSC processes an operating system command.
-// TODO: add support for these - e.g. OSC 8 for hyperlinks, etc.
 func (em *emulator) processOSC() {
 
 	// Every OSC we support has a number, semicolon, then string.
@@ -1424,6 +1445,8 @@ func (em *emulator) processOSC() {
 				defer em.bufferingEnd()
 				t.SetWindowTitle(str)
 			}
+		case 8:
+			em.processHyperLink(str)
 		case 52:
 			em.processClipboard(str)
 		}
