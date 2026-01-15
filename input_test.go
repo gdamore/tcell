@@ -535,6 +535,8 @@ func TestSpecialKeys(t *testing.T) {
 		{"Esc", []byte{'\x1b'}, KeyEscape, ModNone, ""},
 		{"Esc-Esc", []byte{'\x1b', '\x1b'}, KeyEscape, ModAlt, ""},
 		{"Esc-Y", []byte{'\x1b', 'Y'}, KeyRune, ModAlt, "Y"},
+		{"Esc-Ctrl-B", []byte{'\x1b', '\x02'}, KeyRune, ModAlt | ModCtrl, "b"},
+		{"Esc-[", []byte{'\x1b', '['}, KeyRune, ModAlt, "["},
 		{"Tab", []byte{'\t'}, KeyTab, ModNone, ""},
 		{"NL", []byte{'\n'}, KeyCtrlJ, ModCtrl, ""},
 		{"CR", []byte{'\r'}, KeyEnter, ModNone, ""},
@@ -576,6 +578,7 @@ func TestSpecialKeys(t *testing.T) {
 		{"CSI-F2-Alt", []byte{'\x1b', '[', '1', ';', '3', 'Q'}, KeyF2, ModAlt, ""},
 		{"CSI-F2-Hyper", []byte{'\x1b', '[', '1', ';', '1', '7', 'Q'}, KeyF2, ModHyper, ""},
 		{"CSI-F2-Super", []byte{'\x1b', '[', '1', ';', '3', '3', 'Q'}, KeyF2, ModMeta, ""},
+		{"Ctrl-Home", []byte{'\x1b', '[', '1', ';', '5', '~'}, KeyHome, ModCtrl, ""},
 		{"SS3-Home", []byte{'\x1b', 'O', 'H'}, KeyHome, ModNone, ""},
 		{"ESC-Tab", []byte{'\x1b', '\t'}, KeyBacktab, ModNone, ""}, // linux console special
 		{"Linux-F1", []byte{'\x1b', '[', '[', 'A'}, KeyF1, ModNone, ""},
@@ -590,6 +593,7 @@ func TestSpecialKeys(t *testing.T) {
 		{"Kitty-Esc", []byte{'\x1b', '[', '2', '7', 'u'}, KeyEsc, ModNone, ""},
 		{"Kitty-Control-I", []byte{'\x1b', '[', '1', '0', '5', ';', '5', 'u'}, 'I', ModCtrl, ""},
 		{"Win-Shift-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '6', '5', ';', '1', ';', '1', '6', '_'}, KeyRune, ModNone, "A"},
+		{"Win-Ctrl-1", []byte{'\x1b', '[', '4', '9', ';', '0', ';', '4', '9', ';', '1', ';', '8', '_'}, KeyRune, ModCtrl, "1"},
 		{"Win-Ctrl-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '1', ';', '1', ';', '8', '_'}, KeyCtrlA, ModCtrl, ""},
 		{"Win-Ctrl-Up", []byte{'\x1b', '[', '3', '8', ';', '0', ';', '0', ';', '1', ';', '8', '_'}, KeyUp, ModCtrl, ""},
 		{"Win-Ctrl-Up-2", []byte{'\x1b', '[', '3', '8', ';', '0', ';', '0', ';', '1', ';', '4', '_'}, KeyUp, ModCtrl, ""},
@@ -716,6 +720,7 @@ func TestIgnoredSequences(t *testing.T) {
 		{"LoneST", "\x9c"}, // 7 bit version would be confused with Alt-\
 		{"SoS", "\x1bXdata\x1b\\"},
 		{"SoS-Bell", "\x1bXdata\x07"},
+		{"SoS-Embed-ESC", "\x1bXab\x1bcde\x1b\\"},
 		{"PM", "\x1b^data\x07"},
 		{"PM8", "\x9edata\x07"},
 		{"PM-Bell", "\x1b^data\x07"},
@@ -737,6 +742,9 @@ func TestIgnoredSequences(t *testing.T) {
 		{"Win32Alt", "\x1b[18;0;0;1;1;1_"},
 		{"Win32CapsLock", "\x1b[20;0;0;1;1;1_"},
 		{"Win32KeyUp", "\x1b[13;0;13;0;1;1_"},
+		{"RuntDA1", "\x1b[?c"},
+		{"RuntWindowNotice", "\x1b[t"},
+		{"OtherIntermediates", "\x1b[1 ~"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
