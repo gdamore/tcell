@@ -1,7 +1,7 @@
-//go:build !windows && !nacl && !plan9
-// +build !windows,!nacl,!plan9
+//go:build unix
+// +build unix
 
-// Copyright 2016 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,6 +45,5 @@ func getCharset() string {
 		// without a character set, which we assume implies UTF-8.
 		return "UTF-8"
 	}
-	// XXX: add support for aliases
 	return locale
 }
