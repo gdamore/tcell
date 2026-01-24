@@ -125,3 +125,17 @@ type Clipboard interface {
 	// An empty clipboard will be []byte{}
 	GetClipboard() []byte
 }
+
+type KeyboardMode byte
+
+const (
+	KeyboardLegacy KeyboardMode = 1 << iota // KeyboardLegacy uses simple reporting in the VT220 fashion
+	KeyboardWin32                           // Win32 input mode, reports both key release and press, includes scan codes and vk
+	KeyboardKitty                           // Kitty simple protocol, only disambiguation
+	KeyboardEvents                          // Kitty keyboard but reports events (press, release, repeat)
+)
+
+type AdvancedKeyboard interface {
+	SetKeyboardMode(KeyboardMode) error
+	GetKeyboardMode() KeyboardMode
+}

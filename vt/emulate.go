@@ -161,6 +161,7 @@ func NewEmulator(be Backend) Emulator {
 			PmLeftRightMargin: ModeOff,
 			PmShowCursor:      ModeOn,
 			PmBlinkCursor:     ModeOn,
+			PmWin32Input:      ModeOff,
 		},
 		mouseReports: MouseDisabled,
 	}
@@ -2051,6 +2052,12 @@ func (em *emulator) SendRaw(b []byte) {
 
 // KeyEvent injects a keyboard event into the emulator
 func (em *emulator) KeyEvent(ev KeyEvent) {
+	// eliminate "control" keys (which keyboard maps provide) from consideration.
+	// (We handle control keys explicitly.)
+	if ev.Utf != "" && ev.Utf[0] < ' ' {
+		ev.Utf = ""
+	}
+
 	// TODO: more add support for other keyboard protocols, right now we only do legacy
 	em.keyLegacy(ev)
 }
@@ -2065,77 +2072,64 @@ func (em *emulator) ResizeEvent(size Coord) {
 	}
 }
 
-var legacyKeys = map[KeyCode]struct {
+var legacyKeys = map[Key]struct {
 	K  string // unmodified key
 	A  string // unmodified in application cursor mode (smkx)
 	S  string // with shift (if empty use regular modifier)
 	C  string // with control (if empty use regular modifier)
 	CS string // with ctrl-shift
 }{
-	KcF1:        {K: "\x1bOP"}, // SS3 P
-	KcF2:        {K: "\x1bOQ"}, // SS3 Q
-	KcF3:        {K: "\x1bOR"}, // SS3 R
-	KcF4:        {K: "\x1bOS"}, // SS3 S
-	KcF5:        {K: "\x1b[15~"},
-	KcF6:        {K: "\x1b[17~"},
-	KcF7:        {K: "\x1b[18~"},
-	KcF8:        {K: "\x1b[19~"},
-	KcF9:        {K: "\x1b[20~"},
-	KcF10:       {K: "\x1b[21~"},
-	KcF11:       {K: "\x1b[23~"},
-	KcF12:       {K: "\x1b[24~"},
-	KcF13:       {K: "\x1b[25~"},
-	KcF14:       {K: "\x1b[26~"},
-	KcF15:       {K: "\x1b[28~"},
-	KcF16:       {K: "\x1b[29~"},
-	KcF17:       {K: "\x1b[31~"},
-	KcF18:       {K: "\x1b[32~"},
-	KcF19:       {K: "\x1b[33~"},
-	KcF20:       {K: "\x1b[34~"},
-	KcUp:        {K: "\x1b[A", A: "\x1bOA"},
-	KcDown:      {K: "\x1b[B", A: "\x1bOB"},
-	KcRight:     {K: "\x1b[C", A: "\x1bOC"},
-	KcLeft:      {K: "\x1b[D", A: "\x1bOD"},
-	KcHome:      {K: "\x1b[H", A: "\x1bOH"},
-	KcEnd:       {K: "\x1b[F", A: "\x1bOF"},
-	KcPgUp:      {K: "\x1b[5~"},
-	KcPgDn:      {K: "\x1b[6~"},
-	KcDel:       {K: "\x1b[3~"},
-	KcIns:       {K: "\x1b[2~"},
-	KcHelp:      {K: "\x1b[28~"}, // also F15
-	KcMenu:      {K: "\x1b[29~"}, // also F16
-	KcTab:       {K: "\t", S: "\x1b[Z", CS: "\x1b[Z"},
-	KcBackspace: {K: "\x7f", S: "\x7f", C: "\x08", CS: "\x08"},
-	KcDelete:    {K: "\x08", S: "\x08", C: "\x7f", CS: "\x7f"},
-	KcSpace:     {K: " ", S: " ", C: "\x00", CS: "\x00"},
-	KcReturn:    {K: "\r", S: "\r", CS: "\r"},
-	KcEsc:       {K: "\x1b", S: "\x1b", C: "\x1b"},
-
-	// These ones are weird legacy control sequences that we mostly
-	// do not care about.  We don't include shifted variants.
-	KeyCode('2'): {K: "2", C: "\x00"},
-	KeyCode('3'): {K: "3", C: "\x1b"},
-	KeyCode('4'): {K: "4", C: "\x1c"},
-	KeyCode('5'): {K: "5", C: "\x1d"},
-	KeyCode('6'): {K: "6", C: "\x1e"},
-	KeyCode('7'): {K: "7", C: "\x1f"},
-	KeyCode('8'): {K: "8", C: "\x7f"},
-	KeyCode('['): {K: "[", C: "\x1b"},
-	KeyCode('/'): {K: "/", C: "\x1c"},
-	KeyCode(']'): {K: "]", C: "\x1d"},
-	KeyCode('~'): {K: "~", C: "\x1e"},
-	KeyCode('?'): {K: "?", C: "\x1f"},
+	KeyF1:        {K: "\x1bOP"}, // SS3 P
+	KeyF2:        {K: "\x1bOQ"}, // SS3 Q
+	KeyF3:        {K: "\x1bOR"}, // SS3 R
+	KeyF4:        {K: "\x1bOS"}, // SS3 S
+	KeyF5:        {K: "\x1b[15~"},
+	KeyF6:        {K: "\x1b[17~"},
+	KeyF7:        {K: "\x1b[18~"},
+	KeyF8:        {K: "\x1b[19~"},
+	KeyF9:        {K: "\x1b[20~"},
+	KeyF10:       {K: "\x1b[21~"},
+	KeyF11:       {K: "\x1b[23~"},
+	KeyF12:       {K: "\x1b[24~"},
+	KeyF13:       {K: "\x1b[25~"},
+	KeyF14:       {K: "\x1b[26~"},
+	KeyF15:       {K: "\x1b[28~"},
+	KeyF16:       {K: "\x1b[29~"},
+	KeyF17:       {K: "\x1b[31~"},
+	KeyF18:       {K: "\x1b[32~"},
+	KeyF19:       {K: "\x1b[33~"},
+	KeyF20:       {K: "\x1b[34~"},
+	KeyUp:        {K: "\x1b[A", A: "\x1bOA"},
+	KeyDown:      {K: "\x1b[B", A: "\x1bOB"},
+	KeyRight:     {K: "\x1b[C", A: "\x1bOC"},
+	KeyLeft:      {K: "\x1b[D", A: "\x1bOD"},
+	KeyHome:      {K: "\x1b[H", A: "\x1bOH"},
+	KeyEnd:       {K: "\x1b[F", A: "\x1bOF"},
+	KeyPgUp:      {K: "\x1b[5~"},
+	KeyPgDn:      {K: "\x1b[6~"},
+	KeyDelete:    {K: "\x1b[3~"},
+	KeyInsert:    {K: "\x1b[2~"},
+	KeyMenu:      {K: "\x1b[29~"}, // also F16
+	KeyTab:       {K: "\t", S: "\x1b[Z", CS: "\x1b[Z"},
+	KeyBackspace: {K: "\x7f", S: "\x7f", C: "\x08", CS: "\x08"},
+	KeySpace:     {K: " ", S: " ", C: "\x00", CS: "\x00"},
+	KeyEnter:     {K: "\r", S: "\r", CS: "\r"},
+	KeyEsc:       {K: "\x1b", S: "\x1b", C: "\x1b"},
 }
 
-// toASCIIUpper returns the equivalent upper case ASCII (and true),
-// if the input is an ASCII letter.  Otherwise it returns 0, false.
-func toASCIIUpper(r rune) (rune, bool) {
-	if r >= 'a' && r <= 'z' {
-		return (r - 32), true
-	} else if r >= 'A' && r <= 'Z' {
-		return r, true
-	}
-	return 0, false
+var legacyControls = map[Key]string{
+	// These ones are weird legacy control sequences that we mostly
+	// do not care about.  We don't include shifted variants.
+	Key2:      "\x00",
+	Key3:      "\x1b",
+	Key4:      "\x1c",
+	Key5:      "\x1d",
+	Key6:      "\x1e",
+	Key7:      "\x1f",
+	Key8:      "\x7f",
+	KeyLBrace: "\x1b",
+	KeySlash:  "\x1c",
+	KeyRBrace: "\x1d",
 }
 
 // keyLegacy handles a keyboard event when in legacy vt220 style mode.
@@ -2147,7 +2141,39 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 		return
 	}
 
-	if v, ok := legacyKeys[ev.Code]; ok {
+	// Shift-Ctrl keys are never sent in the legacy protocol.  We do have to ensure
+	// that if we are sending other Utf (for example with AltGr), then we still might
+	// send it, but this is only an issue for non-ASCII runes. Also, this filter only
+	// applies for "regular" keys (i.e. not function keys, cursor keys, etc.)
+	if ev.Mod&(ModCtrl|ModShift) == (ModCtrl|ModShift) && (ev.Utf == "" || ev.Utf[0] < 0x80) {
+		if base := ev.Key.KittyBase(); base > 0 && base < 0x80 {
+			return
+		}
+	}
+
+	// For control keys (e.g. control-J) we never emit a rune directly -- but we might later
+	// add after decoding the key accordingly.
+	if ev.Utf != "" && (ev.Mod == ModCtrl || ev.Utf[0] < ' ') {
+		ev.Utf = ""
+	}
+
+	if ev.Utf != "" {
+		if ev.Utf[0] < 0x80 && ev.Mod&ModAlt != 0 { // ASCII might get alt
+			em.SendRaw(fmt.Appendf(nil, "\x1b%s", ev.Utf))
+			return
+		} else { // otherwise send the UTF as-is
+			em.SendRaw([]byte(ev.Utf))
+			return
+		}
+	}
+
+	// some weird number control sequences - legacy compatibility
+	if v, ok := legacyControls[ev.Key]; ok && ev.Mod == ModCtrl {
+		em.SendRaw([]byte(v))
+		return
+	}
+
+	if v, ok := legacyKeys[ev.Key]; ok {
 		str := ""
 		match := false
 		switch ev.Mod & (ModShift | ModCtrl) {
@@ -2203,8 +2229,8 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 	}
 
 	// fallback control key handling
-	if u, ok := toASCIIUpper(rune(ev.Code)); ok && ev.Mod&ModCtrl != 0 {
-		b := byte(u) - 'A' + 1
+	if ev.Key >= KeyA && ev.Key <= KeyZ && ev.Mod&ModCtrl != 0 {
+		b := byte(ev.Key-KeyA) + 1 /* ctrl-A */
 		if ev.Mod&ModAlt != 0 {
 			em.SendRaw([]byte{'\x1b', b})
 		} else {
@@ -2213,11 +2239,13 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 		return
 	}
 
-	if ev.Code > KcSpace && ev.Code < 0x7F && ev.Mod&ModCtrl == ModNone {
+	if ev.Utf != "" {
 		if ev.Mod&ModAlt != 0 {
-			em.SendRaw([]byte{'\x1b'})
+			s := []byte{'\x1b'}
+			em.SendRaw(fmt.Appendf(s, "%s", ev.Utf))
+		} else {
+			em.SendRaw(fmt.Appendf(nil, "%s", ev.Utf))
 		}
-		em.SendRaw([]byte{byte(ev.Code)})
 		return
 	}
 }

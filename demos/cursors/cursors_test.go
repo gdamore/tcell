@@ -51,37 +51,37 @@ func TestDemo(t *testing.T) {
 	// this is needed because main is running asynchronously.
 	time.Sleep(time.Millisecond * 50)
 
-	mt.KeyEvent(vt.KeyEvent{Code: '1', Down: true})
+	mt.KeyTap(vt.Key1)
 	time.Sleep(time.Millisecond * 20)
 	verifyCursor(t, mt, vt.BlinkingBlock)
 
-	mt.KeyEvent(vt.KeyEvent{Code: '2', Down: true})
+	mt.KeyTap(vt.Key2)
 	time.Sleep(time.Millisecond * 20)
 	verifyCursor(t, mt, vt.SteadyBlock)
 
-	mt.KeyEvent(vt.KeyEvent{Code: '3', Down: true})
+	mt.KeyTap(vt.Key3)
 	time.Sleep(time.Millisecond * 20)
 	verifyCursor(t, mt, vt.BlinkingUnderline)
 
-	mt.KeyEvent(vt.KeyEvent{Code: '4', Base: '4', Down: true})
+	mt.KeyTap(vt.Key4)
 	time.Sleep(time.Millisecond * 20)
 	verifyCursor(t, mt, vt.SteadyUnderline)
 
-	mt.KeyEvent(vt.KeyEvent{Code: '5', Base: '5', Down: true})
+	mt.KeyTap(vt.Key5)
 	time.Sleep(time.Millisecond * 20)
 	verifyCursor(t, mt, vt.BlinkingBar)
 
-	mt.KeyEvent(vt.KeyEvent{Code: '6', Base: '6', Down: true})
+	mt.KeyTap(vt.Key6)
 	time.Sleep(time.Millisecond * 20)
 	verifyCursor(t, mt, vt.SteadyBar)
 
-	mt.KeyEvent(vt.KeyEvent{Code: '0', Base: '0', Down: true})
+	mt.KeyTap(vt.Key0)
 	time.Sleep(time.Millisecond * 20)
 	verifyCursor(t, mt, vt.BlinkingBlock)
 
-	mt.KeyEvent(vt.KeyEvent{Code: 'L', Base: 'L', Mod: vt.ModCtrl, Down: true})
+	mt.KeyTap(vt.KeyRCtrl, vt.KeyL)
 	mt.Drain()
-	mt.KeyEvent(vt.KeyEvent{Code: 'Q', Base: 'Q', Mod: vt.ModCtrl, Down: true})
+	mt.KeyTap(vt.KeyRCtrl, vt.KeyQ)
 	mt.Backend().GetSize()
 	wg.Wait()
 }

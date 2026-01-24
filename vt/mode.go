@@ -49,6 +49,7 @@ const (
 	PmSyncOutput       PrivateMode = 2026 // Buffer output when enabled, updating screen when reset.
 	PmGraphemeClusters PrivateMode = 2027 // Support for grapheme cluster handling.
 	PmResizeReports    PrivateMode = 2048 // Send in-band resize reports.
+	PmWin32Input       PrivateMode = 9001 // Use Win32-Input-Mode for keyboard reports
 )
 
 // Enable returns the string used to enable this private mode.
