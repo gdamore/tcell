@@ -44,11 +44,11 @@ func TestDemo(t *testing.T) {
 	// this is needed because main is running asynchronously.
 	time.Sleep(time.Millisecond * 50)
 
-	mt.KeyEvent(vt.KeyEvent{Code: '1', Base: '1', Down: true})
+	mt.KeyTap(vt.Key1)
 	mt.Drain()
 	time.Sleep(time.Millisecond * 20)
 
-	mt.KeyEvent(vt.KeyEvent{Code: '2', Base: '2', Down: true})
+	mt.KeyTap(vt.Key2)
 	mt.Drain()
 	time.Sleep(time.Millisecond * 20)
 
@@ -59,24 +59,23 @@ func TestDemo(t *testing.T) {
 
 	// a long string
 	mt.Backend().SetClipboard([]byte("The quick brown fox jumps over the lazy dog."))
-	mt.KeyEvent(vt.KeyEvent{Code: '2', Base: '2', Down: true})
+	mt.KeyTap(vt.Key2)
 	mt.Drain()
 	time.Sleep(time.Millisecond * 20)
 
 	// stick some invalid utf-8
 	mt.Backend().SetClipboard([]byte{0xff})
-	mt.KeyEvent(vt.KeyEvent{Code: '2', Base: '2', Down: true})
+	mt.KeyTap(vt.Key2)
 	mt.Drain()
 	time.Sleep(time.Millisecond * 20)
 
 	// now nil
 	mt.Backend().SetClipboard(nil)
-	mt.KeyEvent(vt.KeyEvent{Code: '2', Base: '2', Down: true})
+	mt.KeyTap(vt.Key2)
 	mt.Drain()
 	time.Sleep(time.Millisecond * 20)
 
-	mt.KeyEvent(vt.KeyEvent{Code: 'Q', Base: 'Q', Mod: vt.ModCtrl, Down: true})
+	mt.KeyTap(vt.KeyLCtrl, vt.KeyQ)
 	mt.Backend().GetSize()
 	wg.Wait()
-
 }

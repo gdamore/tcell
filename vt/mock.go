@@ -15,6 +15,7 @@
 package vt
 
 import (
+	"slices"
 	"sync"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 type mockTerm struct {
 	mb MockBackend
 	em Emulator
+	ks *KeyboardState
 }
 
 // Stop the terminal.
@@ -93,19 +95,48 @@ func (mt *mockTerm) Bells() int {
 	return mt.mb.Bells()
 }
 
+// KeyEvent is used to inject a key event.  Call this to inject
+// a synthetic, fully specified key event.  Most uses should just use
+// the KeyPress, KeyRelease, or even simpler KeyTap APIs.
 func (mt *mockTerm) KeyEvent(ev KeyEvent) {
 	mt.em.KeyEvent(ev)
-	if ev.Code == KcEsc {
+	if ev.Key == KeyEsc {
 		// Inject a delay to simulate human typing.
 		// Necessary to disambiguate Escape from other sequences.
 		time.Sleep(time.Millisecond * 150)
 	}
 }
 
+// KeyPress implements MockTerm.KeyPress.
+func (mt *mockTerm) KeyPress(k Key) {
+	if event := mt.ks.Pressed(k); event != nil {
+		mt.KeyEvent(*event)
+	}
+}
+
+// KeyRelease implements MockTerm.KeyRelease.
+func (mt *mockTerm) KeyRelease(k Key) {
+	if event := mt.ks.Released(k); event != nil {
+		mt.KeyEvent(*event)
+	}
+}
+
+// KeyTap implements MockTerm.KeyTap.
+func (mt *mockTerm) KeyTap(keys ...Key) {
+	for _, k := range keys {
+		mt.KeyPress(k)
+	}
+	for _, k := range slices.Backward(keys) {
+		mt.KeyRelease(k)
+	}
+}
+
+// MouseEvent implements MockTerm.MouseEvent.
 func (mt *mockTerm) MouseEvent(ev MouseEvent) {
 	mt.em.MouseEvent(ev)
 }
 
+// FocusEvent implements MockTerm.FocusEvent.
 func (mt *mockTerm) FocusEvent(focused bool) {
 	mt.em.FocusEvent(focused)
 }
@@ -132,6 +163,11 @@ func (mt *mockTerm) SendRaw(data []byte) {
 	mt.em.SendRaw(data)
 }
 
+// SetLayout sets the keyboard layout.
+func (mt *mockTerm) SetLayout(km *Layout) {
+	mt.ks.SetLayout(km)
+}
+
 // MockTerm is a mock terminal (emulator).  It can be used to
 // test the emulator itself, or to test applications (or tcell) that
 // uses the terminal.  It also implements the Tty interface used
@@ -149,8 +185,22 @@ type MockTerm interface {
 	// Bells returns the number of times the bell has been rung.
 	Bells() int
 
-	// Inject a keyboard event.
+	// Inject a keyboard event - this is a full event, and bypasses
+	// the layout and keyboard state processor.
 	KeyEvent(KeyEvent)
+
+	// Inject a key press
+	KeyPress(Key)
+
+	// Inject a key release
+	KeyRelease(Key)
+
+	// Inject one or more key press and releases.
+	// The keys are pressed in the order, and released in reverse order.
+	// Thus modifiers should be listed first.  This should not be used
+	// to simulate typing a sequence (e.g. a word), but if you wanted to
+	// test say N-Key rollover you could do that here.
+	KeyTap(...Key)
 
 	// Inject a mouse event.
 	MouseEvent(MouseEvent)
@@ -170,6 +220,10 @@ type MockTerm interface {
 
 	// Backend returns the backend (used for testing).
 	Backend() MockBackend
+
+	// SetLayout sets the keyboard layout to use.
+	// If not specified, a US standard ANSI keyboard will be assumed.
+	SetLayout(*Layout)
 }
 
 type noMockBlit struct {
@@ -189,7 +243,8 @@ func NewMockTerm(opts ...MockOpt) MockTerm {
 		}
 	}
 	mt.em = NewEmulator(be)
-	mt.em.SetId("TcellMock", "1.0")
+	mt.em.SetId("TCellMock", "1.0")
+	mt.ks = &KeyboardState{}
 	return mt
 }
 

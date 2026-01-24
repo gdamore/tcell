@@ -28,7 +28,7 @@ import (
 // It does not validate that the content is accurate, that should be done
 func TestColors(t *testing.T) {
 
-	interval = time.Microsecond*10
+	interval = time.Microsecond * 10
 
 	for _, colors := range []int{0, 8, 16, 88, 256, 1 << 24} {
 		t.Run(fmt.Sprintf("%d_colors)", colors), func(t *testing.T) {
@@ -47,11 +47,11 @@ func TestColors(t *testing.T) {
 			}()
 
 			time.Sleep(time.Millisecond * 25)
-			mt.KeyEvent(vt.KeyEvent{Code: 'L', Mod: vt.ModCtrl | vt.ModShift, Down: true})
+			mt.KeyTap(vt.KeyLCtrl, vt.KeyRShift, vt.KeyL)
 			mt.SetSize(vt.Coord{X: 10, Y: 10})
 			mt.Drain()
 			time.Sleep(time.Millisecond * 25)
-			mt.KeyEvent(vt.KeyEvent{Code: 'q', Mod: vt.ModCtrl, Down: true})
+			mt.KeyTap(vt.KeyLCtrl, vt.KeyQ)
 			mt.Drain()
 			wg.Wait()
 		})

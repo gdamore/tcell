@@ -46,11 +46,11 @@ func TestBoxes(t *testing.T) {
 			}()
 
 			time.Sleep(time.Millisecond * 25)
-			mt.KeyEvent(vt.KeyEvent{Code: 'L', Mod: vt.ModCtrl | vt.ModShift, Down: true})
+			mt.KeyTap(vt.KeyRCtrl, vt.KeyL)
 			mt.SetSize(vt.Coord{X: 10, Y: 10})
 			mt.Drain()
 			time.Sleep(time.Millisecond * 25)
-			mt.KeyEvent(vt.KeyEvent{Code: 'q', Mod: vt.ModCtrl, Down: true})
+			mt.KeyTap(vt.KeyLCtrl, vt.KeyQ)
 			mt.Drain()
 			wg.Wait()
 
