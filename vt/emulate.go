@@ -2113,7 +2113,7 @@ var legacyKeys = map[Key]struct {
 	KeyTab:       {K: "\t", S: "\x1b[Z", CS: "\x1b[Z"},
 	KeyBackspace: {K: "\x7f", S: "\x7f", C: "\x08", CS: "\x08"},
 	KeySpace:     {K: " ", S: " ", C: "\x00", CS: "\x00"},
-	KeyEnter:     {K: "\r", S: "\r", CS: "\r"},
+	KeyEnter:     {K: "\r", S: "\r", CS: "\r"}, // NB: consider using kitty encoding here
 	KeyEsc:       {K: "\x1b", S: "\x1b", C: "\x1b"},
 }
 
@@ -2146,7 +2146,7 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 	// send it, but this is only an issue for non-ASCII runes. Also, this filter only
 	// applies for "regular" keys (i.e. not function keys, cursor keys, etc.)
 	if ev.Mod&(ModCtrl|ModShift) == (ModCtrl|ModShift) && (ev.Utf == "" || ev.Utf[0] < 0x80) {
-		if base := ev.Key.KittyBase(); base > 0 && base < 0x80 {
+		if base := ev.Key.KittyBase(); base >= ' ' && base < 0x80 {
 			return
 		}
 	}
