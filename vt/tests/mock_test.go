@@ -552,6 +552,11 @@ func TestKeyEventLegacy(t *testing.T) {
 
 	result = string(buf[:n])
 	VerifyF(t, result == want, "key responses failed: %q != %q", result, want)
+
+	// Special Tab
+	term.KeyTap(vt.KeyLShift, vt.KeyLCtrl, vt.KeyTab)
+	term.KeyTap(vt.KeySpace)
+	CheckRead(t, term, "\x1b[Z ")
 }
 
 // TestSgrAttr tests a variety of combinations of Sgr settings.
