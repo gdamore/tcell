@@ -16,6 +16,7 @@ package vt
 
 import (
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -158,7 +159,9 @@ func (ks *KeyboardState) Pressed(k Key) *KeyEvent {
 		ks.deadKey = nil
 	}
 
-	event.Utf = string(r)
+	if r != 0 {
+		event.Utf = string(r)
+	}
 
 	if lastKey == k && wasPressed {
 		ks.repeating = true
@@ -662,20 +665,28 @@ var allLayouts = map[string]*Layout{
 	KeyboardANSI.Name: KeyboardANSI,
 }
 
+var layoutsLock sync.Mutex
+
 // RegisterLayout registers the given layout.
 func RegisterLayout(km *Layout) {
+	layoutsLock.Lock()
 	allLayouts[km.Name] = km
+	layoutsLock.Unlock()
 }
 
 // GetLayout returns a keyboard layout for the given name.
 // The layout must have been previously registered with RegisterLayout.
 // (Builtin layouts do this as a consequence of importing the layout.)
 func GetLayout(name string) *Layout {
+	layoutsLock.Lock()
+	defer layoutsLock.Unlock()
 	return allLayouts[name]
 }
 
 // Layouts returns a list of all known layout names.
 func Layouts() []string {
+	layoutsLock.Lock()
+	defer layoutsLock.Unlock()
 	res := make([]string, 0, len(allLayouts))
 	for k := range allLayouts {
 		res = append(res, k)
