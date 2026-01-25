@@ -193,7 +193,7 @@ func (ks *KeyboardState) Released(k Key) *KeyEvent {
 	}
 	ks.clearRepeat()
 	wasPressed := ks.pressed[k]
-	ks.pressed[k] = false
+	delete(ks.pressed, k)
 
 	if mod, ok := ks.layout.Modifiers[k]; ok {
 		if !wasPressed {
@@ -201,6 +201,18 @@ func (ks *KeyboardState) Released(k Key) *KeyEvent {
 			return nil
 		}
 		ks.mod &^= mod
+
+		// Re-apply modifiers still held down (preserves locking bits already in ks.mod).
+		// For example, if both shift buttons are held down, but only one of them is released.
+		// Enumerating the pressed map should be *fast* as there should not be many of them.
+		for key, down := range ks.pressed {
+			if down {
+				if m, ok := ks.layout.Modifiers[key]; ok {
+					ks.mod |= m
+				}
+			}
+		}
+
 		event.Mod = ks.mod
 		return event
 	}
