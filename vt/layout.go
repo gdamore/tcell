@@ -304,6 +304,7 @@ var KeysUsLower = map[Key]rune{
 	KeyW: 'w',
 	KeyX: 'x',
 	KeyY: 'y',
+	KeyZ: 'z',
 }
 
 // KeysUsUpper is a list of upper case key maps.
@@ -333,6 +334,7 @@ var KeysUsUpper = map[Key]rune{
 	KeyW: 'W',
 	KeyX: 'X',
 	KeyY: 'Y',
+	KeyZ: 'Z',
 }
 
 // KeysDigits is a map of number keys to corresponding digits.
