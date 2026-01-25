@@ -997,9 +997,14 @@ func (t *tScreen) buildAcsMap() {
 }
 
 func (t *tScreen) scanInput(buf *bytes.Buffer) {
+	// The end of the buffer isn't necessarily the end of the input, because
+	// large inputs are chunked. Set atEOF to false so the UTF-8 validating decoder
+	// returns ErrShortSrc instead of ErrInvalidUTF8 for incomplete multi-byte codepoints.
+	const atEOF = false
+
 	for buf.Len() > 0 {
 		utf := make([]byte, min(8, max(buf.Len()*2, 128)))
-		nOut, nIn, e := t.decoder.Transform(utf, buf.Bytes(), true)
+		nOut, nIn, e := t.decoder.Transform(utf, buf.Bytes(), atEOF)
 		_ = buf.Next(nIn)
 		t.input.ScanUTF8(utf[:nOut])
 		if e == transform.ErrShortSrc {
