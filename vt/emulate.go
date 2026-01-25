@@ -2238,16 +2238,6 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 		}
 		return
 	}
-
-	if ev.Utf != "" {
-		if ev.Mod&ModAlt != 0 {
-			s := []byte{'\x1b'}
-			em.SendRaw(fmt.Appendf(s, "%s", ev.Utf))
-		} else {
-			em.SendRaw(fmt.Appendf(nil, "%s", ev.Utf))
-		}
-		return
-	}
 }
 
 func (em *emulator) MouseEvent(ev MouseEvent) {
