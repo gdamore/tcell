@@ -47,7 +47,7 @@ func TestColors(t *testing.T) {
 			}()
 
 			time.Sleep(time.Millisecond * 25)
-			mt.KeyTap(vt.KeyLCtrl, vt.KeyRShift, vt.KeyL)
+			mt.KeyTap(vt.KeyLCtrl, vt.KeyL)
 			mt.SetSize(vt.Coord{X: 10, Y: 10})
 			mt.Drain()
 			time.Sleep(time.Millisecond * 25)
