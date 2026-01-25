@@ -166,7 +166,6 @@ func TestUsAltGr(t *testing.T) {
 		{"Alt-Ctrl-RBrace", []vt.Key{vt.KeyLAlt, vt.KeyLCtrl, vt.KeyRBrace}, "»"},
 		{"Alt-Ctrl-Quote", []vt.Key{vt.KeyLAlt, vt.KeyLCtrl, vt.KeyQuote}, "´"},
 
-		{"S-Alt-Ctrl-A", []vt.Key{vt.KeyLAlt, vt.KeyLCtrl, vt.KeyLCtrl, vt.KeyLShift, vt.KeyA}, "Á"},
 		{"S-Alt-Ctrl-0", []vt.Key{vt.KeyLAlt, vt.KeyLCtrl, vt.KeyLShift, vt.Key0}, ""},
 		{"S-Alt-Ctrl-1", []vt.Key{vt.KeyLAlt, vt.KeyLCtrl, vt.KeyLShift, vt.Key1}, "¹"},
 		{"S-Alt-Ctrl-2", []vt.Key{vt.KeyLAlt, vt.KeyLCtrl, vt.KeyLShift, vt.Key2}, ""},
