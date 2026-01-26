@@ -542,6 +542,12 @@ var KeyboardANSI = &Layout{
 				KeyPadEnter:  '\n',
 			},
 		},
+		// Key pad operators
+		{
+			Mod:  ModNone,
+			Mask: ModAlt,
+			Map:  KeysPadOps,
+		},
 		// Numeric keypad when num lock is engaged
 		{
 			Mask: ModNumLock,
