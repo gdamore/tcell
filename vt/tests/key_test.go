@@ -153,7 +153,7 @@ func TestScanCodes(t *testing.T) {
 	}
 	for i := range cases {
 		t.Run(cases[i].name, func(t *testing.T) {
-			VerifyF(t, cases[i].key.ScanCode() == cases[i].code, "Scan code %x did not match %", cases[i].key.ScanCode(), cases[i].code)
+			VerifyF(t, cases[i].key.ScanCode() == cases[i].code, "Scan code %x did not match %x", cases[i].key.ScanCode(), cases[i].code)
 		})
 	}
 }
