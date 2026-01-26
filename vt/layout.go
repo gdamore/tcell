@@ -74,7 +74,9 @@ func (ks *KeyboardState) reset() {
 	ks.clearRepeat()
 	ks.mod = 0
 	ks.deadKey = nil
+	ks.pressed = make(map[Key]bool)
 }
+
 func (ks *KeyboardState) clearRepeat() {
 	ks.repeating = false
 	ks.repeatStart = time.Time{}
