@@ -622,7 +622,7 @@ func (t *tScreen) drawCell(x, y int) int {
 		width = 1
 		str = " "
 	}
-	if width > 1 {
+	if width > 1 && x+width < t.w {
 		// Clobber over any content in the next cell.
 		// This fixes a problem with some terminals where overwriting two
 		// adjacent single cells with a wide rune would leave an image
