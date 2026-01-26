@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/gdamore/tcell/v3/vt"
@@ -29,6 +30,9 @@ func TestGetLayout(t *testing.T) {
 	if l != us.UsInternational {
 		t.Errorf("got the wrong layout: %s", l.Name)
 	}
+
+	layouts := vt.Layouts()
+	VerifyF(t, slices.Contains(layouts, "US International"), "layout not present")
 }
 
 func TestUsAltGr(t *testing.T) {
