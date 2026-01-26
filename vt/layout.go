@@ -245,6 +245,7 @@ const DeadRune = 0x101000
 // registering an instance of this.
 type Layout struct {
 	// Name is the name of the keyboard layout.
+	// We prefer to use the same names that Microsoft uses for keyboard layouts.
 	Name string
 
 	// Base is a base keyboard layout, so that we can simplify by only
@@ -393,7 +394,7 @@ var KeysPadOps = map[Key]rune{
 
 // KeyboardANSI is the base PC keyboard used in ANSI (US) systems.
 var KeyboardANSI = &Layout{
-	Name: "US English",
+	Name: "US",
 
 	Base: nil,
 

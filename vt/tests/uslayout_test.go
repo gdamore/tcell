@@ -311,5 +311,109 @@ func TestDeadKeys(t *testing.T) {
 			CheckRead(t, term, cases[i].want+" ")
 		})
 	}
+}
 
+func TestUsCapsLock(t *testing.T) {
+
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	term.SetLayout(vt.GetLayout("US International"))
+	MustStart(t, term)
+
+	cases := []struct {
+		name string
+		keys []vt.Key
+		caps string
+		base string
+	}{
+		{"A", []vt.Key{vt.KeyA}, "A", "a"},
+		{"B", []vt.Key{vt.KeyB}, "B", "b"},
+		{"1", []vt.Key{vt.Key1}, "1", "!"},
+		{"Z", []vt.Key{vt.KeyZ}, "Z", "z"},
+		{"plus", []vt.Key{vt.KeyEqual}, "=", "+"},
+	}
+	for i := range cases {
+		t.Run(cases[i].name, func(t *testing.T) {
+
+			// set caps lock
+			term.KeyTap(vt.KeyCapsLock)
+
+			term.KeyTap(cases[i].keys...)
+			term.KeyTap(vt.KeySpace)
+			CheckRead(t, term, cases[i].caps+" ")
+
+			term.KeyTap(append([]vt.Key{vt.KeyLShift}, cases[i].keys...)...)
+			term.KeyTap(vt.KeySpace)
+			CheckRead(t, term, cases[i].base+" ")
+
+			// release caps lock
+			term.KeyTap(vt.KeyCapsLock)
+		})
+	}
+}
+
+func TestUsNumLock(t *testing.T) {
+
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	term.SetLayout(vt.GetLayout("US International"))
+	MustStart(t, term)
+
+	cases := []struct {
+		name string
+		keys []vt.Key
+		lock string
+		app  string
+		num  string
+	}{
+		{"1", []vt.Key{vt.KeyPad1}, "1", "\x1bOF", "1"},
+		{"2", []vt.Key{vt.KeyPad2}, "2", "\x1b[B", "2"},
+		{"3", []vt.Key{vt.KeyPad3}, "3", "\x1b[6~", "3"},
+		{"4", []vt.Key{vt.KeyPad4}, "4", "\x1b[D", "4"},
+		{"5", []vt.Key{vt.KeyPad5}, "5", "\x1b[E", "5"},
+		{"6", []vt.Key{vt.KeyPad6}, "6", "\x1b[C", "6"},
+		{"7", []vt.Key{vt.KeyPad7}, "7", "\x1bOH", "7"},
+		{"8", []vt.Key{vt.KeyPad8}, "8", "\x1b[A", "8"},
+		{"9", []vt.Key{vt.KeyPad9}, "9", "\x1b[5~", "9"},
+		{"0", []vt.Key{vt.KeyPad0}, "0", "\x1b[2~", "0"},
+		{"dec", []vt.Key{vt.KeyPadDec}, ".", "\x1b[3~", "."},
+		{"add", []vt.Key{vt.KeyPadAdd}, "+", "\x1bOk", "+"},
+		{"sub", []vt.Key{vt.KeyPadSub}, "-", "\x1bOm", "-"},
+		{"mul", []vt.Key{vt.KeyPadMul}, "*", "\x1bOj", "*"},
+		{"div", []vt.Key{vt.KeyPadDiv}, "/", "\x1bOo", "/"},
+		{"equal", []vt.Key{vt.KeyPadEqual}, "=", "\x1bOX", "="},
+		{"enter", []vt.Key{vt.KeyPadEnter}, "\r", "\x1bOM", "\r"},
+	}
+	for i := range cases {
+		t.Run(cases[i].name, func(t *testing.T) {
+
+			// set num lock
+			term.KeyTap(vt.KeyNumLock)
+
+			// set application mode
+			WriteF(t, term, "\x1b=")
+			term.KeyTap(cases[i].keys...)
+			term.KeyTap(vt.KeySpace)
+			CheckRead(t, term, cases[i].lock+" ")
+			// clear application mode - should not change (NumLock takes precedence)
+			WriteF(t, term, "\x1b>")
+			term.KeyTap(cases[i].keys...)
+			term.KeyTap(vt.KeySpace)
+			CheckRead(t, term, cases[i].lock+" ")
+
+			// release num lock
+			term.KeyTap(vt.KeyNumLock)
+
+			// set application mode
+			WriteF(t, term, "\x1b=")
+			term.KeyTap(cases[i].keys...)
+			term.KeyTap(vt.KeySpace)
+			CheckRead(t, term, cases[i].app+" ")
+
+			WriteF(t, term, "\x1b>")
+			term.KeyTap(cases[i].keys...)
+			term.KeyTap(vt.KeySpace)
+			CheckRead(t, term, cases[i].num+" ")
+		})
+	}
 }

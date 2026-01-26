@@ -47,6 +47,7 @@ func WriteF(t *testing.T, term MockTerm, str string, args ...any) {
 
 // ReadF reads content from the term and returns it as a string.
 func ReadF(t *testing.T, term MockTerm) string {
+	t.Helper()
 	buf := make([]byte, 128)
 	n, err := term.Read(buf)
 	if err != nil {

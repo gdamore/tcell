@@ -209,6 +209,7 @@ type emulator struct {
 	buffering    uint           // reference count - number of (re-entrant) buffering calls
 	autoWrap     bool           // next character will wrap (auto margin, deferred until char emitted)
 	sevenOnly    bool           // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
+	appKeyPad    bool           // use application key pad keys?
 	name         string         // name of this emulator (used for extended attributes)
 	vers         string         // version string of this emulator (used for extended attributes)
 	savedPos     Coord          // saved via DECSC
@@ -352,6 +353,10 @@ func (em *emulator) inbEsc(b byte) {
 		em.inb = em.inbStr
 	case '_': // application program command (APC)
 		em.inb = em.inbStr
+	case '=':
+		em.appKeyPad = true
+	case '>':
+		em.appKeyPad = false
 	case 'D': // down one line (IND)
 		em.processIndex()
 	case 'E': // next line (NEL)
@@ -2114,6 +2119,7 @@ var legacyKeys = map[Key]struct {
 	KeyBackspace: {K: "\x7f", S: "\x7f", C: "\x08", CS: "\x08"},
 	KeySpace:     {K: " ", S: " ", C: "\x00", CS: "\x00"},
 	KeyEnter:     {K: "\r", S: "\r", CS: "\r"}, // NB: consider using kitty encoding here
+	KeyPadEnter:  {K: "\r", S: "\r", CS: "\r"}, // NB: consider using kitty encoding here
 	KeyEsc:       {K: "\x1b", S: "\x1b", C: "\x1b"},
 }
 
@@ -2132,6 +2138,31 @@ var legacyControls = map[Key]string{
 	KeyRBrace: "\x1d",
 }
 
+// legacyPadKeys are keys that are on the keypad, when not in numeric keypad mode.
+// Note that num lock overrides this.
+var legacyPadKeys = map[Key]struct {
+	app string
+	num string
+}{
+	KeyPadEnter: {"\x1bOM", "\r"},
+	KeyPadMul:   {"\x1bOj", "*"},
+	KeyPadAdd:   {"\x1bOk", "+"},
+	KeyPadSub:   {"\x1bOm", "-"},
+	KeyPadDiv:   {"\x1bOo", "/"},
+	KeyPadDec:   {"\x1b[3~", "."}, // Del
+	KeyPad0:     {"\x1b[2~", "0"}, // Ins
+	KeyPad1:     {"\x1bOF", "1"},  // End
+	KeyPad2:     {"\x1b[B", "2"},  // Down
+	KeyPad3:     {"\x1b[6~", "3"}, // PgDn
+	KeyPad4:     {"\x1b[D", "4"},  // Left
+	KeyPad5:     {"\x1b[E", "5"},  // Clear/Begin
+	KeyPad6:     {"\x1b[C", "6"},  // Right
+	KeyPad7:     {"\x1bOH", "7"},  // Home
+	KeyPad8:     {"\x1b[A", "8"},  // Up
+	KeyPad9:     {"\x1b[5~", "9"}, // PgUp
+	KeyPadEqual: {"\x1bOX", "="},
+}
+
 // keyLegacy handles a keyboard event when in legacy vt220 style mode.
 func (em *emulator) keyLegacy(ev KeyEvent) {
 	if !ev.Down { // legacy protocol does not support key release
@@ -2148,6 +2179,20 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 	if ev.Mod&(ModCtrl|ModShift) == (ModCtrl|ModShift) && (ev.Utf == "" || ev.Utf[0] < 0x80) {
 		if base := ev.Key.KittyBase(); base >= ' ' && base < 0x80 {
 			return
+		}
+	}
+
+	// keypad sequences
+	if v, ok := legacyPadKeys[ev.Key]; ok {
+		if ev.Mod&ModNumLock == 0 {
+			if em.appKeyPad {
+				em.SendRaw([]byte(v.app))
+			} else {
+				em.SendRaw([]byte(v.num))
+			}
+			return
+		} else {
+			ev.Utf = v.num
 		}
 	}
 
