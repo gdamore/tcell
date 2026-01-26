@@ -546,6 +546,7 @@ func TestSpecialKeys(t *testing.T) {
 		{"CSI-B", []byte{'\x1b', '[', 'B'}, KeyDown, ModNone, ""},
 		{"CSI-C", []byte{'\x1b', '[', 'C'}, KeyRight, ModNone, ""},
 		{"CSI-D", []byte{'\x1b', '[', 'D'}, KeyLeft, ModNone, ""},
+		{"CSI-E", []byte{'\x1b', '[', 'E'}, KeyClear, ModNone, ""},
 		{"CSI-F", []byte{'\x1b', '[', 'F'}, KeyEnd, ModNone, ""},
 		{"CSI-H", []byte{'\x1b', '[', 'H'}, KeyHome, ModNone, ""},
 		{"CSI-L", []byte{'\x1b', '[', 'L'}, KeyInsert, ModNone, ""},
@@ -580,6 +581,7 @@ func TestSpecialKeys(t *testing.T) {
 		{"CSI-F2-Super", []byte{'\x1b', '[', '1', ';', '3', '3', 'Q'}, KeyF2, ModMeta, ""},
 		{"Ctrl-Home", []byte{'\x1b', '[', '1', ';', '5', '~'}, KeyHome, ModCtrl, ""},
 		{"SS3-Home", []byte{'\x1b', 'O', 'H'}, KeyHome, ModNone, ""},
+		{"SS3-Clear", []byte{'\x1b', 'O', 'E'}, KeyClear, ModNone, ""},
 		{"ESC-Tab", []byte{'\x1b', '\t'}, KeyBacktab, ModNone, ""}, // linux console special
 		{"Linux-F1", []byte{'\x1b', '[', '[', 'A'}, KeyF1, ModNone, ""},
 		{"Linux-F2", []byte{'\x1b', '[', '[', 'B'}, KeyF2, ModNone, ""},
