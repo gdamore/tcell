@@ -1918,6 +1918,7 @@ func (em *emulator) softReset() {
 	em.botMargin = em.size.Y - 1
 	em.ltMargin = 0
 	em.rtMargin = em.size.X - 1
+	em.appKeyPad = false
 	em.be.Reset()
 	// start by resetting all modes
 	for am := range em.ansiModes {
