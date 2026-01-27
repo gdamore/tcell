@@ -44,6 +44,10 @@ type ModifierMap struct {
 // get the associated events from their operating system do not need to
 // make use of this, but this structure makes it possible to build an emulator
 // with a keyboard layout that is not known to the operating system.
+//
+// The keyboard state is assumed to be "single threaded", meaning only a single
+// caller will operate on it at any given time.  Typically there is just a single
+// keyboard polling thread or goroutine.
 type KeyboardState struct {
 	deadKey        map[rune]DeadKey // current dead key state
 	mod            Modifier
@@ -52,12 +56,14 @@ type KeyboardState struct {
 	lastRune       rune          // last rune for last key
 	repeating      bool          // true if we are repeating
 	repeatStart    time.Time     // when we started repeating
+	repeatTime     time.Time     // last time we checked
 	repeatDelay    time.Duration // delay before starting repeat
 	repeatInterval time.Duration // duration between repeats
 	pressed        map[Key]bool
 	initialized    bool
 }
 
+// initialize the keyboard, lazily.
 func (ks *KeyboardState) initialize() {
 	if !ks.initialized {
 		ks.pressed = make(map[Key]bool)
@@ -70,6 +76,7 @@ func (ks *KeyboardState) initialize() {
 	}
 }
 
+// reset the keyboard state.
 func (ks *KeyboardState) reset() {
 	ks.clearRepeat()
 	ks.mod = 0
@@ -77,16 +84,35 @@ func (ks *KeyboardState) reset() {
 	ks.pressed = make(map[Key]bool)
 }
 
+// clear repeat clears any repeating key.
 func (ks *KeyboardState) clearRepeat() {
 	ks.repeating = false
 	ks.repeatStart = time.Time{}
+	ks.repeatTime = time.Time{}
 	ks.lastRune = 0
 	ks.lastKey = 0
+}
+
+// SetRepeat sets the repeat parameters. Note that this will only have any meaningful
+// impact if the caller calls the Pressed function repeatedly (periodically) while
+// a key is depressed.
+//
+// The repeat starts after a key has been held for for delay, with a new repeat
+// added every interval.
+//
+// The caller should usually call this before processing keyboard events.  It must
+// not be called concurrently with either of the Pressed or Release functions.
+func (ks *KeyboardState) SetRepeat(delay time.Duration, interval time.Duration) {
+	ks.initialize()
+	ks.repeatDelay = delay
+	ks.repeatInterval = interval
+	ks.clearRepeat()
 }
 
 // SetLayout sets the layout this keyboard should use.
 // This also resets the keyboard state.
 func (ks *KeyboardState) SetLayout(km *Layout) {
+	ks.initialize()
 	ks.reset()
 	ks.layout = km
 }
@@ -103,15 +129,14 @@ func (ks *KeyboardState) Pressed(k Key) *KeyEvent {
 	}
 	// if another key was pressed, then clear the repeat state
 	lastKey := ks.lastKey
-	if lastKey != k {
+	if lastKey != k && ks.repeatInterval != 0 {
 		ks.clearRepeat()
+		ks.repeatStart = time.Now().Add(ks.repeatDelay)
+		ks.repeatTime = ks.repeatStart
 	}
 	wasPressed := ks.pressed[k]
 	ks.pressed[k] = true
 	ks.lastKey = k
-	if !ks.repeating {
-		ks.repeatStart = time.Now().Add(ks.repeatDelay)
-	}
 
 	l := ks.layout
 	if mod, ok := l.Locking[k]; ok {
@@ -165,14 +190,16 @@ func (ks *KeyboardState) Pressed(k Key) *KeyEvent {
 		event.Utf = string(r)
 	}
 
-	if lastKey == k && wasPressed {
+	if lastKey == k && wasPressed && ks.repeatInterval > 0 {
 		ks.repeating = true
-		now := time.Now()
-		if now.After(ks.repeatStart) {
-			deltaT := now.Sub(ks.repeatStart)
-			event.Repeat = int(deltaT / max(10*time.Millisecond, ks.repeatInterval))
-			remain := deltaT % ks.repeatInterval
-			ks.repeatStart = now.Add(-remain)
+		if time.Now().After(ks.repeatStart) {
+			deltaT := time.Since(ks.repeatTime).Truncate(ks.repeatInterval)
+			event.Repeat = int(deltaT / ks.repeatInterval)
+			if ks.repeatTime == ks.repeatStart {
+				// fence post - count the first one!
+				event.Repeat++
+			}
+			ks.repeatTime = ks.repeatTime.Add(deltaT)
 			// if we polled before the repeat interval then report nothing
 			if event.Repeat == 0 {
 				return nil
@@ -193,7 +220,9 @@ func (ks *KeyboardState) Released(k Key) *KeyEvent {
 		Base: k.KittyBase(),
 		Mod:  ks.mod,
 	}
-	ks.clearRepeat()
+	if ks.lastKey == k {
+		ks.clearRepeat()
+	}
 	wasPressed := ks.pressed[k]
 	delete(ks.pressed, k)
 
