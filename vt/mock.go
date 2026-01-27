@@ -131,6 +131,12 @@ func (mt *mockTerm) KeyTap(keys ...Key) {
 	}
 }
 
+// SetRepeat sets the repeat interval for the keyboard.
+// Set the interval to zero to disable repeat.
+func (mt *mockTerm) SetRepeat(delay, interval time.Duration) {
+	mt.ks.SetRepeat(delay, interval)
+}
+
 // MouseEvent implements MockTerm.MouseEvent.
 func (mt *mockTerm) MouseEvent(ev MouseEvent) {
 	mt.em.MouseEvent(ev)
@@ -189,11 +195,16 @@ type MockTerm interface {
 	// the layout and keyboard state processor.
 	KeyEvent(KeyEvent)
 
-	// Inject a key press
+	// Inject a key press.
 	KeyPress(Key)
 
-	// Inject a key release
+	// Inject a key release.
 	KeyRelease(Key)
+
+	// SetRepeat configures keyboard repeating. Repeat keystrokes
+	// will be assumed after the key has been held for at least delay,
+	// with new keys added each interval.
+	SetRepeat(delay, interval time.Duration)
 
 	// Inject one or more key press and releases.
 	// The keys are pressed in the order, and released in reverse order.

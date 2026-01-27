@@ -2164,6 +2164,22 @@ var legacyPadKeys = map[Key]struct {
 	KeyPadEqual: {"\x1bOX", "="},
 }
 
+// repeatRaw is called to provide key repeat.  We limit key repeating to just 40,
+// and we ensure that at least one is included.
+func (em *emulator) repeatRaw(ev KeyEvent, data []byte) {
+	for range min(max(1, ev.Repeat), 40) {
+		em.SendRaw(data)
+	}
+}
+
+// noRepeatRaw is used to send a key that should never repeat.
+// It will only send if the repeat count is zero.
+func (em *emulator) noRepeatRaw(ev KeyEvent, data []byte) {
+	if ev.Repeat == 0 {
+		em.SendRaw(data)
+	}
+}
+
 // keyLegacy handles a keyboard event when in legacy vt220 style mode.
 func (em *emulator) keyLegacy(ev KeyEvent) {
 	if !ev.Down { // legacy protocol does not support key release
@@ -2187,9 +2203,9 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 	if v, ok := legacyPadKeys[ev.Key]; ok {
 		if ev.Mod&ModNumLock == 0 {
 			if em.appKeyPad {
-				em.SendRaw([]byte(v.app))
+				em.repeatRaw(ev, []byte(v.app))
 			} else {
-				em.SendRaw([]byte(v.num))
+				em.repeatRaw(ev, []byte(v.num))
 			}
 			return
 		} else {
@@ -2205,17 +2221,17 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 
 	if ev.Utf != "" {
 		if ev.Utf[0] < 0x80 && ev.Mod&ModAlt != 0 { // ASCII might get alt
-			em.SendRaw(fmt.Appendf(nil, "\x1b%s", ev.Utf))
-			return
+			em.noRepeatRaw(ev, fmt.Appendf(nil, "\x1b%s", ev.Utf))
 		} else { // otherwise send the UTF as-is
-			em.SendRaw([]byte(ev.Utf))
-			return
+			em.repeatRaw(ev, []byte(ev.Utf))
 		}
+		return
 	}
 
 	// some weird number control sequences - legacy compatibility
+	// We do not repeat these.
 	if v, ok := legacyControls[ev.Key]; ok && ev.Mod == ModCtrl {
-		em.SendRaw([]byte(v))
+		em.noRepeatRaw(ev, []byte(v))
 		return
 	}
 
@@ -2266,10 +2282,16 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 				str = fmt.Sprintf("%s;%d%c", v.K[:len(v.K)-1], mod+1, v.K[len(v.K)-1])
 			}
 		}
-		if ev.Mod&ModAlt != 0 {
-			em.SendRaw(append([]byte{'\x1b'}, []byte(str)...)) // alt sends leading escape
+		if ev.Mod&(ModAlt) != 0 {
+			// no repeating ALT sequences
+			em.noRepeatRaw(ev, append([]byte{'\x1b'}, []byte(str)...)) // alt sends leading escape
+		} else if ev.Mod&ModCtrl != 0 {
+			// no repeating CTRL sequences
+			em.noRepeatRaw(ev, []byte(str))
 		} else {
-			em.SendRaw([]byte(str))
+			// but other sequences (should just be ModShift or ModNone)
+			// are fine.  (E.g. we want to allow repeats of cursor keys)
+			em.repeatRaw(ev, []byte(str))
 		}
 		return
 	}
@@ -2278,9 +2300,9 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 	if ev.Key >= KeyA && ev.Key <= KeyZ && ev.Mod&ModCtrl != 0 {
 		b := byte(ev.Key-KeyA) + 1 /* ctrl-A */
 		if ev.Mod&ModAlt != 0 {
-			em.SendRaw([]byte{'\x1b', b})
+			em.noRepeatRaw(ev, []byte{'\x1b', b})
 		} else {
-			em.SendRaw([]byte{b})
+			em.noRepeatRaw(ev, []byte{b})
 		}
 		return
 	}

@@ -16,10 +16,12 @@ package tests
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gdamore/tcell/v3/vt"
 )
 
+// TestScanCodes tests that the keys all have correct scan codes.
 func TestScanCodes(t *testing.T) {
 	cases := []struct {
 		name string
@@ -156,8 +158,20 @@ func TestScanCodes(t *testing.T) {
 			VerifyF(t, cases[i].key.ScanCode() == cases[i].code, "Scan code %x did not match %x", cases[i].key.ScanCode(), cases[i].code)
 		})
 	}
+
+	// Let's also make sure that we have no duplicate scan codes.
+	seen := make(map[vt.ScanCode]vt.Key)
+	for i := range cases {
+		sc := cases[i].key.ScanCode()
+		if other, ok := seen[sc]; ok {
+			t.Errorf("Duplicate scan %x code for key %x and %x", sc, cases[i].key, other)
+		}
+		seen[sc] = cases[i].key
+	}
 }
 
+// TestBaseKeys tests that all the "base" keys have correct values and correct shifted values.
+// These are the values used for the Kitty protocol.
 func TestBaseKeys(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -221,4 +235,121 @@ func TestBaseKeys(t *testing.T) {
 			VerifyF(t, shift == cases[i].shifted, "Base code %q %x did not match %q %x", string(shift), shift, string(cases[i].shifted), cases[i].shifted)
 		})
 	}
+}
+
+// TestKeyRepeat tests simple key repeat
+func TestKeyRepeat(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	MustStart(t, term)
+
+	// these are unreasonable repeat rates, but its somewhere to start
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+
+	term.KeyPress(vt.KeyX)
+	time.Sleep(100 * time.Millisecond)
+	term.KeyPress(vt.KeyX)
+	term.KeyRelease(vt.KeyX)
+	term.KeyRelease(vt.KeyCapsLock)
+
+	CheckRead(t, term, "xxxx") // 0 ms, 50 ms, 75 ms, 100 ms
+}
+
+// TestKeyRepeatCapsLock ensures that caps lock does not repeat
+func TestKeyRepeatCapsLock(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	MustStart(t, term)
+
+	// these are unreasonable repeat rates, but its somewhere to start
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+
+	term.KeyPress(vt.KeyCapsLock)
+	term.KeyPress(vt.KeyZ)
+	time.Sleep(100 * time.Millisecond)
+	term.KeyPress(vt.KeyZ)
+	term.KeyRelease(vt.KeyZ)
+	term.KeyRelease(vt.KeyCapsLock)
+
+	CheckRead(t, term, "ZZZZ") // 0 ms, 50 ms, 75 ms, 100 ms
+}
+
+// TestKeyRepeatNoAlt ensures that alt keys do not repeat
+func TestKeyRepeatNoAlt(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	MustStart(t, term)
+
+	// these are unreasonable repeat rates, but its somewhere to start
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+
+	term.KeyPress(vt.KeyLAlt)
+	term.KeyPress(vt.KeyZ)
+	time.Sleep(100 * time.Millisecond)
+	term.KeyPress(vt.KeyZ)
+	term.KeyRelease(vt.KeyZ)
+	term.KeyRelease(vt.KeyLAlt)
+
+	CheckRead(t, term, "\x1bz") // 0 ms, 50 ms, 75 ms, 100 ms
+}
+
+// TestKeyRepeatShift ensures that shifted keys still work as long as repeat is held down.
+func TestKeyRepeatShift(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	MustStart(t, term)
+
+	// these are unreasonable repeat rates, but its somewhere to start
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+
+	term.KeyPress(vt.KeyLShift)
+	term.KeyPress(vt.Key1)
+	time.Sleep(100 * time.Millisecond)
+	term.KeyPress(vt.Key1)
+	term.KeyRelease(vt.Key1)
+	term.KeyRelease(vt.KeyLShift)
+
+	CheckRead(t, term, "!!!!") // 0 ms, 50 ms, 75 ms, 100 ms
+}
+
+// TestKeyRepeatShiftRelease ensures that releasing shift breaks repeat.
+func TestKeyRepeatShiftRelease(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	MustStart(t, term)
+
+	// these are unreasonable repeat rates, but its somewhere to start
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+
+	term.KeyPress(vt.KeyLShift)
+	term.KeyPress(vt.Key2)
+	term.KeyRelease(vt.KeyLShift)
+	time.Sleep(100 * time.Millisecond)
+	term.KeyPress(vt.Key2)
+	term.KeyRelease(vt.Key2)
+
+	CheckRead(t, term, "@222") // 0 ms, 50 ms, 75 ms, 100 ms
+}
+
+func TestKeyRepeatCursor(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	MustStart(t, term)
+
+	// these are unreasonable repeat rates, but its somewhere to start
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+
+	term.KeyPress(vt.KeyRight)
+	time.Sleep(100 * time.Millisecond)
+	term.KeyPress(vt.KeyRight)
+	term.KeyRelease(vt.KeyRight)
+	term.KeyRelease(vt.KeyRight)
+
+	CheckRead(t, term, "\x1b[C\x1b[C\x1b[C\x1b[C") // 0 ms, 50 ms, 75 ms, 100 ms
 }
