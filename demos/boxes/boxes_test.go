@@ -29,7 +29,7 @@ func TestBoxes(t *testing.T) {
 	for _, colors := range []int{0, 8, 16, 88, 256, 1 << 24} {
 		t.Run(fmt.Sprintf("%d_colors)", colors), func(t *testing.T) {
 			mt := vt.NewMockTerm(vt.MockOptColors(colors))
-			scr, err := tcell.NewTerminfoScreenFromTty(mt)
+			scr, err := tcell.NewTerminfoScreenFromTty(mt, tcell.OptColors(colors))
 			if err != nil {
 				t.Fatalf("failed to create screen: %v", err)
 			}
