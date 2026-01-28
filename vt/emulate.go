@@ -157,6 +157,7 @@ func NewEmulator(be Backend) Emulator {
 		localModes: map[PrivateMode]ModeStatus{
 			PmAppCursor:       ModeOff,
 			PmAutoMargin:      ModeOn,
+			PmAutoRepeat:      ModeOn,
 			PmVT52:            ModeOnLocked, // we never support VT52 mode (note ON means ANSI mode)
 			PmLeftRightMargin: ModeOff,
 			PmShowCursor:      ModeOn,
@@ -1929,6 +1930,7 @@ func (em *emulator) softReset() {
 	}
 	// and set any that should reset on (auto-margin)
 	em.setPrivateMode(PmAutoMargin, ModeOn)
+	em.setPrivateMode(PmAutoRepeat, ModeOn)
 	em.setPrivateMode(PmShowCursor, ModeOn)
 	em.setPrivateMode(PmBlinkCursor, ModeOn)
 	// set default cursor - matches VT defaults
@@ -2165,10 +2167,16 @@ var legacyPadKeys = map[Key]struct {
 }
 
 // repeatRaw is called to provide key repeat.  We limit key repeating to just 40,
-// and we ensure that at least one is included.
+// and we ensure that at least one is included.  We only repeat if key repeat is enabled.
 func (em *emulator) repeatRaw(ev KeyEvent, data []byte) {
-	for range min(max(1, ev.Repeat), 40) {
-		em.SendRaw(data)
+	if pm := em.getPrivateMode(PmAutoRepeat); pm == ModeOn || pm == ModeOnLocked {
+		for range min(max(1, ev.Repeat), 40) {
+			em.SendRaw(data)
+		}
+	} else {
+		if ev.Repeat == 0 {
+			em.SendRaw(data)
+		}
 	}
 }
 

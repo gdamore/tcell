@@ -256,6 +256,25 @@ func TestKeyRepeat(t *testing.T) {
 	CheckRead(t, term, "xxxx") // 0 ms, 50 ms, 75 ms, 100 ms
 }
 
+// TestKeyRepeatDisabled tests simple key repeat
+func TestKeyRepeatDisabled(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	MustStart(t, term)
+
+	// these are unreasonable repeat rates, but its somewhere to start
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	WriteF(t, term, "\x1b[?8l")
+
+	term.KeyPress(vt.KeyX)
+	time.Sleep(100 * time.Millisecond)
+	term.KeyPress(vt.KeyX)
+	term.KeyRelease(vt.KeyX)
+
+	CheckRead(t, term, "x") // 0 ms, 50 ms, 75 ms, 100 ms
+}
+
 // TestKeyRepeatCapsLock ensures that caps lock does not repeat
 func TestKeyRepeatCapsLock(t *testing.T) {
 	term := vt.NewMockTerm()
