@@ -33,9 +33,8 @@ import (
 // shift states (modifier states). A layout may have many of these, and they
 // are searched until a match is fine.
 type ModifierMap struct {
-	When   func(Modifier) bool // Map only applies if this returns true
-	Invert bool                // Invert changes the matching sense via a logical NOT.
-	Map    map[Key]rune        // Map is the mapping from Key to specific rune when this map matches.
+	When func(Modifier) bool // Map only applies if this returns true
+	Map  map[Key]rune        // Map is the mapping from Key to specific rune when this map matches.
 }
 
 // KeyboardState represents the current state of the keyboard.
@@ -138,6 +137,7 @@ func (ks *KeyboardState) Pressed(k Key) *KeyEvent {
 	ks.lastKey = k
 
 	l := ks.layout
+	event.VK = l.Virtual[k]
 	if mod, ok := l.Locking[k]; ok {
 		// locking modifiers never repeat
 		if wasPressed {
@@ -225,6 +225,9 @@ func (ks *KeyboardState) Released(k Key) *KeyEvent {
 	wasPressed := ks.pressed[k]
 	delete(ks.pressed, k)
 
+	l := ks.layout
+	event.VK = l.Virtual[k]
+
 	if mod, ok := ks.layout.Modifiers[k]; ok {
 		if !wasPressed {
 			// something weird
@@ -234,6 +237,12 @@ func (ks *KeyboardState) Released(k Key) *KeyEvent {
 
 		event.Mod = ks.mod
 		return event
+	}
+
+	if _, ok := ks.layout.Locking[k]; !ok {
+		if r := l.KeyToUTF(k, ks.mod); r != 0 {
+			event.Utf = string(r)
+		}
 	}
 
 	// no real point in looking up UTF for key release, so we don't
@@ -652,8 +661,8 @@ var KeyboardANSI = &Layout{
 		},
 	},
 	Modifiers: map[Key]Modifier{
-		KeyLShift: ModShift,
-		KeyRShift: ModShift,
+		KeyLShift: ModLShift,
+		KeyRShift: ModRShift,
 		KeyLCtrl:  ModLCtrl,
 		KeyRCtrl:  ModRCtrl,
 		KeyLAlt:   ModLAlt,

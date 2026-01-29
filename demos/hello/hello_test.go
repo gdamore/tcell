@@ -104,6 +104,6 @@ func TestHello(t *testing.T) {
 		}
 	}
 
-	mt.KeyEvent(vt.KeyEvent{Key: vt.KeyEsc, Down: true})
+	mt.KeyTap(vt.KeyEsc)
 	wg.Wait()
 }

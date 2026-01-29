@@ -2064,14 +2064,18 @@ func (em *emulator) SendRaw(b []byte) {
 
 // KeyEvent injects a keyboard event into the emulator
 func (em *emulator) KeyEvent(ev KeyEvent) {
-	// eliminate "control" keys (which keyboard maps provide) from consideration.
-	// (We handle control keys explicitly.)
-	if ev.Utf != "" && ev.Utf[0] < ' ' {
-		ev.Utf = ""
-	}
 
-	// TODO: more add support for other keyboard protocols, right now we only do legacy
-	em.keyLegacy(ev)
+	if em.getPrivateMode(PmWin32Input) == ModeOn {
+		em.keyWin32IM(ev)
+	} else {
+		// eliminate "control" keys (which keyboard maps provide) from consideration.
+		// (We handle control keys explicitly.)
+		if ev.Utf != "" && ev.Utf[0] < ' ' {
+			ev.Utf = ""
+		}
+		// TODO: more add support for kitty, and maybe modify other keys
+		em.keyLegacy(ev)
+	}
 }
 
 // ResizeEvent is called by the backend when a resize occurs.  A real backend with a child
@@ -2334,6 +2338,73 @@ var win32NoRepeat = map[Key]bool{
 	KeyScrLock:  true,
 	KeyPause:    true,
 	KeyPrtScr:   true,
+}
+
+// keyWin32IM generates the sequence for a key event when in Win32 input mode.
+// Win32 input mode is ESC [ Vk ; Sc ; Uc ; Kd ; Cs ; Rc _
+// Note that we specifically do NOT doubly encode non-keyboard events -- those
+// are already unambiguously handled within the protocol.  (Windows Terminal behaves
+// the same way, but most 3rd party terminals do doubly encode.)
+func (em *emulator) keyWin32IM(ev KeyEvent) {
+	// Some keys that never repeat
+	if pm := em.getPrivateMode(PmAutoRepeat); pm == ModeOff || pm == ModeOffLocked {
+		if ev.Repeat != 0 {
+			return
+		}
+	}
+	r := rune(0)
+	if ev.Utf != "" {
+		runes := []rune(ev.Utf)
+		if len(runes) == 1 {
+			r = runes[0]
+		}
+	}
+	kd := 0
+	if ev.Down {
+		kd = 1
+	}
+	cs := 0
+	// Modifiers
+	if ev.Mod&ModRAlt != 0 {
+		cs |= 0x01
+	}
+	if ev.Mod&ModLAlt != 0 {
+		cs |= 0x02
+	}
+	if ev.Mod&ModRCtrl != 0 {
+		cs |= 0x04
+	}
+	if ev.Mod&ModLCtrl != 0 {
+		cs |= 0x08
+	}
+	if ev.Mod.IsShift() {
+		cs |= 0x10
+	}
+	if ev.Mod.IsNumLock() {
+		cs |= 0x20
+	}
+	// NB: 0x40 is for scroll lock, we don't support it for now
+	if ev.Mod.IsCapsLock() {
+		cs |= 0x80
+	}
+	switch ev.Key {
+	case KeyPadEnter:
+	case KeyPadDiv:
+	case KeyInsert:
+	case KeyDelete:
+	case KeyHome:
+	case KeyEnd:
+	case KeyPgUp:
+	case KeyPgDn:
+		cs |= 0x100 // enhanced
+	}
+	if win32NoRepeat[ev.Key] {
+		if ev.Repeat > 0 {
+			return
+		}
+		ev.Repeat = 1
+	}
+	em.SendRaw(fmt.Appendf(nil, "\x1b[%d;%d;%d;%d;%d;%d_", ev.VK, ev.SC, r, kd, cs, max(1, ev.Repeat)))
 }
 
 func (em *emulator) MouseEvent(ev MouseEvent) {

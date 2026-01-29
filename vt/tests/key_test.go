@@ -372,3 +372,158 @@ func TestKeyRepeatCursor(t *testing.T) {
 
 	CheckRead(t, term, "\x1b[C\x1b[C\x1b[C\x1b[C") // 0 ms, 50 ms, 75 ms, 100 ms
 }
+
+func TestKeyWin32(t *testing.T) {
+	// Win32 input mode is ESC [ Vk ; Sc ; Uc ; Kd ; Cs ; Rc _
+
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	MustStart(t, term)
+	WriteF(t, term, "%s", vt.PmWin32Input.Enable())
+
+	var want string
+
+	term.KeyTap(vt.KeySpace)
+	want = "\x1b[32;57;32;1;0;1_" + "\x1b[32;57;32;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyLAlt, vt.KeyG)
+	want = "\x1b[164;56;0;1;2;1_" + // LAlt down
+		"\x1b[71;34;103;1;2;1_" + // G down
+		"\x1b[71;34;103;0;2;1_" + // G up
+		"\x1b[164;56;0;0;0;1_" // LAlt up
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyRAlt, vt.Key1)
+	want = "\x1b[165;57400;0;1;1;1_" + // RAlt down
+		"\x1b[49;2;49;1;1;1_" + // 1 down
+		"\x1b[49;2;49;0;1;1_" + // 1 up
+		"\x1b[165;57400;0;0;0;1_" // RAlt up
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyRCtrl, vt.KeyF1)
+	want = "\x1b[163;57373;0;1;4;1_" + // RCtrl down
+		"\x1b[112;59;0;1;4;1_" + // F1 down
+		"\x1b[112;59;0;0;4;1_" + // F1 up
+		"\x1b[163;57373;0;0;0;1_" // RCtrl up
+	CheckRead(t, term, want)
+
+	// NB: Windows has no "back tab" notion
+	term.KeyTap(vt.KeyLShift, vt.KeyTab)
+	want = "\x1b[160;42;0;1;16;1_\x1b[9;15;9;1;16;1_\x1b[9;15;9;0;16;1_\x1b[160;42;0;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyNumLock)
+	term.KeyTap(vt.KeyPad0)
+	term.KeyTap(vt.KeyNumLock)
+	want = "\x1b[144;69;0;1;32;1_" + // num lock down
+		"\x1b[144;69;0;0;32;1_" + // num lock up
+		"\x1b[45;82;48;1;32;1_" + // key pad 0 down
+		"\x1b[45;82;48;0;32;1_" + // keypad 0 up
+		"\x1b[144;69;0;1;0;1_" + // num lock down
+		"\x1b[144;69;0;0;0;1_" // num lock up
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyCapsLock)
+	term.KeyTap(vt.KeyJ)
+	term.KeyTap(vt.KeyCapsLock)
+	want = "\x1b[20;58;0;1;128;1_" + // caps lock down
+		"\x1b[20;58;0;0;128;1_" + // caps lock up
+		"\x1b[74;36;74;1;128;1_" + // J down
+		"\x1b[74;36;74;0;128;1_" + // J up
+		"\x1b[20;58;0;1;0;1_" + // caps lock down
+		"\x1b[20;58;0;0;0;1_" // caps lock up
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyPadEnter)
+	want = "\x1b[0;57372;13;1;0;1_\x1b[0;57372;13;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyPadDiv)
+	want = "\x1b[111;57397;47;1;0;1_\x1b[111;57397;47;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyInsert)
+	want = "\x1b[45;57426;0;1;0;1_\x1b[45;57426;0;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyDelete)
+	want = "\x1b[46;57427;0;1;0;1_\x1b[46;57427;0;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyPgUp)
+	want = "\x1b[33;57417;0;1;0;1_\x1b[33;57417;0;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyPgDn)
+	want = "\x1b[34;57425;0;1;256;1_\x1b[34;57425;0;0;256;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyHome)
+	want = "\x1b[36;57415;0;1;0;1_\x1b[36;57415;0;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyEnd)
+	want = "\x1b[35;57423;0;1;0;1_\x1b[35;57423;0;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyEnter)
+	want = "\x1b[13;28;13;1;0;1_\x1b[13;28;13;0;0;1_"
+	CheckRead(t, term, want)
+
+	term.KeyTap(vt.KeyLMeta)
+	want = "\x1b[91;57435;0;1;0;1_\x1b[91;57435;0;0;0;1_"
+	CheckRead(t, term, want)
+}
+
+func TestKeyWin32NoRepeat(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	MustStart(t, term)
+	WriteF(t, term, "%s", vt.PmWin32Input.Enable())
+	WriteF(t, term, "%s", vt.PmAutoRepeat.Enable())
+
+	term.KeyPress(vt.KeyPause)
+	time.Sleep(time.Millisecond * 150)
+	term.KeyPress(vt.KeyPause)
+	term.KeyRelease(vt.KeyPause)
+	want := "\x1b[19;57414;0;1;0;1_\x1b[19;57414;0;0;0;1_"
+	CheckRead(t, term, want)
+}
+
+func TestKeyWin32Repeat(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	MustStart(t, term)
+	WriteF(t, term, "%s", vt.PmWin32Input.Enable())
+	WriteF(t, term, "%s", vt.PmAutoRepeat.Enable())
+
+	term.KeyPress(vt.KeyA)
+	time.Sleep(time.Millisecond * 150)
+	term.KeyPress(vt.KeyA)
+	term.KeyRelease(vt.KeyA)
+	want := "\x1b[65;30;97;1;0;1_\x1b[65;30;97;1;0;5_\x1b[65;30;97;0;0;1_"
+	CheckRead(t, term, want)
+}
+
+func TestKeyWin32NoRepeatMode(t *testing.T) {
+	term := vt.NewMockTerm()
+	defer MustClose(t, term)
+
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	MustStart(t, term)
+	WriteF(t, term, "%s", vt.PmWin32Input.Enable())
+	WriteF(t, term, "%s", vt.PmAutoRepeat.Disable())
+
+	term.KeyPress(vt.KeyB)
+	time.Sleep(time.Millisecond * 150)
+	term.KeyPress(vt.KeyB)
+	term.KeyRelease(vt.KeyB)
+	want := "\x1b[66;48;98;1;0;1_\x1b[66;48;98;0;0;1_"
+	CheckRead(t, term, want)
+}

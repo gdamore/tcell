@@ -282,7 +282,7 @@ func TestMouseEvents(t *testing.T) {
 		Position: vt.Coord{X: 2, Y: 3},
 		Button:   vt.Button4,
 		Down:     true,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModRShift,
 		Motion:   false,
 	})
 	if me, ok := getMouseEvent(t, s); !ok {
@@ -298,7 +298,7 @@ func TestMouseEvents(t *testing.T) {
 		Position: vt.Coord{X: 2, Y: 3},
 		Button:   vt.Button4,
 		Down:     false,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModRShift,
 		Motion:   false,
 	})
 	if me, ok := getMouseEvent(t, s); !ok {
@@ -311,7 +311,7 @@ func TestMouseEvents(t *testing.T) {
 		Position: vt.Coord{X: 2, Y: 3},
 		Button:   vt.Button5,
 		Down:     true,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModRShift,
 		Motion:   false,
 	})
 	if me, ok := getMouseEvent(t, s); !ok {
@@ -329,7 +329,7 @@ func TestMouseEvents(t *testing.T) {
 		Position: vt.Coord{X: 2, Y: 3},
 		Button:   vt.Button6,
 		Down:     true,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModRShift,
 		Motion:   false,
 	})
 	if me, ok := getMouseEvent(t, s); !ok {
@@ -347,7 +347,7 @@ func TestMouseEvents(t *testing.T) {
 		Position: vt.Coord{X: 2, Y: 3},
 		Button:   vt.Button7,
 		Down:     true,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModRShift,
 		Motion:   false,
 	})
 	if me, ok := getMouseEvent(t, s); !ok {

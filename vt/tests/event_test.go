@@ -198,7 +198,7 @@ func TestMouse1000(t *testing.T) {
 		Button:   vt.NoButton,
 		Down:     false,
 		Motion:   true,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModLShift,
 	})
 	term.MouseEvent(vt.MouseEvent{
 		Position: Coord{X: 12, Y: 13},

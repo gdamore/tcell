@@ -70,8 +70,8 @@ var UsInternational = &vt.Layout{
 	Base:    vt.KeyboardANSI,
 	Locking: vt.KeyboardANSI.Locking,
 	Modifiers: map[vt.Key]vt.Modifier{
-		vt.KeyLShift: vt.ModShift,
-		vt.KeyRShift: vt.ModShift,
+		vt.KeyLShift: vt.ModLShift,
+		vt.KeyRShift: vt.ModRShift,
 		vt.KeyLCtrl:  vt.ModLCtrl,
 		vt.KeyRCtrl:  vt.ModRCtrl,
 		vt.KeyRAlt:   vt.ModRAlt | vt.ModRCtrl, // acts as AltGr

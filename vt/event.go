@@ -42,7 +42,6 @@ const (
 	ModRHyper
 	ModCapsLock
 	ModNumLock
-	ModShift = ModLShift | ModRShift // Used only in layouts
 )
 
 func (m Modifier) IsShift() bool    { return (m & (ModLShift | ModRShift)) != 0 }
