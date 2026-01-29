@@ -74,7 +74,7 @@ func (cb *CellBuffer) Put(x int, y int, str string, style Style) (string, int) {
 		// dirty as well as the base cell, to make sure we consider
 		// both cells as dirty together.  We only need to do this
 		// if we're changing content
-		if width > 0 && cl != c.currStr {
+		if width > 1 && cl != c.currStr {
 			// Prevent unnecessary bounds checks for first cell, since we already
 			// received that one.
 			c.setDirty(true)
