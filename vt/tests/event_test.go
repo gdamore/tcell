@@ -60,14 +60,14 @@ func TestMouse1006(t *testing.T) {
 		Button:   vt.Button2,
 		Down:     true,
 		Motion:   false,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModLShift,
 	})
 	term.MouseEvent(vt.MouseEvent{
 		Position: Coord{X: 12, Y: 13},
 		Button:   vt.Button2,
 		Down:     false,
 		Motion:   true,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModRShift,
 	})
 
 	result = ReadF(t, term)
@@ -135,14 +135,14 @@ func TestMouseX10(t *testing.T) {
 		Button:   vt.Button2,
 		Down:     true,
 		Motion:   false,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModLShift,
 	})
 	term.MouseEvent(vt.MouseEvent{
 		Position: Coord{X: 12, Y: 13},
 		Button:   vt.Button2,
 		Down:     false,
 		Motion:   true,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModLShift,
 	})
 
 	result = ReadF(t, term)
@@ -191,7 +191,7 @@ func TestMouse1000(t *testing.T) {
 		Button:   vt.Button2,
 		Down:     true,
 		Motion:   false,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModLShift,
 	})
 	term.MouseEvent(vt.MouseEvent{ // should be suppressed
 		Position: Coord{X: 11, Y: 12},
@@ -205,7 +205,7 @@ func TestMouse1000(t *testing.T) {
 		Button:   vt.Button2,
 		Down:     false,
 		Motion:   true,
-		Mod:      vt.ModShift,
+		Mod:      vt.ModRShift,
 	})
 
 	result = ReadF(t, term)

@@ -29,15 +29,31 @@ type KeyEvent struct {
 type Modifier int
 
 const (
-	ModNone  = Modifier(0)
-	ModShift = Modifier(1 << iota)
-	ModCtrl
-	ModAlt
-	ModMeta
-	ModHyper
+	ModNone   = Modifier(0)
+	ModLShift = Modifier(1 << iota)
+	ModRShift
+	ModLCtrl
+	ModRCtrl
+	ModLAlt
+	ModRAlt
+	ModLMeta
+	ModRMeta
+	ModLHyper
+	ModRHyper
 	ModCapsLock
 	ModNumLock
+	ModShift = ModLShift | ModRShift // Used only in layouts
 )
+
+func (m Modifier) IsShift() bool    { return (m & (ModLShift | ModRShift)) != 0 }
+func (m Modifier) IsCtrl() bool     { return (m & (ModLCtrl | ModRCtrl)) != 0 }
+func (m Modifier) IsAlt() bool      { return (m & (ModLAlt | ModRAlt)) != 0 }
+func (m Modifier) IsMeta() bool     { return (m & (ModLMeta | ModRMeta)) != 0 }
+func (m Modifier) IsHyper() bool    { return (m & (ModLHyper | ModRHyper)) != 0 }
+func (m Modifier) IsNumLock() bool  { return m&ModNumLock != 0 }
+func (m Modifier) IsCapsLock() bool { return m&ModCapsLock != 0 }
+func (m Modifier) IsCapitals() bool { return m.IsCapsLock() != m.IsShift() }
+func (m Modifier) IsAltGr() bool    { return m.IsCtrl() && m.IsAlt() }
 
 // Button is the mouse button pressed or released.
 type Button int
@@ -105,13 +121,13 @@ func (ev MouseEvent) encodeButton() byte {
 	if ev.Motion {
 		btn += 0x20
 	}
-	if ev.Mod&ModShift != 0 {
+	if ev.Mod.IsShift() {
 		btn += 4
 	}
-	if ev.Mod&(ModMeta|ModAlt) != 0 {
+	if ev.Mod.IsAlt() || ev.Mod.IsMeta() {
 		btn += 8
 	}
-	if ev.Mod&ModCtrl != 0 {
+	if ev.Mod.IsCtrl() {
 		btn += 16
 	}
 	return btn

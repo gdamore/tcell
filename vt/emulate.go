@@ -180,6 +180,10 @@ func NewEmulator(be Backend) Emulator {
 		em.localModes[PmFocusReports] = ModeOff
 	}
 
+	if ak, ok := be.(AdvancedKeyboard); ok && ak.IsAdvancedKeyboard() {
+		em.localModes[PmWin32Input] = ModeOff
+	}
+
 	em.size = em.be.GetSize()
 	em.topMargin = 0
 	em.botMargin = em.size.Y - 1
@@ -2066,8 +2070,12 @@ func (em *emulator) KeyEvent(ev KeyEvent) {
 		ev.Utf = ""
 	}
 
-	// TODO: more add support for other keyboard protocols, right now we only do legacy
-	em.keyLegacy(ev)
+	if em.getPrivateMode(PmWin32Input) == ModeOn {
+		em.keyWin32IM(ev)
+	} else {
+		// TODO: more add support for kitty, and maybe modify other keys
+		em.keyLegacy(ev)
+	}
 }
 
 // ResizeEvent is called by the backend when a resize occurs.  A real backend with a child
@@ -2193,7 +2201,7 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 	if !ev.Down { // legacy protocol does not support key release
 		return
 	}
-	if ev.Mod&(ModHyper|ModMeta) != 0 { // legacy protocol does not support these
+	if ev.Mod.IsMeta() || ev.Mod.IsHyper() { // legacy protocol does not support these
 		return
 	}
 
@@ -2201,7 +2209,7 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 	// that if we are sending other Utf (for example with AltGr), then we still might
 	// send it, but this is only an issue for non-ASCII runes. Also, this filter only
 	// applies for "regular" keys (i.e. not function keys, cursor keys, etc.)
-	if ev.Mod&(ModCtrl|ModShift) == (ModCtrl|ModShift) && (ev.Utf == "" || ev.Utf[0] < 0x80) {
+	if ev.Mod.IsShift() && ev.Mod.IsCtrl() && (ev.Utf == "" || ev.Utf[0] < 0x80) {
 		if base := ev.Key.KittyBase(); base >= ' ' && base < 0x80 {
 			return
 		}
@@ -2223,12 +2231,12 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 
 	// For control keys (e.g. control-J) we never emit a rune directly -- but we might later
 	// add after decoding the key accordingly.
-	if ev.Utf != "" && (ev.Mod == ModCtrl || ev.Utf[0] < ' ') {
+	if ev.Utf != "" && (ev.Mod == ModLCtrl || ev.Mod == ModRCtrl || ev.Utf[0] < ' ') {
 		ev.Utf = ""
 	}
 
 	if ev.Utf != "" {
-		if ev.Utf[0] < 0x80 && ev.Mod&ModAlt != 0 { // ASCII might get alt
+		if ev.Utf[0] < 0x80 && ev.Mod.IsAlt() { // ASCII might get alt
 			em.noRepeatRaw(ev, fmt.Appendf(nil, "\x1b%s", ev.Utf))
 		} else { // otherwise send the UTF as-is
 			em.repeatRaw(ev, []byte(ev.Utf))
@@ -2238,7 +2246,7 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 
 	// some weird number control sequences - legacy compatibility
 	// We do not repeat these.
-	if v, ok := legacyControls[ev.Key]; ok && ev.Mod == ModCtrl {
+	if v, ok := legacyControls[ev.Key]; ok && (ev.Mod == ModLCtrl || ev.Mod == ModRCtrl) {
 		em.noRepeatRaw(ev, []byte(v))
 		return
 	}
@@ -2246,8 +2254,7 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 	if v, ok := legacyKeys[ev.Key]; ok {
 		str := ""
 		match := false
-		switch ev.Mod & (ModShift | ModCtrl) {
-		case ModNone:
+		if !ev.Mod.IsShift() && !ev.Mod.IsCtrl() {
 			if em.getPrivateMode(PmAppCursor) == ModeOn && v.A != "" {
 				str = v.A
 			} else {
@@ -2258,15 +2265,15 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 				str = "\r\n"
 			}
 			match = true
-		case ModShift:
+		} else if ev.Mod.IsShift() && !ev.Mod.IsCtrl() {
 			if str = v.S; str != "" {
 				match = true
 			}
-		case ModCtrl:
+		} else if ev.Mod.IsCtrl() && !ev.Mod.IsShift() {
 			if str = v.C; str != "" {
 				match = true
 			}
-		case ModCtrl | ModShift:
+		} else { // IsCtrl & IsShift
 			if str = v.CS; str != "" {
 				match = true
 			}
@@ -2278,10 +2285,10 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 			// Note: legacy encoding does not use modifiers for alt or super - alt will be
 			// determined by sending an escape prefix.
 			mod := 0
-			if ev.Mod&ModShift != 0 {
+			if ev.Mod.IsShift() {
 				mod |= 1
 			}
-			if ev.Mod&ModCtrl != 0 {
+			if ev.Mod.IsCtrl() {
 				mod |= 4
 			}
 			if strings.HasPrefix(v.K, "\x1bO") {
@@ -2290,14 +2297,14 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 				str = fmt.Sprintf("%s;%d%c", v.K[:len(v.K)-1], mod+1, v.K[len(v.K)-1])
 			}
 		}
-		if ev.Mod&(ModAlt) != 0 {
+		if ev.Mod.IsAlt() {
 			// no repeating ALT sequences
 			em.noRepeatRaw(ev, append([]byte{'\x1b'}, []byte(str)...)) // alt sends leading escape
-		} else if ev.Mod&ModCtrl != 0 {
+		} else if ev.Mod.IsCtrl() {
 			// no repeating CTRL sequences
 			em.noRepeatRaw(ev, []byte(str))
 		} else {
-			// but other sequences (should just be ModShift or ModNone)
+			// but other sequences (should just be shifted or unmodified)
 			// are fine.  (E.g. we want to allow repeats of cursor keys)
 			em.repeatRaw(ev, []byte(str))
 		}
@@ -2305,15 +2312,93 @@ func (em *emulator) keyLegacy(ev KeyEvent) {
 	}
 
 	// fallback control key handling
-	if ev.Key >= KeyA && ev.Key <= KeyZ && ev.Mod&ModCtrl != 0 {
+	if ev.Key >= KeyA && ev.Key <= KeyZ && ev.Mod.IsCtrl() {
 		b := byte(ev.Key-KeyA) + 1 /* ctrl-A */
-		if ev.Mod&ModAlt != 0 {
+		if ev.Mod.IsAlt() {
 			em.noRepeatRaw(ev, []byte{'\x1b', b})
 		} else {
 			em.noRepeatRaw(ev, []byte{b})
 		}
 		return
 	}
+}
+
+var win32NoRepeat = map[Key]bool{
+	KeyLShift:   true,
+	KeyRShift:   true,
+	KeyLCtrl:    true,
+	KeyRCtrl:    true,
+	KeyLAlt:     true,
+	KeyRAlt:     true,
+	KeyLMeta:    true,
+	KeyRMeta:    true,
+	KeyCapsLock: true,
+	KeyNumLock:  true,
+	KeyEnter:    true,
+	KeyScrLock:  true,
+	KeyPause:    true,
+	KeyPrtScr:   true,
+}
+
+// keyWin32IM generates the sequence for a key event when in Win32 input mode.
+// Win32 input mode is ESC [ Vk ; Sc ; Uc ; Kd ; Cs ; Rc _
+// Note that we specifically do NOT doubly encode non-keyboard events -- those
+// are already unambiguously handled within the protocol.  (Windows Terminal behaves
+// the same way, but most 3rd party terminals do doubly encode.)
+func (em *emulator) keyWin32IM(ev KeyEvent) {
+	// Some keys that never repeat
+	if pm := em.getPrivateMode(PmAutoRepeat); pm == ModeOff || pm == ModeOffLocked {
+		if ev.Repeat != 0 {
+			return
+		}
+	}
+	r := rune(0)
+	if ev.Utf != "" {
+		runes := []rune(ev.Utf)
+		if len(runes) == 1 {
+			r = runes[0]
+		}
+	}
+	kd := 0
+	if ev.Down {
+		kd = 1
+	}
+	cs := 0
+	// Modifiers
+	if ev.Mod&ModRAlt != 0 {
+		cs |= 0x01
+	}
+	if ev.Mod&ModLAlt != 0 {
+		cs |= 0x02
+	}
+	if ev.Mod&ModRCtrl != 0 {
+		cs |= 0x04
+	}
+	if ev.Mod&ModLCtrl != 0 {
+		cs |= 0x08
+	}
+	if ev.Mod.IsShift() {
+		cs |= 0x10
+	}
+	if ev.Mod.IsNumLock() {
+		cs |= 0x20
+	}
+	// NB: 0x40 is for scroll lock, we don't support it for now
+	if ev.Mod.IsCapsLock() {
+		cs |= 0x80
+	}
+	switch ev.Key {
+	case KeyPadEnter:
+	case KeyPadDiv:
+	case KeyInsert:
+	case KeyDelete:
+	case KeyHome:
+	case KeyEnd:
+	case KeyPgUp:
+	case KeyPgDn:
+		cs |= 0x100 // enhanced
+	}
+	em.SendRaw(fmt.Appendf(nil, "\x1b[%d;%d;%d;%d;%d;%d_", ev.VK, ev.SC, r, kd, cs, max(1, ev.Repeat)))
 }
 
 func (em *emulator) MouseEvent(ev MouseEvent) {
