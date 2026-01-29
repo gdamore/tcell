@@ -33,10 +33,9 @@ import (
 // shift states (modifier states). A layout may have many of these, and they
 // are searched until a match is fine.
 type ModifierMap struct {
-	Mod    Modifier     // Mod is the modifiers that should be set to match, after applying Mask.
-	Mask   Modifier     // Mask is the set of modifiers that are considered when matching.
-	Invert bool         // Invert changes the matching sense via a logical NOT.
-	Map    map[Key]rune // Map is the mapping from Key to specific rune when this map matches.
+	When   func(Modifier) bool // Map only applies if this returns true
+	Invert bool                // Invert changes the matching sense via a logical NOT.
+	Map    map[Key]rune        // Map is the mapping from Key to specific rune when this map matches.
 }
 
 // KeyboardState represents the current state of the keyboard.
@@ -233,17 +232,6 @@ func (ks *KeyboardState) Released(k Key) *KeyEvent {
 		}
 		ks.mod &^= mod
 
-		// Re-apply modifiers still held down (preserves locking bits already in ks.mod).
-		// For example, if both shift buttons are held down, but only one of them is released.
-		// Enumerating the pressed map should be *fast* as there should not be many of them.
-		for key, down := range ks.pressed {
-			if down {
-				if m, ok := ks.layout.Modifiers[key]; ok {
-					ks.mod |= m
-				}
-			}
-		}
-
 		event.Mod = ks.mod
 		return event
 	}
@@ -305,14 +293,8 @@ type Layout struct {
 
 func (km *Layout) KeyToUTF(k Key, m Modifier) rune {
 	for _, mm := range km.Maps {
-		if mm.Invert {
-			if m&mm.Mask == mm.Mod {
-				continue
-			}
-		} else {
-			if m&mm.Mask != mm.Mod {
-				continue
-			}
+		if mm.When != nil && !mm.When(m) {
+			continue
 		}
 		if u, ok := mm.Map[k]; ok {
 			return u
@@ -550,8 +532,7 @@ var KeyboardANSI = &Layout{
 	Maps: []ModifierMap{
 		// Specials - without control
 		{
-			Mask: ModCtrl,
-			Mod:  ModNone,
+			When: func(m Modifier) bool { return !m.IsCtrl() },
 			Map: map[Key]rune{
 				KeyTab:       '\t',
 				KeyEnter:     '\r',
@@ -563,8 +544,7 @@ var KeyboardANSI = &Layout{
 		},
 		// Specials - with control (but without shift)
 		{
-			Mask: ModCtrl | ModShift,
-			Mod:  ModCtrl,
+			When: func(m Modifier) bool { return m.IsCtrl() && !m.IsShift() },
 			Map: map[Key]rune{
 				KeyTab:       '\t',
 				KeyEnter:     '\n',
@@ -576,26 +556,22 @@ var KeyboardANSI = &Layout{
 		},
 		// Key pad operators
 		{
-			Mod:  ModNone,
-			Mask: ModAlt,
+			When: func(m Modifier) bool { return !m.IsAlt() },
 			Map:  KeysPadOps,
 		},
 		// Numeric keypad when num lock is engaged
 		{
-			Mask: ModNumLock,
-			Mod:  ModNumLock,
+			When: func(m Modifier) bool { return m.IsNumLock() },
 			Map:  KeysPadDigits,
 		},
 		// Numbers - without shift
 		{
-			Mask: ModShift | ModCtrl,
-			Mod:  ModNone,
+			When: func(m Modifier) bool { return !m.IsShift() && !m.IsCtrl() },
 			Map:  KeysDigits,
 		},
 		// Numbers - with shift - this is locale sensitive usually
 		{
-			Mask: ModShift | ModCtrl,
-			Mod:  ModShift,
+			When: func(m Modifier) bool { return m.IsShift() && !m.IsCtrl() },
 			Map: map[Key]rune{
 				Key1: '!',
 				Key2: '@',
@@ -611,42 +587,26 @@ var KeyboardANSI = &Layout{
 		},
 		// Special shift-control cases
 		{
-			Mask: ModCtrl | ModShift,
-			Mod:  ModCtrl | ModShift,
+			When: func(m Modifier) bool { return m.IsCtrl() && m.IsShift() },
 			Map: map[Key]rune{
 				Key2:     0,
 				Key6:     '\x1e',
 				KeyMinus: '\x1f',
 			},
 		},
-		// Letters - base
+		// Letters - base (lower case)
 		{
-			Mask: ModShift | ModCtrl | ModCapsLock,
-			Mod:  ModNone,
+			When: func(m Modifier) bool { return !m.IsCtrl() && !m.IsCapitals() },
 			Map:  KeysUsLower,
 		},
-		// Letters - shift (capitals)
+		// Letters - capitals (either caps lock or shift, but not both)
 		{
-			Mask: ModShift | ModCtrl | ModCapsLock,
-			Mod:  ModShift,
+			When: func(m Modifier) bool { return !m.IsCtrl() && m.IsCapitals() },
 			Map:  KeysUsUpper,
-		},
-		// Letters - caps lock
-		{
-			Mask: ModShift | ModCtrl | ModCapsLock,
-			Mod:  ModCapsLock,
-			Map:  KeysUsUpper,
-		},
-		// Letters - caps lock + shift (i.e. lower)
-		{
-			Mask: ModShift | ModCtrl | ModCapsLock,
-			Mod:  ModCapsLock | ModShift,
-			Map:  KeysUsLower,
 		},
 		// OEM keys - base
 		{
-			Mask: ModShift | ModCtrl,
-			Mod:  ModNone,
+			When: func(m Modifier) bool { return !m.IsShift() && !m.IsCtrl() },
 			Map: map[Key]rune{
 				KeySemi:         ';',
 				KeyEqual:        '=',
@@ -664,8 +624,7 @@ var KeyboardANSI = &Layout{
 		},
 		// OEM keys - shift
 		{
-			Mask: ModShift | ModCtrl,
-			Mod:  ModShift,
+			When: func(m Modifier) bool { return m.IsShift() && !m.IsCtrl() },
 			Map: map[Key]rune{
 				KeySemi:         ':',
 				KeyEqual:        '+',
@@ -683,8 +642,7 @@ var KeyboardANSI = &Layout{
 		},
 		// OEM keys - control (odd balls)
 		{
-			Mask: ModShift | ModCtrl,
-			Mod:  ModCtrl,
+			When: func(m Modifier) bool { return m.IsCtrl() && !m.IsShift() },
 			Map: map[Key]rune{
 				KeyLBrace:       '\x1b',
 				KeyBackslash:    '\x1c',
@@ -696,14 +654,14 @@ var KeyboardANSI = &Layout{
 	Modifiers: map[Key]Modifier{
 		KeyLShift: ModShift,
 		KeyRShift: ModShift,
-		KeyLCtrl:  ModCtrl,
-		KeyRCtrl:  ModCtrl,
-		KeyLAlt:   ModAlt,
-		KeyRAlt:   ModAlt,
-		KeyRMeta:  ModMeta,
-		KeyLMeta:  ModMeta,
-		KeyRHyper: ModHyper,
-		KeyLHyper: ModHyper,
+		KeyLCtrl:  ModLCtrl,
+		KeyRCtrl:  ModRCtrl,
+		KeyLAlt:   ModLAlt,
+		KeyRAlt:   ModRAlt,
+		KeyRMeta:  ModRMeta,
+		KeyLMeta:  ModLMeta,
+		KeyRHyper: ModRHyper,
+		KeyLHyper: ModLHyper,
 	},
 	Locking: map[Key]Modifier{
 		KeyNumLock:  ModNumLock,

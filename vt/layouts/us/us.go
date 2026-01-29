@@ -72,27 +72,25 @@ var UsInternational = &vt.Layout{
 	Modifiers: map[vt.Key]vt.Modifier{
 		vt.KeyLShift: vt.ModShift,
 		vt.KeyRShift: vt.ModShift,
-		vt.KeyLCtrl:  vt.ModCtrl,
-		vt.KeyRCtrl:  vt.ModCtrl,
-		vt.KeyRAlt:   vt.ModAlt | vt.ModCtrl, // acts as AltGr
-		vt.KeyLAlt:   vt.ModAlt,
-		vt.KeyRMeta:  vt.ModMeta,
-		vt.KeyLMeta:  vt.ModMeta,
-		vt.KeyRHyper: vt.ModHyper,
-		vt.KeyLHyper: vt.ModHyper,
+		vt.KeyLCtrl:  vt.ModLCtrl,
+		vt.KeyRCtrl:  vt.ModRCtrl,
+		vt.KeyRAlt:   vt.ModRAlt | vt.ModRCtrl, // acts as AltGr
+		vt.KeyLAlt:   vt.ModLAlt,
+		vt.KeyRMeta:  vt.ModRMeta,
+		vt.KeyLMeta:  vt.ModLMeta,
+		vt.KeyRHyper: vt.ModRHyper,
+		vt.KeyLHyper: vt.ModLHyper,
 	},
 	Maps: []vt.ModifierMap{
 		{
-			Mod:  vt.ModNone,
-			Mask: vt.ModShift | vt.ModCtrl | vt.ModAlt,
+			When: func(m vt.Modifier) bool { return !m.IsShift() && !m.IsCtrl() && !m.IsAlt() },
 			Map: map[vt.Key]rune{
 				vt.KeyGrave: deadGrave,
 				vt.KeyQuote: deadAcute,
 			},
 		},
 		{
-			Mod:  vt.ModShift,
-			Mask: vt.ModShift | vt.ModCtrl | vt.ModAlt,
+			When: func(m vt.Modifier) bool { return m.IsShift() && !m.IsCtrl() && !m.IsAlt() },
 			Map: map[vt.Key]rune{
 				vt.Key6:     deadCarat,
 				vt.KeyGrave: deadTilde,
@@ -101,29 +99,16 @@ var UsInternational = &vt.Layout{
 		},
 		// Letters
 		{
-			Mod:  vt.ModCtrl | vt.ModAlt,
-			Mask: vt.ModCtrl | vt.ModAlt | vt.ModShift | vt.ModCapsLock,
+			When: func(m vt.Modifier) bool { return m.IsAltGr() && !m.IsCapitals() },
 			Map:  usInternationalLower,
 		},
 		{
-			Mod:  vt.ModCtrl | vt.ModAlt | vt.ModShift,
-			Mask: vt.ModCtrl | vt.ModAlt | vt.ModShift | vt.ModCapsLock,
+			When: func(m vt.Modifier) bool { return m.IsAltGr() && m.IsCapitals() },
 			Map:  usInternationalUpper,
-		},
-		{
-			Mod:  vt.ModCtrl | vt.ModAlt | vt.ModCapsLock,
-			Mask: vt.ModCtrl | vt.ModAlt | vt.ModShift | vt.ModCapsLock,
-			Map:  usInternationalUpper,
-		},
-		{
-			Mod:  vt.ModCtrl | vt.ModAlt | vt.ModShift | vt.ModCapsLock,
-			Mask: vt.ModCtrl | vt.ModAlt | vt.ModShift | vt.ModCapsLock,
-			Map:  usInternationalLower,
 		},
 		// Extended non-letter forms
 		{
-			Mod:  vt.ModCtrl | vt.ModAlt,
-			Mask: vt.ModCtrl | vt.ModAlt | vt.ModShift,
+			When: func(m vt.Modifier) bool { return m.IsAltGr() && !m.IsShift() },
 			Map: map[vt.Key]rune{
 				vt.Key0:         '’',
 				vt.Key1:         '¡',
@@ -151,8 +136,7 @@ var UsInternational = &vt.Layout{
 		},
 		// Even more extended non-letter forms
 		{
-			Mod:  vt.ModCtrl | vt.ModAlt | vt.ModShift,
-			Mask: vt.ModCtrl | vt.ModAlt | vt.ModShift,
+			When: func(m vt.Modifier) bool { return m.IsAltGr() && m.IsShift() },
 			Map: map[vt.Key]rune{
 				vt.Key1:         '¹',
 				vt.Key4:         '£',

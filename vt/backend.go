@@ -126,16 +126,13 @@ type Clipboard interface {
 	GetClipboard() []byte
 }
 
-type KeyboardMode byte
-
-const (
-	KeyboardLegacy KeyboardMode = 1 << iota // KeyboardLegacy uses simple reporting in the VT220 fashion
-	KeyboardWin32                           // Win32 input mode, reports both key release and press, includes scan codes and vk
-	KeyboardKitty                           // Kitty simple protocol, only disambiguation
-	KeyboardEvents                          // Kitty keyboard but reports events (press, release, repeat)
-)
-
+// AdvancedKeyboard provides raw keyboard events, which gives
+// access to key presses, and releases, physical keys, and so forth.
+// These keyboards should provide a mapping facility to obtain associated
+// Unicode text via a layout, as well.
 type AdvancedKeyboard interface {
-	SetKeyboardMode(KeyboardMode) error
-	GetKeyboardMode() KeyboardMode
+	// IsAdvancedKeyboard returns true if the emulator supports full keyboard
+	// reporting.  This must include key press and release events, and mapping
+	// of physical keys (thus permitting key disambiguation).
+	IsAdvancedKeyboard() bool
 }

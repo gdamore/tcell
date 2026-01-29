@@ -286,6 +286,9 @@ type MockBackend interface {
 
 	// GetClipboard returns the clipboard (copy buffer).
 	GetClipboard() []byte
+
+	// IsAdvancedKeyboard returns true, as we always support the full keyboard protocol.
+	IsAdvancedKeyboard() bool
 }
 
 // mockBackend is a mock of a backend device for use with the emulator.
@@ -597,6 +600,10 @@ func (mb *mockBackend) SetClipboard(data []byte) {
 func (mb *mockBackend) GetClipboard() []byte {
 	return mb.clipboard
 }
+
+// IsAdvancedKeyboard returns true - we always implement
+// the raw keyboard protocol.
+func (mb *mockBackend) IsAdvancedKeyboard() bool { return true }
 
 // MockOpt is an interface by which options can change the behavior of the mocked terminal.
 // This is intended to permit easier testing.
