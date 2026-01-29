@@ -138,6 +138,7 @@ func (ks *KeyboardState) Pressed(k Key) *KeyEvent {
 	ks.lastKey = k
 
 	l := ks.layout
+	event.VK = l.Virtual[k]
 	if mod, ok := l.Locking[k]; ok {
 		// locking modifiers never repeat
 		if wasPressed {
@@ -224,6 +225,8 @@ func (ks *KeyboardState) Released(k Key) *KeyEvent {
 	}
 	wasPressed := ks.pressed[k]
 	delete(ks.pressed, k)
+
+	event.VK = ks.layout.Virtual[k]
 
 	if mod, ok := ks.layout.Modifiers[k]; ok {
 		if !wasPressed {
