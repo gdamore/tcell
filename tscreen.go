@@ -188,6 +188,7 @@ type tScreen struct {
 	initQ         chan Event
 	initted       bool
 	running       bool
+	startTime     time.Time
 	wg            sync.WaitGroup
 	mouseFlags    MouseFlags
 	pasteEnabled  bool
@@ -215,6 +216,7 @@ func (t *tScreen) Init() error {
 		return e
 	}
 
+	t.startTime = time.Now()
 	t.keyQ = make(chan []byte, 10)
 
 	t.charset = getCharset()
@@ -455,6 +457,13 @@ func (t *tScreen) prepareCursorStyles() {
 }
 
 func (t *tScreen) Fini() {
+	// Ensure that enough time passes for terminals to  finish sending
+	// their initial response (gnome-terminal sends terminal dimensions
+	// asynchronously later than the response to primary DA for some reason.)
+	if time.Since(t.startTime) < 50*time.Millisecond {
+		time.Sleep(time.Millisecond * 50)
+
+	}
 	t.finiOnce.Do(t.finish)
 }
 
