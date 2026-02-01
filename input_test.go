@@ -771,3 +771,55 @@ func TestIgnoredSequences(t *testing.T) {
 		})
 	}
 }
+
+// TestKeyboardMode tests the responses to various keyboard modes
+func TestKeyboardMode(t *testing.T) {
+	tests := []struct {
+		bytes  string
+		result Event
+	}{
+		{"\x1b[?9001;0$y", &eventPrivateMode{Mode: 9001, Status: vt.ModeNA}},
+		{"\x1b[?9001;2$y", &eventPrivateMode{Mode: 9001, Status: vt.ModeOff}},
+		{"\x1b[>4;0m", &eventXTermKbdMode{Mode: XtermKbdModeOff}},
+		{"\x1b[?0u", &eventKittyKbdMode{Mode: KittyKbdModeOff}},
+	}
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("case #%d", i), func(t *testing.T) {
+			evch := make(chan Event, 10)
+			ip := newInputParser(evch)
+
+			// Send null in initial state
+			ip.ScanUTF8([]byte(tt.bytes))
+
+			select {
+			case ev := <-evch:
+				switch expect := tt.result.(type) {
+				case *eventPrivateMode:
+					if actual, ok := ev.(*eventPrivateMode); ok {
+						if actual.Mode != expect.Mode || actual.Status != expect.Status {
+							t.Errorf("Wrong mode or status: %v %v != %v %v", actual.Mode, actual.Status, expect.Mode, expect.Status)
+						}
+						return
+					}
+				case *eventXTermKbdMode:
+					if actual, ok := ev.(*eventXTermKbdMode); ok {
+						if actual.Mode != expect.Mode {
+							t.Errorf("Wrong mode: %v != %v", actual.Mode, expect.Mode)
+						}
+						return
+					}
+				case *eventKittyKbdMode:
+					if actual, ok := ev.(*eventKittyKbdMode); ok {
+						if actual.Mode != expect.Mode {
+							t.Errorf("Wrong mode: %v != %v", actual.Mode, expect.Mode)
+						}
+						return
+					}
+				}
+				t.Errorf("Wrong type, expected %T got %T", tt.result, ev)
+			case <-time.After(100 * time.Millisecond):
+				t.Fatal("Timeout")
+			}
+		})
+	}
+}

@@ -121,6 +121,12 @@ const (
 	setClipboard      = "\x1b]52;c;%s\x1b\\"                // Clipboard content is base64
 	notifyDesktop9    = "\x1b]9;%[2]s\x1b\\"                // Args are title, body (but osc 9 only has body)
 	notifyDesktop777  = "\x1b]777;notify;%s;%s\x1b\\"       // Most commonly supported
+	queryKittyKbd     = "\x1b[?u"                           // Query for Kitty keyboard support
+	enableKittyKbd    = "\x1b[=1u"                          // Technically this pushes
+	disableKittyKbd   = "\x1b[=0u"                          // Technically this means pop previous mode
+	queryXTermKbd     = "\x1b[?4m"                          // Query for XTerm modify other keys support
+	enableXTermKbd    = "\x1b[>4;2m"                        // Enable modify other keys protocol
+	disableXTermKbd   = "\x1b[>4;0m"                        // Disable modify other keys protocol
 )
 
 // NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
@@ -199,14 +205,15 @@ type tScreen struct {
 	title         string
 	setClipboard  string
 	notifyDesktop string
-	enableCsiU    string
-	disableCsiU   string
 	termName      string
 	termVers      string
 	term          string // value from $TERM
 	inlineResize  bool
 	haveMouse     bool
 	haveMouseSgr  bool
+	haveKittyKbd  bool
+	haveWin32Kbd  bool
+	haveXTermKbd  bool
 	input         *inputParser
 	sync.Mutex
 }
@@ -364,11 +371,16 @@ func (t *tScreen) processInitQ() {
 					t.haveMouseSgr = ev.Status.Changeable()
 				case vt.PmMouseButton:
 					t.haveMouse = ev.Status.Changeable()
+				case vt.PmWin32Input:
+					t.haveWin32Kbd = ev.Status.Changeable()
 				}
+			case *eventKittyKbdMode:
+				t.haveKittyKbd = true
+			case *eventXTermKbdMode:
+				t.haveXTermKbd = true
 			}
 		}
 	}
-
 }
 
 func (t *tScreen) filterEvents() chan Event {
@@ -382,7 +394,7 @@ func (t *tScreen) filterEvents() chan Event {
 				return
 			}
 			switch ev.(type) {
-			case *eventTermName, *eventPrimaryAttributes, *eventPrivateMode:
+			case *eventTermName, *eventPrimaryAttributes, *eventPrivateMode, *eventKittyKbdMode, *eventXTermKbdMode:
 				select {
 				case t.initQ <- ev:
 				default:
@@ -422,19 +434,6 @@ func (t *tScreen) prepareExtendedOSC() {
 	// newer terminals.  (There was also OSC 9 and OSC 99, but they
 	// are not as widely deployed, and OSC 9 is not unique.)
 	t.notifyDesktop = notifyDesktop777
-
-	if runtime.GOOS == "windows" && t.term == "" {
-		// on Windows, if we don't have a TERM, use only win32-input-mode
-		t.enableCsiU = "\x1b[?9001h"
-		t.disableCsiU = "\x1b[?9001l"
-	} else {
-		// three advanced keyboard protocols:
-		// - xterm modifyOtherKeys (uses CSI 27 ~ )
-		// - kitty csi-u (uses CSI u)
-		// - win32-input-mode (uses CSI _)
-		t.enableCsiU = "\x1b[>4;2m" + "\x1b[>1u" + "\x1b[?9001h"
-		t.disableCsiU = "\x1b[?9001l" + "\x1b[<u" + "\x1b[>4;0m"
-	}
 }
 
 func (t *tScreen) prepareCursorStyles() {
@@ -462,7 +461,6 @@ func (t *tScreen) Fini() {
 	// asynchronously later than the response to primary DA for some reason.)
 	if time.Since(t.startTime) < 50*time.Millisecond {
 		time.Sleep(time.Millisecond * 50)
-
 	}
 	t.finiOnce.Do(t.finish)
 }
@@ -1232,11 +1230,30 @@ func (t *tScreen) engage() error {
 			t.Print(vt.PmResizeReports.Query())
 			t.Print(vt.PmMouseButton.Query())
 			t.Print(vt.PmMouseSgr.Query())
+			t.Print(vt.PmWin32Input.Query())
+			t.Print(queryKittyKbd)
+			t.Print(queryXTermKbd)
 			t.Print(requestExtAttr)
 		}
 		t.Print(requestPrimaryDA) // NB: MUST BE LAST
 	}
 	t.processInitQ()
+	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
+		// Technically this may not be right, but every terminal we know about
+		// (even Wyse 60) uses this to enter the alternate screen buffer, and
+		// possibly save and restore the window title and/or icon.
+		// (In theory there could be terminals that don't support X,Y cursor
+		// positions without a setup command, but we don't support them.)
+		t.Print(enterCA)
+		t.Print(t.saveTitle)
+	}
+	if t.haveWin32Kbd {
+		t.Print(vt.PmWin32Input.Enable())
+	} else if t.haveKittyKbd {
+		t.Print(enableKittyKbd)
+	} else if t.haveXTermKbd {
+		t.Print(enableXTermKbd)
+	}
 
 	t.running = true
 	if ws, err := t.tty.WindowSize(); err == nil && ws.Width != 0 && ws.Height != 0 {
@@ -1247,15 +1264,6 @@ func (t *tScreen) engage() error {
 	if t.focusEnabled {
 		t.enableFocusReporting()
 	}
-	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
-		// Technically this may not be right, but every terminal we know about
-		// (even Wyse 60) uses this to enter the alternate screen buffer, and
-		// possibly save and restore the window title and/or icon.
-		// (In theory there could be terminals that don't support X,Y cursor
-		// positions without a setup command, but we don't support them.)
-		t.Print(enterCA)
-		t.Print(t.saveTitle)
-	}
 	t.Print(enterKeypad)
 	t.Print(enableAltChars)
 	t.Print(vt.PmShowCursor.Disable())
@@ -1264,7 +1272,7 @@ func (t *tScreen) engage() error {
 	if t.title != "" && t.setTitle != "" {
 		t.Printf(t.setTitle, t.title)
 	}
-	t.Print(t.enableCsiU)
+	// t.Print(t.enableCsiU)
 	t.Print(requestWindowSize)
 
 	if t.inlineResize {
@@ -1313,7 +1321,16 @@ func (t *tScreen) disengage() {
 	t.Print(exitKeypad)
 	t.Print(sgr0)
 	t.Print(vt.PmAutoMargin.Enable())
-	t.Print(t.disableCsiU)
+	if t.haveWin32Kbd {
+		t.Print(vt.PmWin32Input.Disable())
+	}
+	if t.haveKittyKbd {
+		t.Print(disableKittyKbd)
+	}
+	if t.haveXTermKbd {
+		t.Print(disableXTermKbd)
+	}
+	// t.Print(t.disableCsiU)
 	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
 		t.Print(t.restoreTitle)
 		t.Print(clear)
