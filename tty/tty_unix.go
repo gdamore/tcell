@@ -30,6 +30,9 @@ import (
 	"golang.org/x/term"
 )
 
+// Use -1 to differentiate from stdin (fd=0).
+const uninitializedTtyFd = -1
+
 // devTty is an implementation of the Tty API based upon /dev/tty.
 type devTty struct {
 	fd      int
@@ -111,13 +114,26 @@ func (tty *devTty) Stop() error {
 
 	// close our tty device -- we'll get another one if we Start again later.
 	_ = tty.f.Close()
+	tty.fd = uninitializedTtyFd
 
 	return nil
 }
 
 func (tty *devTty) WindowSize() (WindowSize, error) {
 	size := WindowSize{}
-	ws, err := unix.IoctlGetWinsize(tty.fd, unix.TIOCGWINSZ)
+	fd := tty.fd
+	if tty.fd == uninitializedTtyFd {
+		// If WindowSize is called when the tty isn't yet running, the fd for /dev/tty won't be initialized,
+		// so open the file just long enough to retrieve the window size.
+		f, err := os.OpenFile(tty.dev, os.O_RDWR, 0)
+		if err != nil {
+			return size, err
+		}
+		defer func() { _ = f.Close() }()
+		fd = int(f.Fd())
+	}
+
+	ws, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
 	if err != nil {
 		return size, err
 	}
@@ -179,6 +195,7 @@ func NewDevTty() (Tty, error) {
 // NewDevTtyFromDev opens a tty device given a path.  This can be useful to bind to other nodes.
 func NewDevTtyFromDev(dev string) (Tty, error) {
 	tty := &devTty{
+		fd:  uninitializedTtyFd,
 		dev: dev,
 		sig: make(chan os.Signal),
 	}
