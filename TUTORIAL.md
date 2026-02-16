@@ -110,9 +110,9 @@ s.Clear()
 Text may be drawn on the screen using `Put`, `PutStr`, or `PutStrStyled`.
 
 ```go
-s.Put(0, 0, 'H', defStyle)
-s.Put(1, 0, 'i', defStyle)
-s.Put(2, 0, '!', defStyle)
+s.Put(0, 0, "H", defStyle)
+s.Put(1, 0, "i", defStyle)
+s.Put(2, 0, "!", defStyle)
 ```
 
 which is equivalent to
