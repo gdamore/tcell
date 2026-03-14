@@ -826,6 +826,27 @@ func TestResize(t *testing.T) {
 	}
 }
 
+// TestCSISetSize tests that CSI 8;h;wt updates mock terminal size.
+func TestCSISetSize(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	resizeQ := make(chan bool, 1)
+	term.NotifyResize(resizeQ)
+
+	WriteF(t, term, "\x1b[8;32;128t")
+	if sz, err := term.WindowSize(); err != nil || sz.Height != 32 || sz.Width != 128 {
+		t.Errorf("resize did not occur: %v %d %d", err, sz.Height, sz.Width)
+	}
+
+	select {
+	case <-resizeQ:
+	case <-time.After(time.Millisecond * 100):
+		t.Errorf("resize signal failure")
+	}
+}
+
 // TestTabs tests tab stop functionality.
 func TestTabs(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})

@@ -911,6 +911,28 @@ func (em *emulator) processScrollDown(str string) {
 	}
 }
 
+// processWindowOps handles CSI ... t window operations.
+func (em *emulator) processWindowOps(str string) {
+	if pi, err := numericParams(str, 3); err == nil {
+		switch pi[0] {
+		case 8: // Resize window: CSI 8 ; rows ; cols t
+			rows := pi[1]
+			cols := pi[2]
+			if rows < 1 || cols < 1 {
+				return
+			}
+			size := Coord{X: Col(cols), Y: Row(rows)}
+			if ws, ok := em.be.(interface{ SetSize(Coord) }); ok {
+				ws.SetSize(size)
+				em.applyResize(size)
+			}
+
+		case 18: // Report text area size: CSI 8 ; rows ; cols t
+			em.SendRaw(fmt.Appendf(nil, "\x1b[8;%d;%dt", em.size.Y, em.size.X))
+		}
+	}
+}
+
 // processVerticalMargins implements DECSTBM (set top and bottom margins, VT220.)
 func (em *emulator) processVerticalMargins(str string) {
 	if pi, err := numericParams(str, 2); err == nil {
@@ -1366,6 +1388,8 @@ func (em *emulator) processCsi(final byte) {
 		em.processVerticalMargins(str)
 	case "s":
 		em.processHorizontalMargins(str)
+	case "t":
+		em.processWindowOps(str)
 	case " q":
 		em.processCursorStyle(str)
 	case "?W":
@@ -2088,6 +2112,29 @@ func (em *emulator) ResizeEvent(size Coord) {
 	}
 }
 
+func (em *emulator) applyResize(size Coord) {
+	// resize clobbers our content, until it is redrawn
+	em.size = size
+	// resizing resets the margins
+	em.topMargin = 0
+	em.botMargin = em.size.Y - 1
+	em.ltMargin = 0
+	em.rtMargin = em.size.X - 1
+	em.cells = make([]Cell, int(em.size.X)*int(em.size.Y))
+	for i := range em.cells {
+		em.cells[i].S = em.defaultStyle
+	}
+
+	em.pos = em.getPosition()
+	if em.getPrivateMode(PmResizeReports) == ModeOn { // NB: we never support "ModeOnLocked"
+		// NB: for now we do not support pixel sizes
+		em.SendRaw(fmt.Appendf(nil, "\x1b[48;%d;%d;0;0t", em.size.Y, em.size.X))
+	}
+
+	// Send a SIGWINCH or similar.
+	em.be.RaiseResize()
+}
+
 var legacyKeys = map[Key]struct {
 	K  string // unmodified key
 	A  string // unmodified in application cursor mode (smkx)
@@ -2595,28 +2642,7 @@ func (em *emulator) run(stopQ <-chan bool) {
 				close(d)
 
 			case Coord: // resize notification
-				// reload our position it may have changed
-
-				// resize clobbers our content, until it is redrawn
-				em.size = d
-				// resizing resets the margins
-				em.topMargin = 0
-				em.botMargin = em.size.Y - 1
-				em.ltMargin = 0
-				em.rtMargin = em.size.X - 1
-				em.cells = make([]Cell, int(em.size.X)*int(em.size.Y))
-				for i := range em.cells {
-					em.cells[i].S = em.defaultStyle
-				}
-
-				em.pos = em.getPosition()
-				if em.getPrivateMode(PmResizeReports) == ModeOn { // NB: we never support "ModeOnLocked"
-					// NB: for now we do not support pixel sizes
-					em.SendRaw(fmt.Appendf(nil, "\x1b[48;%d;%d;0;0t", em.size.Y, em.size.X))
-				}
-
-				// Send a SIGWINCH or similar.
-				em.be.RaiseResize()
+				em.applyResize(d)
 			}
 		case <-stopQ:
 			return
