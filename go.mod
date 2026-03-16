@@ -1,6 +1,6 @@
 module github.com/gdamore/tcell/v3
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/gdamore/encoding v1.0.1
@@ -8,5 +8,5 @@ require (
 	github.com/rivo/uniseg v0.4.7
 	golang.org/x/sys v0.41.0
 	golang.org/x/term v0.40.0
-	golang.org/x/text v0.33.0
+	golang.org/x/text v0.35.0
 )
