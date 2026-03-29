@@ -5,6 +5,7 @@ jobs:
     name: build
     runs-on: [macos-latest]
     strategy:
+      fail-fast: false
       matrix:
         go: ["stable", "oldstable"]
     steps:
