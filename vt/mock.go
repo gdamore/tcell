@@ -313,8 +313,19 @@ type mockBackend struct {
 	lock         sync.Mutex
 }
 
-func (mb *mockBackend) GetSize() Coord          { mb.checkSize(); return mb.size }
-func (mb *mockBackend) Beep()                   { mb.bells++ }
+func (mb *mockBackend) GetSize() Coord {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+	mb.checkSize()
+	return mb.size
+}
+
+func (mb *mockBackend) Beep() {
+	mb.lock.Lock()
+	mb.bells++
+	mb.lock.Unlock()
+}
+
 func (mb *mockBackend) SetMouse(MouseReporting) {}
 
 func (mb *mockBackend) GetPrivateMode(pm PrivateMode) ModeStatus {
@@ -478,6 +489,7 @@ func (mb *mockBackend) checkSize() {
 	mb.size = size
 	mb.pos.X = min(mb.pos.X, size.X-1)
 	mb.pos.Y = min(mb.pos.Y, size.Y-1)
+	mb.resized = false
 }
 
 func (mb *mockBackend) RaiseResize() {
@@ -583,21 +595,29 @@ func (mb *mockBackend) Buffering(bool) {}
 
 // SetCursor is used to set how the cursor is displayed.
 func (mb *mockBackend) SetCursor(cs CursorStyle) {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
 	mb.cursor = cs
 }
 
 // GetCursor returns the current cursor style.
 func (mb *mockBackend) GetCursor() CursorStyle {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
 	return mb.cursor
 }
 
 // SetClipboard sets the current clipboard contents.
 func (mb *mockBackend) SetClipboard(data []byte) {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
 	mb.clipboard = data
 }
 
 // GetClipboard gets the current clipboard contents.
 func (mb *mockBackend) GetClipboard() []byte {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
 	return mb.clipboard
 }
 
