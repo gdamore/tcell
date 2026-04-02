@@ -15,7 +15,9 @@
 package tcell
 
 import (
+	"bytes"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,6 +52,64 @@ func TestInitScreen(t *testing.T) {
 	}
 
 	drainInput()
+}
+
+type spyTty struct {
+	vt.MockTerm
+	writes bytes.Buffer
+}
+
+func (t *spyTty) Write(b []byte) (int, error) {
+	_, _ = t.writes.Write(b)
+	return t.MockTerm.Write(b)
+}
+
+func (t *spyTty) Output() string {
+	return t.writes.String()
+}
+
+func TestOptAltScreenDisable(t *testing.T) {
+	t.Setenv("TCELL_ALTSCREEN", "")
+
+	tty := &spyTty{MockTerm: vt.NewMockTerm()}
+	s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	s.Fini()
+
+	out := tty.Output()
+	if strings.Contains(out, enterCA) {
+		t.Fatalf("alternate screen enter escape was emitted")
+	}
+	if strings.Contains(out, exitCA) {
+		t.Fatalf("alternate screen exit escape was emitted")
+	}
+}
+
+func TestOptAltScreenDefault(t *testing.T) {
+	t.Setenv("TCELL_ALTSCREEN", "")
+
+	tty := &spyTty{MockTerm: vt.NewMockTerm()}
+	s, err := NewTerminfoScreenFromTty(tty)
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	s.Fini()
+
+	out := tty.Output()
+	if !strings.Contains(out, enterCA) {
+		t.Fatalf("alternate screen enter escape was not emitted")
+	}
+	if !strings.Contains(out, exitCA) {
+		t.Fatalf("alternate screen exit escape was not emitted")
+	}
 }
 
 // TestInitScreenStdio just tries to initialize the default screen using standard I/O.

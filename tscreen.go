@@ -74,6 +74,15 @@ func (o OptTerm) apply(t *tScreen) {
 	t.term = string(o)
 }
 
+// OptAltScreen controls whether the alternate screen buffer is used.
+// The default is true. The TCELL_ALTSCREEN=disable environment override
+// is still honored.
+type OptAltScreen bool
+
+func (o OptAltScreen) apply(t *tScreen) {
+	t.altScreen = bool(o)
+}
+
 // Some terminal escapes that are basically universal.
 // We would really like to be able to use private mode queries for some of
 // these but generally we've found that support for queries is not always present,
@@ -134,7 +143,7 @@ const (
 // is presumed, at least on UNIX hosts. (Windows hosts will typically fail this
 // call altogether.)
 func NewTerminfoScreenFromTty(tty Tty, opts ...TerminfoScreenOption) (Screen, error) {
-	t := &tScreen{tty: tty}
+	t := &tScreen{tty: tty, altScreen: true}
 
 	t.prepareCursorStyles()
 	t.prepareExtendedOSC()
@@ -208,6 +217,7 @@ type tScreen struct {
 	termName      string
 	termVers      string
 	term          string // value from $TERM
+	altScreen     bool
 	inlineResize  bool
 	haveMouse     bool
 	haveMouseSgr  bool
@@ -216,6 +226,10 @@ type tScreen struct {
 	haveXTermKbd  bool
 	input         *inputParser
 	sync.Mutex
+}
+
+func (t *tScreen) useAltScreen() bool {
+	return t.altScreen && os.Getenv("TCELL_ALTSCREEN") != "disable"
 }
 
 func (t *tScreen) Init() error {
@@ -1238,7 +1252,7 @@ func (t *tScreen) engage() error {
 		t.Print(requestPrimaryDA) // NB: MUST BE LAST
 	}
 	t.processInitQ()
-	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
+	if t.useAltScreen() {
 		// Technically this may not be right, but every terminal we know about
 		// (even Wyse 60) uses this to enter the alternate screen buffer, and
 		// possibly save and restore the window title and/or icon.
@@ -1331,7 +1345,7 @@ func (t *tScreen) disengage() {
 		t.Print(disableXTermKbd)
 	}
 	// t.Print(t.disableCsiU)
-	if os.Getenv("TCELL_ALTSCREEN") != "disable" {
+	if t.useAltScreen() {
 		t.Print(t.restoreTitle)
 		t.Print(clear)
 		t.Print(exitCA)
