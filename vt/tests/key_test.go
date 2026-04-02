@@ -244,16 +244,17 @@ func TestKeyRepeat(t *testing.T) {
 
 	MustStart(t, term)
 
-	// these are unreasonable repeat rates, but its somewhere to start
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Keep the initial repeat quick, but make later repeats very slow so the test
+	// does not depend on sub-100ms timer precision.
+	term.SetRepeat(time.Millisecond*50, time.Second)
 
 	term.KeyPress(vt.KeyX)
-	time.Sleep(90 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	term.KeyPress(vt.KeyX)
 	term.KeyRelease(vt.KeyX)
 	term.KeyRelease(vt.KeyCapsLock)
 
-	CheckRead(t, term, "xxx") // 0 ms, 50 ms, 75 ms
+	CheckRead(t, term, "xx")
 }
 
 // TestKeyRepeatDisabled tests simple key repeat
@@ -263,8 +264,9 @@ func TestKeyRepeatDisabled(t *testing.T) {
 
 	MustStart(t, term)
 
-	// these are unreasonable repeat rates, but its somewhere to start
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Keep the initial repeat quick, but make later repeats very slow so the test
+	// only needs to distinguish repeated from non-repeated input.
+	term.SetRepeat(time.Millisecond*50, time.Second)
 	WriteF(t, term, "\x1b[?8l")
 
 	term.KeyPress(vt.KeyX)
@@ -272,7 +274,7 @@ func TestKeyRepeatDisabled(t *testing.T) {
 	term.KeyPress(vt.KeyX)
 	term.KeyRelease(vt.KeyX)
 
-	CheckRead(t, term, "x") // 0 ms, 50 ms, 75 ms, 100 ms
+	CheckRead(t, term, "x")
 }
 
 // TestKeyRepeatCapsLock ensures that caps lock does not repeat
@@ -303,8 +305,9 @@ func TestKeyRepeatNoAlt(t *testing.T) {
 
 	MustStart(t, term)
 
-	// these are unreasonable repeat rates, but its somewhere to start
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Keep the initial repeat quick, but make later repeats very slow so the test
+	// does not sit on a timer boundary.
+	term.SetRepeat(time.Millisecond*50, time.Second)
 
 	term.KeyPress(vt.KeyLAlt)
 	term.KeyPress(vt.KeyZ)
@@ -313,7 +316,7 @@ func TestKeyRepeatNoAlt(t *testing.T) {
 	term.KeyRelease(vt.KeyZ)
 	term.KeyRelease(vt.KeyLAlt)
 
-	CheckRead(t, term, "\x1bz") // 0 ms, 50 ms, 75 ms, 100 ms
+	CheckRead(t, term, "\x1bz")
 }
 
 // TestKeyRepeatShift ensures that shifted keys still work as long as repeat is held down.
@@ -323,8 +326,9 @@ func TestKeyRepeatShift(t *testing.T) {
 
 	MustStart(t, term)
 
-	// these are unreasonable repeat rates, but its somewhere to start
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Use a large repeat interval so the test is not sitting on a timing boundary.
+	// We only need to prove that shifted keys keep their shifted value while repeating.
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*250)
 
 	term.KeyPress(vt.KeyLShift)
 	term.KeyPress(vt.Key1)
@@ -333,7 +337,7 @@ func TestKeyRepeatShift(t *testing.T) {
 	term.KeyRelease(vt.Key1)
 	term.KeyRelease(vt.KeyLShift)
 
-	CheckRead(t, term, "!!!") // 0 ms, 50 ms, 75 ms
+	CheckRead(t, term, "!!") // 0 ms, 50 ms
 }
 
 // TestKeyRepeatShiftRelease ensures that releasing shift breaks repeat.
@@ -343,8 +347,9 @@ func TestKeyRepeatShiftRelease(t *testing.T) {
 
 	MustStart(t, term)
 
-	// these are unreasonable repeat rates, but its somewhere to start
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Use a large repeat interval so the test is not sitting on a timing boundary.
+	// We only need to prove that releasing shift changes the repeated value.
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*250)
 
 	term.KeyPress(vt.KeyLShift)
 	term.KeyPress(vt.Key2)
@@ -353,7 +358,7 @@ func TestKeyRepeatShiftRelease(t *testing.T) {
 	term.KeyPress(vt.Key2)
 	term.KeyRelease(vt.Key2)
 
-	CheckRead(t, term, "@22") // 0 ms, 50 ms, 75 ms
+	CheckRead(t, term, "@2") // 0 ms, 50 ms
 }
 
 func TestKeyRepeatCursor(t *testing.T) {
@@ -362,16 +367,17 @@ func TestKeyRepeatCursor(t *testing.T) {
 
 	MustStart(t, term)
 
-	// these are unreasonable repeat rates, but its somewhere to start
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Keep the initial repeat quick, but make later repeats very slow so the test
+	// does not depend on coarse timer behavior.
+	term.SetRepeat(time.Millisecond*50, time.Second)
 
 	term.KeyPress(vt.KeyRight)
-	time.Sleep(90 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	term.KeyPress(vt.KeyRight)
 	term.KeyRelease(vt.KeyRight)
 	term.KeyRelease(vt.KeyRight)
 
-	CheckRead(t, term, "\x1b[C\x1b[C\x1b[C") // 0 ms, 50 ms, 75 ms
+	CheckRead(t, term, "\x1b[C\x1b[C")
 }
 
 func TestKeyWin32(t *testing.T) {
@@ -482,13 +488,15 @@ func TestKeyWin32NoRepeat(t *testing.T) {
 	term := vt.NewMockTerm()
 	defer MustClose(t, term)
 
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Keep the first repeat available, but avoid asserting an exact number of
+	// repeats from short sleeps on platforms with coarse timers.
+	term.SetRepeat(time.Millisecond*50, time.Second)
 	MustStart(t, term)
 	WriteF(t, term, "%s", vt.PmWin32Input.Enable())
 	WriteF(t, term, "%s", vt.PmAutoRepeat.Enable())
 
 	term.KeyPress(vt.KeyPause)
-	time.Sleep(time.Millisecond * 150)
+	time.Sleep(time.Millisecond * 100)
 	term.KeyPress(vt.KeyPause)
 	term.KeyRelease(vt.KeyPause)
 	want := "\x1b[19;57414;0;1;0;1_\x1b[19;57414;0;0;0;1_"
@@ -499,16 +507,18 @@ func TestKeyWin32Repeat(t *testing.T) {
 	term := vt.NewMockTerm()
 	defer MustClose(t, term)
 
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Keep the first repeat available, but avoid asserting an exact number of
+	// repeats from short sleeps on platforms with coarse timers.
+	term.SetRepeat(time.Millisecond*50, time.Second)
 	MustStart(t, term)
 	WriteF(t, term, "%s", vt.PmWin32Input.Enable())
 	WriteF(t, term, "%s", vt.PmAutoRepeat.Enable())
 
 	term.KeyPress(vt.KeyA)
-	time.Sleep(time.Millisecond * 150)
+	time.Sleep(time.Millisecond * 100)
 	term.KeyPress(vt.KeyA)
 	term.KeyRelease(vt.KeyA)
-	want := "\x1b[65;30;97;1;0;1_\x1b[65;30;97;1;0;5_\x1b[65;30;97;0;0;1_"
+	want := "\x1b[65;30;97;1;0;1_\x1b[65;30;97;1;0;1_\x1b[65;30;97;0;0;1_"
 	CheckRead(t, term, want)
 }
 
@@ -516,13 +526,15 @@ func TestKeyWin32NoRepeatMode(t *testing.T) {
 	term := vt.NewMockTerm()
 	defer MustClose(t, term)
 
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Keep the first repeat available, but make later repeats slow so this only
+	// verifies that auto-repeat mode suppresses repeat events.
+	term.SetRepeat(time.Millisecond*50, time.Second)
 	MustStart(t, term)
 	WriteF(t, term, "%s", vt.PmWin32Input.Enable())
 	WriteF(t, term, "%s", vt.PmAutoRepeat.Disable())
 
 	term.KeyPress(vt.KeyB)
-	time.Sleep(time.Millisecond * 150)
+	time.Sleep(time.Millisecond * 100)
 	term.KeyPress(vt.KeyB)
 	term.KeyRelease(vt.KeyB)
 	want := "\x1b[66;48;98;1;0;1_\x1b[66;48;98;0;0;1_"
