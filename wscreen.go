@@ -45,9 +45,11 @@ func NewTerminfoScreenFromTty(_ tty.Tty, _ ...TerminfoScreenOption) (Screen, err
 type TerminfoScreenOption interface{ apply(*wScreen) }
 type OptColors int
 type OptTerm string
+type OptAltScreen bool
 
-func (OptColors) apply(*wScreen) {}
-func (OptTerm) apply(*wScreen)   {}
+func (OptColors) apply(*wScreen)    {}
+func (OptTerm) apply(*wScreen)      {}
+func (OptAltScreen) apply(*wScreen) {}
 
 type wScreen struct {
 	w, h  int
