@@ -220,6 +220,7 @@ type emulator struct {
 	savedPos     Coord          // saved via DECSC
 	saved        savedCursor    // data saved by save cursor (DECSC)
 	sendLock     sync.Mutex     // ensures that send data cannot be intermixed
+	modeLock     sync.RWMutex   // protects localModes/ansiModes and related derived state
 	tabStops     []Col          // tab stops, ordered. if nil every 8th position is used
 	lastIndex    int            // index of last cell written + 1 (for grapheme clustering) (zero means none)
 	cells        []Cell         // content of cells, we have to maintain our own copy (backend might or might not)
@@ -1950,10 +1951,10 @@ func (em *emulator) softReset() {
 	em.appKeyPad = false
 	em.be.Reset()
 	// start by resetting all modes
-	for am := range em.ansiModes {
+	for _, am := range em.ansiModeKeys() {
 		em.setAnsiMode(am, ModeOff) // NB: No effect for non-changeable modes
 	}
-	for pm := range em.localModes {
+	for _, pm := range em.privateModeKeys() {
 		em.setPrivateMode(pm, ModeOff) // NB: No effect for non-changeable modes
 	}
 	// and set any that should reset on (auto-margin)
@@ -1966,6 +1967,28 @@ func (em *emulator) softReset() {
 	em.be.SetCursor(em.cursor)
 	em.setPosition(Coord{0, 0})
 	em.eraseAll()
+}
+
+func (em *emulator) ansiModeKeys() []AnsiMode {
+	em.modeLock.RLock()
+	defer em.modeLock.RUnlock()
+
+	keys := make([]AnsiMode, 0, len(em.ansiModes))
+	for am := range em.ansiModes {
+		keys = append(keys, am)
+	}
+	return keys
+}
+
+func (em *emulator) privateModeKeys() []PrivateMode {
+	em.modeLock.RLock()
+	defer em.modeLock.RUnlock()
+
+	keys := make([]PrivateMode, 0, len(em.localModes))
+	for pm := range em.localModes {
+		keys = append(keys, pm)
+	}
+	return keys
 }
 
 // sendDA ends the primary device attributes.
@@ -1989,20 +2012,27 @@ func (em *emulator) setAnsiMode(mode AnsiMode, ms ModeStatus) {
 	if !ms.Changeable() {
 		return
 	}
+	em.modeLock.Lock()
+	defer em.modeLock.Unlock()
 	if old, ok := em.ansiModes[mode]; ok && old.Changeable() {
 		em.ansiModes[mode] = ms
 	}
 }
 
 func (em *emulator) getAnsiMode(mode AnsiMode) ModeStatus {
+	em.modeLock.RLock()
+	defer em.modeLock.RUnlock()
 	return em.ansiModes[mode]
 }
 
 // getPrivateMode returns the value of a DEC private mode.
 func (em *emulator) getPrivateMode(pm PrivateMode) ModeStatus {
+	em.modeLock.RLock()
 	if ms, ok := em.localModes[pm]; ok {
+		em.modeLock.RUnlock()
 		return ms
 	}
+	em.modeLock.RUnlock()
 	return em.be.GetPrivateMode(pm)
 }
 
@@ -2011,19 +2041,10 @@ func (em *emulator) updateMouseReporting() {
 	if !ok {
 		return
 	}
-	if em.localModes[PmMouseButton] == ModeOn {
-		em.mouseReports = MouseButtons
-		if em.localModes[PmMouseMotion] == ModeOn {
-			em.mouseReports = MouseMotion
-		} else if em.localModes[PmMouseDrag] == ModeOn {
-			em.mouseReports = MouseDrag
-		}
-	} else if em.localModes[PmMouseX10] == ModeOn {
-		em.mouseReports = MouseButtons
-	} else {
-		em.mouseReports = MouseDisabled
-	}
-	mi.SetMouse(em.mouseReports)
+	em.modeLock.RLock()
+	report := em.mouseReportingLocked()
+	em.modeLock.RUnlock()
+	mi.SetMouse(report)
 }
 
 // setPrivateMode sets the DEC private mode.
@@ -2031,18 +2052,30 @@ func (em *emulator) setPrivateMode(pm PrivateMode, ms ModeStatus) {
 	if !ms.Changeable() {
 		return
 	}
-	if old, ok := em.localModes[pm]; ok && old.Changeable() {
+	em.modeLock.Lock()
+	old, ok := em.localModes[pm]
+	if ok && old.Changeable() {
 		em.localModes[pm] = ms
+
+		var (
+			setMouse  bool
+			report    MouseReporting
+			setCursor bool
+			cursor    CursorStyle
+		)
+
 		switch pm {
 		case PmMouseButton, PmMouseDrag, PmMouseMotion, PmMouseSgr, PmMouseSgrPixel, PmMouseX10:
-			em.updateMouseReporting()
+			report = em.mouseReportingLocked()
+			setMouse = true
 		case PmShowCursor:
 			if ms == ModeOn {
 				em.cursor = em.cursor.Show()
 			} else {
 				em.cursor = em.cursor.Hide()
 			}
-			em.be.SetCursor(em.cursor)
+			cursor = em.cursor
+			setCursor = true
 		case PmBlinkCursor:
 			if ms == ModeOn {
 				em.cursor = em.cursor.Blink()
@@ -2050,11 +2083,43 @@ func (em *emulator) setPrivateMode(pm PrivateMode, ms ModeStatus) {
 				em.cursor = em.cursor.Steady()
 
 			}
-			em.be.SetCursor(em.cursor)
+			cursor = em.cursor
+			setCursor = true
 		}
-	} else if em.be.GetPrivateMode(pm).Changeable() {
+		em.modeLock.Unlock()
+
+		if setMouse {
+			if mi, ok := em.be.(Mouser); ok {
+				mi.SetMouse(report)
+			}
+		}
+		if setCursor {
+			em.be.SetCursor(cursor)
+		}
+		return
+	}
+	em.modeLock.Unlock()
+
+	if em.be.GetPrivateMode(pm).Changeable() {
 		_ = em.be.SetPrivateMode(pm, ms)
 	}
+}
+
+func (em *emulator) mouseReportingLocked() MouseReporting {
+	switch {
+	case em.localModes[PmMouseButton] == ModeOn:
+		em.mouseReports = MouseButtons
+		if em.localModes[PmMouseMotion] == ModeOn {
+			em.mouseReports = MouseMotion
+		} else if em.localModes[PmMouseDrag] == ModeOn {
+			em.mouseReports = MouseDrag
+		}
+	case em.localModes[PmMouseX10] == ModeOn:
+		em.mouseReports = MouseButtons
+	default:
+		em.mouseReports = MouseDisabled
+	}
+	return em.mouseReports
 }
 
 // SendRaw allows raw data to be sent to the application.
