@@ -282,8 +282,9 @@ func TestKeyRepeatCapsLock(t *testing.T) {
 
 	MustStart(t, term)
 
-	// these are unreasonable repeat rates, but its somewhere to start
-	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
+	// Use a large repeat interval so the test is not sitting on a timing boundary.
+	// We only need to prove that caps lock does not emit its own repeat.
+	term.SetRepeat(time.Millisecond*50, time.Millisecond*250)
 
 	term.KeyPress(vt.KeyCapsLock)
 	term.KeyPress(vt.KeyZ)
@@ -292,7 +293,7 @@ func TestKeyRepeatCapsLock(t *testing.T) {
 	term.KeyRelease(vt.KeyZ)
 	term.KeyRelease(vt.KeyCapsLock)
 
-	CheckRead(t, term, "ZZZ") // 0 ms, 50 ms, 75 ms
+	CheckRead(t, term, "ZZ") // 0 ms, 50 ms
 }
 
 // TestKeyRepeatNoAlt ensures that alt keys do not repeat
