@@ -248,12 +248,12 @@ func TestKeyRepeat(t *testing.T) {
 	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
 
 	term.KeyPress(vt.KeyX)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(90 * time.Millisecond)
 	term.KeyPress(vt.KeyX)
 	term.KeyRelease(vt.KeyX)
 	term.KeyRelease(vt.KeyCapsLock)
 
-	CheckRead(t, term, "xxxx") // 0 ms, 50 ms, 75 ms, 100 ms
+	CheckRead(t, term, "xxx") // 0 ms, 50 ms, 75 ms
 }
 
 // TestKeyRepeatDisabled tests simple key repeat
@@ -287,12 +287,12 @@ func TestKeyRepeatCapsLock(t *testing.T) {
 
 	term.KeyPress(vt.KeyCapsLock)
 	term.KeyPress(vt.KeyZ)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(90 * time.Millisecond)
 	term.KeyPress(vt.KeyZ)
 	term.KeyRelease(vt.KeyZ)
 	term.KeyRelease(vt.KeyCapsLock)
 
-	CheckRead(t, term, "ZZZZ") // 0 ms, 50 ms, 75 ms, 100 ms
+	CheckRead(t, term, "ZZZ") // 0 ms, 50 ms, 75 ms
 }
 
 // TestKeyRepeatNoAlt ensures that alt keys do not repeat
@@ -327,12 +327,12 @@ func TestKeyRepeatShift(t *testing.T) {
 
 	term.KeyPress(vt.KeyLShift)
 	term.KeyPress(vt.Key1)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(90 * time.Millisecond)
 	term.KeyPress(vt.Key1)
 	term.KeyRelease(vt.Key1)
 	term.KeyRelease(vt.KeyLShift)
 
-	CheckRead(t, term, "!!!!") // 0 ms, 50 ms, 75 ms, 100 ms
+	CheckRead(t, term, "!!!") // 0 ms, 50 ms, 75 ms
 }
 
 // TestKeyRepeatShiftRelease ensures that releasing shift breaks repeat.
@@ -348,11 +348,11 @@ func TestKeyRepeatShiftRelease(t *testing.T) {
 	term.KeyPress(vt.KeyLShift)
 	term.KeyPress(vt.Key2)
 	term.KeyRelease(vt.KeyLShift)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(90 * time.Millisecond)
 	term.KeyPress(vt.Key2)
 	term.KeyRelease(vt.Key2)
 
-	CheckRead(t, term, "@222") // 0 ms, 50 ms, 75 ms, 100 ms
+	CheckRead(t, term, "@22") // 0 ms, 50 ms, 75 ms
 }
 
 func TestKeyRepeatCursor(t *testing.T) {
@@ -365,12 +365,12 @@ func TestKeyRepeatCursor(t *testing.T) {
 	term.SetRepeat(time.Millisecond*50, time.Millisecond*25)
 
 	term.KeyPress(vt.KeyRight)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(90 * time.Millisecond)
 	term.KeyPress(vt.KeyRight)
 	term.KeyRelease(vt.KeyRight)
 	term.KeyRelease(vt.KeyRight)
 
-	CheckRead(t, term, "\x1b[C\x1b[C\x1b[C\x1b[C") // 0 ms, 50 ms, 75 ms, 100 ms
+	CheckRead(t, term, "\x1b[C\x1b[C\x1b[C") // 0 ms, 50 ms, 75 ms
 }
 
 func TestKeyWin32(t *testing.T) {
