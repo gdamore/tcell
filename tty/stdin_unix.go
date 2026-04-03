@@ -71,6 +71,10 @@ func (tty *stdIoTty) Start() error {
 	if err != nil {
 		return err
 	}
+	if err = tcFlushInput(tty.fd); err != nil {
+		_ = term.Restore(tty.fd, saved)
+		return err
+	}
 	tty.saved = saved
 	tty.started = true
 

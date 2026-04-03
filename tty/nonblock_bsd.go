@@ -41,3 +41,10 @@ func tcSetBufParams(fd int, vMin uint8, vTime uint8) error {
 	}
 	return nil
 }
+
+// tcFlushInput discards any queued input before the caller starts reading from
+// the tty. This avoids stale bytes, such as delayed mouse reports, from being
+// delivered to the next foreground application.
+func tcFlushInput(fd int) error {
+	return unix.IoctlSetPointerInt(fd, unix.TIOCFLUSH, unix.TCIFLUSH)
+}

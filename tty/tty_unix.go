@@ -85,6 +85,11 @@ func (tty *devTty) Start() error {
 		tty.f.Close()
 		return err
 	}
+	if err = tcFlushInput(tty.fd); err != nil {
+		_ = term.Restore(tty.fd, saved)
+		tty.f.Close()
+		return err
+	}
 	tty.saved = saved
 	tty.started = true
 
