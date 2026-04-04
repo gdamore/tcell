@@ -1,5 +1,9 @@
 name: windows
-on: [push]
+on:
+  pull_request:
+  push:
+    branches:
+      - main
 jobs:
   build:
     name: build
