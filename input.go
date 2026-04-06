@@ -1186,7 +1186,7 @@ type eventPrimaryAttributes struct {
 	Greek         bool // Greek (DA 23)
 	Turkish       bool // Turkish (DA 24)
 	Latin2        bool // ISO Latin-2 (DA 42)
-	Clipboard     bool // OSC-52 support (DA 52)
+	Clipboard     bool // OSC 52 support (DA 52)
 }
 
 // eventTermName is for extended attributes
