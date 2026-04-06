@@ -128,7 +128,7 @@ const (
 	requestPrimaryDA  = "\x1b[c"                            // Request primary device attributes
 	requestExtAttr    = "\x1b[>q"                           // Request extended attribute (emulator name and version)
 	setClipboard      = "\x1b]52;c;%s\x1b\\"                // Clipboard content is base64
-	notifyDesktop9    = "\x1b]9;%[2]s\x1b\\"                // Args are title, body (but osc 9 only has body)
+	notifyDesktop9    = "\x1b]9;%[2]s\x1b\\"                // Args are title, body (but OSC 9 only has body)
 	notifyDesktop777  = "\x1b]777;notify;%s;%s\x1b\\"       // Most commonly supported
 	queryKittyKbd     = "\x1b[?u"                           // Query for Kitty keyboard support
 	enableKittyKbd    = "\x1b[=1u"                          // Technically this pushes
