@@ -769,6 +769,13 @@ func (ip *inputParser) handleMouse(mode rune, params []int) {
 		}
 
 	case 'M':
+		if btn&0x20 != 0 && button != ButtonNone && (ip.btnsDown&button) == 0 {
+			// Ghostty may send out motion signals that indicate a button has
+			// been pressed, even when the button is not actually pressed.
+			// Do not create a synthetic button-down state from these packets.
+			button = ip.btnsDown
+			break
+		}
 		// record this press
 		ip.btnsDown |= button
 		// and use the full set so can see chords
