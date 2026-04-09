@@ -61,6 +61,6 @@ func TestBeep(t *testing.T) {
 	wg.Wait()
 
 	if cnt := mt.Bells(); cnt != 3 {
-		t.Errorf("incorrect bell count %d != 2", cnt)
+		t.Errorf("incorrect bell count %d != 3", cnt)
 	}
 }
