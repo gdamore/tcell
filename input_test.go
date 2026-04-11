@@ -823,3 +823,69 @@ func TestKeyboardMode(t *testing.T) {
 		})
 	}
 }
+
+// TestEscDuringCsiResetsParser verifies that an ESC byte received while
+// the parser is in CSI state correctly transitions to escape state per
+// ECMA-48 §5.3.1, rather than being swallowed as a "bad parse".
+func TestEscDuringCsiResetsParser(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+
+	// Feed a partial CSI (ESC [) followed immediately by a new escape
+	// sequence for Down arrow (ESC [ B). Without the fix, the second
+	// ESC would be swallowed and 'B' would be emitted as a literal key.
+	ip.ScanUTF8([]byte("\x1b[\x1b[B"))
+
+	var got *EventKey
+	for {
+		select {
+		case ev := <-evch:
+			if kev, ok := ev.(*EventKey); ok {
+				got = kev
+			}
+			continue
+		case <-time.After(100 * time.Millisecond):
+		}
+		break
+	}
+
+	if got == nil {
+		t.Fatal("expected a key event, got none")
+	}
+	if got.Key() != KeyDown {
+		t.Errorf("expected KeyDown, got key=%v str=%q mod=%v", got.Key(), got.Str(), got.Modifiers())
+	}
+}
+
+// TestEscDuringSs3ResetsParser verifies that an ESC byte received while
+// the parser is accumulating SS3 parameters correctly transitions to
+// escape state per ECMA-48 §5.3.1.
+func TestEscDuringSs3ResetsParser(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+
+	// Feed a partial SS3 with parameter (ESC O 1) followed immediately
+	// by a new escape sequence for Down arrow (ESC [ B). Without the
+	// fix, the ESC would be lost inside the SS3 parameter accumulation.
+	ip.ScanUTF8([]byte("\x1bO1\x1b[B"))
+
+	var got *EventKey
+	for {
+		select {
+		case ev := <-evch:
+			if kev, ok := ev.(*EventKey); ok {
+				got = kev
+			}
+			continue
+		case <-time.After(100 * time.Millisecond):
+		}
+		break
+	}
+
+	if got == nil {
+		t.Fatal("expected a key event, got none")
+	}
+	if got.Key() != KeyDown {
+		t.Errorf("expected KeyDown, got key=%v str=%q mod=%v", got.Key(), got.Str(), got.Modifiers())
+	}
+}
