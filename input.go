@@ -546,7 +546,12 @@ func (ip *inputParser) scan() {
 			// the terminal to the host (queries in the other direction can use it.)
 			// However, this is only true if the first parameter does not have a "?",
 			// because it *does* collide with DEC private mode queries otherwise.
-			if r >= 0x30 && r <= 0x3F { // parameter bytes
+			if r == '\x1b' {
+				// Per ECMA-48 §5.3.1, ESC restarts the escape
+				// sequence machine from any intermediate state.
+				ip.state = istEsc
+				ip.escChar = 0
+			} else if r >= 0x30 && r <= 0x3F { // parameter bytes
 				ip.csiParams = append(ip.csiParams, byte(r))
 			} else if r == '$' && len(ip.csiParams) > 0 && ip.csiParams[0] != '?' { // rxvt non-standard
 				ip.handleCsi(r, ip.csiParams, ip.csiInterm)
@@ -565,7 +570,12 @@ func (ip *inputParser) scan() {
 		case istSs3: // typically application mode keys or older terminals
 			ip.state = istInit
 			// some SS3 sequences (old VTE) encode modifiers here just like CSI
-			if r >= 0x30 && r <= 0x3F {
+			if r == '\x1b' {
+				// Per ECMA-48 §5.3.1, ESC restarts the escape
+				// sequence machine from any intermediate state.
+				ip.state = istEsc
+				ip.escChar = 0
+			} else if r >= 0x30 && r <= 0x3F {
 				ip.csiParams = append(ip.csiParams, byte(r))
 				ip.state = istSs3
 			} else if k, ok := ss3Keys[r]; ok {
