@@ -824,6 +824,26 @@ func TestKeyboardMode(t *testing.T) {
 	}
 }
 
+// firstKey drains the event channel and returns the first EventKey received,
+// or nil if none arrives within 100ms.
+func firstKey(evch chan Event) *EventKey {
+	var got *EventKey
+	for {
+		select {
+		case ev := <-evch:
+			if got == nil {
+				if kev, ok := ev.(*EventKey); ok {
+					got = kev
+				}
+			}
+			continue
+		case <-time.After(100 * time.Millisecond):
+		}
+		break
+	}
+	return got
+}
+
 // TestEscDuringCsiResetsParser verifies that an ESC byte received while
 // the parser is in CSI state correctly transitions to escape state per
 // ECMA-48 §5.3.1, rather than being swallowed as a "bad parse".
@@ -836,19 +856,7 @@ func TestEscDuringCsiResetsParser(t *testing.T) {
 	// ESC would be swallowed and 'B' would be emitted as a literal key.
 	ip.ScanUTF8([]byte("\x1b[\x1b[B"))
 
-	var got *EventKey
-	for {
-		select {
-		case ev := <-evch:
-			if kev, ok := ev.(*EventKey); ok {
-				got = kev
-			}
-			continue
-		case <-time.After(100 * time.Millisecond):
-		}
-		break
-	}
-
+	got := firstKey(evch)
 	if got == nil {
 		t.Fatal("expected a key event, got none")
 	}
@@ -869,19 +877,7 @@ func TestEscDuringSs3ResetsParser(t *testing.T) {
 	// fix, the ESC would be lost inside the SS3 parameter accumulation.
 	ip.ScanUTF8([]byte("\x1bO1\x1b[B"))
 
-	var got *EventKey
-	for {
-		select {
-		case ev := <-evch:
-			if kev, ok := ev.(*EventKey); ok {
-				got = kev
-			}
-			continue
-		case <-time.After(100 * time.Millisecond):
-		}
-		break
-	}
-
+	got := firstKey(evch)
 	if got == nil {
 		t.Fatal("expected a key event, got none")
 	}
