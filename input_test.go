@@ -885,3 +885,90 @@ func TestEscDuringSs3ResetsParser(t *testing.T) {
 		t.Errorf("expected KeyDown, got key=%v str=%q mod=%v", got.Key(), got.Str(), got.Modifiers())
 	}
 }
+
+// TestInputEscSeqRoundTrip verifies that EventKey.EscSeq() returns the
+// raw source bytes that produced the key event, preserving byte-level
+// fidelity so callers can forward the original wire form to a child
+// pty. In particular a raw single-byte C1 CSI (\x9b) must come back
+// as one byte, not the 2-byte UTF-8 form (\xc2\x9b), and a UTF-8
+// encoded C1 must come back as the original two bytes.
+func TestInputEscSeqRoundTrip(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  []byte
+		key    Key
+		mod    ModMask
+		str    string
+		escSeq string
+	}{
+		{"CSI-Up", []byte{'\x1b', '[', 'A'}, KeyUp, ModNone, "", "\x1b[A"},
+		{"CSI-Ctrl-Up", []byte{'\x1b', '[', '1', ';', '5', 'A'}, KeyUp, ModCtrl, "", "\x1b[1;5A"},
+		{"SS3-F1", []byte{'\x1b', 'O', 'P'}, KeyF1, ModNone, "", "\x1bOP"},
+		{"Kitty-Ctrl-I", []byte{'\x1b', '[', '1', '0', '5', ';', '5', 'u'}, 'I', ModCtrl, "", "\x1b[105;5u"},
+		{"C1-CSI-Up-Raw", []byte{'\x9b', 'A'}, KeyUp, ModNone, "", "\x9bA"},
+		{"C1-CSI-Up-UTF8", []byte{'\xc2', '\x9b', 'A'}, KeyUp, ModNone, "", "\xc2\x9bA"},
+		{"Printable-A", []byte{'A'}, KeyRune, ModNone, "A", "A"},
+		{"UTF8-Euro", []byte("€"), KeyRune, ModNone, "€", "€"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			evch := make(chan Event, 10)
+			ip := newInputParser(evch)
+
+			ip.ScanUTF8(tt.input)
+
+			got := firstKey(evch)
+			if got == nil {
+				t.Fatal("expected a key event, got none")
+			}
+			if got.Key() != tt.key {
+				t.Errorf("key: expected %v, got %v", tt.key, got.Key())
+			}
+			if got.Modifiers() != tt.mod {
+				t.Errorf("modifiers: expected %v, got %v", tt.mod, got.Modifiers())
+			}
+			if got.Str() != tt.str {
+				t.Errorf("str: expected %q, got %q", tt.str, got.Str())
+			}
+			if got.EscSeq() != tt.escSeq {
+				t.Errorf("EscSeq: expected % x, got % x", tt.escSeq, got.EscSeq())
+			}
+		})
+	}
+}
+
+// TestInputEscSeqResetsBetweenSequences verifies that curEsc is reset
+// when the parser returns to its initial state, so consecutive key
+// events don't leak bytes from earlier sequences into later EscSeq()
+// values.
+func TestInputEscSeqResetsBetweenSequences(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+
+	// First sequence: a CSI Up. Then a plain 'A'. EscSeq should be
+	// "\x1b[A" for the first event and "A" for the second, not
+	// "\x1b[A" + "A" for the second.
+	ip.ScanUTF8([]byte{'\x1b', '[', 'A', 'A'})
+
+	var events []*EventKey
+	for range 2 {
+		select {
+		case ev := <-evch:
+			if kev, ok := ev.(*EventKey); ok {
+				events = append(events, kev)
+			}
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("timeout waiting for event")
+		}
+	}
+	if len(events) != 2 {
+		t.Fatalf("expected 2 key events, got %d", len(events))
+	}
+	if events[0].EscSeq() != "\x1b[A" {
+		t.Errorf("first event EscSeq: expected %q, got %q", "\x1b[A", events[0].EscSeq())
+	}
+	if events[1].EscSeq() != "A" {
+		t.Errorf("second event EscSeq: expected %q, got %q", "A", events[1].EscSeq())
+	}
+}
