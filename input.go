@@ -84,6 +84,7 @@ type inputParser struct {
 	keyTime   time.Time    // time of last key press / byte ingested
 	nested    *inputParser // for buggy win32-input-mode implementations
 	surrogate rune         // high surrogate pair seen (for Win32 input mode)
+	curEsc    []rune       // runes consumed for the sequence currently being parsed
 }
 
 // Waiting returns true if the processor is waiting for
@@ -125,6 +126,10 @@ func (ip *inputParser) post(ev Event) {
 		case keyPasteEnd:
 			ev = NewEventPaste(false)
 		}
+	}
+
+	if ke, ok := ev.(*EventKey); ok && len(ip.curEsc) > 0 {
+		ke.esc = string(ip.curEsc)
 	}
 
 	ip.evch <- ev
@@ -444,6 +449,10 @@ func (ip *inputParser) scan() {
 		ip.buf = ip.buf[1:]
 		ip.escChar = 0
 		ip.keyTime = time.Now()
+		if ip.state == istInit {
+			ip.curEsc = ip.curEsc[:0]
+		}
+		ip.curEsc = append(ip.curEsc, r)
 		if r >= 0xA0 {
 			// 8-bit extended Unicode we just treat as such - this will swallow anything else queued up
 			ip.state = istInit
