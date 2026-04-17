@@ -50,6 +50,13 @@ func (ev *EventError) Error() string {
 	return ev.err.Error()
 }
 
+// Unwrap exposes the underlying error payload so callers can use
+// errors.Is / errors.As to match against sentinel values such as
+// io.EOF.
+func (ev *EventError) Unwrap() error {
+	return ev.err
+}
+
 // NewEventError creates an ErrorEvent with the given error payload.
 func NewEventError(err error) *EventError {
 	ev := &EventError{err: err}
