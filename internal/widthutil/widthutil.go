@@ -12,10 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package widthutil
 
 import (
-	"github.com/gdamore/tcell/v3/internal/widthutil"
+	"os"
+	"strings"
+
+	"github.com/clipperhouse/displaywidth"
 )
 
-var textWidthOptions = widthutil.Options()
+// Options returns the display-width options derived from the user's
+// environment. We preserve the historical RUNEWIDTH_EASTASIAN toggle.
+func Options() displaywidth.Options {
+	if rw := strings.ToLower(os.Getenv("RUNEWIDTH_EASTASIAN")); rw == "1" || rw == "true" || rw == "yes" {
+		return displaywidth.Options{EastAsianWidth: true}
+	}
+	return displaywidth.Options{}
+}

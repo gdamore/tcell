@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,10 +13,6 @@
 // limitations under the License.
 
 package tcell
-
-import (
-	"github.com/rivo/uniseg"
-)
 
 type cell struct {
 	currStr   string
@@ -60,14 +56,12 @@ func (cb *CellBuffer) Put(x int, y int, str string, style Style) (string, int) {
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		var cl string
 		c := &cb.cells[(y*cb.w)+x]
-		state := -1
-		for width == 0 && str != "" {
-			var g string
-			g, str, width, state = uniseg.FirstGraphemeClusterInString(str, state)
-			cl += g
-			if g == "" {
-				break
-			}
+		g := textWidthOptions.StringGraphemes(str)
+		for width == 0 && g.Next() {
+			cluster := g.Value()
+			cl += cluster
+			width = g.Width()
+			str = str[len(cluster):]
 		}
 
 		// Wide characters: we want to mark the "wide" cells

@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcell
+package vt
 
-import (
-	"github.com/gdamore/tcell/v3/internal/widthutil"
-)
+import "github.com/gdamore/tcell/v3/internal/widthutil"
 
 var textWidthOptions = widthutil.Options()

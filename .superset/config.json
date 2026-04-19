@@ -1,0 +1,7 @@
+{
+  "setup": [
+    "go mod download"
+  ],
+  "teardown": [],
+  "run": []
+}
