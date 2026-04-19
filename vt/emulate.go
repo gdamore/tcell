@@ -24,9 +24,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 
+	"github.com/clipperhouse/uax29/v2/graphemes"
 	"github.com/gdamore/tcell/v3/color"
-	"github.com/rivo/uniseg"
 )
 
 // Emulator is a terminal emulator API. It implements the state machinery
@@ -104,6 +106,87 @@ type styleStruct struct {
 }
 
 var BaseStyle = &styleStruct{}
+
+var asciiRuneStrings = func() [utf8.RuneSelf]string {
+	var table [utf8.RuneSelf]string
+	for i := 0; i < utf8.RuneSelf; i++ {
+		table[i] = string(rune(i))
+	}
+	return table
+}()
+
+const (
+	runeStringCacheSize      = 32
+	clusterStringCacheSize   = 32
+	clusterStringCacheMaxLen = 128
+)
+
+type runeStringCache struct {
+	entries [runeStringCacheSize]runeStringCacheEntry
+	n       int
+}
+
+type runeStringCacheEntry struct {
+	r rune
+	s string
+}
+
+func (c *runeStringCache) stringFor(r rune) string {
+	for i := 0; i < c.n; i++ {
+		if c.entries[i].r == r {
+			return c.entries[i].s
+		}
+	}
+
+	s := string(r)
+	n := c.n
+	if n < len(c.entries) {
+		n++
+	}
+	copy(c.entries[1:n], c.entries[:n-1])
+	c.entries[0] = runeStringCacheEntry{r: r, s: s}
+	c.n = n
+	return s
+}
+
+type clusterStringCache struct {
+	entries [clusterStringCacheSize]clusterStringCacheEntry
+	n       int
+}
+
+type clusterStringCacheEntry struct {
+	n int
+	b [clusterStringCacheMaxLen]byte
+	s string
+}
+
+func (c *clusterStringCache) stringFor(cluster []byte) string {
+	if len(cluster) == 0 {
+		return ""
+	}
+	if len(cluster) > clusterStringCacheMaxLen {
+		return string(cluster)
+	}
+	for i := 0; i < c.n; i++ {
+		e := &c.entries[i]
+		if e.n == len(cluster) && bytes.Equal(e.b[:e.n], cluster) {
+			return e.s
+		}
+	}
+
+	s := string(cluster)
+	n := c.n
+	if n < len(c.entries) {
+		n++
+	}
+	copy(c.entries[1:n], c.entries[:n-1])
+	e := &c.entries[0]
+	e.n = len(cluster)
+	copy(e.b[:], cluster)
+	e.s = s
+	c.n = n
+	return s
+}
 
 func (ss *styleStruct) Fg() color.Color              { return ss.fg }
 func (ss *styleStruct) Bg() color.Color              { return ss.bg }
@@ -190,6 +273,7 @@ func NewEmulator(be Backend) Emulator {
 	em.ltMargin = 0
 	em.rtMargin = em.size.X - 1
 	em.cells = make([]Cell, int(em.size.X)*int(em.size.Y))
+	em.graphemeIter = *graphemes.FromBytes(nil)
 	close(stopQ)
 	em.inb = em.inbInit
 	em.cursor = BlinkingBlock
@@ -201,36 +285,39 @@ func NewEmulator(be Backend) Emulator {
 // a Backend.  It implements the common escape sequence handling and high
 // level functionality that a real terminal emulator, or a mock, would need.
 type emulator struct {
-	stopQ        chan bool
-	writeQ       chan any // queues data from application to emulator
-	readQ        chan any // queues data from emulator to application
-	be           Backend
-	inBuf        *bytes.Buffer // buffer queued for input
-	inb          func(byte)    // input byte function (faster than state switch)
-	style        Style
-	defaultStyle Style
-	utfLen       int
-	pos          Coord
-	buffering    uint           // reference count - number of (re-entrant) buffering calls
-	autoWrap     bool           // next character will wrap (auto margin, deferred until char emitted)
-	sevenOnly    bool           // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
-	appKeyPad    bool           // use application key pad keys?
-	name         string         // name of this emulator (used for extended attributes)
-	vers         string         // version string of this emulator (used for extended attributes)
-	savedPos     Coord          // saved via DECSC
-	saved        savedCursor    // data saved by save cursor (DECSC)
-	sendLock     sync.Mutex     // ensures that send data cannot be intermixed
-	modeLock     sync.RWMutex   // protects localModes/ansiModes and related derived state
-	tabStops     []Col          // tab stops, ordered. if nil every 8th position is used
-	lastIndex    int            // index of last cell written + 1 (for grapheme clustering) (zero means none)
-	cells        []Cell         // content of cells, we have to maintain our own copy (backend might or might not)
-	mouseReports MouseReporting // whether we have enabled mouse reports
-	size         Coord          // physical window size
-	topMargin    Row            // top margin, scrollable region includes this row
-	botMargin    Row            // bottom margin, scrollable region includes this row
-	ltMargin     Col            // left margin, scrollable region to the right
-	rtMargin     Col            // right margin, scrollable region to the left
-	cursor       CursorStyle    // current cursor style (visibility, blink, shape)
+	stopQ          chan bool
+	writeQ         chan any // queues data from application to emulator
+	readQ          chan any // queues data from emulator to application
+	be             Backend
+	inBuf          *bytes.Buffer // buffer queued for input
+	inb            func(byte)    // input byte function (faster than state switch)
+	style          Style
+	defaultStyle   Style
+	utfLen         int
+	pos            Coord
+	buffering      uint         // reference count - number of (re-entrant) buffering calls
+	autoWrap       bool         // next character will wrap (auto margin, deferred until char emitted)
+	sevenOnly      bool         // only allow 7-bit escapes (needed for KOI8, ShiftJIS, etc.)
+	appKeyPad      bool         // use application key pad keys?
+	name           string       // name of this emulator (used for extended attributes)
+	vers           string       // version string of this emulator (used for extended attributes)
+	saved          savedCursor  // data saved by save cursor (DECSC)
+	sendLock       sync.Mutex   // ensures that send data cannot be intermixed
+	modeLock       sync.RWMutex // protects localModes/ansiModes and related derived state
+	tabStops       []Col        // tab stops, ordered. if nil every 8th position is used
+	lastIndex      int          // index of last cell written + 1 (for grapheme clustering) (zero means none)
+	graphemeBuf    []byte       // scratch buffer for grapheme clustering checks
+	graphemeIter   graphemes.Iterator[[]byte]
+	runeStrings    runeStringCache
+	clusterStrings clusterStringCache
+	cells          []Cell         // content of cells, we have to maintain our own copy (backend might or might not)
+	mouseReports   MouseReporting // whether we have enabled mouse reports
+	size           Coord          // physical window size
+	topMargin      Row            // top margin, scrollable region includes this row
+	botMargin      Row            // bottom margin, scrollable region includes this row
+	ltMargin       Col            // left margin, scrollable region to the right
+	rtMargin       Col            // right margin, scrollable region to the left
+	cursor         CursorStyle    // current cursor style (visibility, blink, shape)
 
 	localModes map[PrivateMode]ModeStatus // some modes we handle locally
 	ansiModes  map[AnsiMode]ModeStatus    // some modes we handle locally
@@ -1796,30 +1883,60 @@ func (em *emulator) putRune(r rune) {
 	if lastIdx := em.lastIndex; lastIdx != 0 {
 		lastIdx--
 		if pm := em.getPrivateMode(PmGraphemeClusters); pm == ModeOn || pm == ModeOnLocked {
-			// maybe we need to update the last index
-			str := em.cells[lastIdx].C + string(r)
-			if cs, rest, width, _ := uniseg.FirstGraphemeClusterInString(str, -1); rest == "" {
-				// we are adding to a cluster
-				em.cells[lastIdx].C = cs
-				em.cells[lastIdx].W = width
-				col := Col(lastIdx) % dim.X
-				row := Row(lastIdx / int(dim.X))
-				// we may have to move position if this switches to wide, so recalculate expected end
-				end := (col + Col(width)) % dim.X
-				if em.getPrivateMode(PmAutoMargin) == ModeOn && end >= dim.X {
-					em.autoWrap = true
+			// ASCII-to-ASCII pairs cannot extend a grapheme cluster, except CRLF.
+			prev := em.cells[lastIdx].C
+			if len(prev) == 1 && prev[0] < utf8.RuneSelf && !shouldCheckGrapheme(prev[0], r) {
+				// fall through to the normal single-rune path
+			} else {
+				// maybe we need to update the last index
+				buf := em.graphemeBuf[:0]
+				need := len(prev) + utf8.UTFMax
+				if cap(buf) < need {
+					buf = make([]byte, 0, need)
 				}
-				if width == 2 && col < dim.X-1 && em.cells[lastIdx+1].W != 0 {
-					// erase the next cell before putting down a character
-					em.cells[lastIdx+1].C = ""
-					em.cells[lastIdx+1].S = em.cells[lastIdx].S
-					em.cells[lastIdx+1].W = 0
-					em.be.Put(Coord{X: col + 1, Y: row}, em.cells[lastIdx+1])
+				buf = append(buf, prev...)
+				buf = utf8.AppendRune(buf, r)
+				em.graphemeIter.SetText(buf)
+				if em.graphemeIter.Next() && len(em.graphemeIter.Value()) == len(buf) {
+					// we are adding to a cluster
+					cluster := em.graphemeIter.Value()
+					width := em.cells[lastIdx].W
+					if w := textWidthOptions.Rune(r); w > width {
+						width = w
+					}
+					if isRegionalIndicator(r) && width < 2 {
+						width = 2
+					}
+					if r == '\uFE0F' && width < 2 {
+						width = 2
+					}
+					em.cells[lastIdx].C = em.clusterString(cluster)
+					em.cells[lastIdx].W = width
+					col := Col(lastIdx) % dim.X
+					row := Row(lastIdx / int(dim.X))
+					// we may have to move position if this switches to wide, so recalculate expected end
+					next := col + Col(width)
+					if em.getPrivateMode(PmAutoMargin) == ModeOn && next >= dim.X {
+						em.autoWrap = true
+					}
+					end := next
+					if end >= dim.X {
+						end = dim.X - 1
+					}
+					if width == 2 && col < dim.X-1 && em.cells[lastIdx+1].W != 0 {
+						// erase the next cell before putting down a character
+						em.cells[lastIdx+1].C = ""
+						em.cells[lastIdx+1].S = em.cells[lastIdx].S
+						em.cells[lastIdx+1].W = 0
+						em.be.Put(Coord{X: col + 1, Y: row}, em.cells[lastIdx+1])
+					}
+					// we leave the em.lastIndex for now, we might keep extending this cluster
+					em.be.Put(Coord{X: col, Y: row}, em.cells[lastIdx])
+					em.setPosition(Coord{X: end, Y: row})
+					em.graphemeBuf = buf[:0]
+					return
 				}
-				// we leave the em.lastIndex for now, we might keep extending this cluster
-				em.be.Put(Coord{X: col, Y: row}, em.cells[lastIdx])
-				em.setPosition(Coord{X: end, Y: row})
-				return
+				em.graphemeBuf = buf[:0]
 			}
 		}
 	}
@@ -1831,12 +1948,12 @@ func (em *emulator) putRune(r rune) {
 	autoMargin := em.getPrivateMode(PmAutoMargin) == ModeOn
 
 	pos := em.getPosition()
-	w := uniseg.StringWidth(string(r))
+	w := textWidthOptions.Rune(r)
 	if autoMargin && pos.X+Col(w) >= dim.X {
 		em.autoWrap = true
 	}
 	index := em.index(pos)
-	em.cells[index].C = string(r)
+	em.cells[index].C = em.runeString(r)
 	em.cells[index].S = em.style
 	em.cells[index].W = w
 	em.be.Put(em.pos, em.cells[index])
@@ -1852,6 +1969,42 @@ func (em *emulator) putRune(r rune) {
 	// Note that if auto margin is enabled, we will have set
 	// autoWrap above if we were at the margin already.
 	em.moveRightN(Col(w))
+}
+
+func (em *emulator) runeString(r rune) string {
+	if r < utf8.RuneSelf {
+		return asciiRuneStrings[r]
+	}
+	return em.runeStrings.stringFor(r)
+}
+
+func (em *emulator) clusterString(cluster []byte) string {
+	return em.clusterStrings.stringFor(cluster)
+}
+
+func shouldCheckGrapheme(prev byte, r rune) bool {
+	if r < utf8.RuneSelf {
+		return prev == '\r' && r == '\n'
+	}
+
+	if unicode.Is(unicode.M, r) {
+		return true
+	}
+	if r == '\u200d' {
+		return true
+	}
+	if r >= 0xFE00 && r <= 0xFE0F {
+		return true
+	}
+	if r >= 0xE0100 && r <= 0xE01EF {
+		return true
+	}
+
+	return false
+}
+
+func isRegionalIndicator(r rune) bool {
+	return r >= 0x1F1E6 && r <= 0x1F1FF
 }
 
 // eraseCell erases a single cell at the given offset.
@@ -2544,7 +2697,7 @@ func (em *emulator) MouseEvent(ev MouseEvent) {
 			// to be released.  (Please use SGR mode if at all possible.)
 			// Further, this mode is not CSI compliant as the encoded values that arrive ahead of
 			// the final character may be within the range of technically legal CSI final bytes.
-			if ev.Down == false {
+			if !ev.Down {
 				ev.Button = NoButton
 			}
 			btn := ev.encodeButton()

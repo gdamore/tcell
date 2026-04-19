@@ -29,15 +29,15 @@ func (n noMouseBackend) GetPrivateMode(pm PrivateMode) ModeStatus { return n.mb.
 func (n noMouseBackend) SetPrivateMode(pm PrivateMode, status ModeStatus) error {
 	return n.mb.SetPrivateMode(pm, status)
 }
-func (n noMouseBackend) GetSize() Coord               { return n.mb.GetSize() }
-func (n noMouseBackend) Colors() int                  { return n.mb.Colors() }
-func (n noMouseBackend) Put(pos Coord, cell Cell)     { n.mb.Put(pos, cell) }
-func (n noMouseBackend) GetPosition() Coord           { return n.mb.GetPosition() }
-func (n noMouseBackend) SetPosition(pos Coord)        { n.mb.SetPosition(pos) }
-func (n noMouseBackend) Reset()                       { n.mb.Reset() }
-func (n noMouseBackend) RaiseResize()                 { n.mb.RaiseResize() }
-func (n noMouseBackend) Buffering(enabled bool)       { n.mb.Buffering(enabled) }
-func (n noMouseBackend) SetCursor(cs CursorStyle)     { n.mb.SetCursor(cs) }
+func (n noMouseBackend) GetSize() Coord           { return n.mb.GetSize() }
+func (n noMouseBackend) Colors() int              { return n.mb.Colors() }
+func (n noMouseBackend) Put(pos Coord, cell Cell) { n.mb.Put(pos, cell) }
+func (n noMouseBackend) GetPosition() Coord       { return n.mb.GetPosition() }
+func (n noMouseBackend) SetPosition(pos Coord)    { n.mb.SetPosition(pos) }
+func (n noMouseBackend) Reset()                   { n.mb.Reset() }
+func (n noMouseBackend) RaiseResize()             { n.mb.RaiseResize() }
+func (n noMouseBackend) Buffering(enabled bool)   { n.mb.Buffering(enabled) }
+func (n noMouseBackend) SetCursor(cs CursorStyle) { n.mb.SetCursor(cs) }
 
 func TestEmulatorModeHelpers(t *testing.T) {
 	mb := NewMockBackend().(*mockBackend)
@@ -130,4 +130,61 @@ func TestMockBackendHelpers(t *testing.T) {
 	mb.Buffering(false)
 
 	MockOptNoBlit{}.SetMockOpt(mb)
+}
+
+func TestPutRuneGraphemeExtensions(t *testing.T) {
+	t.Parallel()
+
+	newEm := func() *emulator {
+		em := NewEmulator(NewMockBackend(MockOptSize{X: 8, Y: 1}, MockOptColors(0))).(*emulator)
+		em.style = BaseStyle.WithFg(color.White).WithBg(color.Black)
+		em.defaultStyle = em.style
+		em.localModes[PmGraphemeClusters] = ModeOn
+		em.localModes[PmAutoMargin] = ModeOn
+		em.cells[0].S = em.style
+		em.cells[0].W = 1
+		return em
+	}
+
+	t.Run("combining", func(t *testing.T) {
+		em := newEm()
+		em.cells[0].C = "e"
+		em.lastIndex = 1
+		em.pos = Coord{X: 1, Y: 0}
+
+		em.putRune('\u0301')
+
+		if got := em.cells[0].C; got != "e\u0301" {
+			t.Fatalf("unexpected cluster: %q", got)
+		}
+		if got := em.cells[0].W; got != 1 {
+			t.Fatalf("unexpected width: got %d, want 1", got)
+		}
+	})
+
+	t.Run("variation-selector", func(t *testing.T) {
+		em := newEm()
+		em.cells[0].C = "\u2764"
+		em.lastIndex = 1
+		em.pos = Coord{X: 1, Y: 0}
+
+		em.putRune('\uFE0F')
+
+		if got := em.cells[0].W; got != 2 {
+			t.Fatalf("unexpected width: got %d, want 2", got)
+		}
+	})
+
+	t.Run("regional-indicator", func(t *testing.T) {
+		em := newEm()
+		em.cells[0].C = "\U0001F1E6"
+		em.lastIndex = 1
+		em.pos = Coord{X: 1, Y: 0}
+
+		em.putRune('\U0001F1E7')
+
+		if got := em.cells[0].W; got != 2 {
+			t.Fatalf("unexpected width: got %d, want 2", got)
+		}
+	})
 }
