@@ -134,6 +134,8 @@ func main() {
 	lchar := '*'
 	bstr := ""
 	lks := ""
+	lkey := ""
+	kcnt := 0
 	pstr := ""
 	ecnt := 0
 	pasting := false
@@ -180,6 +182,12 @@ func main() {
 			s.Sync()
 			s.Put(w-1, h-1, "R", st)
 		case *tcell.EventKey:
+			if ev.Name() == lkey {
+				kcnt++
+			} else {
+				lkey = ev.Name()
+				kcnt = 1
+			}
 			s.Put(w-2, h-2, ev.Str(), st)
 			if pasting {
 				s.Put(w-1, h-1, "P", st)
@@ -223,6 +231,11 @@ func main() {
 				if ev.Str() == "C" || ev.Str() == "c" {
 					s.Clear()
 				}
+			}
+			if ks := fmt.Sprintf("K%d", kcnt); w >= len(ks) {
+				s.PutStrStyled(w-len(ks), h-1, ks, st)
+			} else {
+				s.PutStrStyled(0, h-1, ks, st)
 			}
 			lks = ev.Name()
 		case *tcell.EventPaste:
