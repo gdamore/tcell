@@ -1286,7 +1286,16 @@ func (t *tScreen) engage() error {
 	if t.title != "" && t.setTitle != "" {
 		t.Printf(t.setTitle, t.title)
 	}
-	// t.Print(t.enableCsiU)
+	if runtime.GOOS == "windows" {
+		// This workaround exists because of what we believe to be bugs in the
+		// interaction between ConPTY, the VT-Input layer, and some terminal emulators
+		// such as WezTerm.  Note that it is *not* needed for Windows Terminal, but
+		// should be benign there.  As another note, we have observed that at least Alacritty
+		// and WezTerm do not properly handle the primaryDA query on these platforms.
+		// (WezTerm performs much better when running a remote shell or on macOS.)
+		t.Print(enableKittyKbd)
+		t.Print(vt.PmWin32Input.Enable())
+	}
 	t.Print(requestWindowSize)
 
 	if t.inlineResize {
@@ -1344,6 +1353,13 @@ func (t *tScreen) disengage() {
 	if t.haveXTermKbd {
 		t.Print(disableXTermKbd)
 	}
+
+	// Hack for Windows.
+	if runtime.GOOS == "windows" {
+		t.Print(vt.PmWin32Input.Disable())
+		t.Print(disableKittyKbd)
+	}
+
 	// t.Print(t.disableCsiU)
 	if t.useAltScreen() {
 		t.Print(t.restoreTitle)
