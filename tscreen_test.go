@@ -112,6 +112,45 @@ func TestOptAltScreenDefault(t *testing.T) {
 	}
 }
 
+func TestOSC8ControlsAreStrippedFromOutput(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	style := StyleDefault.
+		Url("http://exa\x07mple.com/\x1b\\path").
+		UrlId("id\x00\x1f\x7f\x80\x9fend")
+
+	s.PutStrStyled(0, 0, "X", style)
+	s.Show()
+
+	out := tty.Output()
+	const prefix = "\x1b]8;id=idend;"
+	_, link, ok := strings.Cut(out, prefix)
+	if !ok {
+		t.Fatalf("missing OSC 8 link open sequence in output: %q", out)
+	}
+	link, _, ok = strings.Cut(link, "\x1b\\")
+	if !ok {
+		t.Fatalf("missing OSC 8 terminator in output: %q", out)
+	}
+	if link != "http://example.com/\\path" {
+		t.Fatalf("unexpected emitted URL payload: %q", link)
+	}
+	for i := 0; i < len(link); i++ {
+		c := link[i]
+		if c <= 0x1f || c == 0x7f || (c >= 0x80 && c <= 0x9f) {
+			t.Fatalf("control characters survived in emitted URL payload: %q", link)
+		}
+	}
+}
+
 // TestInitScreenStdio just tries to initialize the default screen using standard I/O.
 // It requires a working tty.
 func TestInitScreenStdio(t *testing.T) {
