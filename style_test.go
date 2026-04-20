@@ -93,3 +93,24 @@ func TestStyle(t *testing.T) {
 		t.Errorf("wrong attributes: %v", us.GetAttributes())
 	}
 }
+
+func TestStyleUrlStripsOSCControls(t *testing.T) {
+	s := StyleDefault.
+		Url("http://exa\x07mple.com/\x1b\\path").
+		UrlId("id\x00\x1f\x7f\x80\x9fend")
+
+	id, url := s.GetUrl()
+	combined := id + url
+	for i := 0; i < len(combined); i++ {
+		c := combined[i]
+		if c <= 0x1f || c == 0x7f || (c >= 0x80 && c <= 0x9f) {
+			t.Fatalf("control characters survived sanitization: id=%q url=%q", id, url)
+		}
+	}
+	if id != "idend" {
+		t.Fatalf("unexpected sanitized id: %q", id)
+	}
+	if url != "http://example.com/\\path" {
+		t.Fatalf("unexpected sanitized url: %q", url)
+	}
+}
