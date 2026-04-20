@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v3/color"
 )
@@ -43,15 +44,28 @@ type urlInfo struct {
 }
 
 func stripOSCControls(s string) string {
-	b := make([]byte, 0, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c <= 0x1f || c == 0x7f || (c >= 0x80 && c <= 0x9f) {
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); {
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			c := s[i]
+			if c <= 0x1f || c == 0x7f || (c >= 0x80 && c <= 0x9f) {
+				i++
+				continue
+			}
+			_ = b.WriteByte(c)
+			i++
 			continue
 		}
-		b = append(b, c)
+		if r <= 0x1f || r == 0x7f || (r >= 0x80 && r <= 0x9f) {
+			i += size
+			continue
+		}
+		b.WriteString(s[i : i+size])
+		i += size
 	}
-	return string(b)
+	return b.String()
 }
 
 // StyleDefault represents a default style, based upon the context.

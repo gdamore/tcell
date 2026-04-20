@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"testing"
+	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v3/color"
 )
@@ -112,5 +113,26 @@ func TestStyleUrlStripsOSCControls(t *testing.T) {
 	}
 	if url != "http://example.com/\\path" {
 		t.Fatalf("unexpected sanitized url: %q", url)
+	}
+
+	s = StyleDefault.
+		Url("http://example.com/\u3042\u009b").
+		UrlId("id\u3042\u009bend")
+
+	id, url = s.GetUrl()
+	combined = id + url
+	if !utf8.ValidString(combined) {
+		t.Fatalf("UTF-8 was corrupted during sanitization: id=%q url=%q", id, url)
+	}
+	for _, r := range combined {
+		if r <= 0x1f || r == 0x7f || (r >= 0x80 && r <= 0x9f) {
+			t.Fatalf("control characters survived UTF-8 sanitization: id=%q url=%q", id, url)
+		}
+	}
+	if id != "id\u3042end" {
+		t.Fatalf("unexpected sanitized UTF-8 id: %q", id)
+	}
+	if url != "http://example.com/\u3042" {
+		t.Fatalf("unexpected sanitized UTF-8 url: %q", url)
 	}
 }
