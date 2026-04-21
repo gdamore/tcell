@@ -1401,9 +1401,9 @@ func (t *tScreen) GetCells() *CellBuffer {
 
 func (t *tScreen) SetTitle(title string) {
 	t.Lock()
-	t.title = title
+	t.title = stripOSCControls(title)
 	if t.setTitle != "" && t.running {
-		t.Printf(t.setTitle, title)
+		t.Printf(t.setTitle, t.title)
 	}
 	t.Unlock()
 }
@@ -1432,7 +1432,7 @@ func (t *tScreen) HasClipboard() bool {
 
 func (t *tScreen) ShowNotification(title string, body string) {
 	t.Lock()
-	t.Printf(t.notifyDesktop, title, body)
+	t.Printf(t.notifyDesktop, stripOSCControls(title), stripOSCControls(body))
 	t.Unlock()
 }
 

@@ -217,3 +217,44 @@ func NewMockScreen(t *testing.T, opts ...vt.MockOpt) (vt.MockTerm, Screen) {
 	}
 	return mt, scr
 }
+
+func TestSetTitleStripsOSCControls(t *testing.T) {
+	mt := vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})
+	scr, err := NewTerminfoScreenFromTty(mt)
+	if err != nil {
+		t.Fatalf("failed to get terminal: %v", err)
+	}
+
+	scr.SetTitle("good\x07title\x1b\\end")
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+
+	if got := mt.GetTitle(); got != "goodtitle\\end" {
+		t.Fatalf("title not sanitized: %q", got)
+	}
+}
+
+func TestShowNotificationStripsOSCControls(t *testing.T) {
+	mt := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})}
+	scr, err := NewTerminfoScreenFromTty(mt)
+	if err != nil {
+		t.Fatalf("failed to get terminal: %v", err)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+
+	before := mt.Output()
+	scr.ShowNotification("tit\x07le", "bo\x1b\\dy")
+	delta := mt.Output()[len(before):]
+
+	if strings.Contains(delta, "tit\x07le") || strings.Contains(delta, "bo\x1b\\dy") {
+		t.Fatalf("notification payload still contains control characters: %q", delta)
+	}
+	if !strings.Contains(delta, "title") || !strings.Contains(delta, "bo\\dy") {
+		t.Fatalf("notification payload missing sanitized strings: %q", delta)
+	}
+}
