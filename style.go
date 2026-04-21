@@ -43,6 +43,7 @@ type urlInfo struct {
 	id  string
 }
 
+// stripOSCControls removes control bytes that can terminate OSC payloads early.
 func stripOSCControls(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
