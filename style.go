@@ -69,6 +69,18 @@ func stripOSCControls(s string) string {
 	return b.String()
 }
 
+// stripOSCControlsIfNeeded returns the original string when it contains no
+// control bytes and only allocates when stripping is required.
+func stripOSCControlsIfNeeded(s string) string {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c <= 0x1f || c == 0x7f || (c >= 0x80 && c <= 0x9f) {
+			return stripOSCControls(s)
+		}
+	}
+	return s
+}
+
 // StyleDefault represents a default style, based upon the context.
 // It is the zero value.
 var StyleDefault Style
@@ -228,7 +240,7 @@ func (s Style) GetAttributes() AttrMask {
 func (s Style) Url(url string) Style {
 
 	s2 := s
-	s2.url = &urlInfo{url: stripOSCControls(url)}
+	s2.url = &urlInfo{url: stripOSCControlsIfNeeded(url)}
 	if s.url != nil {
 		s2.url.id = s.url.id
 	}
@@ -242,7 +254,7 @@ func (s Style) Url(url string) Style {
 func (s Style) UrlId(id string) Style {
 	s2 := s
 	s2.url = &urlInfo{
-		id: "id=" + stripOSCControls(id),
+		id: "id=" + stripOSCControlsIfNeeded(id),
 	}
 	if s.url != nil {
 		s2.url.url = s.url.url
