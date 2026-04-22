@@ -146,3 +146,46 @@ func TestStripOSCControlsIfNeeded(t *testing.T) {
 		t.Fatalf("dirty string not stripped correctly: %q", got)
 	}
 }
+
+func TestStripOSCControlsInvalidUTF8(t *testing.T) {
+	got := stripOSCControls(string([]byte{0xff, 0x1b, 0xfe, 'A'}))
+	if got != string([]byte{0xff, 0xfe, 'A'}) {
+		t.Fatalf("unexpected invalid-UTF8 sanitization result: %q", got)
+	}
+}
+
+func TestStyleHelperMethods(t *testing.T) {
+	s := StyleDefault.
+		Dim(true).
+		StrikeThrough(true).
+		Underline(true)
+	if !s.HasDim() {
+		t.Fatalf("Dim(true) should set dim")
+	}
+	if !s.HasStrikeThrough() {
+		t.Fatalf("StrikeThrough(true) should set strike-through")
+	}
+	if !s.HasUnderline() {
+		t.Fatalf("Underline(true) should set underline")
+	}
+
+	s = s.Underline(false)
+	if s.HasUnderline() {
+		t.Fatalf("Underline(false) should clear underline")
+	}
+
+	s = s.Attributes(AttrBold | AttrItalic)
+	if got := s.GetAttributes(); got != AttrBold|AttrItalic {
+		t.Fatalf("unexpected attributes: %v", got)
+	}
+}
+
+func TestUnderlineBadTypePanics(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("Underline should panic on unsupported parameter type")
+		}
+	}()
+
+	_ = StyleDefault.Underline("bad")
+}
