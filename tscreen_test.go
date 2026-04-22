@@ -112,6 +112,80 @@ func TestOptAltScreenDefault(t *testing.T) {
 	}
 }
 
+func TestOptSanitizeContent(t *testing.T) {
+	t.Run("disabled by default", func(t *testing.T) {
+		mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+		scr, err := NewTerminfoScreenFromTty(mt)
+		if err != nil {
+			t.Fatalf("failed to get screen: %v", err)
+		}
+		if err := scr.Init(); err != nil {
+			t.Fatalf("failed to initialize screen: %v", err)
+		}
+		defer scr.Fini()
+
+		scr.PutStr(0, 0, "\x1bA\x07B")
+		if got, _, _ := scr.Get(0, 0); !strings.Contains(got, "\x1b") {
+			t.Fatalf("expected control bytes to remain when sanitizer is disabled, got %q", got)
+		}
+		if got, _, _ := scr.Get(1, 0); !strings.Contains(got, "\x07") {
+			t.Fatalf("expected control bytes to remain when sanitizer is disabled, got %q", got)
+		}
+	})
+
+	t.Run("enabled", func(t *testing.T) {
+		mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+		scr, err := NewTerminfoScreenFromTty(mt, OptSanitizeContent(true))
+		if err != nil {
+			t.Fatalf("failed to get screen: %v", err)
+		}
+		if err := scr.Init(); err != nil {
+			t.Fatalf("failed to initialize screen: %v", err)
+		}
+		defer scr.Fini()
+
+		scr.PutStr(0, 0, "\x1bA\x07B")
+		if got, _, _ := scr.Get(0, 0); got != "A" {
+			t.Fatalf("unexpected sanitized cell content at 0,0: %q", got)
+		}
+		if got, _, _ := scr.Get(1, 0); got != "B" {
+			t.Fatalf("unexpected sanitized cell content at 1,0: %q", got)
+		}
+	})
+}
+
+func TestNewScreenSanitizeContentOption(t *testing.T) {
+	scr, err := NewScreen(OptSanitizeContent(true))
+	if err != nil {
+		t.Skipf("failed to get screen: %v", err)
+	}
+	if err := scr.Init(); err != nil {
+		t.Skipf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+
+	scr.PutStr(0, 0, "\x1bA\x07B")
+	if got, _, _ := scr.Get(0, 0); got != "A" {
+		t.Fatalf("unexpected sanitized cell content at 0,0: %q", got)
+	}
+	if got, _, _ := scr.Get(1, 0); got != "B" {
+		t.Fatalf("unexpected sanitized cell content at 1,0: %q", got)
+	}
+}
+
+func TestNewScreenShimScreen(t *testing.T) {
+	_, scr := NewMockScreen(t)
+	ShimScreen(scr)
+
+	got, err := NewScreen()
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if got != scr {
+		t.Fatalf("unexpected shimmed screen: got %T, want %T", got, scr)
+	}
+}
+
 func TestOSC8ControlsAreStrippedFromOutput(t *testing.T) {
 	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
 	s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))

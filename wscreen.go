@@ -27,10 +27,14 @@ import (
 	"github.com/gdamore/tcell/v3/tty"
 )
 
-// NewTerminfoScreen gets a screen.  The options are ignored for this platform.
-func NewTerminfoScreen(_ ...TerminfoScreenOption) (Screen, error) {
+// NewTerminfoScreen gets a screen.  Most options are ignored for this platform,
+// but shared CellBuffer options such as content sanitization are honored.
+func NewTerminfoScreen(opts ...TerminfoScreenOption) (Screen, error) {
 	t := &wScreen{}
 	t.fallback = make(map[rune]string)
+	for _, opt := range opts {
+		opt.apply(t)
+	}
 
 	return &baseScreen{screenImpl: t}, nil
 }
@@ -46,10 +50,14 @@ type TerminfoScreenOption interface{ apply(*wScreen) }
 type OptColors int
 type OptTerm string
 type OptAltScreen bool
+type OptSanitizeContent bool
 
 func (OptColors) apply(*wScreen)    {}
 func (OptTerm) apply(*wScreen)      {}
 func (OptAltScreen) apply(*wScreen) {}
+func (o OptSanitizeContent) apply(w *wScreen) {
+	w.cells.sanitizeContent = bool(o)
+}
 
 type wScreen struct {
 	w, h  int

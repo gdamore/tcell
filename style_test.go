@@ -136,3 +136,13 @@ func TestStyleUrlStripsOSCControls(t *testing.T) {
 		t.Fatalf("unexpected sanitized UTF-8 url: %q", url)
 	}
 }
+
+func TestStripOSCControlsIfNeeded(t *testing.T) {
+	if got := stripOSCControlsIfNeeded("hello world"); got != "hello world" {
+		t.Fatalf("clean string changed: %q", got)
+	}
+
+	if got := stripOSCControlsIfNeeded("he\x07llo\x1bworld"); got != "helloworld" {
+		t.Fatalf("dirty string not stripped correctly: %q", got)
+	}
+}

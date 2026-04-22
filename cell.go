@@ -42,9 +42,10 @@ func (c *cell) setDirty(dirty bool) {
 //
 // CellBuffer is not thread safe.
 type CellBuffer struct {
-	w     int
-	h     int
-	cells []cell
+	w               int
+	h               int
+	cells           []cell
+	sanitizeContent bool
 }
 
 // Put a single styled grapheme using the given string and style
@@ -52,6 +53,13 @@ type CellBuffer struct {
 // will be displayed, using only the 1 or 2 (depending on width) cells
 // located at x, y. It returns the rest of the string, and the width used.
 func (cb *CellBuffer) Put(x int, y int, str string, style Style) (string, int) {
+	if cb.sanitizeContent {
+		str = stripOSCControlsIfNeeded(str)
+	}
+	return cb.put(x, y, str, style)
+}
+
+func (cb *CellBuffer) put(x int, y int, str string, style Style) (string, int) {
 	var width int = 0
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		var cl string

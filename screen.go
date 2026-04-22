@@ -260,7 +260,8 @@ var overrideScreen chan Screen
 var overrideOnce sync.Once
 
 // NewScreen returns a default Screen suitable for the user's terminal environment.
-func NewScreen() (Screen, error) {
+// Any options are passed through to NewTerminfoScreen.
+func NewScreen(opts ...TerminfoScreenOption) (Screen, error) {
 
 	// Allow an application (presumably test code) to inject a replacement default
 	// screen.  This could also be used to create shims for things like nesting screens.
@@ -270,7 +271,7 @@ func NewScreen() (Screen, error) {
 	default:
 	}
 
-	if s, e := NewTerminfoScreen(); s != nil {
+	if s, e := NewTerminfoScreen(opts...); s != nil {
 		return s, nil
 	} else {
 		return nil, e
@@ -383,9 +384,12 @@ func (b *baseScreen) PutStrStyled(x int, y int, str string, style Style) {
 	cells := b.GetCells()
 	b.Lock()
 	cols, rows := cells.Size()
+	if cells.sanitizeContent {
+		str = stripOSCControlsIfNeeded(str)
+	}
 	width := 0
 	for str != "" && x < cols && y < rows {
-		str, width = cells.Put(x, y, str, style)
+		str, width = cells.put(x, y, str, style)
 		if width == 0 {
 			break
 		}

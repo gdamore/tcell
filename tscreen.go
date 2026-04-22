@@ -83,6 +83,15 @@ func (o OptAltScreen) apply(t *tScreen) {
 	t.altScreen = bool(o)
 }
 
+// OptSanitizeContent enables stripping control characters from content passed
+// to Put and PutStr. This is safer, but a little slower than leaving content
+// unsanitized.
+type OptSanitizeContent bool
+
+func (o OptSanitizeContent) apply(t *tScreen) {
+	t.cells.sanitizeContent = bool(o)
+}
+
 // Some terminal escapes that are basically universal.
 // We would really like to be able to use private mode queries for some of
 // these but generally we've found that support for queries is not always present,
@@ -1401,7 +1410,7 @@ func (t *tScreen) GetCells() *CellBuffer {
 
 func (t *tScreen) SetTitle(title string) {
 	t.Lock()
-	t.title = stripOSCControls(title)
+	t.title = stripOSCControlsIfNeeded(title)
 	if t.setTitle != "" && t.running {
 		t.Printf(t.setTitle, t.title)
 	}
@@ -1432,7 +1441,7 @@ func (t *tScreen) HasClipboard() bool {
 
 func (t *tScreen) ShowNotification(title string, body string) {
 	t.Lock()
-	t.Printf(t.notifyDesktop, stripOSCControls(title), stripOSCControls(body))
+	t.Printf(t.notifyDesktop, stripOSCControlsIfNeeded(title), stripOSCControlsIfNeeded(body))
 	t.Unlock()
 }
 
