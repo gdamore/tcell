@@ -135,4 +135,22 @@ func TestStyleUrlStripsOSCControls(t *testing.T) {
 	if url != "http://example.com/\u3042" {
 		t.Fatalf("unexpected sanitized UTF-8 url: %q", url)
 	}
+
+	s = StyleDefault.
+		Url("http://exa\u202emple.com/\u2068path").
+		UrlId("id\u202a\u202b\u202c\u202d\u2066\u2067\u2068\u2069end")
+
+	id, url = s.GetUrl()
+	combined = id + url
+	for _, r := range combined {
+		if (r >= 0x202a && r <= 0x202e) || (r >= 0x2066 && r <= 0x2069) {
+			t.Fatalf("BiDi formatting characters survived sanitization: id=%q url=%q", id, url)
+		}
+	}
+	if id != "idend" {
+		t.Fatalf("unexpected sanitized BiDi id: %q", id)
+	}
+	if url != "http://example.com/path" {
+		t.Fatalf("unexpected sanitized BiDi url: %q", url)
+	}
 }

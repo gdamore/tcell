@@ -225,7 +225,7 @@ func TestSetTitleStripsOSCControls(t *testing.T) {
 		t.Fatalf("failed to get terminal: %v", err)
 	}
 
-	scr.SetTitle("good\x07title\x1b\\end")
+	scr.SetTitle("good\x07ti\u202etle\u2068\x1b\\end")
 	if err := scr.Init(); err != nil {
 		t.Fatalf("failed to initialize screen: %v", err)
 	}
@@ -248,11 +248,14 @@ func TestShowNotificationStripsOSCControls(t *testing.T) {
 	defer scr.Fini()
 
 	before := mt.Output()
-	scr.ShowNotification("tit\x07le", "bo\x1b\\dy")
+	scr.ShowNotification("tit\x07le\u202d", "\u2066bo\x1b\\dy")
 	delta := mt.Output()[len(before):]
 
 	if strings.Contains(delta, "tit\x07le") || strings.Contains(delta, "bo\x1b\\dy") {
 		t.Fatalf("notification payload still contains control characters: %q", delta)
+	}
+	if strings.ContainsAny(delta, "\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069") {
+		t.Fatalf("notification payload still contains BiDi formatting: %q", delta)
 	}
 	if !strings.Contains(delta, "title") || !strings.Contains(delta, "bo\\dy") {
 		t.Fatalf("notification payload missing sanitized strings: %q", delta)

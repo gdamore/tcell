@@ -59,7 +59,8 @@ func stripOSCControls(s string) string {
 			i++
 			continue
 		}
-		if r <= 0x1f || r == 0x7f || (r >= 0x80 && r <= 0x9f) {
+		if r <= 0x1f || r == 0x7f || (r >= 0x80 && r <= 0x9f) ||
+			(r >= 0x202a && r <= 0x202e) || (r >= 0x2066 && r <= 0x2069) {
 			i += size
 			continue
 		}
