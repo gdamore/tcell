@@ -48,6 +48,7 @@ type EventKey struct {
 	mod ModMask
 	key Key
 	str string // string for key, usually just one character, but may be composed sequence
+	esc string // raw escape-sequence bytes that produced this event, if any
 }
 
 // Str returns the string corresponding to the key press, if it makes sense.
@@ -72,6 +73,17 @@ func (ev *EventKey) Key() Key {
 // using this in most circumstances.
 func (ev *EventKey) Modifiers() ModMask {
 	return ev.mod
+}
+
+// EscSeq returns the raw escape-sequence bytes that produced this key
+// event, if any. The input parser populates this for events derived
+// from a CSI / SS3 / OSC sequence so that callers (notably terminal
+// passthrough panes) can forward the original bytes to a child
+// process rather than reconstructing them from key + modifier state.
+// For ordinary printable runes the result may be the rune itself
+// encoded as UTF-8; for synthetic events it will be empty.
+func (ev *EventKey) EscSeq() string {
+	return ev.esc
 }
 
 // KeyNames holds the written names of special keys. Useful to echo back a key

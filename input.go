@@ -62,12 +62,22 @@ const (
 func newInputParser(eq chan<- Event) *inputParser {
 	return &inputParser{
 		evch: eq,
-		buf:  make([]rune, 0, 128),
+		buf:  make([]bufRune, 0, 128),
 	}
 }
 
+// bufRune pairs a decoded rune with the raw source bytes that produced
+// it, so the state machine can accumulate a byte-faithful copy of the
+// sequence in ip.curEsc for EventKey.EscSeq(). The inline byte array
+// holds up to utf8.UTFMax bytes; rawN is how many are valid.
+type bufRune struct {
+	r    rune
+	raw  [utf8.UTFMax]byte
+	rawN int
+}
+
 type inputParser struct {
-	buf       []rune       // bytes to process (ingest data)
+	buf       []bufRune    // bytes to process (ingest data)
 	utfBuf    []byte       // accrued UTF8 bytes
 	strBuf    []byte       // accrued string data (for ST, OSC, etc.)
 	csiParams []byte       // accrued parameter bytes for CSI (and SS3)
@@ -84,6 +94,7 @@ type inputParser struct {
 	keyTime   time.Time    // time of last key press / byte ingested
 	nested    *inputParser // for buggy win32-input-mode implementations
 	surrogate rune         // high surrogate pair seen (for Win32 input mode)
+	curEsc    []byte       // source bytes consumed for the sequence currently being parsed
 }
 
 // Waiting returns true if the processor is waiting for
@@ -125,6 +136,13 @@ func (ip *inputParser) post(ev Event) {
 		case keyPasteEnd:
 			ev = NewEventPaste(false)
 		}
+	}
+
+	if ke, ok := ev.(*EventKey); ok && len(ip.curEsc) > 0 {
+		// curEsc is raw source bytes, so this conversion preserves
+		// the wire form (e.g. a raw C1 0x9b byte stays one byte,
+		// rather than being re-encoded as its 2-byte UTF-8 form).
+		ke.esc = string(ip.curEsc)
 	}
 
 	ip.evch <- ev
@@ -440,10 +458,15 @@ var linuxFKeys = map[rune]Key{
 }
 
 func (ip *inputParser) scan() {
-	for _, r := range ip.buf {
+	for _, br := range ip.buf {
+		r := br.r
 		ip.buf = ip.buf[1:]
 		ip.escChar = 0
 		ip.keyTime = time.Now()
+		if ip.state == istInit {
+			ip.curEsc = ip.curEsc[:0]
+		}
+		ip.curEsc = append(ip.curEsc, br.raw[:br.rawN]...)
 		if r >= 0xA0 {
 			// 8-bit extended Unicode we just treat as such - this will swallow anything else queued up
 			ip.state = istInit
@@ -1155,7 +1178,9 @@ func (ip *inputParser) ScanUTF8(b []byte) {
 	for len(ip.utfBuf) > 0 {
 		// fast path, basic ascii, also includes ISO2022 8-bit controls
 		if ip.utfBuf[0] < 0xA0 {
-			ip.buf = append(ip.buf, rune(ip.utfBuf[0]))
+			br := bufRune{r: rune(ip.utfBuf[0]), rawN: 1}
+			br.raw[0] = ip.utfBuf[0]
+			ip.buf = append(ip.buf, br)
 			ip.utfBuf = ip.utfBuf[1:]
 		} else {
 			r, utfLen := utf8.DecodeRune(ip.utfBuf)
@@ -1164,7 +1189,9 @@ func (ip *inputParser) ScanUTF8(b []byte) {
 				// hopefully it will recover.
 				utfLen = 1
 			} else {
-				ip.buf = append(ip.buf, r)
+				br := bufRune{r: r, rawN: utfLen}
+				copy(br.raw[:], ip.utfBuf[:utfLen])
+				ip.buf = append(ip.buf, br)
 			}
 			ip.utfBuf = ip.utfBuf[utfLen:]
 		}
