@@ -844,6 +844,278 @@ func firstKey(evch chan Event) *EventKey {
 	return got
 }
 
+func nextKey(evch chan Event) *EventKey {
+	for {
+		select {
+		case ev := <-evch:
+			if kev, ok := ev.(*EventKey); ok {
+				return kev
+			}
+		case <-time.After(100 * time.Millisecond):
+			return nil
+		}
+	}
+}
+
+func TestAdvancedControlKeys(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.advanced = true
+
+	ip.ScanUTF8([]byte{0x01, '\t'})
+
+	got := nextKey(evch)
+	if got == nil {
+		t.Fatal("expected Ctrl-A event")
+	}
+	if got.Key() != KeyRune || got.Str() != "a" || got.Modifiers() != ModCtrl || got.Physical() != Key('a') {
+		t.Fatalf("expected Ctrl-A as KeyRune a + ModCtrl, got key=%v str=%q mod=%v physical=%v", got.Key(), got.Str(), got.Modifiers(), got.Physical())
+	}
+
+	got = nextKey(evch)
+	if got == nil {
+		t.Fatal("expected Tab event")
+	}
+	if got.Key() != KeyTab || got.Modifiers() != ModNone {
+		t.Fatalf("expected ambiguous Ctrl-I/Tab to remain Tab, got key=%v str=%q mod=%v", got.Key(), got.Str(), got.Modifiers())
+	}
+}
+
+func TestAdvancedKittyKeyMetadata(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.advanced = true
+
+	ip.ScanUTF8([]byte("\x1b[65:97;2u\x1b[65:97;2:3u\x1b[57448;1:3u"))
+
+	got := nextKey(evch)
+	if got == nil {
+		t.Fatal("expected shifted A press")
+	}
+	if got.Key() != KeyRune || got.Str() != "A" || got.Modifiers() != ModShift || got.Physical() != Key('a') || !got.Pressed() || got.Repeat() != 1 {
+		t.Fatalf("unexpected shifted A press: key=%v str=%q mod=%v physical=%v pressed=%v repeat=%v", got.Key(), got.Str(), got.Modifiers(), got.Physical(), got.Pressed(), got.Repeat())
+	}
+
+	got = nextKey(evch)
+	if got == nil {
+		t.Fatal("expected shifted A release")
+	}
+	if got.Key() != KeyRune || got.Str() != "A" || got.Modifiers() != ModShift || got.Physical() != Key('a') || got.Pressed() {
+		t.Fatalf("unexpected shifted A release: key=%v str=%q mod=%v physical=%v pressed=%v", got.Key(), got.Str(), got.Modifiers(), got.Physical(), got.Pressed())
+	}
+
+	got = nextKey(evch)
+	if got == nil {
+		t.Fatal("expected right Ctrl release")
+	}
+	if got.Key() != KeyCtrl || got.Modifiers()&ModRCtrl != ModRCtrl || got.Modifiers()&ModCtrl == 0 || got.Pressed() {
+		t.Fatalf("unexpected right Ctrl release: key=%v mod=%v pressed=%v", got.Key(), got.Modifiers(), got.Pressed())
+	}
+}
+
+func TestAdvancedKittyParameterParseErrorKeepsSubparametersAligned(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.advanced = true
+
+	ip.ScanUTF8([]byte("\x1b[65;999999999999999999999999999999999:3u"))
+
+	got := nextKey(evch)
+	if got == nil {
+		t.Fatal("expected key event")
+	}
+	if got.Key() != KeyRune || got.Str() != "A" || got.Pressed() {
+		t.Fatalf("expected shifted A release despite malformed modifier parameter, got key=%v str=%q pressed=%v", got.Key(), got.Str(), got.Pressed())
+	}
+}
+
+func TestKeyConversionBounds(t *testing.T) {
+	if key, ok := keyFromInt(32767); !ok || key != Key(32767) {
+		t.Fatalf("keyFromInt max = %v, %v", key, ok)
+	}
+	if _, ok := keyFromInt(32768); ok {
+		t.Fatal("keyFromInt accepted overflow")
+	}
+	if _, ok := keyFromInt(-1); ok {
+		t.Fatal("keyFromInt accepted negative")
+	}
+	if key, ok := keyFromRune(32767); !ok || key != Key(32767) {
+		t.Fatalf("keyFromRune max = %v, %v", key, ok)
+	}
+	if _, ok := keyFromRune(32768); ok {
+		t.Fatal("keyFromRune accepted overflow")
+	}
+	if b, ok := asciiByteFromInt(0x7f); !ok || b != 0x7f {
+		t.Fatalf("asciiByteFromInt max = %v, %v", b, ok)
+	}
+	if _, ok := asciiByteFromInt(0); ok {
+		t.Fatal("asciiByteFromInt accepted zero")
+	}
+	if _, ok := asciiByteFromInt(0x80); ok {
+		t.Fatal("asciiByteFromInt accepted non-ASCII")
+	}
+}
+
+func TestAdvancedPhysicalKeyOverflowIsUnknown(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.advanced = true
+
+	ip.ScanUTF8([]byte("\x1b[65:40000;2u"))
+
+	got := nextKey(evch)
+	if got == nil {
+		t.Fatal("expected key event")
+	}
+	if got.Key() != KeyRune || got.Str() != "A" || got.Physical() != 0 {
+		t.Fatalf("expected overflow physical key to be unknown, got key=%v str=%q physical=%v", got.Key(), got.Str(), got.Physical())
+	}
+}
+
+func TestLargeUnicodePhysicalKeyIsUnknown(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.advanced = true
+
+	ip.ScanUTF8([]byte("😀"))
+
+	got := nextKey(evch)
+	if got == nil {
+		t.Fatal("expected key event")
+	}
+	if got.Key() != KeyRune || got.Str() != "😀" || got.Physical() != 0 {
+		t.Fatalf("expected large Unicode physical key to be unknown, got key=%v str=%q physical=%v", got.Key(), got.Str(), got.Physical())
+	}
+}
+
+func TestAdvancedWinKeyMetadata(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.advanced = true
+
+	ip.ScanUTF8([]byte("\x1b[65;0;65;1;16;3_\x1b[65;0;65;0;16;1_\x1b[17;0;0;1;8;1_\x1b[65;0;1;1;4;1_\x1b[160;0;0;1;20;1_"))
+
+	got := nextKey(evch)
+	if got == nil {
+		t.Fatal("expected Win32 shifted A press")
+	}
+	if got.Key() != KeyRune || got.Str() != "A" || got.Modifiers() != ModShift || got.Physical() != Key('a') || !got.Pressed() || got.Repeat() != 3 {
+		t.Fatalf("unexpected Win32 shifted A press: key=%v str=%q mod=%v physical=%v pressed=%v repeat=%v", got.Key(), got.Str(), got.Modifiers(), got.Physical(), got.Pressed(), got.Repeat())
+	}
+
+	got = nextKey(evch)
+	if got == nil {
+		t.Fatal("expected Win32 shifted A release")
+	}
+	if got.Key() != KeyRune || got.Str() != "A" || got.Modifiers() != ModShift || got.Physical() != Key('a') || got.Pressed() {
+		t.Fatalf("unexpected Win32 shifted A release: key=%v str=%q mod=%v physical=%v pressed=%v", got.Key(), got.Str(), got.Modifiers(), got.Physical(), got.Pressed())
+	}
+
+	got = nextKey(evch)
+	if got == nil {
+		t.Fatal("expected Win32 Ctrl modifier press")
+	}
+	if got.Key() != KeyCtrl || got.Modifiers()&ModLCtrl != ModLCtrl || got.Modifiers()&ModCtrl == 0 || !got.Pressed() {
+		t.Fatalf("unexpected Win32 Ctrl press: key=%v mod=%v pressed=%v", got.Key(), got.Modifiers(), got.Pressed())
+	}
+
+	got = nextKey(evch)
+	if got == nil {
+		t.Fatal("expected Win32 right-Ctrl A press")
+	}
+	if got.Key() != KeyRune || got.Str() != "a" || got.Modifiers()&ModRCtrl != ModRCtrl || got.Modifiers()&ModCtrl == 0 {
+		t.Fatalf("unexpected Win32 right-Ctrl A press: key=%v str=%q mod=%v", got.Key(), got.Str(), got.Modifiers())
+	}
+
+	got = nextKey(evch)
+	if got == nil {
+		t.Fatal("expected Win32 left-Shift press with right-Ctrl held")
+	}
+	if got.Key() != KeyShift || got.Modifiers()&ModLShift != ModLShift ||
+		got.Modifiers()&ModRCtrl != ModRCtrl || got.Modifiers()&ModCtrl == 0 {
+		t.Fatalf("unexpected Win32 left-Shift press with right-Ctrl held: key=%v mod=%v", got.Key(), got.Modifiers())
+	}
+}
+
+func TestWinKeyASCIIFallbackRangeCheck(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+
+	ip.ScanUTF8([]byte("\x1b[0;0;65;1;0;1_"))
+
+	got := nextKey(evch)
+	if got == nil {
+		t.Fatal("expected Win32 ASCII fallback key")
+	}
+	if got.Key() != KeyRune || got.Str() != "A" {
+		t.Fatalf("unexpected Win32 ASCII fallback key: key=%v str=%q", got.Key(), got.Str())
+	}
+
+	ip.ScanUTF8([]byte("\x1b[0;0;0;1;0;1_"))
+
+	if got = nextKey(evch); got != nil {
+		t.Fatalf("unexpected Win32 NUL fallback key: key=%v str=%q", got.Key(), got.Str())
+	}
+}
+
+func TestAdvancedModifierHelpers(t *testing.T) {
+	winCases := []struct {
+		vk      int
+		wantKey Key
+		wantMod ModMask
+	}{
+		{0x10, KeyShift, ModShift},
+		{0xa0, KeyShift, ModLShift},
+		{0xa1, KeyShift, ModRShift},
+		{0x11, KeyCtrl, ModCtrl},
+		{0xa2, KeyCtrl, ModLCtrl},
+		{0xa3, KeyCtrl, ModRCtrl},
+		{0x12, KeyAlt, ModAlt},
+		{0xa4, KeyAlt, ModLAlt},
+		{0xa5, KeyAlt, ModRAlt},
+		{0x5b, KeyMeta, ModLMeta},
+		{0x5c, KeyMeta, ModRMeta},
+		{0x14, KeyCapsLock, ModNone},
+	}
+	for _, tt := range winCases {
+		key, mod, ok := winModifierKey(tt.vk)
+		if !ok || key != tt.wantKey || mod != tt.wantMod {
+			t.Fatalf("winModifierKey(%#x) = %v, %v, %v; want %v, %v, true", tt.vk, key, mod, ok, tt.wantKey, tt.wantMod)
+		}
+	}
+	if _, _, ok := winModifierKey(0xff); ok {
+		t.Fatal("winModifierKey accepted unknown key")
+	}
+
+	kittyCases := map[int]ModMask{
+		57441: ModLShift,
+		57447: ModRShift,
+		57442: ModLCtrl,
+		57448: ModRCtrl,
+		57443: ModLAlt,
+		57449: ModRAlt,
+		57444: ModLMeta,
+		57450: ModRMeta,
+	}
+	for code, want := range kittyCases {
+		if got := kittyModifierKey(code); got != want {
+			t.Fatalf("kittyModifierKey(%d) = %v, want %v", code, got, want)
+		}
+	}
+	if got := kittyModifierKey(12345); got != ModNone {
+		t.Fatalf("kittyModifierKey unknown = %v, want ModNone", got)
+	}
+}
+
+func TestWinModifierState(t *testing.T) {
+	if got := calcWinModifier(0x1f, true); got != ModShift|ModLCtrl|ModRCtrl|ModLAlt|ModRAlt {
+		t.Fatalf("advanced win modifier state = %v", got)
+	}
+	if got := calcWinModifier(0x1f, false); got != ModShift|ModCtrl|ModAlt {
+		t.Fatalf("legacy win modifier state = %v", got)
+	}
+}
+
 // TestEscDuringCsiResetsParser verifies that an ESC byte received while
 // the parser is in CSI state correctly transitions to escape state per
 // ECMA-48 §5.3.1, rather than being swallowed as a "bad parse".

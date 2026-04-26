@@ -112,6 +112,32 @@ func TestOptAltScreenDefault(t *testing.T) {
 	}
 }
 
+func TestOptAdvancedKeys(t *testing.T) {
+	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+	scr, err := NewTerminfoScreenFromTty(mt, OptAdvancedKeys(true))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	bs, ok := scr.(*baseScreen)
+	if !ok {
+		t.Fatalf("expected *baseScreen, got %T", scr)
+	}
+	ts, ok := bs.screenImpl.(*tScreen)
+	if !ok {
+		t.Fatalf("expected *tScreen, got %T", bs.screenImpl)
+	}
+	if !ts.advancedKeys {
+		t.Fatal("advanced keys option was not applied")
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+	if !ts.input.advanced {
+		t.Fatal("advanced keys option was not propagated to input parser")
+	}
+}
+
 func TestOptSanitizeContent(t *testing.T) {
 	t.Run("disabled by default", func(t *testing.T) {
 		mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
