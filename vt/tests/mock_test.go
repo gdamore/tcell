@@ -771,11 +771,88 @@ func TestTitles(t *testing.T) {
 		t.Errorf("wrong title: %q", s)
 	}
 
-	// try using 8-bit sequence
+	// 8-bit C1 controls are disabled by default.
+	WriteF(t, term, "\x9d2;Eight Bits\x9c")
+	if s := term.GetTitle(); s != "Bell Ring" {
+		t.Errorf("wrong title: %q", s)
+	}
+
+	// ESC SP G cannot enable 8-bit C1 controls unless the emulator permits them.
+	WriteF(t, term, "\x1b G\x9d2;Eight Bits\x9c")
+	if s := term.GetTitle(); s != "Bell Ring" {
+		t.Errorf("wrong title: %q", s)
+	}
+}
+
+func Test8BitControls(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24}, vt.MockOpt8BitControls{})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
 	WriteF(t, term, "\x9d2;Eight Bits\x9c")
 	if s := term.GetTitle(); s != "Eight Bits" {
 		t.Errorf("wrong title: %q", s)
 	}
+
+	WriteF(t, term, "\x1b F\x9d2;Disabled\x9c")
+	if s := term.GetTitle(); s != "Eight Bits" {
+		t.Errorf("wrong title: %q", s)
+	}
+
+	WriteF(t, term, "\x1b G\xc2\x9d2;UTF-8 Eight Bits\xc2\x9c")
+	if s := term.GetTitle(); s != "UTF-8 Eight Bits" {
+		t.Errorf("wrong title: %q", s)
+	}
+
+	WriteF(t, term, "\xc2\x9b2;3H")
+	CheckPos(t, term, 2, 1)
+
+	WriteF(t, term, "\x1b F\x1b[H\xc2\x9b3;4H")
+	CheckPos(t, term, 4, 0)
+
+	WriteF(t, term, "\x1b G\x9b4;5H")
+	CheckPos(t, term, 4, 3)
+}
+
+func Test8BitControlsInString(t *testing.T) {
+	t.Run("DefaultDisabled", func(t *testing.T) {
+		term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 1})
+		defer MustClose(t, term)
+		MustStart(t, term)
+
+		WriteF(t, term, "\x1bPdiscard\x9cA\x07B")
+		CheckContent(t, term, 0, 0, "B")
+		CheckContent(t, term, 1, 0, "")
+
+		WriteF(t, term, "\x1b[H\x1bPdiscard\xc2\x9cC\x07D")
+		CheckContent(t, term, 0, 0, "D")
+		CheckContent(t, term, 1, 0, "")
+	})
+
+	t.Run("Enabled", func(t *testing.T) {
+		term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 1}, vt.MockOpt8BitControls{})
+		defer MustClose(t, term)
+		MustStart(t, term)
+
+		WriteF(t, term, "\x1bPdiscard\x9cA")
+		CheckContent(t, term, 0, 0, "A")
+
+		WriteF(t, term, "\x1b[H\x1bPdiscard\xc2\x9cB")
+		CheckContent(t, term, 0, 0, "B")
+	})
+
+	t.Run("RuntimeDisabled", func(t *testing.T) {
+		term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 1}, vt.MockOpt8BitControls{})
+		defer MustClose(t, term)
+		MustStart(t, term)
+
+		WriteF(t, term, "\x1b F\x1bPdiscard\x9cA\x07B")
+		CheckContent(t, term, 0, 0, "B")
+		CheckContent(t, term, 1, 0, "")
+
+		WriteF(t, term, "\x1b G\x1b[H\x1bPdiscard\xc2\x9cC")
+		CheckContent(t, term, 0, 0, "C")
+	})
 }
 
 // TestResize tests resizing the terminal
