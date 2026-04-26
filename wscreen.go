@@ -51,10 +51,12 @@ type OptColors int
 type OptTerm string
 type OptAltScreen bool
 type OptSanitizeContent bool
+type OptAdvancedKeys bool
 
-func (OptColors) apply(*wScreen)    {}
-func (OptTerm) apply(*wScreen)      {}
-func (OptAltScreen) apply(*wScreen) {}
+func (OptColors) apply(*wScreen)       {}
+func (OptTerm) apply(*wScreen)         {}
+func (OptAltScreen) apply(*wScreen)    {}
+func (OptAdvancedKeys) apply(*wScreen) {}
 func (o OptSanitizeContent) apply(w *wScreen) {
 	w.cells.sanitizeContent = bool(o)
 }

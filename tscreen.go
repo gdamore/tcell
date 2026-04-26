@@ -92,6 +92,16 @@ func (o OptSanitizeContent) apply(t *tScreen) {
 	t.cells.sanitizeContent = bool(o)
 }
 
+// OptAdvancedKeys enables richer key reporting where supported.  In this mode
+// key events may include release state, repeat counts, and physical keys, and
+// ASCII control letters are reported as KeyRune with ModCtrl instead of
+// KeyCtrlA through KeyCtrlZ.
+type OptAdvancedKeys bool
+
+func (o OptAdvancedKeys) apply(t *tScreen) {
+	t.advancedKeys = bool(o)
+}
+
 // Some terminal escapes that are basically universal.
 // We would really like to be able to use private mode queries for some of
 // these but generally we've found that support for queries is not always present,
@@ -141,6 +151,7 @@ const (
 	notifyDesktop777  = "\x1b]777;notify;%s;%s\x1b\\"       // Most commonly supported
 	queryKittyKbd     = "\x1b[?u"                           // Query for Kitty keyboard support
 	enableKittyKbd    = "\x1b[=1u"                          // Technically this pushes
+	enableKittyKbdAdv = "\x1b[=15u"                         // disambiguation, events, alternate keys, all keys
 	disableKittyKbd   = "\x1b[=0u"                          // Technically this means pop previous mode
 	queryXTermKbd     = "\x1b[?4m"                          // Query for XTerm modify other keys support
 	enableXTermKbd    = "\x1b[>4;2m"                        // Enable modify other keys protocol
@@ -233,6 +244,7 @@ type tScreen struct {
 	haveKittyKbd  bool
 	haveWin32Kbd  bool
 	haveXTermKbd  bool
+	advancedKeys  bool
 	input         *inputParser
 	sync.Mutex
 }
@@ -321,6 +333,7 @@ func (t *tScreen) Init() error {
 	t.initQ = make(chan Event, 32)
 	t.eventQ = make(chan Event, 128)
 	t.input = newInputParser(t.filterEvents())
+	t.input.advanced = t.advancedKeys
 
 	t.Lock()
 	t.cx = -1
@@ -1273,7 +1286,11 @@ func (t *tScreen) engage() error {
 	if t.haveWin32Kbd {
 		t.Print(vt.PmWin32Input.Enable())
 	} else if t.haveKittyKbd {
-		t.Print(enableKittyKbd)
+		if t.advancedKeys {
+			t.Print(enableKittyKbdAdv)
+		} else {
+			t.Print(enableKittyKbd)
+		}
 	} else if t.haveXTermKbd {
 		t.Print(enableXTermKbd)
 	}
@@ -1302,7 +1319,11 @@ func (t *tScreen) engage() error {
 		// should be benign there.  As another note, we have observed that at least Alacritty
 		// and WezTerm do not properly handle the primaryDA query on these platforms.
 		// (WezTerm performs much better when running a remote shell or on macOS.)
-		t.Print(enableKittyKbd)
+		if t.advancedKeys {
+			t.Print(enableKittyKbdAdv)
+		} else {
+			t.Print(enableKittyKbd)
+		}
 		t.Print(vt.PmWin32Input.Enable())
 	}
 	t.Print(requestWindowSize)

@@ -32,6 +32,10 @@ import (
 
 var defStyle tcell.Style
 
+func isCtrlRune(ev *tcell.EventKey, r string) bool {
+	return ev.Key() == tcell.KeyRune && ev.Str() == r && ev.Modifiers()&tcell.ModCtrl != 0
+}
+
 func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, r rune) {
 	rs := string(r)
 
@@ -98,7 +102,7 @@ func main() {
 		}
 	}
 
-	s, e := tcell.NewScreen()
+	s, e := tcell.NewScreen(tcell.OptAdvancedKeys(true))
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", e)
 		os.Exit(1)
@@ -126,6 +130,8 @@ func main() {
 	termFmt := "Term: %s (%s)"
 	style := tcell.StyleDefault.
 		Foreground(color.MidnightBlue).Background(color.LightCoral)
+	keyDownStyle := style.Foreground(color.Green)
+	keyUpStyle := style
 
 	mx, my := -1, -1
 	ox, oy := -1, -1
@@ -140,13 +146,15 @@ func main() {
 	ecnt := 0
 	pasting := false
 	focus := true // assume we are focused when we start
+	keyStyle := keyUpStyle
 
 	for {
 		drawBox(s, 1, 1, 42, 9, style, ' ')
 		s.PutStrStyled(2, 2, "Press Ctrl-Q to Quit, C to clear.", style)
 		s.PutStrStyled(2, 3, fmt.Sprintf(posfmt, mx, my), style)
 		s.PutStrStyled(2, 4, fmt.Sprintf(btnfmt, bstr), style)
-		s.PutStrStyled(2, 5, fmt.Sprintf(keyfmt, lks), style)
+		s.PutStrStyled(2, 5, fmt.Sprintf(keyfmt, ""), style)
+		s.PutStrStyled(8, 5, lks, keyStyle)
 
 		ps := pstr
 		if len(ps) > 26 {
@@ -182,13 +190,24 @@ func main() {
 			s.Sync()
 			s.Put(w-1, h-1, "R", st)
 		case *tcell.EventKey:
+			s.Put(w-2, h-2, ev.Str(), st)
+			if !ev.Pressed() {
+				pstr = ""
+				lks = ev.Name()
+				keyStyle = keyUpStyle
+				for x := range w - 1 {
+					s.Put(x, h-1, " ", tcell.StyleDefault)
+				}
+				s.Put(w-1, h-1, "U", st)
+				continue
+			}
+			keyStyle = keyDownStyle
 			if ev.Name() == lkey {
 				kcnt++
 			} else {
 				lkey = ev.Name()
 				kcnt = 1
 			}
-			s.Put(w-2, h-2, ev.Str(), st)
 			if pasting {
 				s.Put(w-1, h-1, "P", st)
 				if ev.Key() == tcell.KeyRune {
@@ -207,12 +226,12 @@ func main() {
 					s.Fini()
 					os.Exit(0)
 				}
-			} else if ev.Key() == tcell.KeyCtrlL {
+			} else if ev.Key() == tcell.KeyCtrlL || isCtrlRune(ev, "l") {
 				s.Sync()
-			} else if ev.Key() == tcell.KeyCtrlQ {
+			} else if ev.Key() == tcell.KeyCtrlQ || isCtrlRune(ev, "q") {
 				s.Fini()
 				os.Exit(0)
-			} else if ev.Key() == tcell.KeyCtrlZ {
+			} else if ev.Key() == tcell.KeyCtrlZ || isCtrlRune(ev, "z") {
 				// CtrlZ doesn't really suspend the process, but we use it to execute a subshell.
 				if err := s.Suspend(); err == nil {
 					fmt.Printf("Executing shell (%s -l)...\n", shell)
