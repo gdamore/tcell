@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !js && !wasm
-// +build !js,!wasm
+//go:build (!js && !wasm) || (js && wasm)
+// +build !js,!wasm js,wasm
 
 package tcell
 
