@@ -22,8 +22,8 @@
 // There is unfortunately *one* conflict, with aixterm, for CSI-P - which is KeyDelete
 // in aixterm, but F1 in others.
 
-//go:build !js && !wasm
-// +build !js,!wasm
+//go:build (!js && !wasm) || (js && wasm)
+// +build !js,!wasm js,wasm
 
 package tcell
 
@@ -781,6 +781,10 @@ func calcWinModifier(n int, advanced bool) ModMask {
 		m |= ModShift
 	}
 	if advanced {
+		// Bits through 0x0100 match Win32 dwControlKeyState. 0x0040 and
+		// 0x0080 are ScrollLock and CapsLock, not Meta. The 0x0200 and
+		// 0x0400 bits are tcell extensions used by the WASM browser shim,
+		// which has Meta keys but no native Win32 bit assignment for them.
 		if n&0x0008 != 0 {
 			m |= ModLCtrl
 		}
@@ -792,6 +796,12 @@ func calcWinModifier(n int, advanced bool) ModMask {
 		}
 		if n&0x0001 != 0 {
 			m |= ModRAlt
+		}
+		if n&0x0200 != 0 {
+			m |= ModLMeta
+		}
+		if n&0x0400 != 0 {
+			m |= ModRMeta
 		}
 	} else {
 		if n&0x000c != 0 {

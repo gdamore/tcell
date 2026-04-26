@@ -993,7 +993,7 @@ func TestAdvancedWinKeyMetadata(t *testing.T) {
 	ip := newInputParser(evch)
 	ip.advanced = true
 
-	ip.ScanUTF8([]byte("\x1b[65;0;65;1;16;3_\x1b[65;0;65;0;16;1_\x1b[17;0;0;1;8;1_\x1b[65;0;1;1;4;1_\x1b[160;0;0;1;20;1_"))
+	ip.ScanUTF8([]byte("\x1b[65;0;65;1;16;3_\x1b[65;0;65;0;16;1_\x1b[17;0;0;1;8;1_\x1b[65;0;1;1;4;1_\x1b[160;0;0;1;20;1_\x1b[76;0;108;1;512;1_"))
 
 	got := nextKey(evch)
 	if got == nil {
@@ -1034,6 +1034,14 @@ func TestAdvancedWinKeyMetadata(t *testing.T) {
 	if got.Key() != KeyShift || got.Modifiers()&ModLShift != ModLShift ||
 		got.Modifiers()&ModRCtrl != ModRCtrl || got.Modifiers()&ModCtrl == 0 {
 		t.Fatalf("unexpected Win32 left-Shift press with right-Ctrl held: key=%v mod=%v", got.Key(), got.Modifiers())
+	}
+
+	got = nextKey(evch)
+	if got == nil {
+		t.Fatal("expected Win32 left-Meta l press")
+	}
+	if got.Key() != KeyRune || got.Str() != "l" || got.Modifiers()&ModLMeta != ModLMeta || got.Modifiers()&ModMeta == 0 {
+		t.Fatalf("unexpected Win32 left-Meta l press: key=%v str=%q mod=%v", got.Key(), got.Str(), got.Modifiers())
 	}
 }
 
@@ -1108,11 +1116,14 @@ func TestAdvancedModifierHelpers(t *testing.T) {
 }
 
 func TestWinModifierState(t *testing.T) {
-	if got := calcWinModifier(0x1f, true); got != ModShift|ModLCtrl|ModRCtrl|ModLAlt|ModRAlt {
+	if got := calcWinModifier(0x71f, true); got != ModShift|ModLCtrl|ModRCtrl|ModLAlt|ModRAlt|ModLMeta|ModRMeta {
 		t.Fatalf("advanced win modifier state = %v", got)
 	}
-	if got := calcWinModifier(0x1f, false); got != ModShift|ModCtrl|ModAlt {
+	if got := calcWinModifier(0xdf, false); got != ModShift|ModCtrl|ModAlt {
 		t.Fatalf("legacy win modifier state = %v", got)
+	}
+	if got := calcWinModifier(0xc0, true); got&ModMeta != 0 {
+		t.Fatalf("win lock bits reported Meta: %v", got)
 	}
 }
 
