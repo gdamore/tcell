@@ -249,6 +249,9 @@ type Screen interface {
 	// supports it.  Right now only terminals supporting OSC 777 support this.
 	ShowNotification(title string, body string)
 
+	// KeyboardProtocol returns the keyboard protocol currently in use.
+	KeyboardProtocol() KeyProtocol
+
 	// Terminal returns the terminal name and version if known.  If either of these
 	// are unknown, then empty strings are returned in their place.  This is intended
 	// to facilitate debug, and also applications that wish to enable very specific
@@ -346,6 +349,7 @@ type screenImpl interface {
 	GetClipboard()
 	HasClipboard() bool
 	ShowNotification(string, string)
+	KeyboardProtocol() KeyProtocol
 	Terminal() (string, string)
 
 	// Following methods are not part of the Screen api, but are used for interaction with
