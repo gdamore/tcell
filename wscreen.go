@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -624,6 +624,10 @@ var curStyleClasses = map[CursorStyle]string{
 	CursorStyleSteadyUnderline:   "cursor-steady-underline",
 	CursorStyleBlinkingBar:       "cursor-blinking-bar",
 	CursorStyleSteadyBar:         "cursor-steady-bar",
+}
+
+func (*wScreen) KeyboardProtocol() KeyProtocol {
+	return XTermKeyboard // not really but we report keys unambiguously
 }
 
 func (*wScreen) Terminal() (string, string) { return "Tcell-WebASM", "" }

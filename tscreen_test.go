@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -148,6 +148,138 @@ func TestOSC8ControlsAreStrippedFromOutput(t *testing.T) {
 		if c <= 0x1f || c == 0x7f || (c >= 0x80 && c <= 0x9f) {
 			t.Fatalf("control characters survived in emitted URL payload: %q", link)
 		}
+	}
+}
+
+func TestKeyboardProtocol(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*tScreen)
+		want  KeyProtocol
+	}{
+		{
+			name: "Legacy",
+			want: LegacyKeyboard,
+		},
+		{
+			name: "Xterm",
+			setup: func(s *tScreen) {
+				s.haveXTermKbd = true
+			},
+			want: XTermKeyboard,
+		},
+		{
+			name: "Kitty",
+			setup: func(s *tScreen) {
+				s.haveKittyKbd = true
+			},
+			want: KittyKeyboard,
+		},
+		{
+			name: "Win32",
+			setup: func(s *tScreen) {
+				s.haveWin32Kbd = true
+			},
+			want: Win32Keyboard,
+		},
+		{
+			name: "KittyBeforeXterm",
+			setup: func(s *tScreen) {
+				s.haveKittyKbd = true
+				s.haveXTermKbd = true
+			},
+			want: KittyKeyboard,
+		},
+		{
+			name: "Win32BeforeKittyAndXterm",
+			setup: func(s *tScreen) {
+				s.haveWin32Kbd = true
+				s.haveKittyKbd = true
+				s.haveXTermKbd = true
+			},
+			want: Win32Keyboard,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &tScreen{}
+			if tt.setup != nil {
+				tt.setup(s)
+			}
+			if got := s.KeyboardProtocol(); got != tt.want {
+				t.Fatalf("KeyboardProtocol() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestProcessInitQKeyboardProtocol(t *testing.T) {
+	tests := []struct {
+		name string
+		evs  []Event
+		want KeyProtocol
+	}{
+		{
+			name: "Legacy",
+			want: LegacyKeyboard,
+		},
+		{
+			name: "Xterm",
+			evs:  []Event{&eventXTermKbdMode{Mode: XtermKbdModeExt}},
+			want: XTermKeyboard,
+		},
+		{
+			name: "Kitty",
+			evs:  []Event{&eventKittyKbdMode{Mode: KittyKbdModeBase}},
+			want: KittyKeyboard,
+		},
+		{
+			name: "Win32",
+			evs:  []Event{&eventPrivateMode{Mode: vt.PmWin32Input, Status: vt.ModeOff}},
+			want: Win32Keyboard,
+		},
+		{
+			name: "KittyPreferredOverXterm",
+			evs: []Event{
+				&eventXTermKbdMode{Mode: XtermKbdModeExt},
+				&eventKittyKbdMode{Mode: KittyKbdModeBase},
+			},
+			want: KittyKeyboard,
+		},
+		{
+			name: "Win32PreferredOverKittyAndXterm",
+			evs: []Event{
+				&eventXTermKbdMode{Mode: XtermKbdModeExt},
+				&eventKittyKbdMode{Mode: KittyKbdModeBase},
+				&eventPrivateMode{Mode: vt.PmWin32Input, Status: vt.ModeOff},
+			},
+			want: Win32Keyboard,
+		},
+		{
+			name: "UnchangeableWin32IsIgnored",
+			evs:  []Event{&eventPrivateMode{Mode: vt.PmWin32Input, Status: vt.ModeNA}},
+			want: LegacyKeyboard,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &tScreen{
+				initQ: make(chan Event, len(tt.evs)+1),
+			}
+			for _, ev := range tt.evs {
+				s.initQ <- ev
+			}
+			s.initQ <- &eventPrimaryAttributes{}
+			s.Lock()
+			s.processInitQ()
+			s.Unlock()
+
+			if got := s.KeyboardProtocol(); got != tt.want {
+				t.Fatalf("KeyboardProtocol() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

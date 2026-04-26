@@ -1441,3 +1441,18 @@ func (t *tScreen) Terminal() (string, string) {
 	defer t.Unlock()
 	return t.termName, t.termVers
 }
+
+func (t *tScreen) KeyboardProtocol() KeyProtocol {
+	t.Lock()
+	defer t.Unlock()
+	if t.haveWin32Kbd {
+		return Win32Keyboard
+	}
+	if t.haveKittyKbd {
+		return KittyKeyboard
+	}
+	if t.haveXTermKbd {
+		return XTermKeyboard
+	}
+	return LegacyKeyboard
+}

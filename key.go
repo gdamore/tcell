@@ -1,4 +1,4 @@
-// Copyright 2025 The TCell Authors
+// Copyright 2026 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,6 +73,19 @@ func (ev *EventKey) Key() Key {
 func (ev *EventKey) Modifiers() ModMask {
 	return ev.mod
 }
+
+// KeyProtocol identifies the keyboard reporting protocol that the terminal
+// is currently using.  More capable protocols allow disambiguating modifier
+// combinations, distinguishing key release events, etc.
+type KeyProtocol int
+
+// These are the keyboard protocols that tcell can report.
+const (
+	LegacyKeyboard KeyProtocol = iota // basic VT100 style reports
+	KittyKeyboard                     // kitty supports events, unambiguous keys modulo left/right modifiers
+	Win32Keyboard                     // win32 supports the full feature set
+	XTermKeyboard                     // xterm modify other keys, disambiguation only, no release events
+)
 
 // KeyNames holds the written names of special keys. Useful to echo back a key
 // name, or to look up a key from a string value.
