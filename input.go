@@ -1010,10 +1010,11 @@ func (ip *inputParser) handleWinKey(P []int) {
 		if b, ok := asciiByteFromInt(P[2]); ok {
 			if ip.nested == nil {
 				ip.nested = &inputParser{
-					evch:     ip.evch,
-					rows:     ip.rows,
-					cols:     ip.cols,
-					advanced: ip.advanced,
+					evch:       ip.evch,
+					rows:       ip.rows,
+					cols:       ip.cols,
+					advanced:   ip.advanced,
+					pixelMouse: ip.pixelMouse,
 				}
 			}
 			ip.nested.ScanUTF8([]byte{b})
