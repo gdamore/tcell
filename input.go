@@ -125,14 +125,16 @@ func (ip *inputParser) Waiting() bool {
 // SetPixelMouse toggles whether SGR mouse reports are interpreted as
 // pixel coordinates (CSI ?1016h) rather than character cells (CSI ?1006h).
 // When enabled, mouse coordinates are not clipped to the screen size.
+// The setting is also forwarded to the lazily-created nested parser used
+// for win32-input-mode, if one exists, so both stay in sync.
 func (ip *inputParser) SetPixelMouse(on bool) {
-	if ip.nested != nil {
-		ip.nested.SetPixelMouse(on)
-		return
-	}
 	ip.l.Lock()
 	ip.pixelMouse = on
+	nested := ip.nested
 	ip.l.Unlock()
+	if nested != nil {
+		nested.SetPixelMouse(on)
+	}
 }
 
 func (ip *inputParser) SetSize(w, h int) {
