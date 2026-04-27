@@ -943,6 +943,10 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	t.Print(vt.PmMouseDrag.Disable())
 	t.Print(vt.PmMouseMotion.Disable())
 	t.Print(vt.PmMouseSgr.Disable())
+	t.Print(vt.PmMouseSgrPixel.Disable())
+
+	pixel := f&MousePixelEvents != 0
+	t.input.SetPixelMouse(pixel)
 
 	if f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) != 0 {
 		t.Print(vt.PmMouseButton.Enable())
@@ -954,7 +958,11 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 		t.Print(vt.PmMouseMotion.Enable())
 	}
 	if f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) != 0 {
-		t.Print(vt.PmMouseSgr.Enable())
+		if pixel {
+			t.Print(vt.PmMouseSgrPixel.Enable())
+		} else {
+			t.Print(vt.PmMouseSgr.Enable())
+		}
 	}
 }
 

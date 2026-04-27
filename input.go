@@ -67,24 +67,25 @@ func newInputParser(eq chan<- Event) *inputParser {
 }
 
 type inputParser struct {
-	buf       []rune       // bytes to process (ingest data)
-	utfBuf    []byte       // accrued UTF8 bytes
-	strBuf    []byte       // accrued string data (for ST, OSC, etc.)
-	csiParams []byte       // accrued parameter bytes for CSI (and SS3)
-	csiInterm []byte       // accrued intermediate bytes for CSI
-	escChar   byte         // last byte for escape
-	escaped   bool         // true if next key should be modified by ESC
-	btnsDown  ButtonMask   // mouse buttons down (excludes wheel buttons)
-	state     inputState   // tracks processor state
-	strState  inputState   // saved str state (needed for ST)
-	l         sync.Mutex   // protects local state
-	evch      chan<- Event // where events are routed
-	rows      int          // used for clipping mouse coordinates
-	cols      int          // used for clipping mouse coordinates
-	keyTime   time.Time    // time of last key press / byte ingested
-	nested    *inputParser // for buggy win32-input-mode implementations
-	surrogate rune         // high surrogate pair seen (for Win32 input mode)
-	advanced  bool         // use advanced key reporting semantics
+	buf        []rune       // bytes to process (ingest data)
+	utfBuf     []byte       // accrued UTF8 bytes
+	strBuf     []byte       // accrued string data (for ST, OSC, etc.)
+	csiParams  []byte       // accrued parameter bytes for CSI (and SS3)
+	csiInterm  []byte       // accrued intermediate bytes for CSI
+	escChar    byte         // last byte for escape
+	escaped    bool         // true if next key should be modified by ESC
+	btnsDown   ButtonMask   // mouse buttons down (excludes wheel buttons)
+	state      inputState   // tracks processor state
+	strState   inputState   // saved str state (needed for ST)
+	l          sync.Mutex   // protects local state
+	evch       chan<- Event // where events are routed
+	rows       int          // used for clipping mouse coordinates
+	cols       int          // used for clipping mouse coordinates
+	pixelMouse bool         // mouse reports in pixels (CSI ?1016h); skip cell clipping
+	keyTime    time.Time    // time of last key press / byte ingested
+	nested     *inputParser // for buggy win32-input-mode implementations
+	surrogate  rune         // high surrogate pair seen (for Win32 input mode)
+	advanced   bool         // use advanced key reporting semantics
 }
 
 func keyFromInt(n int) (Key, bool) {
@@ -119,6 +120,19 @@ func (ip *inputParser) Waiting() bool {
 	ip.l.Lock()
 	defer ip.l.Unlock()
 	return ip.state != istInit
+}
+
+// SetPixelMouse toggles whether SGR mouse reports are interpreted as
+// pixel coordinates (CSI ?1016h) rather than character cells (CSI ?1006h).
+// When enabled, mouse coordinates are not clipped to the screen size.
+func (ip *inputParser) SetPixelMouse(on bool) {
+	if ip.nested != nil {
+		ip.nested.SetPixelMouse(on)
+		return
+	}
+	ip.l.Lock()
+	ip.pixelMouse = on
+	ip.l.Unlock()
 }
 
 func (ip *inputParser) SetSize(w, h int) {
@@ -880,9 +894,15 @@ func (ip *inputParser) handleMouse(mode rune, params []int) {
 	btn := params[0]
 	// Some terminals will report mouse coordinates outside the
 	// screen, especially with click-drag events.  Clip the coordinates
-	// to the screen in that case.
-	x := max(min(params[1]-1, ip.cols-1), 0)
-	y := max(min(params[2]-1, ip.rows-1), 0)
+	// to the screen in that case.  In pixel-reporting mode (CSI ?1016h)
+	// the values are already pixels rather than cells, so skip the clip
+	// and pass them through unchanged for the application to interpret.
+	x := params[1] - 1
+	y := params[2] - 1
+	if !ip.pixelMouse {
+		x = max(min(x, ip.cols-1), 0)
+		y = max(min(y, ip.rows-1), 0)
+	}
 
 	button := ButtonNone
 	mod := ModNone

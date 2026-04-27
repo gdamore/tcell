@@ -1168,3 +1168,73 @@ func TestEscDuringSs3ResetsParser(t *testing.T) {
 		t.Errorf("expected KeyDown, got key=%v str=%q mod=%v", got.Key(), got.Str(), got.Modifiers())
 	}
 }
+
+// firstMouse drains the next EventMouse off the channel.
+func firstMouse(ch <-chan Event) *EventMouse {
+	for {
+		select {
+		case ev := <-ch:
+			if me, ok := ev.(*EventMouse); ok {
+				return me
+			}
+		case <-time.After(100 * time.Millisecond):
+			return nil
+		}
+	}
+}
+
+// TestInputMouseSgrClipsToScreen verifies that legacy SGR mouse reports
+// (CSI ?1006h) have their coordinates clamped to the cell-based screen
+// size, matching long-standing tcell behavior for terminals that report
+// out-of-range coordinates during click-drag.
+func TestInputMouseSgrClipsToScreen(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.cols = 80
+	ip.rows = 24
+
+	// SGR press at column 500, row 300 (well off-screen) — should clip.
+	ip.ScanUTF8([]byte("\x1b[<0;500;300M"))
+
+	me := firstMouse(evch)
+	if me == nil {
+		t.Fatal("expected a mouse event")
+	}
+	if x, y := me.Position(); x != 79 || y != 23 {
+		t.Errorf("expected clipped position (79,23), got (%d,%d)", x, y)
+	}
+}
+
+// TestInputMouseSgrPixelNoClip verifies that when the input parser is
+// in pixel-reporting mode (CSI ?1016h), mouse coordinates pass through
+// unchanged so applications can resolve sub-cell positions.
+func TestInputMouseSgrPixelNoClip(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.cols = 80
+	ip.rows = 24
+	ip.SetPixelMouse(true)
+
+	// Same press at pixel (500, 300). Screen is 80x24 cells, so cell-mode
+	// would clip; pixel-mode must not.
+	ip.ScanUTF8([]byte("\x1b[<0;500;300M"))
+
+	me := firstMouse(evch)
+	if me == nil {
+		t.Fatal("expected a mouse event")
+	}
+	if x, y := me.Position(); x != 499 || y != 299 {
+		t.Errorf("expected unclipped position (499,299), got (%d,%d)", x, y)
+	}
+
+	// Toggling pixel mode off should restore clipping behavior.
+	ip.SetPixelMouse(false)
+	ip.ScanUTF8([]byte("\x1b[<0;500;300M"))
+	me = firstMouse(evch)
+	if me == nil {
+		t.Fatal("expected a mouse event after disabling pixel mode")
+	}
+	if x, y := me.Position(); x != 79 || y != 23 {
+		t.Errorf("expected re-clipped position (79,23), got (%d,%d)", x, y)
+	}
+}

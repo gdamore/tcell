@@ -300,6 +300,15 @@ const (
 	MouseButtonEvents = MouseFlags(1) // Click events only
 	MouseDragEvents   = MouseFlags(2) // Click-drag events (includes button events)
 	MouseMotionEvents = MouseFlags(4) // All mouse events (includes click and drag events)
+	// MousePixelEvents requests that mouse coordinates be reported in
+	// terminal pixels rather than character cells (xterm SGR-Pixel mode,
+	// CSI ?1016h). It is a modifier on the other mouse flags: at least one
+	// of MouseButtonEvents, MouseDragEvents, or MouseMotionEvents must also
+	// be set for any events to be delivered. When this mode is active,
+	// EventMouse.Position() returns coordinates in pixels; the application
+	// is responsible for mapping those to its own grid (e.g. via the
+	// terminal's reported cell-pixel size).
+	MousePixelEvents = MouseFlags(8)
 )
 
 // CursorStyle represents a given cursor style, which can include the shape and
