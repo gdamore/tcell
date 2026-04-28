@@ -243,6 +243,9 @@ func TestOSC8ControlsAreStrippedFromOutput(t *testing.T) {
 	if link != "http://example.com/\\path" {
 		t.Fatalf("unexpected emitted URL payload: %q", link)
 	}
+	if _, afterLink, ok := strings.Cut(out, "X"); !ok || !strings.Contains(afterLink, "\x1b]8;;\x1b\\") {
+		t.Fatalf("missing OSC 8 link close sequence after linked content: %q", out)
+	}
 	for i := 0; i < len(link); i++ {
 		c := link[i]
 		if c <= 0x1f || c == 0x7f || (c >= 0x80 && c <= 0x9f) {

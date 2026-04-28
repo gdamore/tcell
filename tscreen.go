@@ -898,6 +898,10 @@ func (t *tScreen) draw() {
 		}
 	}
 
+	if t.curstyle.url != nil {
+		t.emitUrl(urlInfo{})
+	}
+
 	// restore the cursor
 	t.showCursor()
 
