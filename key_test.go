@@ -79,6 +79,16 @@ func TestEventKeyAdvancedNormalization(t *testing.T) {
 			wantRepeat:   2,
 		},
 		{
+			name:         "advanced backtab normalizes to shift tab",
+			ev:           NewEventKeyEx(KeyBacktab, "", ModNone, true, KeyBacktab, 1),
+			wantKey:      KeyTab,
+			wantStr:      "",
+			wantMod:      ModShift,
+			wantPressed:  true,
+			wantPhysical: KeyTab,
+			wantRepeat:   1,
+		},
+		{
 			name:         "backspace alias",
 			ev:           NewEventKeyEx(KeyBackspace2, "", ModNone, true, KeyBackspace2, 1),
 			wantKey:      KeyBackspace,

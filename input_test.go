@@ -881,6 +881,35 @@ func TestAdvancedControlKeys(t *testing.T) {
 	}
 }
 
+func TestAdvancedBacktabReportsShiftTab(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []byte
+	}{
+		{"CSI-Z", []byte("\x1b[Z")},
+		{"ESC-Tab", []byte{'\x1b', '\t'}},
+		{"XTerm-Shift-Tab", []byte("\x1b[27;2;9~")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			evch := make(chan Event, 10)
+			ip := newInputParser(evch)
+			ip.advanced = true
+
+			ip.ScanUTF8(tt.input)
+
+			got := nextKey(evch)
+			if got == nil {
+				t.Fatal("expected Shift-Tab event")
+			}
+			if got.Key() != KeyTab || got.Modifiers() != ModShift {
+				t.Fatalf("expected KeyTab + ModShift, got key=%v str=%q mod=%v", got.Key(), got.Str(), got.Modifiers())
+			}
+		})
+	}
+}
+
 func TestAdvancedKittyKeyMetadata(t *testing.T) {
 	evch := make(chan Event, 10)
 	ip := newInputParser(evch)

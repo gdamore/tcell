@@ -410,6 +410,16 @@ func newEventKey(k Key, str string, mod ModMask, pressed bool, physical Key, rep
 		k = KeyBackspace
 	}
 
+	// Advanced key reporting exposes Shift-Tab directly.  Backtab is a legacy
+	// alias from terminals that cannot distinguish a physical Backtab key.
+	if k == KeyBacktab && advanced {
+		k = KeyTab
+		mod |= ModShift
+		if physical == 0 || physical == KeyBacktab {
+			physical = KeyTab
+		}
+	}
+
 	// Shift-Tab should be Backtab.
 	if k == KeyTab && (mod&ModShift) != 0 && !advanced {
 		k = KeyBacktab
@@ -568,6 +578,8 @@ const (
 	KeyCancel
 	KeyPrint
 	KeyPause
+	// KeyBacktab is used for legacy Shift-Tab reporting.  In advanced key
+	// reporting mode, Shift-Tab is reported as KeyTab with ModShift instead.
 	KeyBacktab
 	KeyF1
 	KeyF2

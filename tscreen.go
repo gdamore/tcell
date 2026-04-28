@@ -95,7 +95,8 @@ func (o OptSanitizeContent) apply(t *tScreen) {
 // OptAdvancedKeys enables richer key reporting where supported.  In this mode
 // key events may include release state, repeat counts, and physical keys, and
 // ASCII control letters are reported as KeyRune with ModCtrl instead of
-// KeyCtrlA through KeyCtrlZ.
+// KeyCtrlA through KeyCtrlZ.  Shift-Tab is reported as KeyTab with ModShift,
+// rather than KeyBacktab.
 type OptAdvancedKeys bool
 
 func (o OptAdvancedKeys) apply(t *tScreen) {
