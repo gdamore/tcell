@@ -592,6 +592,7 @@ func TestSpecialKeys(t *testing.T) {
 		{"Alt-F7", []byte{'\x1b', '[', '1', '8', ';', '3', '~'}, KeyF7, ModAlt, ""},
 		{"XTerm-Shift-Tab", []byte{'\x1b', '[', '2', '7', ';', '2', ';', '9', '~'}, KeyBacktab, ModNone, ""}, // modifyOtherKeys == 2
 		{"XTerm-Space", []byte{'\x1b', '[', '2', '7', ';', '1', ';', '3', '2', '~'}, KeyRune, ModNone, " "},  // modifyOtherKeys == 3
+		{"XTerm-Alt-CJK", []byte{'\x1b', '[', '2', '7', ';', '3', ';', '2', '0', '3', '2', '0', '~'}, KeyRune, ModAlt, "你"},
 		{"Kitty-Esc", []byte{'\x1b', '[', '2', '7', 'u'}, KeyEsc, ModNone, ""},
 		{"Kitty-Control-I", []byte{'\x1b', '[', '1', '0', '5', ';', '5', 'u'}, 'I', ModCtrl, ""},
 		{"Win-Shift-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '6', '5', ';', '1', ';', '1', '6', '_'}, KeyRune, ModNone, "A"},

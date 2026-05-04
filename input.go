@@ -1350,13 +1350,13 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 				ip.postKey(ks.Key, "", mod)
 				return
 			}
-			if P0 == 27 && len(P) > 2 && P[2] > 0 && P[2] <= 0xff {
+			if P0 == 27 && len(P) > 2 && P[2] > 0 && P[2] <= utf8.MaxRune {
 				if P[2] < ' ' || P[2] == 0x7F {
 					if key, ok := keyFromInt(P[2]); ok {
 						ip.postKey(key, "", mod)
 					}
 				} else {
-					physical, _ := keyFromInt(P[2])
+					physical, _ := keyFromRune(rune(P[2]))
 					ip.postKeyEx(KeyRune, string(rune(P[2])), mod, true, physical, 1)
 				}
 				return
