@@ -107,13 +107,6 @@ type simscreen struct {
 	title     string
 	clipboard []byte
 
-	// PERF: scratch buffers for drawCell's per-cell utf8.EncodeRune +
-	// encoder.Transform. lifted to fields so a full-dirty Show doesn't
-	// allocate two 12-byte slices per cell. drawCell only runs under
-	// s.Lock, so no race.
-	lbuf [12]byte
-	ubuf [12]byte
-
 	Screen
 	sync.Mutex
 }
@@ -200,8 +193,8 @@ func (s *simscreen) drawCell(x, y int) int {
 		return width
 	}
 
-	lbuf := s.lbuf[:]
-	ubuf := s.ubuf[:]
+	lbuf := make([]byte, 12)
+	ubuf := make([]byte, 12)
 	nout := 0
 
 	for _, r := range simc.Runes {
