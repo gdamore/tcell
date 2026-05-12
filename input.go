@@ -1307,13 +1307,6 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 			if mod1 := kittyModifierKey(P0); mod1 != ModNone {
 				mod |= mod1
 			}
-			if physical == 0 {
-				physical = key
-				if key == KeyRune && chr != 0 {
-					physical, _ = keyFromRune(chr)
-				}
-			}
-
 			if key != KeyRune {
 				ip.postKeyEx(key, "", mod, pressed, physical, repeat)
 			} else if chr != 0 {
