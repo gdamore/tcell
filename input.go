@@ -1167,9 +1167,7 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 	// reset state
 	ip.state = istInit
 
-	var parts []string
 	var P []int
-	var PSubs [][]int
 	hasLT := false
 	hasQM := false
 	hasGT := false
@@ -1186,8 +1184,13 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		pstr = pstr[1:]
 	}
 
+	pressed := true
+	repeat := 1
+	physical := Key(0)
 	if pstr != "" && pstr[0] >= '0' && pstr[0] <= '9' {
-		parts = strings.Split(pstr, ";")
+		var PSubs [][]int
+
+		parts := strings.Split(pstr, ";")
 		for i := range parts {
 			subparts := strings.Split(parts[i], ":")
 			if subparts[0] != "" {
@@ -1210,6 +1213,25 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 				}
 			}
 			PSubs = append(PSubs, subs)
+		}
+		if len(PSubs) > 1 && len(PSubs[1]) > 0 {
+			switch PSubs[1][0] {
+			case 2:
+				repeat = 2
+			case 3:
+				pressed = false
+			}
+		}
+		if len(PSubs) > 0 && len(PSubs[0]) > 0 {
+			base := PSubs[0][0]
+			if baseKey, ok := csiUKeys[base]; ok {
+				physical = baseKey.Key
+				if physical == KeyRune && baseKey.Rune != 0 {
+					physical, _ = keyFromRune(baseKey.Rune)
+				}
+			} else if base != 0 {
+				physical, _ = keyFromInt(base)
+			}
 		}
 	}
 	var P0 int
@@ -1285,30 +1307,13 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 			if mod1 := kittyModifierKey(P0); mod1 != ModNone {
 				mod |= mod1
 			}
-			pressed := true
-			repeat := 1
-			if len(PSubs) > 1 && len(PSubs[1]) > 0 {
-				switch PSubs[1][0] {
-				case 2:
-					repeat = 2
-				case 3:
-					pressed = false
+			if physical == 0 {
+				physical = key
+				if key == KeyRune && chr != 0 {
+					physical, _ = keyFromRune(chr)
 				}
 			}
-			physical := key
-			if len(PSubs) > 0 && len(PSubs[0]) > 0 {
-				base := PSubs[0][0]
-				if baseKey, ok := csiUKeys[base]; ok {
-					physical = baseKey.Key
-					if physical == KeyRune && baseKey.Rune != 0 {
-						physical, _ = keyFromRune(baseKey.Rune)
-					}
-				} else if base != 0 {
-					physical, _ = keyFromInt(base)
-				}
-			} else if key == KeyRune && chr != 0 {
-				physical, _ = keyFromRune(chr)
-			}
+
 			if key != KeyRune {
 				ip.postKeyEx(key, "", mod, pressed, physical, repeat)
 			} else if chr != 0 {
@@ -1347,7 +1352,7 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		if len(P) >= 2 {
 			mod := calcModifier(P[1])
 			if ks, ok := csiAllKeys[csiParamMode{M: mode, P: P0}]; ok {
-				ip.postKey(ks.Key, "", mod)
+				ip.postKeyEx(ks.Key, "", mod, pressed, 0, repeat)
 				return
 			}
 			if P0 == 27 && len(P) > 2 && P[2] > 0 && P[2] <= utf8.MaxRune {
@@ -1377,7 +1382,7 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 
 	// this might have been an SS3 style key with modifiers applied
 	if k, ok := ss3Keys[mode]; ok && P0 == 1 && len(P) > 1 {
-		ip.postKey(k, "", calcModifier(P[1]))
+		ip.postKeyEx(k, "", calcModifier(P[1]), pressed, 0, repeat)
 		return
 	}
 	// if we got here we just swallow the unknown sequence
