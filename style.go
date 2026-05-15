@@ -115,10 +115,15 @@ func (s Style) setAttrs(attrs AttrMask, on bool) Style {
 }
 
 // Normal returns the style with all attributes disabled.
+// Colors are preserved, as are hyperlinks.  (Underline color
+// will also be preserved, but no underline is currently shown.
+// Apart from color, the underline style is reset as well.)
 func (s Style) Normal() Style {
 	return Style{
-		fg: s.fg,
-		bg: s.bg,
+		fg:      s.fg,
+		bg:      s.bg,
+		ulColor: s.ulColor,
+		url:     s.url,
 	}
 }
 
