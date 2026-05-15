@@ -396,6 +396,7 @@ func (b *baseScreen) Put(x int, y int, str string, style Style) (remain string, 
 func (b *baseScreen) PutStrStyled(x int, y int, str string, style Style) {
 	cells := b.GetCells()
 	b.Lock()
+	defer b.Unlock()
 	cols, rows := cells.Size()
 	if cells.sanitizeContent {
 		str = stripOSCControlsIfNeeded(str)
@@ -408,7 +409,6 @@ func (b *baseScreen) PutStrStyled(x int, y int, str string, style Style) {
 		}
 		x += width
 	}
-	defer b.Unlock()
 }
 
 func (b *baseScreen) PutStr(x, y int, str string) {
