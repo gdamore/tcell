@@ -789,6 +789,10 @@ func (t *tScreen) drawCell(x, y int) int {
 
 func (t *tScreen) ShowCursor(x, y int) {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.cursorx = x
 	t.cursory = y
 	t.Unlock()
@@ -796,6 +800,10 @@ func (t *tScreen) ShowCursor(x, y int) {
 
 func (t *tScreen) SetCursor(cs CursorStyle, cc Color) {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.cursorStyle = cs
 	t.cursorColor = cc
 	t.Unlock()
@@ -941,6 +949,10 @@ func (t *tScreen) EnableMouse(flags ...MouseFlags) {
 	}
 
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.mouseFlags = f
 	t.enableMouse(f)
 	t.Unlock()
@@ -993,6 +1005,10 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 
 func (t *tScreen) DisableMouse() {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.mouseFlags = 0
 	t.enableMouse(0)
 	t.Unlock()
@@ -1000,6 +1016,10 @@ func (t *tScreen) DisableMouse() {
 
 func (t *tScreen) EnablePaste() {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.pasteEnabled = true
 	t.enablePasting(true)
 	t.Unlock()
@@ -1007,6 +1027,10 @@ func (t *tScreen) EnablePaste() {
 
 func (t *tScreen) DisablePaste() {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.pasteEnabled = false
 	t.enablePasting(false)
 	t.Unlock()
@@ -1026,6 +1050,10 @@ func (t *tScreen) enablePasting(on bool) {
 
 func (t *tScreen) EnableFocus() {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.focusEnabled = true
 	t.enableFocusReporting()
 	t.Unlock()
@@ -1033,6 +1061,10 @@ func (t *tScreen) EnableFocus() {
 
 func (t *tScreen) DisableFocus() {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.focusEnabled = false
 	t.disableFocusReporting()
 	t.Unlock()
@@ -1246,7 +1278,9 @@ func (t *tScreen) UnregisterRuneFallback(orig rune) {
 func (t *tScreen) SetSize(w, h int) {
 	t.Lock()
 	defer t.Unlock()
-
+	if t.fini {
+		return
+	}
 	if t.setWinSize != "" {
 		t.Printf(t.setWinSize, w, h)
 	}
@@ -1257,11 +1291,23 @@ func (t *tScreen) SetSize(w, h int) {
 func (t *tScreen) Resize(int, int, int, int) {}
 
 func (t *tScreen) Suspend() error {
+	t.Lock()
+	fini := t.fini
+	t.Unlock()
+	if fini {
+		return nil
+	}
 	t.disengage()
 	return nil
 }
 
 func (t *tScreen) Resume() error {
+	t.Lock()
+	fini := t.fini
+	t.Unlock()
+	if fini {
+		return nil
+	}
 	return t.engage()
 }
 
@@ -1441,6 +1487,12 @@ func (t *tScreen) disengage() {
 
 // Beep emits a beep to the terminal.
 func (t *tScreen) Beep() error {
+	t.Lock()
+	fini := t.fini
+	t.Unlock()
+	if fini {
+		return nil
+	}
 	t.Print(string(byte(7)))
 	return nil
 }
@@ -1467,6 +1519,10 @@ func (t *tScreen) GetCells() *CellBuffer {
 
 func (t *tScreen) SetTitle(title string) {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.title = stripOSCControlsIfNeeded(title)
 	if t.setTitle != "" && t.running {
 		t.Printf(t.setTitle, t.title)
@@ -1477,6 +1533,10 @@ func (t *tScreen) SetTitle(title string) {
 func (t *tScreen) SetClipboard(data []byte) {
 	// Post binary data to the system clipboard.  It might be UTF-8, it might not be.
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	if t.setClipboard != "" {
 		encoded := base64.StdEncoding.EncodeToString(data)
 		t.Printf(t.setClipboard, encoded)
@@ -1486,6 +1546,10 @@ func (t *tScreen) SetClipboard(data []byte) {
 
 func (t *tScreen) GetClipboard() {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	if t.setClipboard != "" {
 		t.Printf(t.setClipboard, "?")
 	}
@@ -1498,6 +1562,10 @@ func (t *tScreen) HasClipboard() bool {
 
 func (t *tScreen) ShowNotification(title string, body string) {
 	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
 	t.Printf(t.notifyDesktop, stripOSCControlsIfNeeded(title), stripOSCControlsIfNeeded(body))
 	t.Unlock()
 }
