@@ -112,6 +112,119 @@ func TestOptAltScreenDefault(t *testing.T) {
 	}
 }
 
+func TestFiniPreventsSetStyleMutation(t *testing.T) {
+	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+	scr, err := NewTerminfoScreenFromTty(mt)
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	bs, ok := scr.(*baseScreen)
+	if !ok {
+		t.Fatalf("expected *baseScreen, got %T", scr)
+	}
+	ts, ok := bs.screenImpl.(*tScreen)
+	if !ok {
+		t.Fatalf("expected *tScreen, got %T", bs.screenImpl)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+
+	before := StyleDefault.Foreground(ColorRed)
+	after := StyleDefault.Foreground(ColorBlue)
+	scr.SetStyle(before)
+	scr.Fini()
+	scr.SetStyle(after)
+
+	ts.Lock()
+	defer ts.Unlock()
+	if !ts.fini {
+		t.Fatal("screen was not marked finished")
+	}
+	if ts.style != before {
+		t.Fatal("SetStyle mutated the screen after Fini")
+	}
+}
+
+func TestFiniPreventsFurtherTerminalMutation(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})}
+	scr, err := NewTerminfoScreenFromTty(tty)
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	bs, ok := scr.(*baseScreen)
+	if !ok {
+		t.Fatalf("expected *baseScreen, got %T", scr)
+	}
+	ts, ok := bs.screenImpl.(*tScreen)
+	if !ok {
+		t.Fatalf("expected *tScreen, got %T", bs.screenImpl)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+
+	scr.ShowCursor(1, 1)
+	scr.SetCursorStyle(CursorStyleSteadyBlock, ColorRed)
+	scr.EnableMouse()
+	scr.EnablePaste()
+	scr.EnableFocus()
+	scr.Fini()
+
+	beforeOutput := tty.Output()
+	ts.Lock()
+	beforeCursorX, beforeCursorY := ts.cursorx, ts.cursory
+	beforeCursorStyle, beforeCursorColor := ts.cursorStyle, ts.cursorColor
+	beforeMouseFlags := ts.mouseFlags
+	beforePasteEnabled, beforeFocusEnabled := ts.pasteEnabled, ts.focusEnabled
+	ts.Unlock()
+
+	scr.ShowCursor(2, 1)
+	scr.SetCursorStyle(CursorStyleBlinkingBar, ColorBlue)
+	scr.EnableMouse(MouseMotionEvents)
+	scr.DisableMouse()
+	scr.EnablePaste()
+	scr.DisablePaste()
+	scr.EnableFocus()
+	scr.DisableFocus()
+	scr.SetSize(20, 10)
+	if err := scr.Suspend(); err != nil {
+		t.Fatalf("Suspend after Fini failed: %v", err)
+	}
+	if err := scr.Resume(); err != nil {
+		t.Fatalf("Resume after Fini failed: %v", err)
+	}
+	if err := scr.Beep(); err != nil {
+		t.Fatalf("Beep after Fini failed: %v", err)
+	}
+	scr.SetTitle("after")
+	scr.SetClipboard([]byte("after"))
+	scr.GetClipboard()
+	scr.ShowNotification("after", "after")
+
+	if got := tty.Output(); got != beforeOutput {
+		t.Fatal("terminal output changed after Fini")
+	}
+
+	ts.Lock()
+	defer ts.Unlock()
+	if ts.cursorx != beforeCursorX || ts.cursory != beforeCursorY {
+		t.Fatal("cursor position changed after Fini")
+	}
+	if ts.cursorStyle != beforeCursorStyle || ts.cursorColor != beforeCursorColor {
+		t.Fatal("cursor style changed after Fini")
+	}
+	if ts.mouseFlags != beforeMouseFlags {
+		t.Fatal("mouse flags changed after Fini")
+	}
+	if ts.pasteEnabled != beforePasteEnabled {
+		t.Fatal("paste state changed after Fini")
+	}
+	if ts.focusEnabled != beforeFocusEnabled {
+		t.Fatal("focus state changed after Fini")
+	}
+}
+
 func TestOptAdvancedKeys(t *testing.T) {
 	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
 	scr, err := NewTerminfoScreenFromTty(mt, OptAdvancedKeys(true))
