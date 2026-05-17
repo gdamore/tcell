@@ -251,6 +251,44 @@ func TestOptAdvancedKeys(t *testing.T) {
 	}
 }
 
+func TestOptKeyboardProtocol(t *testing.T) {
+	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+	scr, err := NewTerminfoScreenFromTty(mt, OptKeyboardProtocol(KittyKeyboard))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	bs, ok := scr.(*baseScreen)
+	if !ok {
+		t.Fatalf("expected *baseScreen, got %T", scr)
+	}
+	ts, ok := bs.screenImpl.(*tScreen)
+	if !ok {
+		t.Fatalf("expected *tScreen, got %T", bs.screenImpl)
+	}
+	if !ts.forceKbd || ts.forcedKbd != KittyKeyboard {
+		t.Fatalf("forced keyboard protocol = (%v, %v), want (true, %v)", ts.forceKbd, ts.forcedKbd, KittyKeyboard)
+	}
+}
+
+func TestOptNegotiation(t *testing.T) {
+	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+	scr, err := NewTerminfoScreenFromTty(mt, OptNegotiation(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	bs, ok := scr.(*baseScreen)
+	if !ok {
+		t.Fatalf("expected *baseScreen, got %T", scr)
+	}
+	ts, ok := bs.screenImpl.(*tScreen)
+	if !ok {
+		t.Fatalf("expected *tScreen, got %T", bs.screenImpl)
+	}
+	if ts.negotiate {
+		t.Fatal("negotiation option was not applied")
+	}
+}
+
 func TestSetSizeTakesScreenLock(t *testing.T) {
 	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
 	ts := &tScreen{tty: mt, w: 8, h: 2}
@@ -536,6 +574,7 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 		wantInitted  bool
 		wantMouse    bool
 		wantMouseSgr bool
+		wantKittyKbd bool
 		wantWin32Kbd bool
 	}{
 		{
@@ -557,9 +596,14 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 			wantWin32Kbd: true,
 		},
 		{
-			name:        "RemoteWezTerm",
-			goos:        "linux",
-			termProgram: "WezTerm",
+			name:         "LocalUnixWezTerm",
+			goos:         "linux",
+			termProgram:  "WezTerm",
+			wantKnown:    true,
+			wantInitted:  true,
+			wantMouse:    true,
+			wantMouseSgr: true,
+			wantKittyKbd: true,
 		},
 		{
 			name:        "UnknownTerminal",
@@ -582,6 +626,9 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 			}
 			if s.haveMouseSgr != tt.wantMouseSgr {
 				t.Fatalf("haveMouseSgr = %v, want %v", s.haveMouseSgr, tt.wantMouseSgr)
+			}
+			if s.haveKittyKbd != tt.wantKittyKbd {
+				t.Fatalf("haveKittyKbd = %v, want %v", s.haveKittyKbd, tt.wantKittyKbd)
 			}
 			if s.haveWin32Kbd != tt.wantWin32Kbd {
 				t.Fatalf("haveWin32Kbd = %v, want %v", s.haveWin32Kbd, tt.wantWin32Kbd)
@@ -618,6 +665,236 @@ func TestKeyboardProbePolicy(t *testing.T) {
 				t.Fatalf("useXTermKeyboardQuery() = %v, want %v", got, tt.wantXTermQuery)
 			}
 		})
+	}
+}
+
+func TestKeyboardProtocolHelpers(t *testing.T) {
+	tests := []struct {
+		name      string
+		value     string
+		want      KeyProtocol
+		wantValid bool
+	}{
+		{name: "legacy", value: "legacy", want: LegacyKeyboard, wantValid: true},
+		{name: "kitty", value: "kitty", want: KittyKeyboard, wantValid: true},
+		{name: "win32", value: "win32", want: Win32Keyboard, wantValid: true},
+		{name: "xterm", value: "xterm", want: XTermKeyboard, wantValid: true},
+		{name: "invalid", value: "bogus"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := parseKeyboardProtocol(tt.value)
+			if got != tt.want || ok != tt.wantValid {
+				t.Fatalf("parseKeyboardProtocol(%q) = (%v, %v), want (%v, %v)", tt.value, got, ok, tt.want, tt.wantValid)
+			}
+		})
+	}
+
+	if validKeyboardProtocol(KeyProtocol(99)) {
+		t.Fatal("invalid keyboard protocol was accepted")
+	}
+}
+
+func TestForceKeyboardProtocol(t *testing.T) {
+	s := &tScreen{
+		haveKittyKbd: true,
+		haveWin32Kbd: true,
+		haveXTermKbd: true,
+	}
+	if s.forceKeyboardProtocol(KeyProtocol(99)) {
+		t.Fatal("invalid keyboard protocol was forced")
+	}
+	if s.forceKbd {
+		t.Fatal("invalid keyboard protocol changed override state")
+	}
+	if !s.forceKeyboardProtocol(XTermKeyboard) {
+		t.Fatal("valid keyboard protocol was not forced")
+	}
+	s.applyKeyboardProtocolOverride()
+	if s.haveKittyKbd || s.haveWin32Kbd || !s.haveXTermKbd {
+		t.Fatalf("forced XTerm protocol state = kitty:%v win32:%v xterm:%v", s.haveKittyKbd, s.haveWin32Kbd, s.haveXTermKbd)
+	}
+}
+
+func TestApplyEnvironmentOverrides(t *testing.T) {
+	tests := []struct {
+		name             string
+		keyboardProtocol string
+		negotiate        string
+		mouse            string
+		startForceKbd    bool
+		startForcedKbd   KeyProtocol
+		startNegotiate   bool
+		wantForceKbd     bool
+		wantForcedKbd    KeyProtocol
+		wantNegotiate    bool
+		wantMouseOff     bool
+	}{
+		{
+			name:           "defaults",
+			startNegotiate: true,
+			wantNegotiate:  true,
+			wantForcedKbd:  LegacyKeyboard,
+		},
+		{
+			name:             "force all",
+			keyboardProtocol: "win32",
+			negotiate:        "disable",
+			mouse:            "disable",
+			startNegotiate:   true,
+			wantForceKbd:     true,
+			wantForcedKbd:    Win32Keyboard,
+			wantMouseOff:     true,
+		},
+		{
+			name:             "auto resets options",
+			keyboardProtocol: "auto",
+			negotiate:        "auto",
+			startForceKbd:    true,
+			startForcedKbd:   KittyKeyboard,
+			wantNegotiate:    true,
+			wantForcedKbd:    KittyKeyboard,
+		},
+		{
+			name:             "invalid leaves options",
+			keyboardProtocol: "bogus",
+			negotiate:        "bogus",
+			startForceKbd:    true,
+			startForcedKbd:   XTermKeyboard,
+			startNegotiate:   false,
+			wantForceKbd:     true,
+			wantForcedKbd:    XTermKeyboard,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("TCELL_KEYBOARD_PROTOCOL", tt.keyboardProtocol)
+			t.Setenv("TCELL_NEGOTIATE", tt.negotiate)
+			t.Setenv("TCELL_MOUSE", tt.mouse)
+			s := &tScreen{
+				forceKbd:  tt.startForceKbd,
+				forcedKbd: tt.startForcedKbd,
+				negotiate: tt.startNegotiate,
+			}
+			s.applyEnvironmentOverrides()
+			if s.forceKbd != tt.wantForceKbd {
+				t.Fatalf("forceKbd = %v, want %v", s.forceKbd, tt.wantForceKbd)
+			}
+			if s.forcedKbd != tt.wantForcedKbd {
+				t.Fatalf("forcedKbd = %v, want %v", s.forcedKbd, tt.wantForcedKbd)
+			}
+			if s.negotiate != tt.wantNegotiate {
+				t.Fatalf("negotiate = %v, want %v", s.negotiate, tt.wantNegotiate)
+			}
+			if s.mouseDisabled != tt.wantMouseOff {
+				t.Fatalf("mouseDisabled = %v, want %v", s.mouseDisabled, tt.wantMouseOff)
+			}
+		})
+	}
+}
+
+func TestForcedKeyboardProtocolSkipsKeyboardQueries(t *testing.T) {
+	t.Setenv("TERM_PROGRAM", "")
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptKeyboardProtocol(KittyKeyboard), OptAdvancedKeys(true), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	out := tty.Output()
+	for _, seq := range []string{vt.PmWin32Input.Query(), queryKittyKbd, queryXTermKbd} {
+		if strings.Contains(out, seq) {
+			t.Fatalf("forced keyboard protocol emitted competing query %q", seq)
+		}
+	}
+	for _, seq := range []string{vt.PmResizeReports.Query(), vt.PmMouseButton.Query(), vt.PmMouseSgr.Query(), requestExtAttr} {
+		if !strings.Contains(out, seq) {
+			t.Fatalf("forced keyboard protocol suppressed unrelated query %q", seq)
+		}
+	}
+	if !strings.Contains(out, enableKittyKbdAdv) {
+		t.Fatalf("forced Kitty protocol did not emit advanced enable sequence")
+	}
+}
+
+func TestNegotiationDisabledSkipsStartupQueries(t *testing.T) {
+	t.Setenv("TERM_PROGRAM", "")
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	out := tty.Output()
+	for _, seq := range []string{
+		requestWindowSize,
+		vt.PmResizeReports.Query(),
+		vt.PmMouseButton.Query(),
+		vt.PmMouseSgr.Query(),
+		vt.PmWin32Input.Query(),
+		queryKittyKbd,
+		queryXTermKbd,
+		requestExtAttr,
+		requestPrimaryDA,
+	} {
+		if strings.Contains(out, seq) {
+			t.Fatalf("disabled negotiation emitted startup query %q", seq)
+		}
+	}
+}
+
+func TestMouseDisabledPreventsEnablement(t *testing.T) {
+	t.Setenv("TCELL_MOUSE", "disable")
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	s.EnableMouse()
+	out := tty.Output()
+	for _, seq := range []string{vt.PmMouseButton.Enable(), vt.PmMouseDrag.Enable(), vt.PmMouseMotion.Enable(), vt.PmMouseSgr.Enable()} {
+		if strings.Contains(out, seq) {
+			t.Fatalf("disabled mouse emitted enable sequence %q", seq)
+		}
+	}
+}
+
+func TestMouseWithoutSgrPreventsEnablement(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	ts := s.(*baseScreen).screenImpl.(*tScreen)
+	ts.haveMouse = true
+	ts.haveMouseSgr = false
+	s.EnableMouse()
+
+	out := tty.Output()
+	for _, seq := range []string{vt.PmMouseButton.Enable(), vt.PmMouseDrag.Enable(), vt.PmMouseMotion.Enable(), vt.PmMouseSgr.Enable()} {
+		if strings.Contains(out, seq) {
+			t.Fatalf("mouse without SGR support emitted enable sequence %q", seq)
+		}
 	}
 }
 
