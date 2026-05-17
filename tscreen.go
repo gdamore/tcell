@@ -1345,10 +1345,6 @@ func (t *tScreen) engage() error {
 				t.Print(queryXTermKbd)
 			}
 			t.Print(requestExtAttr)
-			// Some terminals can answer DA ahead of earlier startup queries,
-			// despite receiving DA last.  Give the preceding query batch a
-			// small head start before using DA as the initialization sentinel.
-			time.Sleep(25 * time.Millisecond)
 		}
 		if !t.initted {
 			t.Print(requestPrimaryDA) // NB: MUST BE LAST
