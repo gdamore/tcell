@@ -261,8 +261,9 @@ func (s Style) Url(url string) Style {
 // were one Url, even if it spans multiple lines.
 func (s Style) UrlId(id string) Style {
 	s2 := s
-	s2.url = &urlInfo{
-		id: "id=" + stripOSCControlsIfNeeded(id),
+	s2.url = &urlInfo{}
+	if id = stripOSCControlsIfNeeded(id); id != "" {
+		s2.url.id = "id=" + id
 	}
 	if s.url != nil {
 		s2.url.url = s.url.url

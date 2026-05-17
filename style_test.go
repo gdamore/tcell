@@ -99,6 +99,11 @@ func TestStyle(t *testing.T) {
 		t.Errorf("url id not preserved across clear: %q %q", id, url)
 	}
 
+	us = us.UrlId("")
+	if id, url := us.GetUrl(); id != "" || url != "http://example.net" {
+		t.Errorf("url id clear did not preserve url: %q %q", id, url)
+	}
+
 	orphan := StyleDefault.UrlId("orphan")
 	if id, url := orphan.GetUrl(); id != "orphan" || url != "" {
 		t.Errorf("url id without url should be retained: %q %q", id, url)
@@ -107,6 +112,14 @@ func TestStyle(t *testing.T) {
 	orphan = orphan.Url("http://example.org")
 	if id, url := orphan.GetUrl(); id != "orphan" || url != "http://example.org" {
 		t.Errorf("url id set before url was not preserved: %q %q", id, url)
+	}
+
+	if id, url := StyleDefault.Url("").GetUrl(); id != "" || url != "" {
+		t.Errorf("empty url should leave no hyperlink state: %q %q", id, url)
+	}
+
+	if id, url := StyleDefault.UrlId("").GetUrl(); id != "" || url != "" {
+		t.Errorf("empty url id should leave no hyperlink state: %q %q", id, url)
 	}
 
 	us = us.Normal().Reverse(true).Italic(false)
