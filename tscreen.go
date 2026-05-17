@@ -793,6 +793,13 @@ func (t *tScreen) emitUrl(u urlInfo) {
 	}
 }
 
+// urlNeedsEmission reports whether a hyperlink transition has any wire effect.
+// Url ids can be staged before the Url itself, and id-only transitions have no
+// OSC 8 representation of their own.
+func urlNeedsEmission(oldUrl, newUrl urlInfo) bool {
+	return oldUrl != newUrl && (oldUrl.url != "" || newUrl.url != "")
+}
+
 func (t *tScreen) drawCell(x, y int) int {
 
 	str, style, width := t.cells.Get(x, y)
@@ -826,8 +833,8 @@ func (t *tScreen) drawCell(x, y int) int {
 		if style.url != nil {
 			newUrl = *style.url
 		}
-		// URL string can be long, so don't send it unless we really need to
-		if newUrl != oldUrl {
+		// URL string can be long, so don't send it unless we really need to.
+		if urlNeedsEmission(oldUrl, newUrl) {
 			t.emitUrl(newUrl)
 		}
 
@@ -1013,7 +1020,7 @@ func (t *tScreen) draw() {
 		}
 	}
 
-	if t.curstyle.url != nil {
+	if t.curstyle.url != nil && t.curstyle.url.url != "" {
 		t.emitUrl(urlInfo{})
 	}
 
