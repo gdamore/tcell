@@ -59,33 +59,40 @@ const (
 	istXda  // extended device attributes (ESC P Ps ST)
 )
 
+// defaultControlStringLimit caps inbound OSC/XDA control-string payloads
+// before they can grow without bound while waiting for a string terminator.
+const defaultControlStringLimit = 64 * 1024
+
 func newInputParser(eq chan<- Event) *inputParser {
 	return &inputParser{
-		evch: eq,
-		buf:  make([]rune, 0, 128),
+		evch:             eq,
+		buf:              make([]rune, 0, 128),
+		controlStringMax: defaultControlStringLimit,
 	}
 }
 
 type inputParser struct {
-	buf        []rune       // bytes to process (ingest data)
-	utfBuf     []byte       // accrued UTF8 bytes
-	strBuf     []byte       // accrued string data (for ST, OSC, etc.)
-	csiParams  []byte       // accrued parameter bytes for CSI (and SS3)
-	csiInterm  []byte       // accrued intermediate bytes for CSI
-	escChar    byte         // last byte for escape
-	escaped    bool         // true if next key should be modified by ESC
-	btnsDown   ButtonMask   // mouse buttons down (excludes wheel buttons)
-	state      inputState   // tracks processor state
-	strState   inputState   // saved str state (needed for ST)
-	l          sync.Mutex   // protects local state
-	evch       chan<- Event // where events are routed
-	rows       int          // used for clipping mouse coordinates
-	cols       int          // used for clipping mouse coordinates
-	pixelMouse bool         // mouse reports in pixels (CSI ?1016h); skip cell clipping
-	keyTime    time.Time    // time of last key press / byte ingested
-	nested     *inputParser // for buggy win32-input-mode implementations
-	surrogate  rune         // high surrogate pair seen (for Win32 input mode)
-	advanced   bool         // use advanced key reporting semantics
+	buf              []rune       // bytes to process (ingest data)
+	utfBuf           []byte       // accrued UTF8 bytes
+	strBuf           []byte       // accrued string data (for ST, OSC, etc.)
+	csiParams        []byte       // accrued parameter bytes for CSI (and SS3)
+	csiInterm        []byte       // accrued intermediate bytes for CSI
+	escChar          byte         // last byte for escape
+	escaped          bool         // true if next key should be modified by ESC
+	btnsDown         ButtonMask   // mouse buttons down (excludes wheel buttons)
+	state            inputState   // tracks processor state
+	strState         inputState   // saved str state (needed for ST)
+	l                sync.Mutex   // protects local state
+	evch             chan<- Event // where events are routed
+	rows             int          // used for clipping mouse coordinates
+	cols             int          // used for clipping mouse coordinates
+	pixelMouse       bool         // mouse reports in pixels (CSI ?1016h); skip cell clipping
+	keyTime          time.Time    // time of last key press / byte ingested
+	nested           *inputParser // for buggy win32-input-mode implementations
+	surrogate        rune         // high surrogate pair seen (for Win32 input mode)
+	advanced         bool         // use advanced key reporting semantics
+	controlStringMax int          // maximum inbound OSC/XDA payload size; 0 means unlimited
+	discardString    bool         // drop the rest of an over-limit OSC/XDA sequence
 }
 
 func keyFromInt(n int) (Key, bool) {
@@ -561,6 +568,7 @@ func (ip *inputParser) scan() {
 			case ']':
 				ip.state = istOsc
 				ip.strBuf = nil
+				ip.discardString = false
 				ip.escChar = byte(r)
 			case 'N':
 				ip.state = istSs2 // no known uses
@@ -575,6 +583,7 @@ func (ip *inputParser) scan() {
 				ip.state = istXda
 				ip.csiParams = nil
 				ip.strBuf = nil
+				ip.discardString = false
 				ip.escChar = byte(r)
 			case 'X':
 				ip.state = istSos
@@ -688,9 +697,16 @@ func (ip *inputParser) scan() {
 				ip.strState = ip.state
 				ip.state = istSt
 			case '\x07':
-				ip.handleXda(string(ip.strBuf))
+				if ip.discardString {
+					ip.discardString = false
+					ip.state = istInit
+				} else {
+					ip.handleXda(string(ip.strBuf))
+				}
 			default:
-				ip.strBuf = append(ip.strBuf, byte(r&0x7f))
+				if !ip.discardString {
+					ip.appendStringBytes(byte(r & 0x7f))
+				}
 			}
 
 		case istOsc: // not sure if used
@@ -699,23 +715,36 @@ func (ip *inputParser) scan() {
 				ip.strState = ip.state
 				ip.state = istSt
 			case '\x07':
-				ip.handleOsc(string(ip.strBuf))
+				if ip.discardString {
+					ip.discardString = false
+					ip.state = istInit
+				} else {
+					ip.handleOsc(string(ip.strBuf))
+				}
 			default:
-				ip.strBuf = append(ip.strBuf, byte(r&0x7f))
+				if !ip.discardString {
+					ip.appendStringBytes(byte(r & 0x7f))
+				}
 			}
 		case istSt:
 			if r == '\\' || r == '\x07' {
 				ip.state = istInit
-				switch ip.strState {
-				case istOsc:
-					ip.handleOsc(string(ip.strBuf))
-				case istXda:
-					ip.handleXda(string(ip.strBuf))
-				case istPm, istApc, istSos, istDcs:
-					ip.state = istInit
+				if ip.discardString {
+					ip.discardString = false
+				} else {
+					switch ip.strState {
+					case istOsc:
+						ip.handleOsc(string(ip.strBuf))
+					case istXda:
+						ip.handleXda(string(ip.strBuf))
+					case istPm, istApc, istSos, istDcs:
+						ip.state = istInit
+					}
 				}
 			} else {
-				ip.strBuf = append(ip.strBuf, '\x1b', byte(r))
+				if !ip.discardString {
+					ip.appendStringBytes('\x1b', byte(r))
+				}
 				ip.state = ip.strState
 			}
 		case istLnx:
@@ -735,7 +764,17 @@ func (ip *inputParser) scan() {
 		}
 		// if we take too long between bytes, reset the state machine.
 		ip.state = istInit
+		ip.discardString = false
 	}
+}
+
+func (ip *inputParser) appendStringBytes(bs ...byte) {
+	if ip.controlStringMax > 0 && len(ip.strBuf)+len(bs) > ip.controlStringMax {
+		ip.strBuf = nil
+		ip.discardString = true
+		return
+	}
+	ip.strBuf = append(ip.strBuf, bs...)
 }
 
 func (ip *inputParser) handleOsc(str string) {
@@ -1012,11 +1051,12 @@ func (ip *inputParser) handleWinKey(P []int) {
 		if b, ok := asciiByteFromInt(P[2]); ok {
 			if ip.nested == nil {
 				ip.nested = &inputParser{
-					evch:       ip.evch,
-					rows:       ip.rows,
-					cols:       ip.cols,
-					advanced:   ip.advanced,
-					pixelMouse: ip.pixelMouse,
+					evch:             ip.evch,
+					rows:             ip.rows,
+					cols:             ip.cols,
+					advanced:         ip.advanced,
+					pixelMouse:       ip.pixelMouse,
+					controlStringMax: ip.controlStringMax,
 				}
 			}
 			ip.nested.ScanUTF8([]byte{b})

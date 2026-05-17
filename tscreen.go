@@ -103,6 +103,17 @@ func (o OptAdvancedKeys) apply(t *tScreen) {
 	t.advancedKeys = bool(o)
 }
 
+// OptControlStringLimit sets the maximum inbound control-string payload size
+// accepted from the terminal before the parser drops the sequence. This limits
+// OSC and XDA strings, including OSC 52 clipboard strings; OSC 52 is the
+// protocol used for writing clipboard data through the terminal. The default is
+// 64 KiB; a value of 0 disables the limit.
+type OptControlStringLimit int
+
+func (o OptControlStringLimit) apply(t *tScreen) {
+	t.controlStringLimit = max(int(o), 0)
+}
+
 // Some terminal escapes that are basically universal.
 // We would really like to be able to use private mode queries for some of
 // these but generally we've found that support for queries is not always present,
@@ -164,7 +175,11 @@ const (
 // is presumed, at least on UNIX hosts. (Windows hosts will typically fail this
 // call altogether.)
 func NewTerminfoScreenFromTty(tty Tty, opts ...TerminfoScreenOption) (Screen, error) {
-	t := &tScreen{tty: tty, altScreen: true}
+	t := &tScreen{
+		tty:                tty,
+		altScreen:          true,
+		controlStringLimit: defaultControlStringLimit,
+	}
 
 	t.prepareCursorStyles()
 	t.prepareExtendedOSC()
@@ -181,72 +196,73 @@ func NewTerminfoScreenFromTty(tty Tty, opts ...TerminfoScreenOption) (Screen, er
 
 // tScreen represents a screen backed by a terminfo implementation.
 type tScreen struct {
-	tty           Tty
-	h             int
-	w             int
-	fini          bool
-	cells         CellBuffer
-	buffering     bool // true if we are collecting writes to buf instead of sending directly to out
-	buf           bytes.Buffer
-	curstyle      Style
-	style         Style
-	resizeQ       chan bool
-	quit          chan struct{}
-	keyQ          chan []byte
-	cx            int
-	cy            int
-	cls           bool // clear screen
-	cursorx       int
-	cursory       int
-	acs           map[rune]string
-	charset       string
-	encoder       transform.Transformer
-	decoder       transform.Transformer
-	fallback      map[rune]string
-	ncolor        int
-	colors        map[color.Color]color.Color
-	palette       []color.Color
-	truecolor     bool
-	noColor       bool
-	legacy        bool
-	hasClipboard  bool // true if OSC 52 reported via DA1
-	finiOnce      sync.Once
-	enterUrl      string
-	exitUrl       string
-	setWinSize    string
-	cursorStyles  map[CursorStyle]string
-	cursorStyle   CursorStyle
-	cursorColor   color.Color
-	cursorRGB     string
-	cursorFg      string
-	stopQ         chan struct{}
-	eventQ        chan Event
-	initQ         chan Event
-	initted       bool
-	running       bool
-	startTime     time.Time
-	wg            sync.WaitGroup
-	mouseFlags    MouseFlags
-	pasteEnabled  bool
-	focusEnabled  bool
-	setTitle      string
-	saveTitle     string
-	restoreTitle  string
-	title         string
-	setClipboard  string
-	notifyDesktop string
-	termName      string
-	termVers      string
-	term          string // value from $TERM
-	altScreen     bool
-	inlineResize  bool
-	haveMouse     bool
-	haveMouseSgr  bool
-	haveKittyKbd  bool
-	haveWin32Kbd  bool
-	haveXTermKbd  bool
-	advancedKeys  bool
-	input         *inputParser
+	tty                Tty
+	h                  int
+	w                  int
+	fini               bool
+	cells              CellBuffer
+	buffering          bool // true if we are collecting writes to buf instead of sending directly to out
+	buf                bytes.Buffer
+	curstyle           Style
+	style              Style
+	resizeQ            chan bool
+	quit               chan struct{}
+	keyQ               chan []byte
+	cx                 int
+	cy                 int
+	cls                bool // clear screen
+	cursorx            int
+	cursory            int
+	acs                map[rune]string
+	charset            string
+	encoder            transform.Transformer
+	decoder            transform.Transformer
+	fallback           map[rune]string
+	ncolor             int
+	colors             map[color.Color]color.Color
+	palette            []color.Color
+	truecolor          bool
+	noColor            bool
+	legacy             bool
+	hasClipboard       bool // true if OSC 52 reported via DA1
+	finiOnce           sync.Once
+	enterUrl           string
+	exitUrl            string
+	setWinSize         string
+	cursorStyles       map[CursorStyle]string
+	cursorStyle        CursorStyle
+	cursorColor        color.Color
+	cursorRGB          string
+	cursorFg           string
+	stopQ              chan struct{}
+	eventQ             chan Event
+	initQ              chan Event
+	initted            bool
+	running            bool
+	startTime          time.Time
+	wg                 sync.WaitGroup
+	mouseFlags         MouseFlags
+	pasteEnabled       bool
+	focusEnabled       bool
+	setTitle           string
+	saveTitle          string
+	restoreTitle       string
+	title              string
+	setClipboard       string
+	notifyDesktop      string
+	termName           string
+	termVers           string
+	term               string // value from $TERM
+	altScreen          bool
+	inlineResize       bool
+	haveMouse          bool
+	haveMouseSgr       bool
+	haveKittyKbd       bool
+	haveWin32Kbd       bool
+	haveXTermKbd       bool
+	advancedKeys       bool
+	controlStringLimit int
+	input              *inputParser
 	sync.Mutex
 }
 
@@ -335,6 +351,7 @@ func (t *tScreen) Init() error {
 	t.eventQ = make(chan Event, 128)
 	t.input = newInputParser(t.filterEvents())
 	t.input.advanced = t.advancedKeys
+	t.input.controlStringMax = t.controlStringLimit
 
 	t.Lock()
 	t.cx = -1

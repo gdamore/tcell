@@ -18,6 +18,7 @@
 package tcell
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 	"time"
@@ -770,6 +771,132 @@ func TestIgnoredSequences(t *testing.T) {
 				t.Fatal("Timeout")
 			}
 		})
+	}
+}
+
+func TestStringSequenceLimit(t *testing.T) {
+	tests := []struct {
+		name   string
+		prefix string
+	}{
+		{"OSC", "\x1b]"},
+		{"XDA", "\x1bP"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			evch := make(chan Event, 10)
+			ip := newInputParser(evch)
+
+			input := append([]byte(test.prefix), bytes.Repeat([]byte{'x'}, defaultControlStringLimit+1)...)
+			ip.ScanUTF8(input)
+
+			if ip.state == istInit {
+				t.Fatalf("parser state = %v, want string discard state", ip.state)
+			}
+			if len(ip.strBuf) != 0 {
+				t.Fatalf("string buffer length = %d, want 0", len(ip.strBuf))
+			}
+			if !ip.discardString {
+				t.Fatal("parser is not discarding over-limit string")
+			}
+
+			ip.ScanUTF8([]byte("tail\x07a"))
+			select {
+			case ev := <-evch:
+				kev, ok := ev.(*EventKey)
+				if !ok {
+					t.Fatalf("got %T, want *EventKey", ev)
+				}
+				if kev.Key() != KeyRune || kev.Str() != "a" {
+					t.Fatalf("got %v %q, want %v %q", kev.Key(), kev.Str(), KeyRune, "a")
+				}
+			case <-time.After(100 * time.Millisecond):
+				t.Fatal("timeout waiting for parser recovery")
+			}
+		})
+	}
+}
+
+func TestStringSequenceLimitAfterEmbeddedEscape(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+
+	input := append([]byte("\x1b]"), bytes.Repeat([]byte{'x'}, defaultControlStringLimit-1)...)
+	input = append(input, '\x1b', 'x')
+	ip.ScanUTF8(input)
+
+	if ip.state != istOsc {
+		t.Fatalf("parser state = %v, want %v", ip.state, istOsc)
+	}
+	if len(ip.strBuf) != 0 {
+		t.Fatalf("string buffer length = %d, want 0", len(ip.strBuf))
+	}
+	if !ip.discardString {
+		t.Fatal("parser is not discarding over-limit string")
+	}
+
+	ip.ScanUTF8([]byte("tail\x1b\\a"))
+	select {
+	case ev := <-evch:
+		kev, ok := ev.(*EventKey)
+		if !ok {
+			t.Fatalf("got %T, want *EventKey", ev)
+		}
+		if kev.Key() != KeyRune || kev.Str() != "a" {
+			t.Fatalf("got %v %q, want %v %q", kev.Key(), kev.Str(), KeyRune, "a")
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timeout waiting for parser recovery")
+	}
+}
+
+func TestStringSequenceCustomLimit(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.controlStringMax = 4
+
+	ip.ScanUTF8([]byte("\x1b]12345"))
+
+	if ip.state != istOsc {
+		t.Fatalf("parser state = %v, want %v", ip.state, istOsc)
+	}
+	if len(ip.strBuf) != 0 {
+		t.Fatalf("string buffer length = %d, want 0", len(ip.strBuf))
+	}
+	if !ip.discardString {
+		t.Fatal("parser is not discarding over-limit string")
+	}
+}
+
+func TestStringSequenceExactLimit(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.controlStringMax = 4
+
+	ip.ScanUTF8([]byte("\x1b]1234"))
+
+	if ip.state != istOsc {
+		t.Fatalf("parser state = %v, want %v", ip.state, istOsc)
+	}
+	if got := string(ip.strBuf); got != "1234" {
+		t.Fatalf("string buffer = %q, want %q", got, "1234")
+	}
+}
+
+func TestStringSequenceUnlimited(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.controlStringMax = 0
+
+	payload := bytes.Repeat([]byte{'x'}, defaultControlStringLimit+1)
+	ip.ScanUTF8(append([]byte("\x1b]"), payload...))
+
+	if ip.state != istOsc {
+		t.Fatalf("parser state = %v, want %v", ip.state, istOsc)
+	}
+	if !bytes.Equal(ip.strBuf, payload) {
+		t.Fatalf("string buffer length = %d, want %d", len(ip.strBuf), len(payload))
 	}
 }
 

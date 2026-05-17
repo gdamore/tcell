@@ -138,6 +138,62 @@ func TestOptAdvancedKeys(t *testing.T) {
 	}
 }
 
+func TestOptControlStringLimit(t *testing.T) {
+	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+	scr, err := NewTerminfoScreenFromTty(mt, OptControlStringLimit(4096))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	bs, ok := scr.(*baseScreen)
+	if !ok {
+		t.Fatalf("expected *baseScreen, got %T", scr)
+	}
+	ts, ok := bs.screenImpl.(*tScreen)
+	if !ok {
+		t.Fatalf("expected *tScreen, got %T", bs.screenImpl)
+	}
+	if ts.controlStringLimit != 4096 {
+		t.Fatalf("control string limit = %d, want %d", ts.controlStringLimit, 4096)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+	if ts.input.controlStringMax != 4096 {
+		t.Fatalf("input parser control string limit = %d, want %d", ts.input.controlStringMax, 4096)
+	}
+}
+
+func TestOptControlStringLimitUnlimited(t *testing.T) {
+	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+	scr, err := NewTerminfoScreenFromTty(mt, OptControlStringLimit(0))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	bs, ok := scr.(*baseScreen)
+	if !ok {
+		t.Fatalf("expected *baseScreen, got %T", scr)
+	}
+	ts, ok := bs.screenImpl.(*tScreen)
+	if !ok {
+		t.Fatalf("expected *tScreen, got %T", bs.screenImpl)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+
+	payload := bytes.Repeat([]byte{'x'}, defaultControlStringLimit+1)
+	ts.input.ScanUTF8(append([]byte("\x1b]"), payload...))
+
+	if ts.input.state != istOsc {
+		t.Fatalf("parser state = %v, want %v", ts.input.state, istOsc)
+	}
+	if !bytes.Equal(ts.input.strBuf, payload) {
+		t.Fatalf("string buffer length = %d, want %d", len(ts.input.strBuf), len(payload))
+	}
+}
+
 func TestOptSanitizeContent(t *testing.T) {
 	t.Run("disabled by default", func(t *testing.T) {
 		mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
