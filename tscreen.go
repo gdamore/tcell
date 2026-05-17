@@ -1296,10 +1296,10 @@ func (t *tScreen) Suspend() error {
 		t.Unlock()
 		return nil
 	}
-	finish := t.disengageLocked()
+	finish := t.disengageStart()
 	t.Unlock()
 	if finish {
-		t.finishDisengage()
+		t.disengageFinish()
 	}
 	return nil
 }
@@ -1431,16 +1431,16 @@ func (t *tScreen) engageLocked() error {
 // present when the application was first started.
 func (t *tScreen) disengage() {
 	t.Lock()
-	finish := t.disengageLocked()
+	finish := t.disengageStart()
 	t.Unlock()
 	if finish {
-		t.finishDisengage()
+		t.disengageFinish()
 	}
 }
 
-// disengageLocked starts a disengage operation while t's lock is already held.
-// It returns true when finishDisengage must be called after releasing the lock.
-func (t *tScreen) disengageLocked() bool {
+// disengageStart begins a disengage operation while t's lock is already held.
+// It returns true when disengageFinish must be called after releasing the lock.
+func (t *tScreen) disengageStart() bool {
 	if !t.running {
 		return false
 	}
@@ -1457,9 +1457,9 @@ func (t *tScreen) disengageLocked() bool {
 	return true
 }
 
-// finishDisengage completes a disengage operation after disengageLocked has
+// disengageFinish completes a disengage operation after disengageStart has
 // released the running loops.
-func (t *tScreen) finishDisengage() {
+func (t *tScreen) disengageFinish() {
 	// wait for everything to shut down
 	t.wg.Wait()
 
