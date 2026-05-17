@@ -1241,6 +1241,9 @@ func (t *tScreen) UnregisterRuneFallback(orig rune) {
 }
 
 func (t *tScreen) SetSize(w, h int) {
+	t.Lock()
+	defer t.Unlock()
+
 	if t.setWinSize != "" {
 		t.Printf(t.setWinSize, w, h)
 	}

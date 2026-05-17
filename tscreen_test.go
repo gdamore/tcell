@@ -138,6 +138,33 @@ func TestOptAdvancedKeys(t *testing.T) {
 	}
 }
 
+func TestSetSizeTakesScreenLock(t *testing.T) {
+	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+	ts := &tScreen{tty: mt, w: 8, h: 2}
+
+	done := make(chan struct{})
+	ts.Lock()
+	go func() {
+		ts.SetSize(8, 2)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		ts.Unlock()
+		t.Fatal("SetSize returned while the screen lock was held")
+	case <-time.After(10 * time.Millisecond):
+	}
+
+	ts.Unlock()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("SetSize did not return after the screen lock was released")
+	}
+}
+
 func TestOptControlStringLimit(t *testing.T) {
 	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
 	scr, err := NewTerminfoScreenFromTty(mt, OptControlStringLimit(4096))
