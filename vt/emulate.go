@@ -2403,6 +2403,7 @@ func (em *emulator) ResizeEvent(size Coord) {
 func (em *emulator) applyResize(size Coord) {
 	// resize clobbers our content, until it is redrawn
 	em.size = size
+	em.tabStops = slices.DeleteFunc(em.tabStops, func(x Col) bool { return x >= em.size.X })
 	// resizing resets the margins
 	em.topMargin = 0
 	em.botMargin = em.size.Y - 1

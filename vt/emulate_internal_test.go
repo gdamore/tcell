@@ -132,6 +132,25 @@ func TestMockBackendHelpers(t *testing.T) {
 	MockOptNoBlit{}.SetMockOpt(mb)
 }
 
+func TestApplyResizePrunesTabStops(t *testing.T) {
+	em := NewEmulator(NewMockBackend(MockOptSize{X: 80, Y: 24})).(*emulator)
+	em.tabStops = []Col{8, 16, 24, 32, 40, 48}
+
+	em.applyResize(Coord{X: 32, Y: 24})
+
+	if got, want := em.tabStops, []Col{8, 16, 24}; !slices.Equal(got, want) {
+		t.Fatalf("unexpected tab stops after resize: got %v, want %v", got, want)
+	}
+
+	em.setPosition(Coord{X: 0, Y: 0})
+	for _, want := range []Col{8, 16, 24, 31} {
+		em.nextTab()
+		if got := em.getPosition().X; got != want {
+			t.Fatalf("unexpected tab position after resize: got %d, want %d", got, want)
+		}
+	}
+}
+
 func TestPutRuneGraphemeExtensions(t *testing.T) {
 	t.Parallel()
 
