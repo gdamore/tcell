@@ -524,6 +524,43 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 	}
 }
 
+func TestAppleTerminalProfileSkipsStartupQueries(t *testing.T) {
+	t.Setenv("TERM_PROGRAM", "Apple_Terminal")
+	t.Setenv("TERM_PROGRAM_VERSION", "999")
+
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	out := tty.Output()
+	for _, seq := range []string{
+		vt.PmResizeReports.Query(),
+		vt.PmMouseButton.Query(),
+		vt.PmMouseSgr.Query(),
+		vt.PmWin32Input.Query(),
+		queryKittyKbd,
+		queryXTermKbd,
+		requestExtAttr,
+	} {
+		if strings.Contains(out, seq) {
+			t.Fatalf("Apple Terminal profile emitted startup query %q", seq)
+		}
+	}
+	if !strings.Contains(out, requestPrimaryDA) {
+		t.Fatal("Apple Terminal profile did not emit primary DA")
+	}
+	name, version := s.Terminal()
+	if name != "Terminal.app" || version != "999" {
+		t.Fatalf("Terminal() = %q, %q, want %q, %q", name, version, "Terminal.app", "999")
+	}
+}
+
 func TestKeyboardProbePolicy(t *testing.T) {
 	tests := []struct {
 		name                string
