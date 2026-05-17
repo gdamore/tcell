@@ -1096,6 +1096,42 @@ func TestWinKeyASCIIFallbackRangeCheck(t *testing.T) {
 	}
 }
 
+func TestWinKeySurrogateErrorsArePreserved(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+
+	ip.ScanUTF8([]byte("\x1b[1;0;55357;1;0;1_\x1b[1;0;32;1;0;1_"))
+
+	first := nextKey(evch)
+	if first == nil || first.Str() != "�" {
+		t.Fatalf("expected orphaned high surrogate as replacement rune, got %#v", first)
+	}
+
+	second := nextKey(evch)
+	if second == nil || second.Str() != " " {
+		t.Fatalf("expected following BMP rune to be preserved, got %#v", second)
+	}
+
+	ip.ScanUTF8([]byte("\x1b[1;0;56832;1;0;1_"))
+
+	third := nextKey(evch)
+	if third == nil || third.Str() != "�" {
+		t.Fatalf("expected orphaned low surrogate as replacement rune, got %#v", third)
+	}
+
+	ip.ScanUTF8([]byte("\x1b[1;0;55357;1;0;1_\x1b[1;0;55357;1;0;1_\x1b[1;0;56832;1;0;1_"))
+
+	fourth := nextKey(evch)
+	if fourth == nil || fourth.Str() != "�" {
+		t.Fatalf("expected superseded high surrogate as replacement rune, got %#v", fourth)
+	}
+
+	fifth := nextKey(evch)
+	if fifth == nil || fifth.Str() != "😀" {
+		t.Fatalf("expected replacement high surrogate to pair with following low surrogate, got %#v", fifth)
+	}
+}
+
 func TestAdvancedModifierHelpers(t *testing.T) {
 	winCases := []struct {
 		vk      int

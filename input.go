@@ -1058,11 +1058,20 @@ func (ip *inputParser) handleWinKey(P []int) {
 		}
 	} else if chr >= 0xD800 && chr <= 0xDBFF {
 		// high surrogate pair
+		if ip.surrogate != 0 {
+			ip.postKeyEx(KeyRune, string(utf8.RuneError), mod, P[3] != 0, 0, rpt)
+		}
 		ip.surrogate = chr
 		return
 	} else if chr >= 0xDC00 && chr <= 0xDFFF {
 		// low surrogate pair
-		chr = utf16.DecodeRune(ip.surrogate, chr)
+		if ip.surrogate == 0 {
+			chr = utf8.RuneError
+		} else {
+			chr = utf16.DecodeRune(ip.surrogate, chr)
+		}
+	} else if ip.surrogate != 0 {
+		ip.postKeyEx(KeyRune, string(utf8.RuneError), mod, P[3] != 0, 0, rpt)
 	} else if _, _, ok := winModifierKey(P[0]); ok {
 		// Lone modifier releases are ignored unless advanced mode is enabled.
 		ip.surrogate = 0
