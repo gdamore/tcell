@@ -144,6 +144,17 @@ func TestCellBufferLockResizeFill(t *testing.T) {
 	}
 }
 
+func TestCellBufferUnlockUntouchedCellMarksDirty(t *testing.T) {
+	cb := &CellBuffer{w: 1, h: 1, cells: make([]cell, 1)}
+
+	cb.LockCell(0, 0)
+	cb.UnlockCell(0, 0)
+
+	if !cb.Dirty(0, 0) {
+		t.Fatalf("unlocking an untouched blank cell should mark it dirty")
+	}
+}
+
 func TestCellBufferOutOfRangeAndResizeNoop(t *testing.T) {
 	cb := &CellBuffer{w: 2, h: 1, cells: make([]cell, 2)}
 

@@ -212,6 +212,20 @@ func TestNewScreenShimScreen(t *testing.T) {
 	}
 }
 
+func TestUnlockRegionRedrawsUntouchedBlankCell(t *testing.T) {
+	mt, scr := NewMockScreen(t, vt.MockOptSize{X: 1, Y: 1})
+	defer scr.Fini()
+
+	mt.Backend().Put(vt.Coord{X: 0, Y: 0}, vt.Cell{C: "X", S: vt.BaseStyle, W: 1})
+	scr.LockRegion(0, 0, 1, 1, true)
+	scr.LockRegion(0, 0, 1, 1, false)
+	scr.Show()
+
+	if got := mt.GetCell(vt.Coord{X: 0, Y: 0}); got.C != " " || got.W != 1 {
+		t.Fatalf("unlocking an untouched blank cell should repaint a space, got %#v", got)
+	}
+}
+
 func TestOSC8ControlsAreStrippedFromOutput(t *testing.T) {
 	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
 	s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))

@@ -25,7 +25,15 @@ type cell struct {
 
 func (c *cell) setDirty(dirty bool) {
 	if dirty {
-		c.lastStr = ""
+		// Empty cells use currStr == "" until they are first drawn, at which
+		// point SetDirty(false) normalizes them to a space.  Using "" as the
+		// dirty marker for an untouched empty cell would therefore leave
+		// lastStr == currStr and fail to force a redraw.
+		if c.currStr == "" {
+			c.lastStr = " "
+		} else {
+			c.lastStr = ""
+		}
 	} else {
 		if c.currStr == "" {
 			c.currStr = " "
@@ -126,7 +134,7 @@ func (cb *CellBuffer) Size() (int, int) {
 // Invalidate marks all characters within the buffer as dirty.
 func (cb *CellBuffer) Invalidate() {
 	for i := range cb.cells {
-		cb.cells[i].lastStr = ""
+		cb.cells[i].setDirty(true)
 	}
 }
 
