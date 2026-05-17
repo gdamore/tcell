@@ -103,6 +103,22 @@ func (o OptAdvancedKeys) apply(t *tScreen) {
 	t.advancedKeys = bool(o)
 }
 
+// OptKeyboardProtocol forces the keyboard reporting protocol instead of using
+// startup negotiation. The zero value forces legacy keyboard reporting.
+type OptKeyboardProtocol KeyProtocol
+
+func (o OptKeyboardProtocol) apply(t *tScreen) {
+	t.forceKeyboardProtocol(KeyProtocol(o))
+}
+
+// OptNegotiation controls whether terminal capabilities are negotiated during
+// startup. The default is true.
+type OptNegotiation bool
+
+func (o OptNegotiation) apply(t *tScreen) {
+	t.negotiate = bool(o)
+}
+
 // OptControlStringLimit sets the maximum inbound control-string payload size
 // accepted from the terminal before the parser drops the sequence. This limits
 // OSC and XDA strings, including OSC 52 clipboard strings; OSC 52 is the
@@ -178,6 +194,7 @@ func NewTerminfoScreenFromTty(tty Tty, opts ...TerminfoScreenOption) (Screen, er
 	t := &tScreen{
 		tty:                tty,
 		altScreen:          true,
+		negotiate:          true,
 		controlStringLimit: defaultControlStringLimit,
 	}
 
@@ -260,6 +277,10 @@ type tScreen struct {
 	haveKittyKbd       bool
 	haveWin32Kbd       bool
 	haveXTermKbd       bool
+	forcedKbd          KeyProtocol
+	forceKbd           bool
+	negotiate          bool
+	mouseDisabled      bool
 	advancedKeys       bool
 	controlStringLimit int
 	input              *inputParser
@@ -268,6 +289,69 @@ type tScreen struct {
 
 func (t *tScreen) useAltScreen() bool {
 	return t.altScreen && os.Getenv("TCELL_ALTSCREEN") != "disable"
+}
+
+func validKeyboardProtocol(p KeyProtocol) bool {
+	switch p {
+	case LegacyKeyboard, KittyKeyboard, Win32Keyboard, XTermKeyboard:
+		return true
+	default:
+		return false
+	}
+}
+
+func parseKeyboardProtocol(s string) (KeyProtocol, bool) {
+	switch s {
+	case "legacy":
+		return LegacyKeyboard, true
+	case "kitty":
+		return KittyKeyboard, true
+	case "win32":
+		return Win32Keyboard, true
+	case "xterm":
+		return XTermKeyboard, true
+	default:
+		return LegacyKeyboard, false
+	}
+}
+
+func (t *tScreen) forceKeyboardProtocol(p KeyProtocol) bool {
+	if !validKeyboardProtocol(p) {
+		return false
+	}
+	t.forcedKbd = p
+	t.forceKbd = true
+	return true
+}
+
+func (t *tScreen) applyKeyboardProtocolOverride() {
+	if !t.forceKbd {
+		return
+	}
+	t.haveKittyKbd = t.forcedKbd == KittyKeyboard
+	t.haveWin32Kbd = t.forcedKbd == Win32Keyboard
+	t.haveXTermKbd = t.forcedKbd == XTermKeyboard
+}
+
+func (t *tScreen) applyEnvironmentOverrides() {
+	switch os.Getenv("TCELL_KEYBOARD_PROTOCOL") {
+	case "auto":
+		t.forceKbd = false
+	case "":
+	default:
+		if p, ok := parseKeyboardProtocol(os.Getenv("TCELL_KEYBOARD_PROTOCOL")); ok {
+			t.forceKeyboardProtocol(p)
+		}
+	}
+
+	switch os.Getenv("TCELL_NEGOTIATE") {
+	case "auto":
+		t.negotiate = true
+	case "disable":
+		t.negotiate = false
+	}
+
+	t.mouseDisabled = os.Getenv("TCELL_MOUSE") == "disable"
 }
 
 func (t *tScreen) Init() error {
@@ -344,6 +428,8 @@ func (t *tScreen) Init() error {
 		// these terminals are "legacy" and not expected to support most OSC functions
 		t.legacy = true
 	}
+
+	t.applyEnvironmentOverrides()
 
 	t.initted = false
 	t.quit = make(chan struct{})
@@ -956,7 +1042,10 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	// so we enable the mouse unconditionally unless we get a report
 	// that says we have mouse, but not SGR mouse.  This is suboptimal, but
 	// a concession forced by the sorry state of terminal emulators.
-	if t.haveMouse && !t.haveMouseSgr {
+	if t.mouseDisabled {
+		f = 0
+	}
+	if f != 0 && t.haveMouse && !t.haveMouseSgr {
 		return
 	}
 
@@ -1277,19 +1366,26 @@ func (t *tScreen) applyKnownTerminalProfile(goos, termProgram string) bool {
 		t.termVers = os.Getenv("TERM_PROGRAM_VERSION")
 		return true
 	case "WezTerm":
+		// The WezTerm keyboard protocol to use is in theory driven by its
+		// own configuration, but we have found this unreliable because it
+		// does not mask unsupported capabilities.  Furthermore, on Windows
+		// builds the kitty protocol implementation is broken, while on other
+		// builds win32-input-mode is broken.  This is a best effort to make
+		// WezTerm work reasonably; our stronger advice is to choose another
+		// terminal program altogether.  This workaround will probably not
+		// apply to ssh sessions, as TERM_PROGRAM is not normally propagated.
 		if goos == "windows" {
-			// Local WezTerm sessions on Windows support these features, but
-			// ConPTY prevents the normal negotiation from reaching us
-			// reliably. Remote sessions do not inherit TERM_PROGRAM by
-			// default, so they continue to use ordinary negotiation.
 			t.haveWin32Kbd = true
-			t.haveMouse = true
-			t.haveMouseSgr = true
-			t.initted = true
-			t.termName = "WezTerm"
-			t.termVers = os.Getenv("TERM_PROGRAM_VERSION")
-			return true
+		} else {
+			t.haveKittyKbd = true
+			t.haveWin32Kbd = false
 		}
+		t.haveMouse = true
+		t.haveMouseSgr = true
+		t.initted = true
+		t.termName = "WezTerm"
+		t.termVers = os.Getenv("TERM_PROGRAM_VERSION")
+		return true
 	}
 	return false
 }
@@ -1330,27 +1426,32 @@ func (t *tScreen) engage() error {
 		// Eventually they'll hopefully fix this.  As the environment variable
 		// does not convey by default via ssh, remote sessions might see spurious characters
 		// emitted during startup.  See the blog post for alternatives.
-		if !t.applyKnownTerminalProfile(runtime.GOOS, os.Getenv("TERM_PROGRAM")) {
+		if !t.applyKnownTerminalProfile(runtime.GOOS, os.Getenv("TERM_PROGRAM")) && t.negotiate {
 			if useVTWindowSizeQuery(runtime.GOOS) {
 				t.Print(requestWindowSize)
 			}
 			t.Print(vt.PmResizeReports.Query())
 			t.Print(vt.PmMouseButton.Query())
 			t.Print(vt.PmMouseSgr.Query())
-			t.Print(vt.PmWin32Input.Query())
-			t.Print(queryKittyKbd)
-			if useXTermKeyboardQuery(runtime.GOOS) {
-				// XTerm's modifyOtherKeys mode is mainly useful for XTerm
-				// itself, and we do not use it on Windows.
-				t.Print(queryXTermKbd)
+			if !t.forceKbd {
+				t.Print(vt.PmWin32Input.Query())
+				t.Print(queryKittyKbd)
+				if useXTermKeyboardQuery(runtime.GOOS) {
+					// XTerm's modifyOtherKeys mode is mainly useful for XTerm
+					// itself, and we do not use it on Windows.
+					t.Print(queryXTermKbd)
+				}
 			}
 			t.Print(requestExtAttr)
 		}
-		if !t.initted {
+		if !t.negotiate {
+			t.initted = true
+		} else if !t.initted {
 			t.Print(requestPrimaryDA) // NB: MUST BE LAST
 		}
 	}
 	t.processInitQ()
+	t.applyKeyboardProtocolOverride()
 	if t.useAltScreen() {
 		// Technically this may not be right, but every terminal we know about
 		// (even Wyse 60) uses this to enter the alternate screen buffer, and
@@ -1389,7 +1490,7 @@ func (t *tScreen) engage() error {
 	if t.title != "" && t.setTitle != "" {
 		t.Printf(t.setTitle, t.title)
 	}
-	if useVTWindowSizeQuery(runtime.GOOS) {
+	if t.negotiate && useVTWindowSizeQuery(runtime.GOOS) {
 		t.Print(requestWindowSize)
 	}
 
