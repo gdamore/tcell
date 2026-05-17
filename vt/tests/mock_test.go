@@ -663,6 +663,20 @@ func TestSgrColor8(t *testing.T) {
 	CheckColors(t, term, 3, 0, color.Silver, color.Black)
 }
 
+// TestSgrMalformedParam verifies that malformed SGR parameters are ignored
+// individually without dropping the rest of the sequence.
+func TestSgrMalformedParam(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\x1b[31;<mA")
+	CheckColors(t, term, 0, 0, color.Maroon, color.Black)
+
+	WriteF(t, term, "\x1b[31;<;32mB")
+	CheckColors(t, term, 1, 0, color.Green, color.Black)
+}
+
 // TestSgrColor256 tests simple ECMA 48 ANSI color (256 possible color values.)
 func TestSgrColor256(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24}, vt.MockOptColors(256))

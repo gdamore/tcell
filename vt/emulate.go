@@ -800,7 +800,7 @@ func (em *emulator) processSgr(str string) {
 		v, err := strconv.Atoi(word)
 		if err != nil {
 			// just swallow it for now
-			return
+			continue
 		}
 		switch v {
 		case 0:
