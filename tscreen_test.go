@@ -112,6 +112,40 @@ func TestOptAltScreenDefault(t *testing.T) {
 	}
 }
 
+func TestFiniPreventsSetStyleMutation(t *testing.T) {
+	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
+	scr, err := NewTerminfoScreenFromTty(mt)
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	bs, ok := scr.(*baseScreen)
+	if !ok {
+		t.Fatalf("expected *baseScreen, got %T", scr)
+	}
+	ts, ok := bs.screenImpl.(*tScreen)
+	if !ok {
+		t.Fatalf("expected *tScreen, got %T", bs.screenImpl)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+
+	before := StyleDefault.Foreground(ColorRed)
+	after := StyleDefault.Foreground(ColorBlue)
+	scr.SetStyle(before)
+	scr.Fini()
+	scr.SetStyle(after)
+
+	ts.Lock()
+	defer ts.Unlock()
+	if !ts.fini {
+		t.Fatal("screen was not marked finished")
+	}
+	if ts.style != before {
+		t.Fatal("SetStyle mutated the screen after Fini")
+	}
+}
+
 func TestOptAdvancedKeys(t *testing.T) {
 	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
 	scr, err := NewTerminfoScreenFromTty(mt, OptAdvancedKeys(true))

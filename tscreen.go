@@ -520,6 +520,9 @@ func (t *tScreen) Fini() {
 }
 
 func (t *tScreen) finish() {
+	t.Lock()
+	t.fini = true
+	t.Unlock()
 	close(t.quit)
 	t.finalize()
 }
