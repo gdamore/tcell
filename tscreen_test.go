@@ -502,6 +502,26 @@ func TestOSC8ControlsAreStrippedFromOutput(t *testing.T) {
 	}
 }
 
+func TestOSC8IdWithoutUrlDoesNotEmitClose(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	tty.writes.Reset()
+	s.PutStrStyled(0, 0, "X", StyleDefault.UrlId("orphan"))
+	s.Show()
+
+	if out := tty.Output(); strings.Contains(out, "\x1b]8;;\x1b\\") {
+		t.Fatalf("unexpected OSC 8 close sequence for id-only style: %q", out)
+	}
+}
+
 func TestKeyboardProtocol(t *testing.T) {
 	tests := []struct {
 		name  string

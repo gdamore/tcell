@@ -249,6 +249,9 @@ func (s Style) Url(url string) Style {
 	if s.url != nil {
 		s2.url.id = s.url.id
 	}
+	if s2.url.url == "" && s2.url.id == "" {
+		s2.url = nil
+	}
 	return s2
 }
 
@@ -263,6 +266,9 @@ func (s Style) UrlId(id string) Style {
 	}
 	if s.url != nil {
 		s2.url.url = s.url.url
+	}
+	if s2.url.url == "" && s2.url.id == "" {
+		s2.url = nil
 	}
 	return s2
 }
