@@ -1292,23 +1292,25 @@ func (t *tScreen) Resize(int, int, int, int) {}
 
 func (t *tScreen) Suspend() error {
 	t.Lock()
-	fini := t.fini
-	t.Unlock()
-	if fini {
+	if t.fini {
+		t.Unlock()
 		return nil
 	}
-	t.disengage()
+	finish := t.disengageLocked()
+	t.Unlock()
+	if finish {
+		t.finishDisengage()
+	}
 	return nil
 }
 
 func (t *tScreen) Resume() error {
 	t.Lock()
-	fini := t.fini
-	t.Unlock()
-	if fini {
+	defer t.Unlock()
+	if t.fini {
 		return nil
 	}
-	return t.engage()
+	return t.engageLocked()
 }
 
 func (t *tScreen) Tty() (Tty, bool) {
@@ -1321,6 +1323,11 @@ func (t *tScreen) Tty() (Tty, bool) {
 func (t *tScreen) engage() error {
 	t.Lock()
 	defer t.Unlock()
+	return t.engageLocked()
+}
+
+// engageLocked is engage's implementation when t's lock is already held.
+func (t *tScreen) engageLocked() error {
 	if t.tty == nil {
 		return ErrNoScreen
 	}
@@ -1423,11 +1430,19 @@ func (t *tScreen) engage() error {
 // can take over the terminal interface.  This restores the TTY mode that was
 // present when the application was first started.
 func (t *tScreen) disengage() {
-
 	t.Lock()
+	finish := t.disengageLocked()
+	t.Unlock()
+	if finish {
+		t.finishDisengage()
+	}
+}
+
+// disengageLocked starts a disengage operation while t's lock is already held.
+// It returns true when finishDisengage must be called after releasing the lock.
+func (t *tScreen) disengageLocked() bool {
 	if !t.running {
-		t.Unlock()
-		return
+		return false
 	}
 
 	t.running = false
@@ -1439,8 +1454,12 @@ func (t *tScreen) disengage() {
 	stopQ := t.stopQ
 	close(stopQ)
 	_ = t.tty.Drain()
-	t.Unlock()
+	return true
+}
 
+// finishDisengage completes a disengage operation after disengageLocked has
+// released the running loops.
+func (t *tScreen) finishDisengage() {
 	// wait for everything to shut down
 	t.wg.Wait()
 
@@ -1488,9 +1507,8 @@ func (t *tScreen) disengage() {
 // Beep emits a beep to the terminal.
 func (t *tScreen) Beep() error {
 	t.Lock()
-	fini := t.fini
-	t.Unlock()
-	if fini {
+	defer t.Unlock()
+	if t.fini {
 		return nil
 	}
 	t.Print(string(byte(7)))
