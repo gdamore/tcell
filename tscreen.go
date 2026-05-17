@@ -1324,6 +1324,8 @@ func (t *tScreen) applyKnownTerminalProfile(goos, termProgram string) bool {
 		// support modern mouse reporting.
 		t.haveMouse = true
 		t.haveMouseSgr = true
+		t.termName = "Terminal.app"
+		t.termVers = os.Getenv("TERM_PROGRAM_VERSION")
 		return true
 	case "WezTerm":
 		if goos == "windows" {
@@ -1335,6 +1337,8 @@ func (t *tScreen) applyKnownTerminalProfile(goos, termProgram string) bool {
 			t.haveMouse = true
 			t.haveMouseSgr = true
 			t.initted = true
+			t.termName = "WezTerm"
+			t.termVers = os.Getenv("TERM_PROGRAM_VERSION")
 			return true
 		}
 	}
