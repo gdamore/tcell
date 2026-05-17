@@ -36,6 +36,21 @@ func isCtrlRune(ev *tcell.EventKey, r string) bool {
 	return ev.Key() == tcell.KeyRune && ev.Str() == r && ev.Modifiers()&tcell.ModCtrl != 0
 }
 
+func keyboardProtocolName(p tcell.KeyProtocol) string {
+	switch p {
+	case tcell.LegacyKeyboard:
+		return "Legacy"
+	case tcell.KittyKeyboard:
+		return "Kitty"
+	case tcell.Win32Keyboard:
+		return "Win32"
+	case tcell.XTermKeyboard:
+		return "XTerm"
+	default:
+		return "Unknown"
+	}
+}
+
 func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, r rune) {
 	rs := string(r)
 
@@ -128,6 +143,7 @@ func main() {
 	pastefmt := "Paste: [%d] %s"
 	focusfmt := "Focus: %s"
 	termFmt := "Term: %s (%s)"
+	kbdFmt := "Keyboard: %s"
 	style := tcell.StyleDefault.
 		Foreground(color.MidnightBlue).Background(color.LightCoral)
 	keyDownStyle := style.Foreground(color.Green)
@@ -149,7 +165,7 @@ func main() {
 	keyStyle := keyUpStyle
 
 	for {
-		drawBox(s, 1, 1, 42, 9, style, ' ')
+		drawBox(s, 1, 1, 42, 10, style, ' ')
 		s.PutStrStyled(2, 2, "Press Ctrl-Q to Quit, C to clear.", style)
 		s.PutStrStyled(2, 3, fmt.Sprintf(posfmt, mx, my), style)
 		s.PutStrStyled(2, 4, fmt.Sprintf(btnfmt, bstr), style)
@@ -170,6 +186,7 @@ func main() {
 
 		n, v := s.Terminal()
 		s.PutStrStyled(2, 8, fmt.Sprintf(termFmt, n, v), style)
+		s.PutStrStyled(2, 9, fmt.Sprintf(kbdFmt, keyboardProtocolName(s.KeyboardProtocol())), style)
 
 		s.Show()
 		bstr = ""

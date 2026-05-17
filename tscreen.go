@@ -1317,6 +1317,38 @@ func (t *tScreen) Tty() (Tty, bool) {
 	return t.tty, true
 }
 
+func (t *tScreen) applyKnownTerminalProfile(goos, termProgram string) bool {
+	switch termProgram {
+	case "Apple_Terminal":
+		// macOS Terminal.app cannot handle the startup queries, but it does
+		// support modern mouse reporting.
+		t.haveMouse = true
+		t.haveMouseSgr = true
+		return true
+	case "WezTerm":
+		if goos == "windows" {
+			// Local WezTerm sessions on Windows support these features, but
+			// ConPTY prevents the normal negotiation from reaching us
+			// reliably. Remote sessions do not inherit TERM_PROGRAM by
+			// default, so they continue to use ordinary negotiation.
+			t.haveWin32Kbd = true
+			t.haveMouse = true
+			t.haveMouseSgr = true
+			t.initted = true
+			return true
+		}
+	}
+	return false
+}
+
+func useVTWindowSizeQuery(goos string) bool {
+	return goos != "windows"
+}
+
+func useXTermKeyboardQuery(goos string) bool {
+	return goos != "windows"
+}
+
 // engage is used to place the terminal in raw mode and establish screen size, etc.
 // Think of this is as tcell "engaging" the clutch, as it's going to be driving the
 // terminal interface.
@@ -1345,22 +1377,34 @@ func (t *tScreen) engageLocked() error {
 	go t.mainLoop(stopQ)
 
 	if !t.initted {
-		t.Print(requestWindowSize)
 		// macOS Terminal.app is brain damaged
 		// https://garrett.damore.org/2025/12/macos-terminal-still-missing-mark-apple.html
 		// Eventually they'll hopefully fix this.  As the environment variable
 		// does not convey by default via ssh, remote sessions might see spurious characters
 		// emitted during startup.  See the blog post for alternatives.
-		if os.Getenv("TERM_PROGRAM") != "Apple_Terminal" {
+		if !t.applyKnownTerminalProfile(runtime.GOOS, os.Getenv("TERM_PROGRAM")) {
+			if useVTWindowSizeQuery(runtime.GOOS) {
+				t.Print(requestWindowSize)
+			}
 			t.Print(vt.PmResizeReports.Query())
 			t.Print(vt.PmMouseButton.Query())
 			t.Print(vt.PmMouseSgr.Query())
 			t.Print(vt.PmWin32Input.Query())
 			t.Print(queryKittyKbd)
-			t.Print(queryXTermKbd)
+			if useXTermKeyboardQuery(runtime.GOOS) {
+				// XTerm's modifyOtherKeys mode is mainly useful for XTerm
+				// itself, and we do not use it on Windows.
+				t.Print(queryXTermKbd)
+			}
 			t.Print(requestExtAttr)
+			// Some terminals can answer DA ahead of earlier startup queries,
+			// despite receiving DA last.  Give the preceding query batch a
+			// small head start before using DA as the initialization sentinel.
+			time.Sleep(25 * time.Millisecond)
 		}
-		t.Print(requestPrimaryDA) // NB: MUST BE LAST
+		if !t.initted {
+			t.Print(requestPrimaryDA) // NB: MUST BE LAST
+		}
 	}
 	t.processInitQ()
 	if t.useAltScreen() {
@@ -1401,21 +1445,9 @@ func (t *tScreen) engageLocked() error {
 	if t.title != "" && t.setTitle != "" {
 		t.Printf(t.setTitle, t.title)
 	}
-	if runtime.GOOS == "windows" {
-		// This workaround exists because of what we believe to be bugs in the
-		// interaction between ConPTY, the VT-Input layer, and some terminal emulators
-		// such as WezTerm.  Note that it is *not* needed for Windows Terminal, but
-		// should be benign there.  As another note, we have observed that at least Alacritty
-		// and WezTerm do not properly handle the primaryDA query on these platforms.
-		// (WezTerm performs much better when running a remote shell or on macOS.)
-		if t.advancedKeys {
-			t.Print(enableKittyKbdAdv)
-		} else {
-			t.Print(enableKittyKbd)
-		}
-		t.Print(vt.PmWin32Input.Enable())
+	if useVTWindowSizeQuery(runtime.GOOS) {
+		t.Print(requestWindowSize)
 	}
-	t.Print(requestWindowSize)
 
 	if t.inlineResize {
 		t.Print(vt.PmResizeReports.Enable())
@@ -1488,7 +1520,6 @@ func (t *tScreen) disengageFinish() {
 	// Hack for Windows.
 	if runtime.GOOS == "windows" {
 		t.Print(vt.PmWin32Input.Disable())
-		t.Print(disableKittyKbd)
 	}
 
 	// t.Print(t.disableCsiU)

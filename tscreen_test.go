@@ -527,6 +527,100 @@ func TestKeyboardProtocol(t *testing.T) {
 	}
 }
 
+func TestApplyKnownTerminalProfile(t *testing.T) {
+	tests := []struct {
+		name         string
+		goos         string
+		termProgram  string
+		wantKnown    bool
+		wantInitted  bool
+		wantMouse    bool
+		wantMouseSgr bool
+		wantWin32Kbd bool
+	}{
+		{
+			name:         "AppleTerminal",
+			goos:         "darwin",
+			termProgram:  "Apple_Terminal",
+			wantKnown:    true,
+			wantMouse:    true,
+			wantMouseSgr: true,
+		},
+		{
+			name:         "LocalWindowsWezTerm",
+			goos:         "windows",
+			termProgram:  "WezTerm",
+			wantKnown:    true,
+			wantInitted:  true,
+			wantMouse:    true,
+			wantMouseSgr: true,
+			wantWin32Kbd: true,
+		},
+		{
+			name:        "RemoteWezTerm",
+			goos:        "linux",
+			termProgram: "WezTerm",
+		},
+		{
+			name:        "UnknownTerminal",
+			goos:        "linux",
+			termProgram: "Other",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &tScreen{}
+			if got := s.applyKnownTerminalProfile(tt.goos, tt.termProgram); got != tt.wantKnown {
+				t.Fatalf("applyKnownTerminalProfile() = %v, want %v", got, tt.wantKnown)
+			}
+			if s.initted != tt.wantInitted {
+				t.Fatalf("initted = %v, want %v", s.initted, tt.wantInitted)
+			}
+			if s.haveMouse != tt.wantMouse {
+				t.Fatalf("haveMouse = %v, want %v", s.haveMouse, tt.wantMouse)
+			}
+			if s.haveMouseSgr != tt.wantMouseSgr {
+				t.Fatalf("haveMouseSgr = %v, want %v", s.haveMouseSgr, tt.wantMouseSgr)
+			}
+			if s.haveWin32Kbd != tt.wantWin32Kbd {
+				t.Fatalf("haveWin32Kbd = %v, want %v", s.haveWin32Kbd, tt.wantWin32Kbd)
+			}
+		})
+	}
+}
+
+func TestKeyboardProbePolicy(t *testing.T) {
+	tests := []struct {
+		name                string
+		goos                string
+		wantWindowSizeQuery bool
+		wantXTermQuery      bool
+	}{
+		{
+			name:                "Unix",
+			goos:                "linux",
+			wantWindowSizeQuery: true,
+			wantXTermQuery:      true,
+		},
+		{
+			name: "Windows",
+			goos: "windows",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := useVTWindowSizeQuery(tt.goos); got != tt.wantWindowSizeQuery {
+				t.Fatalf("useVTWindowSizeQuery() = %v, want %v", got, tt.wantWindowSizeQuery)
+			}
+			if got := useXTermKeyboardQuery(tt.goos); got != tt.wantXTermQuery {
+				t.Fatalf("useXTermKeyboardQuery() = %v, want %v", got, tt.wantXTermQuery)
+			}
+		})
+	}
+}
+
 func TestProcessInitQKeyboardProtocol(t *testing.T) {
 	tests := []struct {
 		name string
