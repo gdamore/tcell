@@ -186,3 +186,22 @@ func TestCellBufferOutOfRangeAndResizeNoop(t *testing.T) {
 		t.Fatalf("resize no-op changed size to %dx%d", w, h)
 	}
 }
+
+func TestCellBufferPutRedraw(t *testing.T) {
+	cb := &CellBuffer{w: 8, h: 1, cells: make([]cell, 8)}
+
+	// The first Put measures the cell; a re-Put of identical content takes the
+	// fast path and must return the same result without segmenting again.
+	rest1, width1 := cb.Put(0, 0, "x", StyleDefault)
+	rest2, width2 := cb.Put(0, 0, "x", StyleDefault)
+	if rest2 != rest1 || width2 != width1 {
+		t.Fatalf("re-Put mismatch: (%q,%d), want (%q,%d)", rest2, width2, rest1, width1)
+	}
+
+	allocs := testing.AllocsPerRun(100, func() {
+		cb.Put(0, 0, "x", StyleDefault)
+	})
+	if allocs != 0 {
+		t.Fatalf("re-Put allocated %.0f times, want 0", allocs)
+	}
+}
