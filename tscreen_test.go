@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -146,6 +147,114 @@ func TestFiniPreventsSetStyleMutation(t *testing.T) {
 	}
 }
 
+func TestInitWhileInitializedFailsWithoutReplacingEventQ(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})}
+	scr, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+
+	eventQ := scr.EventQ()
+	if err := scr.Init(); err == nil {
+		t.Fatal("second Init succeeded while screen was initialized")
+	}
+	if scr.EventQ() != eventQ {
+		t.Fatal("failed Init replaced the event queue")
+	}
+}
+
+func TestInitAfterFiniFails(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})}
+	scr, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	scr.Fini()
+
+	if err := scr.Init(); err == nil {
+		t.Fatal("Init succeeded after Fini")
+	}
+}
+
+func TestConcurrentFiniIsIdempotent(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})}
+	scr, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			scr.Fini()
+		}()
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("concurrent Fini calls did not return")
+	}
+}
+
+func TestConcurrentInitAndFini(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})}
+	scr, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+
+	start := make(chan struct{})
+	finiDone := make(chan struct{})
+	initDone := make(chan error, 1)
+
+	go func() {
+		<-start
+		scr.Fini()
+		close(finiDone)
+	}()
+	go func() {
+		<-start
+		initDone <- scr.Init()
+	}()
+
+	close(start)
+	select {
+	case err := <-initDone:
+		if err == nil {
+			t.Fatal("concurrent Init succeeded")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("concurrent Init did not return")
+	}
+	select {
+	case <-finiDone:
+	case <-time.After(time.Second):
+		t.Fatal("concurrent Fini did not return")
+	}
+}
+
 func TestFiniPreventsFurtherTerminalMutation(t *testing.T) {
 	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})}
 	scr, err := NewTerminfoScreenFromTty(tty)
@@ -222,6 +331,35 @@ func TestFiniPreventsFurtherTerminalMutation(t *testing.T) {
 	}
 	if ts.focusEnabled != beforeFocusEnabled {
 		t.Fatal("focus state changed after Fini")
+	}
+}
+
+func TestFilterEventsStopsWhileEventQBlocked(t *testing.T) {
+	ts := &tScreen{
+		quit:   make(chan struct{}),
+		eventQ: make(chan Event),
+	}
+	inQ := ts.filterEvents()
+
+	inQ <- NewEventResize(1, 1)
+
+	done := make(chan struct{})
+	go func() {
+		ts.eventWg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		t.Fatal("filterEvents exited before shutdown")
+	case <-time.After(10 * time.Millisecond):
+	}
+
+	close(ts.quit)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("filterEvents did not stop after shutdown")
 	}
 }
 
