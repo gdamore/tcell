@@ -553,6 +553,7 @@ func TestSpecialKeys(t *testing.T) {
 		{"CSI-L", []byte{'\x1b', '[', 'L'}, KeyInsert, ModNone, ""},
 		{"CSI-P", []byte{'\x1b', '[', 'P'}, KeyF1, ModNone, ""},
 		{"CSI-Q", []byte{'\x1b', '[', 'Q'}, KeyF2, ModNone, ""},
+		{"CSI-R", []byte{'\x1b', '[', 'R'}, KeyF3, ModNone, ""},
 		{"CSI-S", []byte{'\x1b', '[', 'S'}, KeyF4, ModNone, ""},
 		{"CSI-Z", []byte{'\x1b', '[', 'Z'}, KeyBacktab, ModNone, ""},
 		{"CSI-a", []byte{'\x1b', '[', 'a'}, KeyUp, ModShift, ""},
