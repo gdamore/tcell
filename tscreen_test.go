@@ -1269,3 +1269,45 @@ func TestShowNotificationStripsOSCControls(t *testing.T) {
 		t.Fatalf("notification payload missing sanitized strings: %q", delta)
 	}
 }
+
+// A Show on a suspended screen must return without emitting anything: the
+// terminal has been handed back to the caller on disengage, and the released
+// cell buffer disagrees with the screen's remembered width and height, which
+// used to make the draw scan loop spin forever — while holding the screen
+// lock, so a concurrent Resume would deadlock. Show runs in a goroutine so
+// that a regression fails the test instead of hanging the suite.
+func TestShowWhileSuspendedEmitsNothing(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})}
+	s, err := NewTerminfoScreenFromTty(tty)
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	if err := s.Suspend(); err != nil {
+		t.Fatalf("failed to suspend screen: %v", err)
+	}
+
+	baseline := len(tty.Output())
+
+	done := make(chan struct{})
+	go func() {
+		s.Show()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Show hung on a suspended screen")
+	}
+
+	if emitted := tty.Output()[baseline:]; emitted != "" {
+		t.Fatalf("Show on a suspended screen emitted %q", emitted)
+	}
+
+	if err := s.Resume(); err != nil {
+		t.Fatalf("failed to resume screen: %v", err)
+	}
+	s.Fini()
+}

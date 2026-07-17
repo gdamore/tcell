@@ -1009,6 +1009,13 @@ func (t *tScreen) hideCursor() {
 }
 
 func (t *tScreen) draw() {
+	if !t.running {
+		// While disengaged (e.g. suspended) the terminal belongs to some
+		// other application, so we must not emit anything; also the cell
+		// buffer is released, so there is nothing valid to draw from.
+		return
+	}
+
 	// clobber cursor position, because we're going to change it all
 	t.cx = -1
 	t.cy = -1
