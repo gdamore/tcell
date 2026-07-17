@@ -1047,6 +1047,10 @@ func (t *tScreen) draw() {
 					// actually will *draw* it.
 					t.cells.SetDirty(x+1, y, true)
 				}
+			} else if width < 1 {
+				// drawCell reports width 0 for coordinates outside the
+				// cell buffer; never let the scan stall
+				width = 1
 			}
 			x += width - 1
 		}
