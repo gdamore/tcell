@@ -54,3 +54,30 @@ func benchCellBufferPut(b *testing.B, name string, sanitize bool, put func(*Cell
 		})
 	}
 }
+
+// BenchmarkCellBufferPutRedraw measures re-Putting identical content into a
+// cell, as a full-screen redraw does for the bulk of the screen.
+func BenchmarkCellBufferPutRedraw(b *testing.B) {
+	cb := &CellBuffer{w: 8, h: 1, cells: make([]cell, 8)}
+	style := Style{}
+	cb.Put(0, 0, "x", style) // prime: measure the cell once
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = cb.Put(0, 0, "x", style)
+	}
+}
+
+func BenchmarkCellBufferPutChangedASCII(b *testing.B) {
+	cb := &CellBuffer{w: 8, h: 1, cells: make([]cell, 8)}
+	style := Style{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if i%2 == 0 {
+			_, _ = cb.Put(0, 0, "x", style)
+		} else {
+			_, _ = cb.Put(0, 0, "y", style)
+		}
+	}
+}

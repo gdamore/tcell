@@ -14,6 +14,8 @@
 
 package tcell
 
+import "unicode/utf8"
+
 type cell struct {
 	currStr   string
 	lastStr   string
@@ -72,12 +74,22 @@ func (cb *CellBuffer) put(x int, y int, str string, style Style) (string, int) {
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		var cl string
 		c := &cb.cells[(y*cb.w)+x]
-		g := textWidthOptions.StringGraphemes(str)
-		for width == 0 && g.Next() {
-			cluster := g.Value()
-			cl += cluster
-			width = g.Width()
-			str = str[len(cluster):]
+		if str == c.currStr && c.width > 0 {
+			// Identical re-Put (a full-screen redraw): the grapheme split is
+			// unchanged, so reuse the measured width instead of segmenting.
+			cl, width, str = str, c.width, ""
+		} else if len(str) > 0 && str[0] >= ' ' && str[0] <= '~' && (len(str) == 1 || str[1] < utf8.RuneSelf) {
+			// Printable ASCII followed by ASCII cannot be part of a larger
+			// grapheme cluster, so avoid constructing a grapheme iterator.
+			cl, width, str = str[:1], 1, str[1:]
+		} else {
+			g := textWidthOptions.StringGraphemes(str)
+			for width == 0 && g.Next() {
+				cluster := g.Value()
+				cl += cluster
+				width = g.Width()
+				str = str[len(cluster):]
+			}
 		}
 
 		// Wide characters: we want to mark the "wide" cells

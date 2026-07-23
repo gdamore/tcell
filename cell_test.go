@@ -186,3 +186,69 @@ func TestCellBufferOutOfRangeAndResizeNoop(t *testing.T) {
 		t.Fatalf("resize no-op changed size to %dx%d", w, h)
 	}
 }
+
+func TestCellBufferPutRedraw(t *testing.T) {
+	cb := &CellBuffer{w: 8, h: 1, cells: make([]cell, 8)}
+
+	// The first Put measures the cell; a re-Put of identical content takes the
+	// fast path and must return the same result without segmenting again.
+	rest1, width1 := cb.Put(0, 0, "x", StyleDefault)
+	rest2, width2 := cb.Put(0, 0, "x", StyleDefault)
+	if rest2 != rest1 || width2 != width1 {
+		t.Fatalf("re-Put mismatch: (%q,%d), want (%q,%d)", rest2, width2, rest1, width1)
+	}
+
+	allocs := testing.AllocsPerRun(100, func() {
+		cb.Put(0, 0, "x", StyleDefault)
+	})
+	if allocs != 0 {
+		t.Fatalf("re-Put allocated %.0f times, want 0", allocs)
+	}
+}
+
+func TestCellBufferPutASCIIBeforeCombiningCluster(t *testing.T) {
+	cb := &CellBuffer{w: 2, h: 1, cells: make([]cell, 2)}
+	rest, width := cb.Put(0, 0, "xe\u0301", StyleDefault)
+	if rest != "e\u0301" || width != 1 {
+		t.Fatalf("Put returned (%q,%d), want (%q,1)", rest, width, "e\u0301")
+	}
+
+	rest, width = cb.Put(1, 0, rest, StyleDefault)
+	if rest != "" || width != 1 {
+		t.Fatalf("combining Put returned (%q,%d), want (\"\",1)", rest, width)
+	}
+	str, _, _ := cb.Get(1, 0)
+	if str != "e\u0301" {
+		t.Fatalf("combining cell is %q, want %q", str, "e\u0301")
+	}
+}
+
+func TestCellBufferPutASCIIFastPathMatchesGraphemeIterator(t *testing.T) {
+	inputs := make([]string, 0, 95*96)
+	for first := byte(' '); first <= '~'; first++ {
+		inputs = append(inputs, string(first))
+		for second := byte(' '); second <= '~'; second++ {
+			inputs = append(inputs, string([]byte{first, second}))
+		}
+	}
+
+	for _, input := range inputs {
+		graphemes := textWidthOptions.StringGraphemes(input)
+		if !graphemes.Next() {
+			t.Fatalf("grapheme iterator returned no value for %q", input)
+		}
+		wantString := graphemes.Value()
+		wantWidth := graphemes.Width()
+		wantRest := input[len(wantString):]
+
+		cb := &CellBuffer{w: 1, h: 1, cells: make([]cell, 1)}
+		gotRest, gotWidth := cb.Put(0, 0, input, StyleDefault)
+		gotString, _, _ := cb.Get(0, 0)
+		if gotString != wantString || gotWidth != wantWidth || gotRest != wantRest {
+			t.Fatalf(
+				"Put(%q) = (%q,%d,%q), want (%q,%d,%q)",
+				input, gotString, gotWidth, gotRest, wantString, wantWidth, wantRest,
+			)
+		}
+	}
+}
