@@ -67,3 +67,17 @@ func BenchmarkCellBufferPutRedraw(b *testing.B) {
 		_, _ = cb.Put(0, 0, "x", style)
 	}
 }
+
+func BenchmarkCellBufferPutChangedASCII(b *testing.B) {
+	cb := &CellBuffer{w: 8, h: 1, cells: make([]cell, 8)}
+	style := Style{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if i%2 == 0 {
+			_, _ = cb.Put(0, 0, "x", style)
+		} else {
+			_, _ = cb.Put(0, 0, "y", style)
+		}
+	}
+}
