@@ -55,6 +55,15 @@ func (tty *devTty) Close() error {
 	return tty.f.Close()
 }
 
+func fileDescriptor(f *os.File) (fd int, err error) {
+	raw, err := f.SyscallConn()
+	if err != nil {
+		return -1, err
+	}
+	err = raw.Control(func(rawFd uintptr) { fd = int(rawFd) })
+	return
+}
+
 func (tty *devTty) Start() error {
 
 	if tty.started {
@@ -72,7 +81,10 @@ func (tty *devTty) Start() error {
 		return err
 	}
 
-	tty.fd = int(tty.f.Fd())
+	if tty.fd, err = fileDescriptor(tty.f); err != nil {
+		tty.f.Close()
+		return err
+	}
 
 	if !term.IsTerminal(tty.fd) {
 		tty.f.Close()
