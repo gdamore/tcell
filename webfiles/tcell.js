@@ -61,7 +61,7 @@ function clearScreen(fg, bg) {
   }
 }
 
-function drawCell(x, y, s, fg, bg, attrs, us, uc) {
+function drawCell(x, y, s, fg, bg, attrs, us, uc, w) {
   var span = document.createElement("span");
   var use = false;
 
@@ -129,6 +129,14 @@ function drawCell(x, y, s, fg, bg, attrs, us, uc) {
   content.dirty = true; // invalidate terminal- new cell
   content.data[y].previous = null; // invalidate row- new row
   content.data[y].data[x] = use ? span : textnode;
+
+  // A wide (multi-column) character occupies the following cells as well,
+  // but the Go side skips drawing them. Clear their previous content,
+  // otherwise stale characters remain visible next to wide text after
+  // partial redraws.
+  for (var i = x + 1; i < x + (w || 1) && i < width; i++) {
+    content.data[y].data[i] = document.createTextNode("");
+  }
 }
 
 function show() {
