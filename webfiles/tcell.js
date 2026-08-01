@@ -227,33 +227,34 @@ function intToHex(n) {
 
 initialize();
 
-let fontwidth = term.clientWidth / width;
-let fontheight = term.clientHeight / height;
+// Cell metrics must be computed per event rather than at load time: the
+// terminal element is still empty here, so clientWidth/clientHeight are 0
+// and a cached value would map every mouse event to the bottom-right cell.
+// Coordinates are derived from clientX/clientY relative to the terminal
+// rect, not offsetX/offsetY: the latter are relative to event.target,
+// which is an inner cell span whenever the pointed-at cell is styled.
+function eventCell(e) {
+  var r = term.getBoundingClientRect();
+  var fontwidth = r.width / width;
+  var fontheight = r.height / height;
+  return [
+    Math.min((((e.clientX - r.left) / fontwidth) | 0), width - 1),
+    Math.min((((e.clientY - r.top) / fontheight) | 0), height - 1),
+  ];
+}
 
 document.addEventListener("keydown", (e) => {
   onKeyEvent(e.key, e.shiftKey, e.altKey, e.ctrlKey, e.metaKey);
 });
 
 term.addEventListener("click", (e) => {
-  onMouseClick(
-    Math.min((e.offsetX / fontwidth) | 0, width - 1),
-    Math.min((e.offsetY / fontheight) | 0, height - 1),
-    e.which,
-    e.shiftKey,
-    e.altKey,
-    e.ctrlKey
-  );
+  var cell = eventCell(e);
+  onMouseClick(cell[0], cell[1], e.which, e.shiftKey, e.altKey, e.ctrlKey);
 });
 
 term.addEventListener("mousemove", (e) => {
-  onMouseMove(
-    Math.min((e.offsetX / fontwidth) | 0, width - 1),
-    Math.min((e.offsetY / fontheight) | 0, height - 1),
-    e.which,
-    e.shiftKey,
-    e.altKey,
-    e.ctrlKey
-  );
+  var cell = eventCell(e);
+  onMouseMove(cell[0], cell[1], e.which, e.shiftKey, e.altKey, e.ctrlKey);
 });
 
 term.addEventListener("focus", (e) => {
