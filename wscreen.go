@@ -143,7 +143,7 @@ func (t *wScreen) drawCell(x, y int) int {
 	}
 
 	t.cells.SetDirty(x, y, false)
-	js.Global().Call("drawCell", x, y, str, fg, bg, int(style.attrs), int(us), int(uc))
+	js.Global().Call("drawCell", x, y, str, fg, bg, int(style.attrs), int(us), int(uc), width)
 
 	return width
 }
