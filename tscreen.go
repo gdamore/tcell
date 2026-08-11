@@ -1373,7 +1373,11 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 			return
 		}
 		if n > 0 {
-			t.keyQ <- chunk[:n]
+			select {
+			case t.keyQ <- chunk[:n]:
+			case <-t.quit:
+				return
+			}
 		}
 	}
 }
