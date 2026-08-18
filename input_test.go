@@ -596,6 +596,10 @@ func TestSpecialKeys(t *testing.T) {
 		{"SS3-Keypad-Subtract", []byte{'\x1b', 'O', 'm'}, KeyRune, ModNone, "-"},
 		{"SS3-Keypad-Divide", []byte{'\x1b', 'O', 'o'}, KeyRune, ModNone, "/"},
 		{"SS3-Keypad-Equal", []byte{'\x1b', 'O', 'X'}, KeyRune, ModNone, "="},
+		// Legacy key reporting normalizes Shift away for printable runes.
+		{"SS3-Keypad-Multiply-Shift", []byte{'\x1b', 'O', '1', ';', '2', 'j'}, KeyRune, ModNone, "*"},
+		{"SS3-Keypad-Multiply-Shift-Short", []byte{'\x1b', 'O', '2', 'j'}, KeyRune, ModNone, "*"},
+		{"CSI-SS3-Keypad-Multiply-Shift", []byte{'\x1b', '[', '1', ';', '2', 'j'}, KeyRune, ModNone, "*"},
 		{"CSI-F2-Alt", []byte{'\x1b', '[', '1', ';', '3', 'Q'}, KeyF2, ModAlt, ""},
 		{"CSI-F2-Hyper", []byte{'\x1b', '[', '1', ';', '1', '7', 'Q'}, KeyF2, ModHyper, ""},
 		{"CSI-F2-Super", []byte{'\x1b', '[', '1', ';', '3', '3', 'Q'}, KeyF2, ModMeta, ""},
