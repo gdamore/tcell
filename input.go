@@ -488,25 +488,46 @@ var winKeys = map[int]Key{
 	0x87: KeyF24,       // vkF24
 }
 
+type ss3Key struct {
+	key Key
+	str string
+}
+
 // keys by their SS3 - used in application mode usually (legacy VT-style)
-var ss3Keys = map[rune]Key{
-	'A': KeyUp,
-	'B': KeyDown,
-	'C': KeyRight,
-	'D': KeyLeft,
-	'E': KeyClear,
-	'F': KeyEnd,
-	'H': KeyHome,
-	'P': KeyF1,
-	'Q': KeyF2,
-	'R': KeyF3,
-	'S': KeyF4,
-	't': KeyF5,
-	'u': KeyF6,
-	'v': KeyF7,
-	'l': KeyF8,
-	'w': KeyF9,
-	'x': KeyF10,
+var ss3Keys = map[rune]ss3Key{
+	'A': {key: KeyUp},
+	'B': {key: KeyDown},
+	'C': {key: KeyRight},
+	'D': {key: KeyLeft},
+	'E': {key: KeyClear},
+	'F': {key: KeyEnd},
+	'H': {key: KeyHome},
+	'P': {key: KeyF1},
+	'Q': {key: KeyF2},
+	'R': {key: KeyF3},
+	'S': {key: KeyF4},
+
+	// DEC application-keypad sequences. The VT100 terminfo entry calls some
+	// of these F5-F10, but that is a terminfo naming artifact: a VT100 has
+	// only PF1-PF4. Decode them by their PC keypad navigation meanings.
+	'p': {key: KeyInsert},
+	'q': {key: KeyEnd},
+	'r': {key: KeyDown},
+	's': {key: KeyPgDn},
+	't': {key: KeyLeft},
+	'u': {key: KeyClear},
+	'v': {key: KeyRight},
+	'w': {key: KeyHome},
+	'x': {key: KeyUp},
+	'y': {key: KeyPgUp},
+	'M': {key: KeyEnter},
+	'n': {key: KeyDelete},
+	'j': {key: KeyRune, str: "*"},
+	'k': {key: KeyRune, str: "+"},
+	'l': {key: KeyRune, str: ","},
+	'm': {key: KeyRune, str: "-"},
+	'o': {key: KeyRune, str: "/"},
+	'X': {key: KeyRune, str: "="},
 }
 
 // linux terminal uses these non ECMA keys prefixed by CSI-[
@@ -669,16 +690,16 @@ func (ip *inputParser) scan() {
 				// parameters that do not match one of these forms, we just discard it.
 				if len(ip.csiParams) == 0 {
 					// simple SS3 case
-					ip.postKey(k, "", ModNone)
+					ip.postKey(k.key, k.str, ModNone)
 				} else if parts := strings.Split(string(ip.csiParams), ";"); len(parts) >= 1 {
 					// SS3 with modifier (old style).  Note old terminfo would declare these as high
 					// numbered function keys, but we encode as modified since that's how they are entered.
 					if len(parts) >= 2 {
 						if m, err := strconv.Atoi(parts[1]); err == nil && (parts[0] == "1" || parts[0] == "") {
-							ip.postKey(k, "", calcModifier(m))
+							ip.postKey(k.key, k.str, calcModifier(m))
 						}
 					} else if m, err := strconv.Atoi(parts[0]); err == nil {
-						ip.postKey(k, "", calcModifier(m))
+						ip.postKey(k.key, k.str, calcModifier(m))
 					}
 				}
 			}
@@ -1425,7 +1446,7 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 
 	// this might have been an SS3 style key with modifiers applied
 	if k, ok := ss3Keys[mode]; ok && P0 == 1 && len(P) > 1 {
-		ip.postKeyEx(k, "", calcModifier(P[1]), pressed, 0, repeat)
+		ip.postKeyEx(k.key, k.str, calcModifier(P[1]), pressed, 0, repeat)
 		return
 	}
 	// if we got here we just swallow the unknown sequence
