@@ -734,10 +734,13 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 		wantMouseSgr bool
 		wantKittyKbd bool
 		wantWin32Kbd bool
+		term         string
+		wantLegacy   bool
 	}{
 		{
 			name:         "AppleTerminal",
 			goos:         "darwin",
+			term:         "xterm-256color",
 			termProgram:  "Apple_Terminal",
 			wantKnown:    true,
 			wantMouse:    true,
@@ -746,6 +749,7 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 		{
 			name:         "LocalWindowsWezTerm",
 			goos:         "windows",
+			term:         "wezterm",
 			termProgram:  "WezTerm",
 			wantKnown:    true,
 			wantInitted:  true,
@@ -756,6 +760,7 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 		{
 			name:         "LocalUnixWezTerm",
 			goos:         "linux",
+			term:         "wezterm",
 			termProgram:  "WezTerm",
 			wantKnown:    true,
 			wantInitted:  true,
@@ -766,14 +771,29 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 		{
 			name:        "UnknownTerminal",
 			goos:        "linux",
+			term:        "xterm-256color",
 			termProgram: "Other",
+		},
+		{
+			name:       "St",
+			goos:       "linux",
+			term:       "st",
+			wantKnown:  true,
+			wantLegacy: true,
+		},
+		{
+			name:       "St256Color",
+			goos:       "linux",
+			term:       "st-256color",
+			wantKnown:  true,
+			wantLegacy: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &tScreen{}
-			if got := s.applyKnownTerminalProfile(tt.goos, tt.termProgram); got != tt.wantKnown {
+			if got := s.applyKnownTerminalProfile(tt.goos, tt.term, tt.termProgram); got != tt.wantKnown {
 				t.Fatalf("applyKnownTerminalProfile() = %v, want %v", got, tt.wantKnown)
 			}
 			if s.initted != tt.wantInitted {
@@ -791,7 +811,67 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 			if s.haveWin32Kbd != tt.wantWin32Kbd {
 				t.Fatalf("haveWin32Kbd = %v, want %v", s.haveWin32Kbd, tt.wantWin32Kbd)
 			}
+			if s.legacy != tt.wantLegacy {
+				t.Fatalf("legacy = %v, want %v", s.legacy, tt.wantLegacy)
+			}
 		})
+	}
+}
+
+func TestStProfileSkipsUnsupportedOperations(t *testing.T) {
+	t.Setenv("TERM", "st-256color")
+	t.Setenv("TERM_PROGRAM", "")
+
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	s.EnableMouse()
+	s.EnableFocus()
+	out := tty.Output()
+	for _, seq := range []string{
+		requestWindowSize,
+		vt.PmResizeReports.Query(),
+		vt.PmMouseButton.Query(),
+		vt.PmMouseSgr.Query(),
+		vt.PmWin32Input.Query(),
+		queryKittyKbd,
+		queryXTermKbd,
+		requestExtAttr,
+		vt.PmMouseButton.Enable(),
+		vt.PmMouseSgr.Enable(),
+		vt.PmFocusReports.Enable(),
+	} {
+		if strings.Contains(out, seq) {
+			t.Fatalf("st profile emitted unsupported sequence %q", seq)
+		}
+	}
+	if !strings.Contains(out, requestPrimaryDA) {
+		t.Fatal("st profile did not emit primary DA")
+	}
+	name, version := s.Terminal()
+	if name != "st" || version != "" {
+		t.Fatalf("Terminal() = %q, %q, want %q, %q", name, version, "st", "")
+	}
+
+	tScreen := s.(*baseScreen).screenImpl.(*tScreen)
+	start := len(tty.Output())
+	tScreen.emitUnderline(UnderlineStyleCurly, ColorDefault)
+	if got := tty.Output()[start:]; got != underline {
+		t.Fatalf("st underline escape = %q, want %q", got, underline)
+	}
+
+	start = len(tty.Output())
+	s.SetTitle("title")
+	s.GetClipboard()
+	if got, want := tty.Output()[start:], "\x1b]2;title\x1b\\"; got != want {
+		t.Fatalf("st title and clipboard escapes = %q, want %q", got, want)
 	}
 }
 
