@@ -1064,7 +1064,11 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 			return
 		}
 		if n > 0 {
-			t.keychan <- chunk[:n]
+			select {
+			case t.keychan <- chunk[:n]:
+			case <-t.quit:
+				return
+			}
 		}
 	}
 }
