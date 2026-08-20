@@ -135,6 +135,40 @@ func TestInputControlKeys(t *testing.T) {
 	}
 }
 
+func TestInputEscapeTimeouts(t *testing.T) {
+	evch := make(chan Event, 2)
+	ip := newInputParser(evch)
+
+	ip.ScanUTF8([]byte{'\x1b'})
+	if got := ip.WaitDuration(); got != loneEscapeTimeout {
+		t.Fatalf("bare legacy ESC timeout = %v, want %v", got, loneEscapeTimeout)
+	}
+
+	// A byte that starts a control sequence gets the longer deadline, so it
+	// can arrive well after the bare-ESC deadline without being discarded.
+	ip.ScanUTF8([]byte{'['})
+	if got := ip.WaitDuration(); got != escapeSequenceTimeout {
+		t.Fatalf("CSI timeout = %v, want %v", got, escapeSequenceTimeout)
+	}
+	ip.keyTime = time.Now().Add(-loneEscapeTimeout * 2)
+	ip.Scan()
+	select {
+	case ev := <-evch:
+		t.Fatalf("CSI timed out at the bare-ESC deadline: %v", ev)
+	default:
+	}
+	ip.ScanUTF8([]byte{'A'})
+	if ev := <-evch; ev.(*EventKey).Key() != KeyUp {
+		t.Fatalf("delayed CSI key = %v, want %v", ev, KeyUp)
+	}
+
+	ip.ScanUTF8([]byte{'\x1b'})
+	ip.SetKeyboardProtocol(KittyKeyboard)
+	if got := ip.WaitDuration(); got != escapeSequenceTimeout {
+		t.Fatalf("bare kitty ESC timeout = %v, want %v", got, escapeSequenceTimeout)
+	}
+}
+
 // TestInputNullVsOtherControlChars tests the boundary between
 // null byte and other control characters.
 func TestInputNullVsOtherControlChars(t *testing.T) {
@@ -678,6 +712,9 @@ func TestSpecialKeys(t *testing.T) {
 				}
 
 			case <-time.After(100 * time.Millisecond):
+				// Force any incomplete escape sequence to expire without making
+				// every legacy-key test wait for its full timeout.
+				ip.keyTime = time.Now().Add(-2 * escapeSequenceTimeout)
 				ip.Scan()
 				select {
 				case ev := <-evch:

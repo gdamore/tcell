@@ -63,10 +63,22 @@ const (
 // before they can grow without bound while waiting for a string terminator.
 const defaultControlStringLimit = 64 * 1024
 
+const (
+	// loneEscapeTimeout keeps bare Escape responsive when using legacy
+	// keyboard reporting, where ESC can also prefix an Alt-modified key.
+	loneEscapeTimeout = 200 * time.Millisecond
+
+	// escapeSequenceTimeout bounds incomplete escape sequences. Once a
+	// sequence introducer has arrived, it is no longer ambiguous with a lone
+	// Escape and can tolerate a substantially longer inter-byte delay.
+	escapeSequenceTimeout = time.Second
+)
+
 func newInputParser(eq chan<- Event) *inputParser {
 	return &inputParser{
 		evch:             eq,
 		buf:              make([]rune, 0, 128),
+		legacy:           true,
 		controlStringMax: defaultControlStringLimit,
 	}
 }
@@ -91,6 +103,7 @@ type inputParser struct {
 	nested           *inputParser // for buggy win32-input-mode implementations
 	surrogate        rune         // high surrogate pair seen (for Win32 input mode)
 	advanced         bool         // use advanced key reporting semantics
+	legacy           bool         // keyboard protocol has ambiguous ESC prefixes
 	controlStringMax int          // maximum inbound OSC/XDA payload size; 0 means unlimited
 	discardString    bool         // drop the rest of an over-limit OSC/XDA sequence
 }
@@ -127,6 +140,35 @@ func (ip *inputParser) Waiting() bool {
 	ip.l.Lock()
 	defer ip.l.Unlock()
 	return ip.state != istInit
+}
+
+// waitDuration reports how long to wait for the next byte before resetting an
+// incomplete escape sequence. A bare ESC is only ambiguous with legacy
+// keyboard reporting; other protocols can use the longer sequence deadline.
+func (ip *inputParser) waitDuration() time.Duration {
+	if ip.state == istInit {
+		return 0
+	}
+	if ip.state == istEsc && ip.legacy {
+		return loneEscapeTimeout
+	}
+	return escapeSequenceTimeout
+}
+
+func (ip *inputParser) WaitDuration() time.Duration {
+	ip.l.Lock()
+	defer ip.l.Unlock()
+	return ip.waitDuration()
+}
+
+func (ip *inputParser) SetKeyboardProtocol(protocol KeyProtocol) {
+	ip.l.Lock()
+	ip.legacy = protocol == LegacyKeyboard
+	nested := ip.nested
+	ip.l.Unlock()
+	if nested != nil {
+		nested.SetKeyboardProtocol(protocol)
+	}
 }
 
 // SetPixelMouse toggles whether SGR mouse reports are interpreted as
@@ -778,7 +820,7 @@ func (ip *inputParser) scan() {
 		}
 	}
 
-	if ip.state != istInit && time.Since(ip.keyTime) > time.Millisecond*50 {
+	if timeout := ip.waitDuration(); timeout > 0 && time.Since(ip.keyTime) > timeout {
 		if ip.state == istEsc {
 			ip.postKey(KeyEscape, "", ModNone)
 		} else if ec := ip.escChar; ec != 0 {
@@ -1077,6 +1119,7 @@ func (ip *inputParser) handleWinKey(P []int) {
 					rows:             ip.rows,
 					cols:             ip.cols,
 					advanced:         ip.advanced,
+					legacy:           ip.legacy,
 					pixelMouse:       ip.pixelMouse,
 					controlStringMax: ip.controlStringMax,
 				}

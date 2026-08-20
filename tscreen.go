@@ -1354,13 +1354,18 @@ func (t *tScreen) mainLoop(stopQ chan struct{}) {
 		case chunk := <-t.keyQ:
 			buf.Write(chunk)
 			t.scanInput(buf)
-			if t.input.Waiting() {
-				ta = time.After(time.Millisecond * 100)
+			if timeout := t.input.WaitDuration(); timeout > 0 {
+				ta = time.After(timeout)
 			} else {
 				ta = nil
 			}
 		case <-ta:
 			t.input.Scan()
+			if timeout := t.input.WaitDuration(); timeout > 0 {
+				ta = time.After(timeout)
+			} else {
+				ta = nil
+			}
 		}
 	}
 }
@@ -1597,6 +1602,7 @@ func (t *tScreen) engageLocked() error {
 	}
 	t.processInitQ()
 	t.applyKeyboardProtocolOverride()
+	t.input.SetKeyboardProtocol(t.keyboardProtocol())
 	if t.useAltScreen() {
 		// Technically this may not be right, but every terminal we know about
 		// (even Wyse 60) uses this to enter the alternate screen buffer, and
@@ -1819,6 +1825,11 @@ func (t *tScreen) Terminal() (string, string) {
 func (t *tScreen) KeyboardProtocol() KeyProtocol {
 	t.Lock()
 	defer t.Unlock()
+	return t.keyboardProtocol()
+}
+
+// keyboardProtocol reports the selected keyboard protocol while t is locked.
+func (t *tScreen) keyboardProtocol() KeyProtocol {
 	if t.haveWin32Kbd {
 		return Win32Keyboard
 	}
