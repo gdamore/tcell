@@ -24,6 +24,7 @@ import (
 
 	"github.com/gdamore/tcell/v3/tty"
 	"github.com/gdamore/tcell/v3/vt"
+	"golang.org/x/text/transform"
 )
 
 // This just offers some very basic tests that do not require a full mock.
@@ -110,6 +111,67 @@ func TestOptAltScreenDefault(t *testing.T) {
 	}
 	if !strings.Contains(out, exitCA) {
 		t.Fatalf("alternate screen exit escape was not emitted")
+	}
+}
+
+func TestMainLoopEscapeTimeout(t *testing.T) {
+	evch := make(chan Event, 2)
+	tscreen := &tScreen{
+		keyQ:    make(chan []byte, 2),
+		quit:    make(chan struct{}),
+		resizeQ: make(chan bool),
+		input:   newInputParser(evch),
+		decoder: transform.Nop,
+	}
+	stopQ := make(chan struct{})
+	done := make(chan struct{})
+	tscreen.wg.Add(1)
+	go func() {
+		tscreen.mainLoop(stopQ)
+		close(done)
+	}()
+
+	tscreen.keyQ <- []byte{'\x1b'}
+	deadline := time.After(time.Second)
+	for tscreen.input.WaitDuration() != loneEscapeTimeout {
+		select {
+		case <-deadline:
+			t.Fatal("input timeout was not scheduled")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	// Refresh the parser timestamp before the first timer fires. This verifies
+	// that mainLoop re-arms its timer when parsing remains incomplete.
+	time.Sleep(loneEscapeTimeout / 2)
+	tscreen.input.l.Lock()
+	tscreen.input.keyTime = time.Now()
+	tscreen.input.l.Unlock()
+	select {
+	case ev := <-evch:
+		if key, ok := ev.(*EventKey); !ok || key.Key() != KeyEscape {
+			t.Fatalf("expired ESC event = %T %v, want KeyEscape", ev, ev)
+		}
+	case <-time.After(loneEscapeTimeout * 4):
+		t.Fatal("bare ESC did not expire")
+	}
+
+	// Verify that the loop clears its timer after a complete key is parsed.
+	tscreen.keyQ <- []byte{'A'}
+	select {
+	case ev := <-evch:
+		if key, ok := ev.(*EventKey); !ok || key.Str() != "A" {
+			t.Fatalf("plain key event = %T %v, want A", ev, ev)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("plain key was not processed")
+	}
+
+	close(stopQ)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("input main loop did not stop")
 	}
 }
 

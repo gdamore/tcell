@@ -167,6 +167,20 @@ func TestInputEscapeTimeouts(t *testing.T) {
 	if got := ip.WaitDuration(); got != escapeSequenceTimeout {
 		t.Fatalf("bare kitty ESC timeout = %v, want %v", got, escapeSequenceTimeout)
 	}
+
+	nested := newInputParser(make(chan Event, 1))
+	ip.nested = nested
+	ip.SetKeyboardProtocol(Win32Keyboard)
+	if nested.legacy {
+		t.Fatal("nested parser retained legacy keyboard protocol")
+	}
+
+	win := newInputParser(make(chan Event, 1))
+	win.SetKeyboardProtocol(KittyKeyboard)
+	win.handleWinKey([]int{0, 0, 'A', 1})
+	if win.nested == nil || win.nested.legacy {
+		t.Fatal("Win32 nested parser did not inherit keyboard protocol")
+	}
 }
 
 // TestInputNullVsOtherControlChars tests the boundary between
