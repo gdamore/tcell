@@ -252,3 +252,64 @@ func TestCellBufferPutASCIIFastPathMatchesGraphemeIterator(t *testing.T) {
 		}
 	}
 }
+
+func TestCellBufferFillArea(t *testing.T) {
+	cb := &CellBuffer{w: 4, h: 3, cells: make([]cell, 12)}
+	cb.Fill('.', StyleDefault)
+
+	red := StyleDefault.Foreground(ColorRed).Background(ColorBlue)
+	cb.FillArea(1, 1, 2, 1, 'x', red)
+
+	// Cells inside the region should have changed.
+	for _, xy := range [][2]int{{1, 1}, {2, 1}} {
+		got, style, width := cb.Get(xy[0], xy[1])
+		if got != "x" || width != 1 || style != red {
+			t.Fatalf("cell %v not filled: got %q style=%v width=%d", xy, got, style, width)
+		}
+	}
+	// Neighbours just outside the region should be untouched.
+	for _, xy := range [][2]int{{0, 1}, {3, 1}, {1, 0}, {1, 2}} {
+		if got, _, _ := cb.Get(xy[0], xy[1]); got != "." {
+			t.Fatalf("cell %v should be untouched, got %q", xy, got)
+		}
+	}
+}
+
+func TestCellBufferFillAreaClipping(t *testing.T) {
+	cb := &CellBuffer{w: 3, h: 3, cells: make([]cell, 9)}
+	cb.Fill('.', StyleDefault)
+
+	// A region that starts off-screen and overflows the far edge should only
+	// paint the cells that actually fall inside the buffer.
+	cb.FillArea(-2, -2, 4, 4, '#', StyleDefault)
+	for y := 0; y < 3; y++ {
+		for x := 0; x < 3; x++ {
+			want := "."
+			if x < 2 && y < 2 {
+				want = "#"
+			}
+			if got, _, _ := cb.Get(x, y); got != want {
+				t.Fatalf("cell (%d,%d): got %q want %q", x, y, got, want)
+			}
+		}
+	}
+
+	// Zero and negative extents must not change anything.
+	cb.FillArea(0, 0, 0, 3, '!', StyleDefault)
+	cb.FillArea(0, 0, 3, -1, '!', StyleDefault)
+	if got, _, _ := cb.Get(0, 0); got != "#" {
+		t.Fatalf("empty region should be a no-op, got %q", got)
+	}
+}
+
+func TestCellBufferFillAreaColorNone(t *testing.T) {
+	cb := &CellBuffer{w: 2, h: 1, cells: make([]cell, 2)}
+	base := StyleDefault.Foreground(ColorRed).Background(ColorBlue)
+	cb.Fill(' ', base)
+
+	// ColorNone should leave the existing fg/bg in place, matching Fill.
+	cb.FillArea(0, 0, 1, 1, 'y', StyleDefault.Foreground(ColorNone).Background(ColorNone))
+	if _, style, _ := cb.Get(0, 0); style != base {
+		t.Fatalf("ColorNone should preserve existing colors, got %v", style)
+	}
+}
