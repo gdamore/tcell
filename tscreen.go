@@ -1374,13 +1374,24 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 
 	defer t.wg.Done()
 	for {
+		readDone := make(chan bool)
+		chunk := make([]byte, 128)
+		var n int
+		var e error
 		select {
 		case <-stopQ:
 			return
 		default:
+			go func() {
+				n, e = t.tty.Read(chunk)
+				close(readDone)
+			}()
+			select {
+			case <-stopQ:
+				return
+			case <-readDone:
+			}
 		}
-		chunk := make([]byte, 128)
-		n, e := t.tty.Read(chunk)
 		switch e {
 		case nil:
 		default:
