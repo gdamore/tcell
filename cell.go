@@ -252,3 +252,32 @@ func (cb *CellBuffer) Fill(r rune, style Style) {
 		c.width = 1
 	}
 }
+
+// FillArea fills a rectangular region of the cell buffer with the specified
+// character and style.  The region starts at column x, row y and extends w
+// columns to the right and h rows down; any part of it lying outside the
+// buffer is simply skipped, so callers do not need to clip coordinates
+// themselves.  A zero or negative width or height fills nothing.  As with
+// Fill, this doesn't support combining characters or wide runes, and a
+// ColorNone foreground or background leaves that color unchanged.
+func (cb *CellBuffer) FillArea(x, y, w, h int, r rune, style Style) {
+	x0 := max(x, 0)
+	y0 := max(y, 0)
+	x1 := min(x+w, cb.w)
+	y1 := min(y+h, cb.h)
+	for row := y0; row < y1; row++ {
+		for col := x0; col < x1; col++ {
+			c := &cb.cells[(row*cb.w)+col]
+			c.currStr = string(r)
+			cs := style
+			if cs.fg == ColorNone {
+				cs.fg = c.currStyle.fg
+			}
+			if cs.bg == ColorNone {
+				cs.bg = c.currStyle.bg
+			}
+			c.currStyle = cs
+			c.width = 1
+		}
+	}
+}

@@ -1453,3 +1453,32 @@ func TestShowWhileSuspendedEmitsNothing(t *testing.T) {
 	}
 	s.Fini()
 }
+
+func TestScreenFillArea(t *testing.T) {
+	_, s := NewMockScreen(t, vt.MockOptSize{X: 20, Y: 10})
+	defer s.Fini()
+
+	style := StyleDefault.Foreground(ColorGreen).Background(ColorBlack)
+	s.FillArea(2, 3, 4, 2, '*', style)
+
+	// Inside the region.
+	if got, gotStyle, _ := s.Get(3, 3); got != "*" || gotStyle != style {
+		t.Errorf("filled cell wrong: got %q style=%v", got, gotStyle)
+	}
+	if got, _, _ := s.Get(5, 4); got != "*" {
+		t.Errorf("bottom-right corner not filled: got %q", got)
+	}
+	// Just outside the region should still be blank.
+	if got, _, _ := s.Get(6, 3); got != " " {
+		t.Errorf("cell past the region should be blank, got %q", got)
+	}
+	if got, _, _ := s.Get(3, 5); got != " " {
+		t.Errorf("cell below the region should be blank, got %q", got)
+	}
+
+	// Coordinates that overflow the screen must not panic and must be clipped.
+	s.FillArea(18, 8, 100, 100, '#', style)
+	if got, _, _ := s.Get(19, 9); got != "#" {
+		t.Errorf("overflowing fill should paint in-bounds cells, got %q", got)
+	}
+}
