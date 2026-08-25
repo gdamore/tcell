@@ -667,6 +667,12 @@ func TestSpecialKeys(t *testing.T) {
 		{"XTerm-Alt-CJK", []byte{'\x1b', '[', '2', '7', ';', '3', ';', '2', '0', '3', '2', '0', '~'}, KeyRune, ModAlt, "你"},
 		{"Kitty-Esc", []byte{'\x1b', '[', '2', '7', 'u'}, KeyEsc, ModNone, ""},
 		{"Kitty-Control-I", []byte{'\x1b', '[', '1', '0', '5', ';', '5', 'u'}, 'I', ModCtrl, ""},
+		{"Kitty-Text-Empty-Mod", []byte{'\x1b', '[', '0', ';', ';', '2', '2', '9', 'u'}, KeyRune, ModNone, "å"},
+		{"Kitty-Text-Invalid-Codepoints", []byte{
+			'\x1b', '[', '2', '2', '9', ';', ';', '5', '5', '2', '9', '6',
+			':', '1', '1', '1', '4', '1', '1', '2',
+			':', '6', '5', 'u',
+		}, KeyRune, ModNone, "A"},
 		{"Win-Shift-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '6', '5', ';', '1', ';', '1', '6', '_'}, KeyRune, ModNone, "A"},
 		{"Win-Ctrl-1", []byte{'\x1b', '[', '4', '9', ';', '0', ';', '4', '9', ';', '1', ';', '8', '_'}, KeyRune, ModCtrl, "1"},
 		{"Win-Ctrl-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '1', ';', '1', ';', '8', '_'}, KeyCtrlA, ModCtrl, ""},

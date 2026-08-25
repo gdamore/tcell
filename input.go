@@ -867,6 +867,9 @@ func (ip *inputParser) handleXda(str string) {
 }
 
 func calcModifier(n int) ModMask {
+	if n < 1 {
+		return ModNone
+	}
 	n--
 	m := ModNone
 	if n&1 != 0 {
@@ -998,7 +1001,7 @@ func kittyKeyText(params string) string {
 	}
 	var b strings.Builder
 	for cp := range strings.SplitSeq(fields[2], ":") {
-		if n, err := strconv.ParseInt(cp, 10, 32); err == nil && n > 0 {
+		if n, err := strconv.ParseInt(cp, 10, 32); err == nil && n > 0 && utf8.ValidRune(rune(n)) {
 			b.WriteRune(rune(n))
 		}
 	}
