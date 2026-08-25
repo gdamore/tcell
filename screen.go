@@ -20,6 +20,18 @@ import (
 	"github.com/gdamore/tcell/v3/color"
 )
 
+// Capabilities is a bitfield of terminal capabilities reported during Init.
+type Capabilities uint
+
+const (
+	// CapabilityClipboard: OSC 52 support.  Many terminals support the
+	// clipboard without reporting it, so a false bit is not conclusive.
+	CapabilityClipboard Capabilities = 1 << iota
+
+	// CapabilitySixel: sixel graphics support (DA1, param 4).
+	CapabilitySixel
+)
+
 // Screen represents the physical (or emulated) screen.
 // This can be a terminal window or a physical console.  Platforms implement
 // this differently.
@@ -239,10 +251,11 @@ type Screen interface {
 	// prevent this for security reasons.
 	GetClipboard()
 
-	// HasClipboard is true if the screen claims to support the clipboard.
-	// Note that GetClipboard may still not work, but SetClipboard should be functional.
-	// Note that many terminals that support the clipboard don't actually report that they
-	// do, so a false indication is not necessarily conclusive.
+	// Capabilities returns the terminal capabilities reported during Init.
+	Capabilities() Capabilities
+
+	// Deprecated: HasClipboard is kept for compatibility; check
+	// Capabilities()&CapabilityClipboard instead.
 	HasClipboard() bool
 
 	// ShowNotification is used to show a desktop notification, when the terminal
@@ -356,6 +369,7 @@ type screenImpl interface {
 	Tty() (Tty, bool)
 	SetClipboard([]byte)
 	GetClipboard()
+	Capabilities() Capabilities
 	HasClipboard() bool
 	ShowNotification(string, string)
 	KeyboardProtocol() KeyProtocol
