@@ -179,7 +179,7 @@ const (
 	notifyDesktop777  = "\x1b]777;notify;%s;%s\x1b\\"       // Most commonly supported
 	queryKittyKbd     = "\x1b[?u"                           // Query for Kitty keyboard support
 	enableKittyKbd    = "\x1b[=1u"                          // Technically this pushes
-	enableKittyKbdAdv = "\x1b[=15u"                         // disambiguation, events, alternate keys, all keys
+	enableKittyKbdAdv = "\x1b[=31u"                         // disambiguation, events, alternate keys, all keys, text
 	disableKittyKbd   = "\x1b[=0u"                          // Technically this means pop previous mode
 	queryXTermKbd     = "\x1b[?4m"                          // Query for XTerm modify other keys support
 	enableXTermKbd    = "\x1b[>4;2m"                        // Enable modify other keys protocol

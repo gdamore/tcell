@@ -987,6 +987,24 @@ func kittyModifierKey(code int) ModMask {
 	}
 }
 
+// kittyKeyText extracts the associated text (kitty mode 16) from a csi-u
+// event's params: the third ;-field, codepoints :separated. Empty when
+// the event carries no text (control keys, specials, terminals without
+// mode 16), so callers fall back to the base key.
+func kittyKeyText(params string) string {
+	fields := strings.Split(params, ";")
+	if len(fields) < 3 || fields[2] == "" {
+		return ""
+	}
+	var b strings.Builder
+	for cp := range strings.SplitSeq(fields[2], ":") {
+		if n, err := strconv.ParseInt(cp, 10, 32); err == nil && n > 0 {
+			b.WriteRune(rune(n))
+		}
+	}
+	return b.String()
+}
+
 func (ip *inputParser) handleMouse(mode rune, params []int) {
 
 	// XTerm mouse events only report at most one button at a time,
@@ -1420,6 +1438,15 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 			}
 			if mod1 := kittyModifierKey(P0); mod1 != ModNone {
 				mod |= mod1
+			}
+			// kitty mode 16: a terminal that sends associated text reports
+			// the key's layout-correct output, already shifted - trust it
+			// over the base key. No text (e.g. terminals without mode 16)
+			// falls through to base key + modifiers.
+			if text := kittyKeyText(pstr); text != "" {
+				mod &^= ModShift // the shift is expressed in the text
+				ip.postKeyEx(KeyRune, text, mod, pressed, physical, repeat)
+				return
 			}
 			if key != KeyRune {
 				ip.postKeyEx(key, "", mod, pressed, physical, repeat)
