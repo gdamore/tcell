@@ -1822,8 +1822,9 @@ func (t *tScreen) Capabilities() Capabilities {
 	return t.caps
 }
 
+//go:fix inline
 func (t *tScreen) HasClipboard() bool {
-	return t.caps&CapabilityClipboard != 0
+	return t.Capabilities()&CapabilityClipboard != 0
 }
 
 func (t *tScreen) ShowNotification(title string, body string) {

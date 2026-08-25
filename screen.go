@@ -254,8 +254,8 @@ type Screen interface {
 	// Capabilities returns the terminal capabilities reported during Init.
 	Capabilities() Capabilities
 
-	// HasClipboard reports OSC 52 clipboard support; equivalent to
-	// Capabilities()&CapabilityClipboard != 0.
+	// Deprecated: HasClipboard is kept for compatibility; check
+	// Capabilities()&CapabilityClipboard instead.
 	HasClipboard() bool
 
 	// ShowNotification is used to show a desktop notification, when the terminal
