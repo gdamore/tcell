@@ -1118,6 +1118,25 @@ func TestAdvancedBacktabReportsShiftTab(t *testing.T) {
 	}
 }
 
+func TestAdvancedKittyTextKeepsShift(t *testing.T) {
+	// kitty spec's own shift+a example: CSI 97 ; 2 ; 65 u - the associated
+	// text 'A' is delivered together with the shift modifier, which must not
+	// be dropped.
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.advanced = true
+
+	ip.ScanUTF8([]byte("\x1b[97;2;65u"))
+
+	got := nextKey(evch)
+	if got == nil {
+		t.Fatal("expected shifted A press")
+	}
+	if got.Key() != KeyRune || got.Str() != "A" || got.Modifiers() != ModShift {
+		t.Fatalf("expected shifted A with ModShift, got key=%v str=%q mod=%v", got.Key(), got.Str(), got.Modifiers())
+	}
+}
+
 func TestAdvancedKittyKeyMetadata(t *testing.T) {
 	evch := make(chan Event, 10)
 	ip := newInputParser(evch)

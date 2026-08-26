@@ -1442,12 +1442,9 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 			if mod1 := kittyModifierKey(P0); mod1 != ModNone {
 				mod |= mod1
 			}
-			// kitty mode 16: a terminal that sends associated text reports
-			// the key's layout-correct output, already shifted - trust it
-			// over the base key. No text (e.g. terminals without mode 16)
-			// falls through to base key + modifiers.
+			// kitty mode 16: text is the layout-correct output, sent with its
+			// modifiers - keep both. No text falls through to the base key.
 			if text := kittyKeyText(pstr); text != "" {
-				mod &^= ModShift // the shift is expressed in the text
 				ip.postKeyEx(KeyRune, text, mod, pressed, physical, repeat)
 				return
 			}
