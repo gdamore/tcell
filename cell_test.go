@@ -302,6 +302,42 @@ func TestCellBufferFillAreaClipping(t *testing.T) {
 	}
 }
 
+func TestCellBufferFillAreaOverflow(t *testing.T) {
+	const maxInt = int(^uint(0) >> 1)
+	const minInt = -maxInt - 1
+
+	// A width that overflows x+w must still fill every in-bounds cell from x
+	// onward rather than clipping to a wrapped-around negative endpoint.
+	cb := &CellBuffer{w: 4, h: 3, cells: make([]cell, 12)}
+	cb.Fill('.', StyleDefault)
+	cb.FillArea(1, 1, maxInt, maxInt, '#', StyleDefault)
+	for y := 0; y < 3; y++ {
+		for x := 0; x < 4; x++ {
+			want := "."
+			if x >= 1 && y >= 1 {
+				want = "#"
+			}
+			if got, _, _ := cb.Get(x, y); got != want {
+				t.Fatalf("cell (%d,%d): got %q want %q", x, y, got, want)
+			}
+		}
+	}
+
+	// Negative extents (including the extreme minimum) must never underflow
+	// into filling cells; the region is empty and nothing changes.
+	cb2 := &CellBuffer{w: 4, h: 3, cells: make([]cell, 12)}
+	cb2.Fill('.', StyleDefault)
+	cb2.FillArea(minInt+1, minInt+1, minInt, minInt, '#', StyleDefault)
+	cb2.FillArea(0, 0, minInt, 2, '#', StyleDefault)
+	for y := 0; y < 3; y++ {
+		for x := 0; x < 4; x++ {
+			if got, _, _ := cb2.Get(x, y); got != "." {
+				t.Fatalf("cell (%d,%d) should be untouched, got %q", x, y, got)
+			}
+		}
+	}
+}
+
 func TestCellBufferFillAreaColorNone(t *testing.T) {
 	cb := &CellBuffer{w: 2, h: 1, cells: make([]cell, 2)}
 	base := StyleDefault.Foreground(ColorRed).Background(ColorBlue)
