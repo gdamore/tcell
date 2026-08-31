@@ -673,6 +673,8 @@ func TestSpecialKeys(t *testing.T) {
 			':', '1', '1', '1', '4', '1', '1', '2',
 			':', '6', '5', 'u',
 		}, KeyRune, ModNone, "A"},
+		{"Kitty-Text-C0-Rejected", []byte{'\x1b', '[', '9', '7', ';', '1', ';', '9', 'u'}, KeyRune, ModNone, "a"},
+		{"Kitty-Text-C1-Rejected", []byte{'\x1b', '[', '9', '7', ';', '1', ';', '1', '4', '0', 'u'}, KeyRune, ModNone, "a"},
 		{"Win-Shift-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '6', '5', ';', '1', ';', '1', '6', '_'}, KeyRune, ModNone, "A"},
 		{"Win-Ctrl-1", []byte{'\x1b', '[', '4', '9', ';', '0', ';', '4', '9', ';', '1', ';', '8', '_'}, KeyRune, ModCtrl, "1"},
 		{"Win-Ctrl-A", []byte{'\x1b', '[', '6', '5', ';', '0', ';', '1', ';', '1', ';', '8', '_'}, KeyCtrlA, ModCtrl, ""},
