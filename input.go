@@ -1000,8 +1000,10 @@ func kittyKeyText(params string) string {
 		return ""
 	}
 	var b strings.Builder
+	// Reject C0 control chars, DEL, and C1 control chars: they must never
+	// surface as key text.
 	for cp := range strings.SplitSeq(fields[2], ":") {
-		if n, err := strconv.ParseInt(cp, 10, 32); err == nil && n > 0 && utf8.ValidRune(rune(n)) {
+		if n, err := strconv.ParseInt(cp, 10, 32); err == nil && n >= 0x20 && (n < 0x7f || n > 0x9f) && utf8.ValidRune(rune(n)) {
 			b.WriteRune(rune(n))
 		}
 	}
