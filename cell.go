@@ -261,10 +261,23 @@ func (cb *CellBuffer) Fill(r rune, style Style) {
 // Fill, this doesn't support combining characters or wide runes, and a
 // ColorNone foreground or background leaves that color unchanged.
 func (cb *CellBuffer) FillArea(x, y, w, h int, r rune, style Style) {
+	if w <= 0 || h <= 0 {
+		return
+	}
 	x0 := max(x, 0)
 	y0 := max(y, 0)
-	x1 := min(x+w, cb.w)
-	y1 := min(y+h, cb.h)
+	// Clip the far edge to the buffer without ever evaluating x+w or y+h when
+	// they would overflow a signed int.  Because w and h are positive here,
+	// x < cb.w-w is equivalent to x+w < cb.w but cannot overflow, and it is
+	// only true when x+w is small enough to compute safely.
+	x1 := cb.w
+	if x < cb.w-w {
+		x1 = x + w
+	}
+	y1 := cb.h
+	if y < cb.h-h {
+		y1 = y + h
+	}
 	for row := y0; row < y1; row++ {
 		for col := x0; col < x1; col++ {
 			c := &cb.cells[(row*cb.w)+col]
