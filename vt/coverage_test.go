@@ -232,7 +232,9 @@ func TestShouldCheckGrapheme(t *testing.T) {
 		{name: "zwj", prev: 'x', r: '\u200d', want: true},
 		{name: "vs16", prev: 'x', r: '\uFE0F', want: true},
 		{name: "supplementary vs", prev: 'x', r: '\U000E0100', want: true},
-		{name: "plain non-ascii", prev: 'x', r: 'π', want: false},
+		// Non-ascii is always handed to the segmenter: whether it clusters
+		// depends on Unicode tables this function does not have.
+		{name: "plain non-ascii", prev: 'x', r: 'π', want: true},
 	}
 
 	for _, tc := range cases {

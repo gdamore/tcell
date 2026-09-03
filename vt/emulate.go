@@ -24,7 +24,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/clipperhouse/uax29/v2/graphemes"
@@ -1970,16 +1969,11 @@ func (em *emulator) putRune(r rune) {
 				if em.graphemeIter.Next() && len(em.graphemeIter.Value()) == len(buf) {
 					// we are adding to a cluster
 					cluster := em.graphemeIter.Value()
-					width := em.cells[lastIdx].W
-					if w := textWidthOptions.Rune(r); w > width {
-						width = w
-					}
-					if isRegionalIndicator(r) && width < 2 {
-						width = 2
-					}
-					if r == '\uFE0F' && width < 2 {
-						width = 2
-					}
+					// Measure the whole cluster. Taking the widest rune in it
+					// is not the same thing: a regional indicator pair is two
+					// width-1 runes but a width-2 flag, and an emoji modifier
+					// is a width-2 rune that does not widen a narrow base.
+					width := textWidthOptions.Bytes(cluster)
 					em.cells[lastIdx].C = em.clusterString(cluster)
 					em.cells[lastIdx].W = width
 					col := Col(lastIdx) % dim.X
@@ -2052,29 +2046,16 @@ func (em *emulator) clusterString(cluster []byte) string {
 	return em.clusterStrings.stringFor(cluster)
 }
 
+// shouldCheckGrapheme reports whether r might extend a cluster whose last
+// character is the ASCII byte prev. It must never say no when the segmenter
+// would say yes, so the only case it rules out is the one guaranteed by
+// UAX #29 itself: an ASCII pair never clusters, except CR LF. Anything
+// non-ASCII is handed to the segmenter, which owns the Unicode tables.
 func shouldCheckGrapheme(prev byte, r rune) bool {
 	if r < utf8.RuneSelf {
 		return prev == '\r' && r == '\n'
 	}
-
-	if unicode.Is(unicode.M, r) {
-		return true
-	}
-	if r == '\u200d' {
-		return true
-	}
-	if r >= 0xFE00 && r <= 0xFE0F {
-		return true
-	}
-	if r >= 0xE0100 && r <= 0xE01EF {
-		return true
-	}
-
-	return false
-}
-
-func isRegionalIndicator(r rune) bool {
-	return r >= 0x1F1E6 && r <= 0x1F1FF
+	return true
 }
 
 // eraseCell erases a single cell at the given offset.
