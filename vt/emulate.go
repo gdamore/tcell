@@ -1969,10 +1969,8 @@ func (em *emulator) putRune(r rune) {
 				if em.graphemeIter.Next() && len(em.graphemeIter.Value()) == len(buf) {
 					// we are adding to a cluster
 					cluster := em.graphemeIter.Value()
-					// Measure the whole cluster. Taking the widest rune in it
-					// is not the same thing: a regional indicator pair is two
-					// width-1 runes but a width-2 flag, and an emoji modifier
-					// is a width-2 rune that does not widen a narrow base.
+					// not the same as the widest rune in the cluster: a flag
+					// is two width-1 runes but occupies two columns.
 					width := textWidthOptions.Bytes(cluster)
 					em.cells[lastIdx].C = em.clusterString(cluster)
 					em.cells[lastIdx].W = width
@@ -2046,16 +2044,15 @@ func (em *emulator) clusterString(cluster []byte) string {
 	return em.clusterStrings.stringFor(cluster)
 }
 
-// shouldCheckGrapheme reports whether r might extend a cluster whose last
-// character is the ASCII byte prev. It must never say no when the segmenter
-// would say yes, so the only case it rules out is the one guaranteed by
-// UAX #29 itself: an ASCII pair never clusters, except CR LF. Anything
-// non-ASCII is handed to the segmenter, which owns the Unicode tables.
+// shouldCheckGrapheme reports whether r might extend a cluster ending in the
+// ASCII byte prev.  It may say yes needlessly, but never no wrongly.
 func shouldCheckGrapheme(prev byte, r rune) bool {
 	if r < utf8.RuneSelf {
+		// an ASCII pair never clusters, except CR LF
 		return prev == '\r' && r == '\n'
 	}
-	return true
+	b := uint32(r) >> 6
+	return graphemeJoinerBlocks[b>>6]&(1<<(b&63)) != 0
 }
 
 // eraseCell erases a single cell at the given offset.

@@ -16,7 +16,9 @@ package vt
 
 import (
 	"testing"
+	"unicode/utf8"
 
+	"github.com/clipperhouse/uax29/v2/graphemes"
 	"github.com/gdamore/tcell/v3/color"
 )
 
@@ -232,9 +234,11 @@ func TestShouldCheckGrapheme(t *testing.T) {
 		{name: "zwj", prev: 'x', r: '\u200d', want: true},
 		{name: "vs16", prev: 'x', r: '\uFE0F', want: true},
 		{name: "supplementary vs", prev: 'x', r: '\U000E0100', want: true},
-		// Non-ascii is always handed to the segmenter: whether it clusters
-		// depends on Unicode tables this function does not have.
-		{name: "plain non-ascii", prev: 'x', r: 'π', want: true},
+		{name: "plain non-ascii", prev: 'x', r: 'π', want: false},
+		// runes Go's unicode tables get wrong, and the segmenter does not
+		{name: "zwnj", prev: 'a', r: '‌', want: true},
+		{name: "emoji modifier", prev: 'a', r: '\U0001F3FB', want: true},
+		{name: "unicode 16 mark", prev: 'a', r: '᫏', want: true},
 	}
 
 	for _, tc := range cases {
@@ -246,6 +250,40 @@ func TestShouldCheckGrapheme(t *testing.T) {
 				t.Fatalf("shouldCheckGrapheme(%q, %q) = %v, want %v", tc.prev, tc.r, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestGraphemeJoinerBlocks re-derives graphemeJoinerBlocks from the segmenter.
+// shouldCheckGrapheme is only allowed to skip the segmenter for runes the
+// segmenter would never join, so a stale table after a uax29 upgrade has to
+// fail here rather than silently split clusters again.
+func TestGraphemeJoinerBlocks(t *testing.T) {
+	t.Parallel()
+
+	buf := make([]byte, 0, 1+utf8.UTFMax)
+	joiners, skipped := 0, 0
+	for r := rune(utf8.RuneSelf); r <= utf8.MaxRune; r++ {
+		if !utf8.ValidRune(r) {
+			continue
+		}
+		buf = utf8.AppendRune(append(buf[:0], 'e'), r)
+		iter := graphemes.FromBytes(buf)
+		joins := iter.Next() && len(iter.Value()) == len(buf)
+		check := shouldCheckGrapheme('e', r)
+		if joins {
+			joiners++
+			if !check {
+				t.Fatalf("U+%04X joins an ASCII base but graphemeJoinerBlocks skips it", r)
+			}
+		}
+		if !check {
+			skipped++
+		}
+	}
+	// Guard against a table of all ones, which would pass the check above
+	// while making the fast path pointless.
+	if joiners == 0 || skipped < joiners {
+		t.Fatalf("implausible table: %d joiners, %d runes skipped", joiners, skipped)
 	}
 }
 
