@@ -64,8 +64,9 @@ const (
 const defaultControlStringLimit = 64 * 1024
 
 const (
-	// loneEscapeTimeout keeps bare Escape responsive when using legacy
-	// keyboard reporting, where ESC can also prefix an Alt-modified key.
+	// loneEscapeTimeout keeps bare Escape responsive.  A lone ESC byte is
+	// always ambiguous, because it can also prefix an Alt-modified key or a
+	// longer sequence, so it cannot be resolved until this expires.
 	loneEscapeTimeout = 200 * time.Millisecond
 
 	// escapeSequenceTimeout bounds incomplete escape sequences. Once a
@@ -143,13 +144,14 @@ func (ip *inputParser) Waiting() bool {
 }
 
 // waitDuration reports how long to wait for the next byte before resetting an
-// incomplete escape sequence. A bare ESC is only ambiguous with legacy
-// keyboard reporting; other protocols can use the longer sequence deadline.
+// incomplete escape sequence. A bare ESC is ambiguous under every keyboard
+// protocol, so it gets the short deadline; only once an introducer has arrived
+// is the longer sequence deadline used.
 func (ip *inputParser) waitDuration() time.Duration {
 	if ip.state == istInit {
 		return 0
 	}
-	if ip.state == istEsc && ip.legacy {
+	if ip.state == istEsc {
 		return loneEscapeTimeout
 	}
 	return escapeSequenceTimeout
