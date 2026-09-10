@@ -175,6 +175,87 @@ func TestMainLoopEscapeTimeout(t *testing.T) {
 	}
 }
 
+// TestMainLoopKittyEscapeTimeout measures, through the real mainLoop event
+// delivery path, how long a bare Escape takes to arrive when the negotiated
+// keyboard protocol is not the legacy one.  Terminals reach this state either
+// by advertising the capability or, as WezTerm does, by having the terminal
+// profile force it on.  It then verifies that an escape sequence which has
+// already begun still gets the longer inter-byte budget.
+func TestMainLoopKittyEscapeTimeout(t *testing.T) {
+	evch := make(chan Event, 4)
+	tscreen := &tScreen{
+		keyQ:         make(chan []byte, 2),
+		quit:         make(chan struct{}),
+		resizeQ:      make(chan bool),
+		input:        newInputParser(evch),
+		decoder:      transform.Nop,
+		haveKittyKbd: true,
+	}
+	// Same wiring engageLocked performs, so the mapping from the negotiated
+	// capability to the parser is exercised rather than assumed.
+	tscreen.input.SetKeyboardProtocol(tscreen.keyboardProtocol())
+	if tscreen.keyboardProtocol() != KittyKeyboard {
+		t.Fatalf("keyboard protocol = %v, want %v", tscreen.keyboardProtocol(), KittyKeyboard)
+	}
+
+	stopQ := make(chan struct{})
+	done := make(chan struct{})
+	tscreen.wg.Add(1)
+	go func() {
+		tscreen.mainLoop(stopQ)
+		close(done)
+	}()
+
+	// A lone ESC with nothing behind it must resolve on the bare-ESC deadline.
+	// The bound matches the one TestMainLoopEscapeTimeout already allows, which
+	// leaves a slow machine plenty of room while still catching a regression to
+	// the sequence deadline, since that one cannot deliver before a full second.
+	tooSlow := loneEscapeTimeout * 4
+	start := time.Now()
+	tscreen.keyQ <- []byte{'\x1b'}
+	select {
+	case ev := <-evch:
+		elapsed := time.Since(start)
+		if key, ok := ev.(*EventKey); !ok || key.Key() != KeyEscape {
+			t.Fatalf("expired ESC event = %T %v, want KeyEscape", ev, ev)
+		}
+		if elapsed > tooSlow {
+			t.Fatalf("bare ESC took %v, want no more than %v", elapsed, tooSlow)
+		}
+		if elapsed < loneEscapeTimeout/2 {
+			t.Fatalf("bare ESC took %v, want at least %v", elapsed, loneEscapeTimeout/2)
+		}
+	case <-time.After(escapeSequenceTimeout * 2):
+		t.Fatal("bare ESC did not expire")
+	}
+
+	// An escape sequence that has already started keeps the longer budget, so a
+	// stall past the bare-ESC deadline must not split it into a bare Escape.
+	tscreen.keyQ <- []byte{'\x1b', '['}
+	time.Sleep(loneEscapeTimeout * 2)
+	select {
+	case ev := <-evch:
+		t.Fatalf("started sequence expired at the bare-ESC deadline: %v", ev)
+	default:
+	}
+	tscreen.keyQ <- []byte{'A'}
+	select {
+	case ev := <-evch:
+		if key, ok := ev.(*EventKey); !ok || key.Key() != KeyUp {
+			t.Fatalf("delayed sequence event = %T %v, want KeyUp", ev, ev)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("delayed sequence was not processed")
+	}
+
+	close(stopQ)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("input main loop did not stop")
+	}
+}
+
 func TestFiniPreventsSetStyleMutation(t *testing.T) {
 	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
 	scr, err := NewTerminfoScreenFromTty(mt)
