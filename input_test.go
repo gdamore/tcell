@@ -162,10 +162,23 @@ func TestInputEscapeTimeouts(t *testing.T) {
 		t.Fatalf("delayed CSI key = %v, want %v", ev, KeyUp)
 	}
 
+	// A bare ESC stays ambiguous under every keyboard protocol, so it keeps the
+	// short deadline even when the negotiated protocol is not the legacy one.
 	ip.ScanUTF8([]byte{'\x1b'})
 	ip.SetKeyboardProtocol(KittyKeyboard)
+	if got := ip.WaitDuration(); got != loneEscapeTimeout {
+		t.Fatalf("bare kitty ESC timeout = %v, want %v", got, loneEscapeTimeout)
+	}
+
+	// The longer deadline still applies once an introducer has arrived,
+	// regardless of protocol.
+	ip.ScanUTF8([]byte{'['})
 	if got := ip.WaitDuration(); got != escapeSequenceTimeout {
-		t.Fatalf("bare kitty ESC timeout = %v, want %v", got, escapeSequenceTimeout)
+		t.Fatalf("kitty CSI timeout = %v, want %v", got, escapeSequenceTimeout)
+	}
+	ip.ScanUTF8([]byte{'A'})
+	if ev := <-evch; ev.(*EventKey).Key() != KeyUp {
+		t.Fatalf("kitty CSI key = %v, want %v", ev, KeyUp)
 	}
 
 	nested := newInputParser(make(chan Event, 1))
