@@ -67,7 +67,7 @@ const (
 	// loneEscapeTimeout keeps bare Escape responsive.  A lone ESC byte is
 	// always ambiguous, because it can also prefix an Alt-modified key or a
 	// longer sequence, so it cannot be resolved until this expires.
-	loneEscapeTimeout = 200 * time.Millisecond
+	loneEscapeTimeout = 50 * time.Millisecond
 
 	// escapeSequenceTimeout bounds incomplete escape sequences. Once a
 	// sequence introducer has arrived, it is no longer ambiguous with a lone
@@ -136,7 +136,7 @@ func asciiByteFromInt(n int) (byte, bool) {
 // as the lone escape.  If this is typed, we expect at least a minimal
 // inter-key delay before the next stroke occurs, and the caller
 // should check for waiting, and call Scan() or ScanUTF8() to
-// finish the processing.  (Typically after a delay of around 100ms.)
+// finish the processing after a short delay.
 func (ip *inputParser) Waiting() bool {
 	ip.l.Lock()
 	defer ip.l.Unlock()
