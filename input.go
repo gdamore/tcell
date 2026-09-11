@@ -130,19 +130,6 @@ func asciiByteFromInt(n int) (byte, bool) {
 	return byte(n), true
 }
 
-// Waiting returns true if the processor is waiting for
-// some more input (i.e. we are not in in the initial state.)
-// This can occur when we have ambiguous escape sequences, such
-// as the lone escape.  If this is typed, we expect at least a minimal
-// inter-key delay before the next stroke occurs, and the caller
-// should check for waiting, and call Scan() or ScanUTF8() to
-// finish the processing after a short delay.
-func (ip *inputParser) Waiting() bool {
-	ip.l.Lock()
-	defer ip.l.Unlock()
-	return ip.state != istInit
-}
-
 // waitDuration reports how long to wait for the next byte before resetting an
 // incomplete escape sequence. A bare ESC is ambiguous under every keyboard
 // protocol, so it gets the short deadline; only once an introducer has arrived
