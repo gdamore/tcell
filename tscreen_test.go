@@ -232,6 +232,15 @@ func TestMainLoopKittyEscapeTimeout(t *testing.T) {
 	// An escape sequence that has already started keeps the longer budget, so a
 	// stall past the bare-ESC deadline must not split it into a bare Escape.
 	tscreen.keyQ <- []byte{'\x1b', '['}
+	deadline := time.After(time.Second)
+	for tscreen.input.WaitDuration() != escapeSequenceTimeout {
+		select {
+		case <-deadline:
+			t.Fatal("CSI timeout was not scheduled")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
 	time.Sleep(loneEscapeTimeout * 2)
 	select {
 	case ev := <-evch:
