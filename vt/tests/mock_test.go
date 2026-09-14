@@ -1300,6 +1300,38 @@ func TestGraphemeCluster(t *testing.T) {
 	CheckContent(t, term, 0, 1, "A")
 }
 
+// Characters that attach to an ASCII base must cluster with it even when
+// Go's unicode tables do not classify them as marks. U+200C is a format
+// character (Cf), U+1F3FB a modifier symbol (Sk), and U+1ACF is a combining
+// mark that Go's tables, currently Unicode 15, still report as unassigned.
+func TestGraphemeClusterAsciiBase(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		text string
+		next Col
+	}{
+		{"zwnj", "a\u200c", 1},
+		{"emoji modifier", "a\U0001f3fb", 1},
+		{"recent combining mark", "a\u1acf", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			term := vt.NewMockTerm(vt.MockOptSize{X: 10, Y: 5})
+			defer MustClose(t, term)
+			MustStart(t, term)
+
+			WriteF(t, term, "\x1b[?2027h")
+			WriteF(t, term, "\x1b[H\x1b[J")
+			WriteF(t, term, "%s", tc.text)
+
+			CheckContent(t, term, 0, 0, tc.text)
+			CheckPos(t, term, tc.next, 0)
+
+			// the cell past the cluster must not have been written to
+			CheckContent(t, term, tc.next, 0, "")
+		})
+	}
+}
+
 func TestEraseAbove(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 10, Y: 5})
 	defer MustClose(t, term)
