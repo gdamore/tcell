@@ -224,12 +224,12 @@ func (cb *CellBuffer) Resize(w, h int) {
 			nc.currStr = oc.currStr
 			nc.currStyle = oc.currStyle
 			nc.width = oc.width
-			nc.lastStr = ""
 		}
 	}
 	cb.cells = newc
 	cb.h = h
 	cb.w = w
+	cb.Invalidate()
 }
 
 // Fill fills the entire cell buffer array with the specified character
