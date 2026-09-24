@@ -927,18 +927,22 @@ func TestApplyKnownTerminalProfile(t *testing.T) {
 			termProgram: "Other",
 		},
 		{
-			name:       "St",
-			goos:       "linux",
-			term:       "st",
-			wantKnown:  true,
-			wantLegacy: true,
+			name:         "St",
+			goos:         "linux",
+			term:         "st",
+			wantKnown:    true,
+			wantLegacy:   true,
+			wantMouse:    true,
+			wantMouseSgr: true,
 		},
 		{
-			name:       "St256Color",
-			goos:       "linux",
-			term:       "st-256color",
-			wantKnown:  true,
-			wantLegacy: true,
+			name:         "St256Color",
+			goos:         "linux",
+			term:         "st-256color",
+			wantKnown:    true,
+			wantLegacy:   true,
+			wantMouse:    true,
+			wantMouseSgr: true,
 		},
 	}
 
@@ -996,9 +1000,11 @@ func TestStProfileSkipsUnsupportedOperations(t *testing.T) {
 		queryKittyKbd,
 		queryXTermKbd,
 		requestExtAttr,
-		vt.PmMouseButton.Enable(),
-		vt.PmMouseSgr.Enable(),
-		vt.PmFocusReports.Enable(),
+		// st does not implement pixel-precision (SGR-pixel) mouse
+		// reporting, so neither the enable nor the disable sequence for
+		// mode 1016 should ever be sent to it.
+		vt.PmMouseSgrPixel.Enable(),
+		vt.PmMouseSgrPixel.Disable(),
 	} {
 		if strings.Contains(out, seq) {
 			t.Fatalf("st profile emitted unsupported sequence %q", seq)
@@ -1006,6 +1012,17 @@ func TestStProfileSkipsUnsupportedOperations(t *testing.T) {
 	}
 	if !strings.Contains(out, requestPrimaryDA) {
 		t.Fatal("st profile did not emit primary DA")
+	}
+	// st does implement ordinary SGR mouse (1006) and focus (1004)
+	// reporting, so tcell should enable them rather than suppressing them.
+	for _, seq := range []string{
+		vt.PmMouseButton.Enable(),
+		vt.PmMouseSgr.Enable(),
+		vt.PmFocusReports.Enable(),
+	} {
+		if !strings.Contains(out, seq) {
+			t.Fatalf("st profile did not emit expected sequence %q", seq)
+		}
 	}
 	name, version := s.Terminal()
 	if name != "st" || version != "" {

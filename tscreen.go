@@ -288,6 +288,7 @@ type tScreen struct {
 	input              *inputParser
 	compat             struct {
 		mouseUnsupported         bool
+		mousePixelUnsupported    bool
 		focusUnsupported         bool
 		clipboardReadUnsupported bool
 	}
@@ -1124,9 +1125,11 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 	t.Print(vt.PmMouseDrag.Disable())
 	t.Print(vt.PmMouseMotion.Disable())
 	t.Print(vt.PmMouseSgr.Disable())
-	t.Print(vt.PmMouseSgrPixel.Disable())
+	if !t.compat.mousePixelUnsupported {
+		t.Print(vt.PmMouseSgrPixel.Disable())
+	}
 
-	pixel := f&MousePixelEvents != 0
+	pixel := f&MousePixelEvents != 0 && !t.compat.mousePixelUnsupported
 	t.input.SetPixelMouse(pixel)
 
 	if f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) != 0 {
@@ -1494,12 +1497,16 @@ func isSTTerminal(term string) bool {
 func (t *tScreen) applyKnownTerminalProfile(goos, term, termProgram string) bool {
 	if isSTTerminal(term) {
 		// st implements a small subset of xterm extensions.  In particular,
-		// it has neither an advanced keyboard protocol nor SGR mouse or focus
-		// reporting.  It also reports unsupported CSI and OSC sequences to
-		// stderr, so avoid probing or using extensions it does not implement.
+		// it has neither an advanced keyboard protocol nor pixel-precision
+		// (SGR-pixel) mouse reporting.  It does, however, implement ordinary
+		// SGR mouse reporting (1006) and focus reporting (1004), so declare
+		// those as supported rather than disabling them.  It also reports
+		// unsupported CSI and OSC sequences to stderr, so avoid probing or
+		// using extensions it does not implement.
 		t.legacy = true
-		t.compat.mouseUnsupported = true
-		t.compat.focusUnsupported = true
+		t.haveMouse = true
+		t.haveMouseSgr = true
+		t.compat.mousePixelUnsupported = true
 		t.enterUrl = ""
 		t.exitUrl = ""
 		t.setWinSize = ""
