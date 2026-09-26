@@ -394,6 +394,14 @@ type baseScreen struct {
 	screenImpl
 }
 
+var asciiCellContent = func() [95]string {
+	var content [95]string
+	for i := range content {
+		content[i] = string(rune(' ' + i))
+	}
+	return content
+}()
+
 func (b *baseScreen) Put(x int, y int, str string, style Style) (remain string, width int) {
 	cells := b.GetCells()
 	b.Lock()
@@ -442,6 +450,10 @@ func (b *baseScreen) FillArea(x, y, width, height int, r rune, style Style) {
 }
 
 func (b *baseScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
+	if len(combc) == 0 && mainc >= ' ' && mainc <= '~' {
+		b.Put(x, y, asciiCellContent[mainc-' '], style)
+		return
+	}
 	b.Put(x, y, string(append([]rune{mainc}, combc...)), style)
 }
 
