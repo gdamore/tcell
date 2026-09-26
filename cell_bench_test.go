@@ -81,3 +81,13 @@ func BenchmarkCellBufferPutChangedASCII(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkBaseScreenSetContentRedraw(b *testing.B) {
+	s := &baseScreen{screenImpl: &tScreen{cells: CellBuffer{w: 8, h: 1, cells: make([]cell, 8)}}}
+	s.SetContent(0, 0, 'x', nil, StyleDefault)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.SetContent(0, 0, 'x', nil, StyleDefault)
+	}
+}
