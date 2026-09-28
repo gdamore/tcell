@@ -137,6 +137,20 @@ type Screen interface {
 	// DisableFocus disables reporting of focus events.
 	DisableFocus()
 
+	// EnableColorScheme enables color scheme reports, if the terminal
+	// supports them (DEC private mode 2031). An EventColorScheme is then
+	// posted with the current scheme, and again each time the terminal
+	// switches between a dark and a light scheme.
+	EnableColorScheme()
+
+	// DisableColorScheme disables color scheme reports.
+	DisableColorScheme()
+
+	// GetBackgroundColor asks the terminal for its default background color
+	// (OSC 11). If it answers, an EventBackgroundColor is posted. Terminals
+	// that do not support the query ignore it.
+	GetBackgroundColor()
+
 	// Colors returns the number of colors.  All colors are assumed to
 	// use the ANSI color map.  If a terminal is monochrome, it will
 	// return 0.
@@ -349,6 +363,9 @@ type screenImpl interface {
 	DisablePaste()
 	EnableFocus()
 	DisableFocus()
+	EnableColorScheme()
+	DisableColorScheme()
+	GetBackgroundColor()
 	Colors() int
 	Show()
 	Sync()

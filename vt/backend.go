@@ -14,6 +14,8 @@
 
 package vt
 
+import "github.com/gdamore/tcell/v3/color"
+
 // Backend describes the backend of a terminal.
 // This can be used to create a real emulator, while allowing the processor
 // front end to handle the common details of parsing escape sequences, the state
@@ -124,6 +126,17 @@ type Clipboard interface {
 	// It will return nil if the operation is not supported.
 	// An empty clipboard will be []byte{}
 	GetClipboard() []byte
+}
+
+// ColorScheme reports the terminal's colors to applications that ask for
+// them: the background color (OSC 11), and whether the color scheme is dark
+// or light (DSR 996, and reports with private mode 2031).
+type ColorScheme interface {
+	// BackgroundColor returns the default background color.
+	BackgroundColor() color.Color
+
+	// DarkScheme reports whether the color scheme is dark.
+	DarkScheme() bool
 }
 
 // AdvancedKeyboard provides raw keyboard events, which gives

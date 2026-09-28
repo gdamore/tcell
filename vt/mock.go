@@ -142,6 +142,12 @@ func (mt *mockTerm) MouseEvent(ev MouseEvent) {
 	mt.em.MouseEvent(ev)
 }
 
+// SetColorScheme implements MockTerm.SetColorScheme.
+func (mt *mockTerm) SetColorScheme(dark bool, background color.Color) {
+	mt.mb.SetColorScheme(dark, background)
+	mt.em.ColorSchemeEvent()
+}
+
 // FocusEvent implements MockTerm.FocusEvent.
 func (mt *mockTerm) FocusEvent(focused bool) {
 	mt.em.FocusEvent(focused)
@@ -219,6 +225,11 @@ type MockTerm interface {
 	// Inject a focus event.
 	FocusEvent(bool)
 
+	// SetColorScheme changes the terminal's color scheme and background
+	// color, sending a color scheme report if the application asked for
+	// them. The default is dark, with a black background.
+	SetColorScheme(dark bool, background color.Color)
+
 	// GetTitle obtains the current window title.
 	GetTitle() string
 
@@ -290,6 +301,10 @@ type MockBackend interface {
 	// GetClipboard returns the clipboard (copy buffer).
 	GetClipboard() []byte
 
+	// SetColorScheme sets the color scheme, dark or light, and the default
+	// background color, as reported to applications that ask.
+	SetColorScheme(dark bool, background color.Color)
+
 	// IsAdvancedKeyboard returns true, as we always support the full keyboard protocol.
 	IsAdvancedKeyboard() bool
 }
@@ -313,6 +328,7 @@ type mockBackend struct {
 	title        string
 	clipboard    []byte
 	cursor       CursorStyle
+	light        bool // the color scheme is light (the default is dark)
 	lock         sync.Mutex
 }
 
@@ -622,6 +638,28 @@ func (mb *mockBackend) GetClipboard() []byte {
 	mb.lock.Lock()
 	defer mb.lock.Unlock()
 	return mb.clipboard
+}
+
+// BackgroundColor implements ColorScheme.
+func (mb *mockBackend) BackgroundColor() color.Color {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+	return mb.defaultStyle.Bg()
+}
+
+// DarkScheme implements ColorScheme.
+func (mb *mockBackend) DarkScheme() bool {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+	return !mb.light
+}
+
+// SetColorScheme sets the color scheme and the default background color.
+func (mb *mockBackend) SetColorScheme(dark bool, background color.Color) {
+	mb.lock.Lock()
+	defer mb.lock.Unlock()
+	mb.light = !dark
+	mb.defaultStyle = mb.defaultStyle.WithBg(background)
 }
 
 // IsAdvancedKeyboard returns true - we always implement

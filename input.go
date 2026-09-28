@@ -832,6 +832,12 @@ func (ip *inputParser) appendStringBytes(bs ...byte) {
 
 func (ip *inputParser) handleOsc(str string) {
 	ip.state = istInit
+	if content, ok := strings.CutPrefix(str, "11;"); ok {
+		if c, ok := parseXColor(content); ok {
+			ip.post(NewEventBackgroundColor(c))
+		}
+		return
+	}
 	if content, ok := strings.CutPrefix(str, "52;c;"); ok {
 		decoded := make([]byte, base64.StdEncoding.DecodedLen(len(content)))
 		if count, err := base64.StdEncoding.Decode(decoded, []byte(content)); err == nil {
@@ -1385,6 +1391,11 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		case 'u':
 			if len(intermediate) == 0 {
 				ip.handleKittyMode(P)
+			}
+		case 'n':
+			// color scheme report (DSR 997): 1 is dark, 2 is light
+			if len(intermediate) == 0 && P0 == 997 && len(P) > 1 && (P[1] == 1 || P[1] == 2) {
+				ip.post(NewEventColorScheme(P[1] == 1))
 			}
 		}
 		return
