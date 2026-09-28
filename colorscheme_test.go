@@ -147,7 +147,7 @@ func TestColorSchemeReplies(t *testing.T) {
 	}
 
 	// Malformed replies post nothing, and don't disturb what follows.
-	term.SendRaw([]byte("\x1b[?997;7n\x1b]11;rgb:zz/00/00\x1b\\\x1b[?997;1n"))
+	term.SendRaw([]byte("\x1b[?997;2;3n\x1b[?997;2:3n\x1b[?997;7n\x1b]11;rgb:zz/00/00\x1b\\\x1b[?997;1n"))
 	if ev := waitEvent[*EventColorScheme](t, s); !ev.Dark {
 		t.Error("the report after malformed ones was lost")
 	}
@@ -165,6 +165,10 @@ func TestParseXColor(t *testing.T) {
 		{"rgb:f/8/0", 255, 0x88, 0, true},
 		{"rgb:fff/800/000", 255, 0x7f, 0, true},
 		{"rgba:ffff/0000/0000/ffff", 255, 0, 0, true},
+		{"rgba:ff/00/00/zz", 0, 0, 0, false},
+		{"rgba:ff/00/00/", 0, 0, 0, false},
+		{"rgba:ff/00/00", 0, 0, 0, false},
+		{"rgb:ff/00/00/ff", 0, 0, 0, false},
 		{"rgb:ff/ff", 0, 0, 0, false},
 		{"rgb:fffff/0/0", 0, 0, 0, false},
 		{"rgb://", 0, 0, 0, false},
@@ -182,6 +186,30 @@ func TestParseXColor(t *testing.T) {
 		}
 		if r, g, b := col.RGB(); r != c.r || g != c.g || b != c.b {
 			t.Errorf("%q = %02x%02x%02x, want %02x%02x%02x", c.in, r, g, b, c.r, c.g, c.b)
+		}
+	}
+}
+
+// The dark/light boundary is mid-gray; light-gray and cream backgrounds
+// are light.
+func TestBackgroundDark(t *testing.T) {
+	cases := []struct {
+		hex  int32
+		dark bool
+	}{
+		{0x000000, true},
+		{0x002b36, true}, // Solarized dark
+		{0x404040, true},
+		{0x7f7f7f, true},
+		{0x808080, false},
+		{0xa8a8a8, false},
+		{0xfdf6e3, false}, // Solarized light
+		{0xffffff, false},
+	}
+	for _, c := range cases {
+		ev := NewEventBackgroundColor(color.NewHexColor(c.hex))
+		if ev.Dark() != c.dark {
+			t.Errorf("%06x: dark = %v, want %v", c.hex, ev.Dark(), c.dark)
 		}
 	}
 }

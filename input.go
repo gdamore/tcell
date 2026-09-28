@@ -1393,9 +1393,10 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 				ip.handleKittyMode(P)
 			}
 		case 'n':
-			// color scheme report (DSR 997): 1 is dark, 2 is light
-			if len(intermediate) == 0 && P0 == 997 && len(P) > 1 && (P[1] == 1 || P[1] == 2) {
-				ip.post(NewEventColorScheme(P[1] == 1))
+			// color scheme report (DSR 997): exactly 997;1 for dark or
+			// 997;2 for light
+			if len(intermediate) == 0 && (pstr == "997;1" || pstr == "997;2") {
+				ip.post(NewEventColorScheme(pstr == "997;1"))
 			}
 		}
 		return

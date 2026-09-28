@@ -56,8 +56,11 @@ func NewEventBackgroundColor(c color.Color) *EventBackgroundColor {
 	return ev
 }
 
-// Dark reports whether the background is dark: whether its relative
-// luminance is at most one half.
+// Dark reports whether the background is dark: whether its luma, the
+// Rec. 709 weighted sum of its sRGB components, is at most one half. This
+// puts the boundary at mid-gray, as perceived. (Weighting linearized
+// components, WCAG's relative luminance, would put it near #bcbcbc and call
+// light-gray backgrounds dark.)
 func (ev *EventBackgroundColor) Dark() bool {
 	r, g, b := ev.Color.RGB()
 	return 0.2126*float64(r)+0.7152*float64(g)+0.0722*float64(b) <= 0.5*255
@@ -65,22 +68,20 @@ func (ev *EventBackgroundColor) Dark() bool {
 
 // parseXColor parses a color as terminals report it in reply to OSC color
 // queries: "rgb:RRRR/GGGG/BBBB", with one to four hex digits for each
-// component, or the same as "rgba:" with an alpha component, which is
-// ignored.
+// component, or "rgba:RRRR/GGGG/BBBB/AAAA", whose alpha component must be
+// valid too but is ignored.
 func parseXColor(s string) (color.Color, bool) {
 	var parts []string
+	want := 0
 	if rest, ok := strings.CutPrefix(s, "rgb:"); ok {
-		parts = strings.Split(rest, "/")
+		parts, want = strings.Split(rest, "/"), 3
 	} else if rest, ok := strings.CutPrefix(s, "rgba:"); ok {
-		parts = strings.Split(rest, "/")
-		if len(parts) == 4 {
-			parts = parts[:3]
-		}
+		parts, want = strings.Split(rest, "/"), 4
 	}
-	if len(parts) != 3 {
+	if want == 0 || len(parts) != want {
 		return color.Default, false
 	}
-	var rgb [3]int32
+	var rgb [4]int32
 	for i, p := range parts {
 		if len(p) < 1 || len(p) > 4 {
 			return color.Default, false
