@@ -1673,7 +1673,32 @@ func (t *tScreen) engageLocked() error {
 	} else {
 		t.tty.NotifyResize(t.resizeQ)
 	}
+
+	t.caps |= t.derivedCapabilities()
 	return nil
+}
+
+// derivedCapabilities reports what the negotiated state implies beyond the DA1
+// bits, which are recorded as they arrive.
+func (t *tScreen) derivedCapabilities() Capabilities {
+	var caps Capabilities
+	set := func(bit Capabilities, on bool) {
+		if on {
+			caps |= bit
+		}
+	}
+	set(CapabilityMouse, t.haveMouse)
+	set(CapabilityMouseSgr, t.haveMouseSgr)
+	set(CapabilityKittyKeyboard, t.haveKittyKbd)
+	set(CapabilityWin32Keyboard, t.haveWin32Kbd)
+	set(CapabilityXTermKeyboard, t.haveXTermKbd)
+	set(CapabilityResizeReports, t.inlineResize)
+	set(CapabilityTrueColor, t.truecolor)
+	// Release events need advanced mode: kitty is only asked for the events
+	// flag there, and win32-input-mode otherwise drops key-up events.
+	// modifyOtherKeys has no such flag.
+	set(CapabilityKeyRelease, t.advancedKeys && (t.haveKittyKbd || t.haveWin32Kbd))
+	return caps
 }
 
 // disengage is used to release the terminal back to support from the caller.

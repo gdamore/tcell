@@ -21,15 +21,40 @@ import (
 )
 
 // Capabilities is a bitfield of terminal capabilities reported during Init.
-type Capabilities uint
+type Capabilities uint64
 
 const (
-	// CapabilityClipboard: OSC 52 support.  Many terminals support the
-	// clipboard without reporting it, so a false bit is not conclusive.
+	// CapabilityClipboard: OSC 52 clipboard write support was reported.
+	// Older terminals support the clipboard without reporting it, so a false
+	// bit is not conclusive.
 	CapabilityClipboard Capabilities = 1 << iota
 
 	// CapabilitySixel: sixel graphics support (DA1, param 4).
 	CapabilitySixel
+
+	// CapabilityMouse: mouse reporting.
+	CapabilityMouse
+
+	// CapabilityMouseSgr: SGR mouse reporting (mode 1006).
+	CapabilityMouseSgr
+
+	// CapabilityKittyKeyboard: the kitty keyboard protocol.
+	CapabilityKittyKeyboard
+
+	// CapabilityKeyRelease: key release and repeat events are reported.
+	CapabilityKeyRelease
+
+	// CapabilityWin32Keyboard: win32-input-mode keyboard reporting.
+	CapabilityWin32Keyboard
+
+	// CapabilityXTermKeyboard: xterm modifyOtherKeys keyboard reporting.
+	CapabilityXTermKeyboard
+
+	// CapabilityResizeReports: in-band resize reports (mode 2048).
+	CapabilityResizeReports
+
+	// CapabilityTrueColor: 24-bit color.
+	CapabilityTrueColor
 )
 
 // Screen represents the physical (or emulated) screen.
