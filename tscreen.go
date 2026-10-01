@@ -33,6 +33,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	gencoding "github.com/gdamore/encoding"
 	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/vt"
 	"golang.org/x/text/transform"
@@ -248,6 +249,7 @@ type tScreen struct {
 	acs                map[rune]string
 	charset            string
 	encoder            transform.Transformer
+	utf8               bool // the encoder passes valid UTF-8 through unchanged
 	decoder            transform.Transformer
 	fallback           map[rune]string
 	ncolor             int
@@ -407,6 +409,7 @@ func (t *tScreen) Init() error {
 
 	t.charset = getCharset()
 	if enc := GetEncoding(t.charset); enc != nil {
+		t.utf8 = enc == gencoding.UTF8
 		t.encoder = enc.NewEncoder()
 		t.decoder = enc.NewDecoder()
 	} else {
@@ -906,8 +909,12 @@ func (t *tScreen) drawCell(x, y int) int {
 		width = 1
 	}
 
-	buf := t.encodeStr(str)
-	str = string(buf)
+	// Valid UTF-8 comes out of the UTF-8 encoder unchanged, so skip the
+	// encoder and its allocations.  (SUB is what the encoder path treats
+	// as unencodable.)
+	if !t.utf8 || str[0] == '\x1a' || !utf8.ValidString(str) {
+		str = string(t.encodeStr(str))
+	}
 
 	if width > 1 && str == "?" {
 		// No FullWidth character support
