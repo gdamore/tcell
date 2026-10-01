@@ -641,14 +641,17 @@ func (ip *inputParser) scan() {
 			case 'X':
 				ip.state = istSos
 				ip.strBuf = nil
+				ip.discardString = false
 				ip.escChar = byte(r)
 			case '^':
 				ip.state = istPm
 				ip.strBuf = nil
+				ip.discardString = false
 				ip.escChar = byte(r)
 			case '_':
 				ip.state = istApc
 				ip.strBuf = nil
+				ip.discardString = false
 				ip.escChar = byte(r)
 			case '\\':
 				// string terminator reached, (orphaned?)
@@ -700,8 +703,9 @@ func (ip *inputParser) scan() {
 				ip.state = istInit
 			}
 		case istSs2:
-			// No known uses for SS2
+			// No known uses for SS2, pass it on
 			ip.state = istInit
+			ip.post(NewEventUnknown("\x1bN" + string(r)))
 
 		case istSs3: // typically application mode keys or older terminals
 			ip.state = istInit
@@ -733,18 +737,11 @@ func (ip *inputParser) scan() {
 						ip.postKey(k.key, k.str, calcModifier(m))
 					}
 				}
+			} else {
+				ip.post(NewEventUnknown("\x1bO" + string(ip.csiParams) + string(r)))
 			}
 
-		case istPm, istApc, istSos, istDcs: // these we just eat
-			switch r {
-			case '\x1b':
-				ip.strState = ip.state
-				ip.state = istSt
-			case '\x07': // bell - some send this instead of ST
-				ip.state = istInit
-			}
-
-		case istXda:
+		case istOsc, istXda, istApc, istPm, istSos:
 			switch r {
 			case '\x1b':
 				ip.strState = ip.state
@@ -754,25 +751,7 @@ func (ip *inputParser) scan() {
 					ip.discardString = false
 					ip.state = istInit
 				} else {
-					ip.handleXda(string(ip.strBuf))
-				}
-			default:
-				if !ip.discardString {
-					ip.appendStringBytes(byte(r & 0x7f))
-				}
-			}
-
-		case istOsc: // not sure if used
-			switch r {
-			case '\x1b':
-				ip.strState = ip.state
-				ip.state = istSt
-			case '\x07':
-				if ip.discardString {
-					ip.discardString = false
-					ip.state = istInit
-				} else {
-					ip.handleOsc(string(ip.strBuf))
+					ip.handleString(ip.state, string(ip.strBuf))
 				}
 			default:
 				if !ip.discardString {
@@ -785,14 +764,7 @@ func (ip *inputParser) scan() {
 				if ip.discardString {
 					ip.discardString = false
 				} else {
-					switch ip.strState {
-					case istOsc:
-						ip.handleOsc(string(ip.strBuf))
-					case istXda:
-						ip.handleXda(string(ip.strBuf))
-					case istPm, istApc, istSos, istDcs:
-						ip.state = istInit
-					}
+					ip.handleString(ip.strState, string(ip.strBuf))
 				}
 			} else {
 				if !ip.discardString {
@@ -830,6 +802,8 @@ func (ip *inputParser) appendStringBytes(bs ...byte) {
 	ip.strBuf = append(ip.strBuf, bs...)
 }
 
+// handleOsc handles a complete OSC string, which is either an OSC 52
+// clipboard reply or unknown.
 func (ip *inputParser) handleOsc(str string) {
 	ip.state = istInit
 	if content, ok := strings.CutPrefix(str, "52;c;"); ok {
@@ -839,8 +813,28 @@ func (ip *inputParser) handleOsc(str string) {
 			return
 		}
 	}
+	ip.post(NewEventUnknown("\x1b]" + str + "\x1b\\"))
 }
 
+// handleString handles a complete control string.
+func (ip *inputParser) handleString(state inputState, str string) {
+	ip.state = istInit
+	switch state {
+	case istOsc:
+		ip.handleOsc(str)
+	case istXda:
+		ip.handleXda(str)
+	case istApc:
+		ip.post(NewEventUnknown("\x1b_" + str + "\x1b\\"))
+	case istPm:
+		ip.post(NewEventUnknown("\x1b^" + str + "\x1b\\"))
+	case istSos:
+		ip.post(NewEventUnknown("\x1bX" + str + "\x1b\\"))
+	}
+}
+
+// handleXda handles a complete DCS string, which is either an XTVERSION
+// reply or unknown.
 func (ip *inputParser) handleXda(str string) {
 	ip.state = istInit
 	if content, ok := strings.CutPrefix(str, ">|"); ok {
@@ -849,10 +843,13 @@ func (ip *inputParser) handleXda(str string) {
 			name = strings.TrimSpace(name)
 			vers = strings.TrimSpace(strings.TrimSuffix(vers, ")"))
 			ip.post(&eventTermName{Name: name, Version: vers})
+			return
 		} else if name, vers, ok = strings.Cut(content, " "); ok {
 			ip.post(&eventTermName{Name: name, Version: vers})
+			return
 		}
 	}
+	ip.post(NewEventUnknown("\x1bP" + str + "\x1b\\"))
 }
 
 func calcModifier(n int) ModMask {
@@ -1288,6 +1285,8 @@ func (ip *inputParser) handleXTermMode(params []int) {
 	}
 }
 
+// handleCsi handles a complete CSI sequence: keys, mouse and focus reports,
+// and replies to the queries tcell sends. Anything else is unknown.
 func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) {
 
 	// reset state
@@ -1369,38 +1368,41 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		switch mode {
 		case 'm', 'M': // mouse event, we only do SGR tracking
 			ip.handleMouse(mode, P)
+			return
 		}
-		return
 	}
 	if hasQM {
 		switch mode {
 		case 'c':
 			if len(intermediate) == 0 {
 				ip.handlePrimaryDA(P)
+				return
 			}
 		case 'y':
 			if string(intermediate) == "$" {
 				ip.handlePrivateModeResponse(P)
+				return
 			}
 		case 'u':
 			if len(intermediate) == 0 {
 				ip.handleKittyMode(P)
+				return
 			}
 		}
-		return
 	}
 	if hasGT {
 		switch mode {
 		case 'm':
 			if len(intermediate) == 0 {
 				ip.handleXTermMode(P)
+				return
 			}
 		}
-		return
 	}
 
-	if len(intermediate) != 0 {
-		// we don't know what to do with these for now
+	if hasLT || hasQM || hasGT || len(intermediate) != 0 {
+		// we don't know what to do with these, pass them on
+		ip.postCsi(mode, params, intermediate)
 		return
 	}
 
@@ -1510,7 +1512,13 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 		ip.postKeyEx(k.key, k.str, calcModifier(P[1]), pressed, 0, repeat)
 		return
 	}
-	// if we got here we just swallow the unknown sequence
+	// if we got here we don't know the sequence, pass it on
+	ip.postCsi(mode, params, intermediate)
+}
+
+// postCsi posts a CSI sequence that tcell does not interpret.
+func (ip *inputParser) postCsi(mode rune, params []byte, intermediate []byte) {
+	ip.post(NewEventUnknown("\x1b[" + string(params) + string(intermediate) + string(mode)))
 }
 
 func (ip *inputParser) ScanUTF8(b []byte) {
