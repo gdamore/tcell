@@ -20,6 +20,7 @@ package tcell
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -817,23 +818,6 @@ func TestIgnoredSequences(t *testing.T) {
 		bytes string
 	}{
 		{"LoneST", "\x9c"}, // 7 bit version would be confused with Alt-\
-		{"SoS", "\x1bXdata\x1b\\"},
-		{"SoS-Bell", "\x1bXdata\x07"},
-		{"SoS-Embed-ESC", "\x1bXab\x1bcde\x1b\\"},
-		{"PM", "\x1b^data\x07"},
-		{"PM8", "\x9edata\x07"},
-		{"PM-Bell", "\x1b^data\x07"},
-		{"APC", "\x1b_data\x07"},
-		{"APC8", "\x9fdata\x07"},
-		{"APC-Bell", "\x1b_data\x07"},
-		{"OSC", "\x1b]junk\x1b\\"},
-		{"OSC8", "\x9djunk\x1b\\"},
-		{"OSC-Bell", "\x1b]junk\x07"},
-		{"DCS", "\x1bPjunk\x1b\\"},
-		{"DCS8", "\x90junk\x1b\\"},
-		{"DCS-Bell", "\x1bPjunk\x07"},
-		{"SS2", "\x1bN1"},
-		{"SS28", "\x8e1"},
 		{"BadCSI", "\x1b[\x07"},
 		{"BadUTF8", "\xe0\xff"},
 		{"Win32Shift", "\x1b[16;0;0;1;1;1_"},
@@ -842,8 +826,6 @@ func TestIgnoredSequences(t *testing.T) {
 		{"Win32CapsLock", "\x1b[20;0;0;1;1;1_"},
 		{"Win32KeyUp", "\x1b[13;0;13;0;1;1_"},
 		{"RuntDA1", "\x1b[?c"},
-		{"RuntWindowNotice", "\x1b[t"},
-		{"OtherIntermediates", "\x1b[1 ~"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1543,5 +1525,63 @@ func TestInputMouseSgrPixelNoClip(t *testing.T) {
 	}
 	if x, y := me.Position(); x != 79 || y != 23 {
 		t.Errorf("expected re-clipped position (79,23), got (%d,%d)", x, y)
+	}
+}
+
+func TestUnknownSequences(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"csi", "\x1b[4;400;640t", "*tcell.EventUnknownCSI \x1b[4;400;640t"},
+		{"csi private", "\x1b[?12;1$z", "*tcell.EventUnknownCSI \x1b[?12;1$z"},
+		{"csi intermediate", "\x1b[1 q", "*tcell.EventUnknownCSI \x1b[1 q"},
+		{"osc with st", "\x1b]11;rgb:0000/0000/0000\x1b\\", "*tcell.EventUnknownOSC \x1b]11;rgb:0000/0000/0000\x1b\\"},
+		{"osc with bel", "\x1b]11;rgb:0000/0000/0000\x07", "*tcell.EventUnknownOSC \x1b]11;rgb:0000/0000/0000\x1b\\"},
+		{"apc", "\x1b_Gi=31;OK\x1b\\", "*tcell.EventUnknownAPC \x1b_Gi=31;OK\x1b\\"},
+		{"dcs", "\x1bP1$r0m\x1b\\", "*tcell.EventUnknownDCS \x1bP1$r0m\x1b\\"},
+		{"apc 8-bit", "\x9fdata\x07", "*tcell.EventUnknownAPC \x1b_data\x1b\\"},
+		{"osc 8-bit", "\x9djunk\x1b\\", "*tcell.EventUnknownOSC \x1b]junk\x1b\\"},
+		{"dcs 8-bit", "\x90junk\x1b\\", "*tcell.EventUnknownDCS \x1bPjunk\x1b\\"},
+		{"dcs with bel", "\x1bPjunk\x07", "*tcell.EventUnknownDCS \x1bPjunk\x1b\\"},
+		{"runt window report", "\x1b[t", "*tcell.EventUnknownCSI \x1b[t"},
+		{"sos", "\x1bXdata\x1b\\", "*tcell.EventUnknownSOS \x1bXdata\x1b\\"},
+		{"sos with bel", "\x1bXdata\x07", "*tcell.EventUnknownSOS \x1bXdata\x1b\\"},
+		{"sos with embedded esc", "\x1bXab\x1bcde\x1b\\", "*tcell.EventUnknownSOS \x1bXab\x1bcde\x1b\\"},
+		{"pm", "\x1b^data\x07", "*tcell.EventUnknownPM \x1b^data\x1b\\"},
+		{"pm 8-bit", "\x9edata\x07", "*tcell.EventUnknownPM \x1b^data\x1b\\"},
+		{"ss2", "\x1bN1", "*tcell.EventUnknownSS2 \x1bN1"},
+		{"ss2 8-bit", "\x8e1", "*tcell.EventUnknownSS2 \x1bN1"},
+		{"ss3", "\x1bO2!", "*tcell.EventUnknownSS3 \x1bO2!"},
+		{"ss3 key", "\x1bOA", ""},
+		{"focus", "\x1b[I", ""},
+		{"key", "\x1b[A", ""},
+		{"mouse", "\x1b[<0;1;1M", ""},
+		{"primary attributes", "\x1b[?62;4c", ""},
+		{"clipboard", "\x1b]52;c;aGk=\x1b\\", ""},
+		{"terminal name", "\x1bP>|kitty(0.40.0)\x1b\\", ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			evch := make(chan Event, 10)
+			ip := newInputParser(evch)
+			ip.cols, ip.rows = 80, 25
+			ip.ScanUTF8([]byte(tt.input))
+
+			got := ""
+			for done := false; !done; {
+				select {
+				case ev := <-evch:
+					if seq := reflect.ValueOf(ev).Elem().FieldByName("Sequence"); seq.IsValid() {
+						got = fmt.Sprintf("%T %s", ev, seq)
+					}
+				default:
+					done = true
+				}
+			}
+			if got != tt.want {
+				t.Errorf("event = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
