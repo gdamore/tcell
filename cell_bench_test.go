@@ -81,3 +81,16 @@ func BenchmarkCellBufferPutChangedASCII(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkCellBufferFillArea measures filling a whole screen, as clearing
+// the background of a window does.
+func BenchmarkCellBufferFillArea(b *testing.B) {
+	cb := &CellBuffer{}
+	cb.Resize(200, 50)
+	style := StyleDefault.Background(ColorRed)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cb.FillArea(0, 0, 200, 50, ' ', style)
+	}
+}
