@@ -1253,7 +1253,7 @@ func (t *tScreen) resize() {
 	t.cells.Invalidate()
 	t.h = ws.Height
 	t.w = ws.Width
-	t.input.SetSize(ws.Width, ws.Height)
+	t.input.SetSize(ws)
 }
 
 func (t *tScreen) Colors() int {
