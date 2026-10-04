@@ -1545,3 +1545,27 @@ func TestInputMouseSgrPixelNoClip(t *testing.T) {
 		t.Errorf("expected re-clipped position (79,23), got (%d,%d)", x, y)
 	}
 }
+
+// TestInputInBandResizePixels tests that an in-band resize report carries the size in pixels.
+func TestInputInBandResizePixels(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+
+	ip.ScanUTF8([]byte("\x1b[48;25;80;400;640t"))
+
+	select {
+	case ev := <-evch:
+		rev, ok := ev.(*EventResize)
+		if !ok {
+			t.Fatalf("Expected EventResize, got %T", ev)
+		}
+		if w, h := rev.Size(); w != 80 || h != 25 {
+			t.Errorf("Expected size 80x25, got %dx%d", w, h)
+		}
+		if w, h := rev.PixelSize(); w != 640 || h != 400 {
+			t.Errorf("Expected pixel size 640x400, got %dx%d", w, h)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Timeout waiting for resize event")
+	}
+}

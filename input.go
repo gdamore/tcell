@@ -175,19 +175,20 @@ func (ip *inputParser) SetPixelMouse(on bool) {
 	}
 }
 
-func (ip *inputParser) SetSize(w, h int) {
+func (ip *inputParser) SetSize(ws WindowSize) {
 	if ip.nested != nil {
-		ip.nested.SetSize(w, h)
+		ip.nested.SetSize(ws)
 		return
 	}
 	go func() {
 		ip.l.Lock()
-		ip.rows = h
-		ip.cols = w
-		ip.post(NewEventResize(w, h))
+		ip.rows = ws.Height
+		ip.cols = ws.Width
+		ip.post(newEventResize(ws))
 		ip.l.Unlock()
 	}()
 }
+
 func (ip *inputParser) post(ev Event) {
 	if ip.escaped {
 		ip.escaped = false
@@ -1462,14 +1463,18 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 				h := P[1]
 				w := P[2]
 				if h != ip.rows || w != ip.cols {
-					ip.SetSize(w, h)
+					ip.SetSize(WindowSize{Width: w, Height: h})
 				}
 				return
 			}
 		case 48:
 			if len(P) > 2 {
-				// window resize report
-				ip.post(NewEventResize(P[2], P[1]))
+				// window resize report, with the size in pixels if given
+				ws := WindowSize{Width: P[2], Height: P[1]}
+				if len(P) > 4 {
+					ws.PixelWidth, ws.PixelHeight = P[4], P[3]
+				}
+				ip.post(newEventResize(ws))
 				return
 			}
 		}
