@@ -20,6 +20,41 @@ import (
 	"github.com/gdamore/tcell/v3/color"
 )
 
+// Capabilities describes terminal capabilities reported during Init.
+type Capabilities struct {
+	// Clipboard: OSC 52 clipboard write support was reported.
+	// Older terminals support the clipboard without reporting it, so a false
+	// value is not conclusive.
+	Clipboard bool
+
+	// Sixel: sixel graphics support (DA1, param 4).
+	Sixel bool
+
+	// Mouse: mouse reporting.
+	Mouse bool
+
+	// MouseSgr: SGR mouse reporting (mode 1006).
+	MouseSgr bool
+
+	// KittyKeyboard: the kitty keyboard protocol.
+	KittyKeyboard bool
+
+	// KeyRelease: key release and repeat events are reported.
+	KeyRelease bool
+
+	// Win32Keyboard: win32-input-mode keyboard reporting.
+	Win32Keyboard bool
+
+	// XTermKeyboard: xterm modifyOtherKeys keyboard reporting.
+	XTermKeyboard bool
+
+	// ResizeReports: in-band resize reports (mode 2048).
+	ResizeReports bool
+
+	// TrueColor: 24-bit color.
+	TrueColor bool
+}
+
 // Screen represents the physical (or emulated) screen.
 // This can be a terminal window or a physical console.  Platforms implement
 // this differently.
@@ -247,11 +282,8 @@ type Screen interface {
 	// prevent this for security reasons.
 	GetClipboard()
 
-	// HasClipboard is true if the screen claims to support the clipboard.
-	// Note that GetClipboard may still not work, but SetClipboard should be functional.
-	// Note that many terminals that support the clipboard don't actually report that they
-	// do, so a false indication is not necessarily conclusive.
-	HasClipboard() bool
+	// Capabilities returns the terminal capabilities reported during Init.
+	Capabilities() Capabilities
 
 	// ShowNotification is used to show a desktop notification, when the terminal
 	// supports it.  Right now only terminals supporting OSC 777 support this.
@@ -364,7 +396,7 @@ type screenImpl interface {
 	Tty() (Tty, bool)
 	SetClipboard([]byte)
 	GetClipboard()
-	HasClipboard() bool
+	Capabilities() Capabilities
 	ShowNotification(string, string)
 	KeyboardProtocol() KeyProtocol
 	Terminal() (string, string)

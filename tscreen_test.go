@@ -1411,6 +1411,73 @@ func TestProcessInitQKeyboardProtocol(t *testing.T) {
 	}
 }
 
+func TestInitRecordsCapabilities(t *testing.T) {
+	s := &tScreen{initQ: make(chan Event, 8)}
+	s.initQ <- &eventPrivateMode{Mode: vt.PmResizeReports, Status: vt.ModeNA}
+	// ModeOff still means the terminal knows the mode, so mouse SGR counts.
+	s.initQ <- &eventPrivateMode{Mode: vt.PmMouseSgr, Status: vt.ModeOff}
+	// DA1 is always last, and terminates the loop.
+	s.initQ <- &eventPrimaryAttributes{Class: 65, Color: true, Sixel: true, Clipboard: true}
+	s.Lock()
+	s.processInitQ()
+	s.Unlock()
+
+	// processInitQ only records the DA1 capabilities.
+	want := Capabilities{Sixel: true, Clipboard: true}
+	if got := s.Capabilities(); got != want {
+		t.Fatalf("Capabilities() = %+v, want %+v", got, want)
+	}
+	if s.inlineResize || !s.haveMouseSgr {
+		t.Fatalf("modes recorded wrong: inlineResize=%v haveMouseSgr=%v", s.inlineResize, s.haveMouseSgr)
+	}
+}
+
+func TestDerivedCapabilities(t *testing.T) {
+	tests := []struct {
+		name string
+		scr  *tScreen
+		want Capabilities
+	}{
+		{
+			name: "kitty without advanced keys reports no release events",
+			scr:  &tScreen{haveKittyKbd: true, truecolor: true},
+			want: Capabilities{KittyKeyboard: true, TrueColor: true},
+		},
+		{
+			name: "kitty with advanced keys reports release events",
+			scr:  &tScreen{haveKittyKbd: true, advancedKeys: true},
+			want: Capabilities{KittyKeyboard: true, KeyRelease: true},
+		},
+		{
+			name: "xterm keyboard never reports release events",
+			scr:  &tScreen{haveXTermKbd: true, advancedKeys: true},
+			want: Capabilities{XTermKeyboard: true},
+		},
+		{
+			name: "win32 reports release events in advanced mode only",
+			scr:  &tScreen{haveWin32Kbd: true},
+			want: Capabilities{Win32Keyboard: true},
+		},
+		{
+			// Derived capabilities leave the DA1 capabilities untouched.
+			name: "mouse and resize, DA1 capabilities untouched",
+			scr: &tScreen{
+				haveMouse: true, haveMouseSgr: true, inlineResize: true,
+				caps: Capabilities{Clipboard: true, Sixel: true},
+			},
+			want: Capabilities{Mouse: true, MouseSgr: true, ResizeReports: true, Clipboard: true, Sixel: true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.scr.derivedCapabilities()
+			if got := tt.scr.Capabilities(); got != tt.want {
+				t.Fatalf("Capabilities() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
 // TestInitScreenStdio just tries to initialize the default screen using standard I/O.
 // It requires a working tty.
 func TestInitScreenStdio(t *testing.T) {

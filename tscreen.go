@@ -241,7 +241,7 @@ type tScreen struct {
 	truecolor          bool
 	noColor            bool
 	legacy             bool
-	hasClipboard       bool // true if OSC 52 reported via DA1
+	caps               Capabilities // terminal capabilities
 	finiOnce           sync.Once
 	initFiniLock       sync.Mutex
 	enterUrl           string
@@ -507,10 +507,15 @@ func (t *tScreen) processInitQ() {
 				if ev.Color && t.ncolor == 0 && !t.noColor {
 					t.ncolor = 8
 				}
-				if ev.Clipboard && t.setClipboard == "" {
-					t.setClipboard = setClipboard
+				if ev.Clipboard {
+					if t.setClipboard == "" {
+						t.setClipboard = setClipboard
+					}
+					t.caps.Clipboard = true
 				}
-				t.hasClipboard = ev.Clipboard
+				if ev.Sixel {
+					t.caps.Sixel = true
+				}
 				t.initted = true
 				return
 			case *eventTermName:
@@ -1668,7 +1673,24 @@ func (t *tScreen) engageLocked() error {
 	} else {
 		t.tty.NotifyResize(t.resizeQ)
 	}
+
+	t.derivedCapabilities()
 	return nil
+}
+
+// derivedCapabilities records what the negotiated state implies beyond DA1.
+func (t *tScreen) derivedCapabilities() {
+	t.caps.Mouse = t.haveMouse
+	t.caps.MouseSgr = t.haveMouseSgr
+	t.caps.KittyKeyboard = t.haveKittyKbd
+	t.caps.Win32Keyboard = t.haveWin32Kbd
+	t.caps.XTermKeyboard = t.haveXTermKbd
+	t.caps.ResizeReports = t.inlineResize
+	t.caps.TrueColor = t.truecolor
+	// Release events need advanced mode: kitty is only asked for the events
+	// flag there, and win32-input-mode otherwise drops key-up events.
+	// modifyOtherKeys has no such flag.
+	t.caps.KeyRelease = t.advancedKeys && (t.haveKittyKbd || t.haveWin32Kbd)
 }
 
 // disengage is used to release the terminal back to support from the caller.
@@ -1820,8 +1842,8 @@ func (t *tScreen) GetClipboard() {
 	t.Unlock()
 }
 
-func (t *tScreen) HasClipboard() bool {
-	return t.hasClipboard
+func (t *tScreen) Capabilities() Capabilities {
+	return t.caps
 }
 
 func (t *tScreen) ShowNotification(title string, body string) {
