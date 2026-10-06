@@ -20,42 +20,40 @@ import (
 	"github.com/gdamore/tcell/v3/color"
 )
 
-// Capabilities is a bitfield of terminal capabilities reported during Init.
-type Capabilities uint64
-
-const (
-	// CapabilityClipboard: OSC 52 clipboard write support was reported.
+// Capabilities describes terminal capabilities reported during Init.
+type Capabilities struct {
+	// Clipboard: OSC 52 clipboard write support was reported.
 	// Older terminals support the clipboard without reporting it, so a false
-	// bit is not conclusive.
-	CapabilityClipboard Capabilities = 1 << iota
+	// value is not conclusive.
+	Clipboard bool
 
-	// CapabilitySixel: sixel graphics support (DA1, param 4).
-	CapabilitySixel
+	// Sixel: sixel graphics support (DA1, param 4).
+	Sixel bool
 
-	// CapabilityMouse: mouse reporting.
-	CapabilityMouse
+	// Mouse: mouse reporting.
+	Mouse bool
 
-	// CapabilityMouseSgr: SGR mouse reporting (mode 1006).
-	CapabilityMouseSgr
+	// MouseSgr: SGR mouse reporting (mode 1006).
+	MouseSgr bool
 
-	// CapabilityKittyKeyboard: the kitty keyboard protocol.
-	CapabilityKittyKeyboard
+	// KittyKeyboard: the kitty keyboard protocol.
+	KittyKeyboard bool
 
-	// CapabilityKeyRelease: key release and repeat events are reported.
-	CapabilityKeyRelease
+	// KeyRelease: key release and repeat events are reported.
+	KeyRelease bool
 
-	// CapabilityWin32Keyboard: win32-input-mode keyboard reporting.
-	CapabilityWin32Keyboard
+	// Win32Keyboard: win32-input-mode keyboard reporting.
+	Win32Keyboard bool
 
-	// CapabilityXTermKeyboard: xterm modifyOtherKeys keyboard reporting.
-	CapabilityXTermKeyboard
+	// XTermKeyboard: xterm modifyOtherKeys keyboard reporting.
+	XTermKeyboard bool
 
-	// CapabilityResizeReports: in-band resize reports (mode 2048).
-	CapabilityResizeReports
+	// ResizeReports: in-band resize reports (mode 2048).
+	ResizeReports bool
 
-	// CapabilityTrueColor: 24-bit color.
-	CapabilityTrueColor
-)
+	// TrueColor: 24-bit color.
+	TrueColor bool
+}
 
 // Screen represents the physical (or emulated) screen.
 // This can be a terminal window or a physical console.  Platforms implement
@@ -287,10 +285,6 @@ type Screen interface {
 	// Capabilities returns the terminal capabilities reported during Init.
 	Capabilities() Capabilities
 
-	// Deprecated: HasClipboard is kept for compatibility; check
-	// Capabilities()&CapabilityClipboard instead.
-	HasClipboard() bool
-
 	// ShowNotification is used to show a desktop notification, when the terminal
 	// supports it.  Right now only terminals supporting OSC 777 support this.
 	ShowNotification(title string, body string)
@@ -403,7 +397,6 @@ type screenImpl interface {
 	SetClipboard([]byte)
 	GetClipboard()
 	Capabilities() Capabilities
-	HasClipboard() bool
 	ShowNotification(string, string)
 	KeyboardProtocol() KeyProtocol
 	Terminal() (string, string)

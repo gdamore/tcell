@@ -1422,10 +1422,10 @@ func TestInitRecordsCapabilities(t *testing.T) {
 	s.processInitQ()
 	s.Unlock()
 
-	// processInitQ only records the DA1 bits.
-	want := CapabilitySixel | CapabilityClipboard
+	// processInitQ only records the DA1 capabilities.
+	want := Capabilities{Sixel: true, Clipboard: true}
 	if got := s.Capabilities(); got != want {
-		t.Fatalf("Capabilities() = %b, want %b", got, want)
+		t.Fatalf("Capabilities() = %+v, want %+v", got, want)
 	}
 	if s.inlineResize || !s.haveMouseSgr {
 		t.Fatalf("modes recorded wrong: inlineResize=%v haveMouseSgr=%v", s.inlineResize, s.haveMouseSgr)
@@ -1441,38 +1441,38 @@ func TestDerivedCapabilities(t *testing.T) {
 		{
 			name: "kitty without advanced keys reports no release events",
 			scr:  &tScreen{haveKittyKbd: true, truecolor: true},
-			want: CapabilityKittyKeyboard | CapabilityTrueColor,
+			want: Capabilities{KittyKeyboard: true, TrueColor: true},
 		},
 		{
 			name: "kitty with advanced keys reports release events",
 			scr:  &tScreen{haveKittyKbd: true, advancedKeys: true},
-			want: CapabilityKittyKeyboard | CapabilityKeyRelease,
+			want: Capabilities{KittyKeyboard: true, KeyRelease: true},
 		},
 		{
 			name: "xterm keyboard never reports release events",
 			scr:  &tScreen{haveXTermKbd: true, advancedKeys: true},
-			want: CapabilityXTermKeyboard,
+			want: Capabilities{XTermKeyboard: true},
 		},
 		{
 			name: "win32 reports release events in advanced mode only",
 			scr:  &tScreen{haveWin32Kbd: true},
-			want: CapabilityWin32Keyboard,
+			want: Capabilities{Win32Keyboard: true},
 		},
 		{
-			// The DA1 bits already in caps are left alone: engage ORs the
-			// result in rather than replacing it.
-			name: "mouse and resize, DA1 bits untouched",
+			// Derived capabilities leave the DA1 capabilities untouched.
+			name: "mouse and resize, DA1 capabilities untouched",
 			scr: &tScreen{
 				haveMouse: true, haveMouseSgr: true, inlineResize: true,
-				caps: CapabilityClipboard | CapabilitySixel,
+				caps: Capabilities{Clipboard: true, Sixel: true},
 			},
-			want: CapabilityMouse | CapabilityMouseSgr | CapabilityResizeReports,
+			want: Capabilities{Mouse: true, MouseSgr: true, ResizeReports: true, Clipboard: true, Sixel: true},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.scr.derivedCapabilities(); got != tt.want {
-				t.Fatalf("derivedCapabilities() = %b, want %b", got, tt.want)
+			tt.scr.derivedCapabilities()
+			if got := tt.scr.Capabilities(); got != tt.want {
+				t.Fatalf("Capabilities() = %+v, want %+v", got, tt.want)
 			}
 		})
 	}

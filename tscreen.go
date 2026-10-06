@@ -241,7 +241,7 @@ type tScreen struct {
 	truecolor          bool
 	noColor            bool
 	legacy             bool
-	caps               Capabilities // capabilities reported via DA1
+	caps               Capabilities // terminal capabilities
 	finiOnce           sync.Once
 	initFiniLock       sync.Mutex
 	enterUrl           string
@@ -507,14 +507,14 @@ func (t *tScreen) processInitQ() {
 				if ev.Color && t.ncolor == 0 && !t.noColor {
 					t.ncolor = 8
 				}
-				if ev.Clipboard && t.setClipboard == "" {
-					t.setClipboard = setClipboard
-				}
 				if ev.Clipboard {
-					t.caps |= CapabilityClipboard
+					if t.setClipboard == "" {
+						t.setClipboard = setClipboard
+					}
+					t.caps.Clipboard = true
 				}
 				if ev.Sixel {
-					t.caps |= CapabilitySixel
+					t.caps.Sixel = true
 				}
 				t.initted = true
 				return
@@ -1674,31 +1674,23 @@ func (t *tScreen) engageLocked() error {
 		t.tty.NotifyResize(t.resizeQ)
 	}
 
-	t.caps |= t.derivedCapabilities()
+	t.derivedCapabilities()
 	return nil
 }
 
-// derivedCapabilities reports what the negotiated state implies beyond the DA1
-// bits, which are recorded as they arrive.
-func (t *tScreen) derivedCapabilities() Capabilities {
-	var caps Capabilities
-	set := func(bit Capabilities, on bool) {
-		if on {
-			caps |= bit
-		}
-	}
-	set(CapabilityMouse, t.haveMouse)
-	set(CapabilityMouseSgr, t.haveMouseSgr)
-	set(CapabilityKittyKeyboard, t.haveKittyKbd)
-	set(CapabilityWin32Keyboard, t.haveWin32Kbd)
-	set(CapabilityXTermKeyboard, t.haveXTermKbd)
-	set(CapabilityResizeReports, t.inlineResize)
-	set(CapabilityTrueColor, t.truecolor)
+// derivedCapabilities records what the negotiated state implies beyond DA1.
+func (t *tScreen) derivedCapabilities() {
+	t.caps.Mouse = t.haveMouse
+	t.caps.MouseSgr = t.haveMouseSgr
+	t.caps.KittyKeyboard = t.haveKittyKbd
+	t.caps.Win32Keyboard = t.haveWin32Kbd
+	t.caps.XTermKeyboard = t.haveXTermKbd
+	t.caps.ResizeReports = t.inlineResize
+	t.caps.TrueColor = t.truecolor
 	// Release events need advanced mode: kitty is only asked for the events
 	// flag there, and win32-input-mode otherwise drops key-up events.
 	// modifyOtherKeys has no such flag.
-	set(CapabilityKeyRelease, t.advancedKeys && (t.haveKittyKbd || t.haveWin32Kbd))
-	return caps
+	t.caps.KeyRelease = t.advancedKeys && (t.haveKittyKbd || t.haveWin32Kbd)
 }
 
 // disengage is used to release the terminal back to support from the caller.
@@ -1852,11 +1844,6 @@ func (t *tScreen) GetClipboard() {
 
 func (t *tScreen) Capabilities() Capabilities {
 	return t.caps
-}
-
-//go:fix inline
-func (t *tScreen) HasClipboard() bool {
-	return t.Capabilities()&CapabilityClipboard != 0
 }
 
 func (t *tScreen) ShowNotification(title string, body string) {
