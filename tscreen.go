@@ -139,51 +139,53 @@ func (o OptControlStringLimit) apply(t *tScreen) {
 // to the user unless they started it from another terminal session).  But apart from
 // the complaint to stderr from "st", everything else is fine.
 const (
-	enableAutoMargin  = "\x1b[?7h" // dec private mode 7
-	setCursorPosition = "\x1b[%[1]d;%[2]dH"
-	sgr0              = "\x1b[m" // attrOff
-	bold              = "\x1b[1m"
-	dim               = "\x1b[2m"
-	italic            = "\x1b[3m"
-	underline         = "\x1b[4m"
-	blink             = "\x1b[5m"
-	reverse           = "\x1b[7m"
-	strikeThrough     = "\x1b[9m"
-	clear             = "\x1b[H\x1b[J"
-	doubleUnder       = "\x1b[4:2m"
-	curlyUnder        = "\x1b[4:3m"
-	dottedUnder       = "\x1b[4:4m"
-	dashedUnder       = "\x1b[4:5m"
-	underColor        = "\x1b[58:5:%dm"
-	underRGB          = "\x1b[58:2::%d:%d:%dm"
-	underFg           = "\x1b[59m"
-	enableAltChars    = "\x1b(B\x1b)0"                      // set G0 as US-ASCII, G1 as DEC line drawing
-	startAltChars     = "\x0e"                              // aka Shift-Out
-	endAltChars       = "\x0f"                              // aka Shift-In
-	setFg8            = "\x1b[3%dm"                         // for colors less than 8
-	setFg256          = "\x1b[38;5;%dm"                     // for colors less than 256
-	setFgRgb          = "\x1b[38;2;%d;%d;%dm"               // for RGB
-	setBg8            = "\x1b[4%dm"                         // color colors less than 8
-	setBg256          = "\x1b[48;5;%dm"                     // for colors less than 256
-	setBgRgb          = "\x1b[48;2;%d;%d;%dm"               // for RGB
-	setFgBgRgb        = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm" // for RGB, in one shot
-	enterCA           = "\x1b[?1049h"                       // alternate screen
-	exitCA            = "\x1b[?1049l"                       // alternate screen
-	enterKeypad       = "\x1b[?1h\x1b="                     // Note mode 1 might not be supported everywhere
-	exitKeypad        = "\x1b[?1l\x1b>"                     // Also mode 1
-	requestWindowSize = "\x1b[18t"                          // For modern terminals
-	requestPrimaryDA  = "\x1b[c"                            // Request primary device attributes
-	requestExtAttr    = "\x1b[>q"                           // Request extended attribute (emulator name and version)
-	setClipboard      = "\x1b]52;c;%s\x1b\\"                // Clipboard content is base64
-	notifyDesktop9    = "\x1b]9;%[2]s\x1b\\"                // Args are title, body (but OSC 9 only has body)
-	notifyDesktop777  = "\x1b]777;notify;%s;%s\x1b\\"       // Most commonly supported
-	queryKittyKbd     = "\x1b[?u"                           // Query for Kitty keyboard support
-	enableKittyKbd    = "\x1b[=1u"                          // Technically this pushes
-	enableKittyKbdAdv = "\x1b[=31u"                         // disambiguation, events, alternate keys, all keys, text
-	disableKittyKbd   = "\x1b[=0u"                          // Technically this means pop previous mode
-	queryXTermKbd     = "\x1b[?4m"                          // Query for XTerm modify other keys support
-	enableXTermKbd    = "\x1b[>4;2m"                        // Enable modify other keys protocol
-	disableXTermKbd   = "\x1b[>4;0m"                        // Disable modify other keys protocol
+	enableAutoMargin       = "\x1b[?7h" // dec private mode 7
+	setCursorPosition      = "\x1b[%[1]d;%[2]dH"
+	sgr0                   = "\x1b[m" // attrOff
+	bold                   = "\x1b[1m"
+	dim                    = "\x1b[2m"
+	italic                 = "\x1b[3m"
+	underline              = "\x1b[4m"
+	blink                  = "\x1b[5m"
+	reverse                = "\x1b[7m"
+	strikeThrough          = "\x1b[9m"
+	clear                  = "\x1b[H\x1b[J"
+	doubleUnder            = "\x1b[4:2m"
+	curlyUnder             = "\x1b[4:3m"
+	dottedUnder            = "\x1b[4:4m"
+	dashedUnder            = "\x1b[4:5m"
+	underColor             = "\x1b[58:5:%dm"
+	underRGB               = "\x1b[58:2::%d:%d:%dm"
+	underFg                = "\x1b[59m"
+	enableAltChars         = "\x1b(B\x1b)0"                      // set G0 as US-ASCII, G1 as DEC line drawing
+	startAltChars          = "\x0e"                              // aka Shift-Out
+	endAltChars            = "\x0f"                              // aka Shift-In
+	setFg8                 = "\x1b[3%dm"                         // for colors less than 8
+	setFg256               = "\x1b[38;5;%dm"                     // for colors less than 256
+	setFgRgb               = "\x1b[38;2;%d;%d;%dm"               // for RGB
+	setBg8                 = "\x1b[4%dm"                         // color colors less than 8
+	setBg256               = "\x1b[48;5;%dm"                     // for colors less than 256
+	setBgRgb               = "\x1b[48;2;%d;%d;%dm"               // for RGB
+	setFgBgRgb             = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm" // for RGB, in one shot
+	enterCA                = "\x1b[?1049h"                       // alternate screen
+	exitCA                 = "\x1b[?1049l"                       // alternate screen
+	enterKeypad            = "\x1b[?1h\x1b="                     // Note mode 1 might not be supported everywhere
+	exitKeypad             = "\x1b[?1l\x1b>"                     // Also mode 1
+	requestWindowSize      = "\x1b[18t"                          // For modern terminals
+	requestPrimaryDA       = "\x1b[c"                            // Request primary device attributes
+	requestExtAttr         = "\x1b[>q"                           // Request extended attribute (emulator name and version)
+	requestColorScheme     = "\x1b[?996n"                        // Request the color scheme (reply DSR 997)
+	requestBackgroundColor = "\x1b]11;?\x1b\\"                   // Request the background color (OSC 11)
+	setClipboard           = "\x1b]52;c;%s\x1b\\"                // Clipboard content is base64
+	notifyDesktop9         = "\x1b]9;%[2]s\x1b\\"                // Args are title, body (but OSC 9 only has body)
+	notifyDesktop777       = "\x1b]777;notify;%s;%s\x1b\\"       // Most commonly supported
+	queryKittyKbd          = "\x1b[?u"                           // Query for Kitty keyboard support
+	enableKittyKbd         = "\x1b[=1u"                          // Technically this pushes
+	enableKittyKbdAdv      = "\x1b[=31u"                         // disambiguation, events, alternate keys, all keys, text
+	disableKittyKbd        = "\x1b[=0u"                          // Technically this means pop previous mode
+	queryXTermKbd          = "\x1b[?4m"                          // Query for XTerm modify other keys support
+	enableXTermKbd         = "\x1b[>4;2m"                        // Enable modify other keys protocol
+	disableXTermKbd        = "\x1b[>4;0m"                        // Disable modify other keys protocol
 )
 
 // NewTerminfoScreenFromTty returns a Screen using a custom Tty implementation.
@@ -263,6 +265,7 @@ type tScreen struct {
 	mouseFlags         MouseFlags
 	pasteEnabled       bool
 	focusEnabled       bool
+	schemeEnabled      bool
 	setTitle           string
 	saveTitle          string
 	restoreTitle       string
@@ -1217,6 +1220,57 @@ func (t *tScreen) DisableFocus() {
 	t.Unlock()
 }
 
+func (t *tScreen) EnableColorScheme() {
+	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
+	t.schemeEnabled = true
+	t.enableSchemeReporting()
+	t.Unlock()
+}
+
+func (t *tScreen) DisableColorScheme() {
+	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
+	t.schemeEnabled = false
+	t.disableSchemeReporting()
+	t.Unlock()
+}
+
+// enableSchemeReporting turns on color scheme reports and asks for the
+// current scheme (DSR 996), which terminals with reports answer.
+func (t *tScreen) enableSchemeReporting() {
+	if t.legacy {
+		return
+	}
+	t.Print(vt.PmColorSchemeReports.Enable())
+	t.Print(requestColorScheme)
+}
+
+func (t *tScreen) disableSchemeReporting() {
+	if t.legacy {
+		return
+	}
+	t.Print(vt.PmColorSchemeReports.Disable())
+}
+
+func (t *tScreen) GetBackgroundColor() {
+	t.Lock()
+	if t.fini {
+		t.Unlock()
+		return
+	}
+	if !t.legacy {
+		t.Print(requestBackgroundColor)
+	}
+	t.Unlock()
+}
+
 func (t *tScreen) enableFocusReporting() {
 	if t.compat.focusUnsupported {
 		return
@@ -1651,6 +1705,9 @@ func (t *tScreen) engageLocked() error {
 	if t.focusEnabled {
 		t.enableFocusReporting()
 	}
+	if t.schemeEnabled {
+		t.enableSchemeReporting()
+	}
 	t.Print(enterKeypad)
 	t.Print(enableAltChars)
 	t.Print(vt.PmShowCursor.Disable())
@@ -1745,6 +1802,9 @@ func (t *tScreen) disengageFinish() {
 	t.enableMouse(0)
 	t.enablePasting(false)
 	t.disableFocusReporting()
+	if t.schemeEnabled {
+		t.disableSchemeReporting()
+	}
 
 	_ = t.tty.Stop()
 }

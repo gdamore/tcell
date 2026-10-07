@@ -57,6 +57,10 @@ type Emulator interface {
 	// FocusEvent is called by a backend to report that focus is gained (true) or lost (false).
 	FocusEvent(bool)
 
+	// ColorSchemeEvent is called by a backend to report that its color scheme
+	// changed. It sends a color scheme report if the client asked for them.
+	ColorSchemeEvent()
+
 	// Drain waits until any queued but not processed input has finished processing.
 	// It also wakes the reader.
 	Drain() error
@@ -278,6 +282,10 @@ func NewEmulator(be Backend, opts ...EmulatorOpt) Emulator {
 		em.localModes[PmMouseMotion] = ModeOff
 		em.localModes[PmMouseSgr] = ModeOff
 		em.localModes[PmFocusReports] = ModeOff
+	}
+
+	if _, ok := be.(ColorScheme); ok {
+		em.localModes[PmColorSchemeReports] = ModeOff
 	}
 
 	if ak, ok := be.(AdvancedKeyboard); ok && ak.IsAdvancedKeyboard() {
@@ -1551,6 +1559,8 @@ func (em *emulator) processCsi(final byte) {
 		em.processCursorStyle(str)
 	case "?W":
 		em.processTabReset(str)
+	case "?n":
+		em.privateDeviceReport(str)
 	case "?h":
 		em.processSetPrivateMode(str)
 	case "?l":
@@ -1639,6 +1649,8 @@ func (em *emulator) processOSC() {
 			}
 		case 8:
 			em.processHyperLink(str)
+		case 11:
+			em.processBackgroundColor(str)
 		case 52:
 			em.processClipboard(str)
 		}
@@ -1664,6 +1676,47 @@ func (em *emulator) deviceReport(s string) {
 		pos := em.getPosition()
 		em.SendRaw(fmt.Appendf(nil, "\x1b[%d;%dR", pos.Y+1, pos.X+1))
 	default: // ignore
+	}
+}
+
+// privateDeviceReport implements private DSR requests; only the color
+// scheme (996) is supported.
+func (em *emulator) privateDeviceReport(s string) {
+	if s == "996" {
+		em.sendColorScheme()
+	}
+}
+
+// sendColorScheme sends a color scheme report (DSR 997): 1 for dark, 2 for
+// light.
+func (em *emulator) sendColorScheme() {
+	cs, ok := em.be.(ColorScheme)
+	if !ok {
+		return
+	}
+	scheme := 2
+	if cs.DarkScheme() {
+		scheme = 1
+	}
+	em.SendRaw(fmt.Appendf(nil, "\x1b[?997;%dn", scheme))
+}
+
+// processBackgroundColor answers OSC 11 background color queries.
+func (em *emulator) processBackgroundColor(str string) {
+	cs, ok := em.be.(ColorScheme)
+	if !ok || str != "?" {
+		return
+	}
+	r, g, b := cs.BackgroundColor().RGB()
+	if r < 0 {
+		return
+	}
+	em.SendRaw(fmt.Appendf(nil, "\x1b]11;rgb:%04x/%04x/%04x\x1b\\", r*0x101, g*0x101, b*0x101))
+}
+
+func (em *emulator) ColorSchemeEvent() {
+	if pm := em.getPrivateMode(PmColorSchemeReports); pm == ModeOn {
+		em.sendColorScheme()
 	}
 }
 
