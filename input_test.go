@@ -140,8 +140,16 @@ func TestInputEscapeTimeouts(t *testing.T) {
 	ip := newInputParser(evch)
 
 	ip.ScanUTF8([]byte{'\x1b'})
-	if got := ip.WaitDuration(); got != loneEscapeTimeout {
-		t.Fatalf("bare legacy ESC timeout = %v, want %v", got, loneEscapeTimeout)
+	if got := ip.WaitDuration(); got != platformEscapeTimeout() {
+		t.Fatalf("bare legacy ESC timeout = %v, want %v", got, platformEscapeTimeout())
+	}
+	ip.SetEscapeTimeout(125 * time.Millisecond)
+	if got := ip.WaitDuration(); got != 125*time.Millisecond {
+		t.Fatalf("configured bare ESC timeout = %v, want %v", got, 125*time.Millisecond)
+	}
+	ip.SetEscapeTimeout(0)
+	if got := ip.WaitDuration(); got != platformEscapeTimeout() {
+		t.Fatalf("reset bare ESC timeout = %v, want %v", got, platformEscapeTimeout())
 	}
 
 	// A byte that starts a control sequence gets the longer deadline, so it
@@ -150,7 +158,7 @@ func TestInputEscapeTimeouts(t *testing.T) {
 	if got := ip.WaitDuration(); got != escapeSequenceTimeout {
 		t.Fatalf("CSI timeout = %v, want %v", got, escapeSequenceTimeout)
 	}
-	ip.keyTime = time.Now().Add(-loneEscapeTimeout * 2)
+	ip.keyTime = time.Now().Add(-platformEscapeTimeout() * 2)
 	ip.Scan()
 	select {
 	case ev := <-evch:
@@ -166,8 +174,8 @@ func TestInputEscapeTimeouts(t *testing.T) {
 	// short deadline even when the negotiated protocol is not the legacy one.
 	ip.ScanUTF8([]byte{'\x1b'})
 	ip.SetKeyboardProtocol(KittyKeyboard)
-	if got := ip.WaitDuration(); got != loneEscapeTimeout {
-		t.Fatalf("bare kitty ESC timeout = %v, want %v", got, loneEscapeTimeout)
+	if got := ip.WaitDuration(); got != platformEscapeTimeout() {
+		t.Fatalf("bare kitty ESC timeout = %v, want %v", got, platformEscapeTimeout())
 	}
 
 	// The longer deadline still applies once an introducer has arrived,
@@ -183,6 +191,10 @@ func TestInputEscapeTimeouts(t *testing.T) {
 
 	nested := newInputParser(make(chan Event, 1))
 	ip.nested = nested
+	ip.SetEscapeTimeout(175 * time.Millisecond)
+	if got := nested.escapeTimeout; got != 175*time.Millisecond {
+		t.Fatalf("nested ESC timeout = %v, want %v", got, 175*time.Millisecond)
+	}
 	ip.SetKeyboardProtocol(Win32Keyboard)
 	if nested.legacy {
 		t.Fatal("nested parser retained legacy keyboard protocol")
@@ -193,6 +205,24 @@ func TestInputEscapeTimeouts(t *testing.T) {
 	win.handleWinKey([]int{0, 0, 'A', 1})
 	if win.nested == nil || win.nested.legacy {
 		t.Fatal("Win32 nested parser did not inherit keyboard protocol")
+	}
+}
+
+func TestEscapeTimeoutForPlatform(t *testing.T) {
+	tests := []struct {
+		goos string
+		want time.Duration
+	}{
+		{"darwin", defaultEscapeTimeout},
+		{"linux", defaultEscapeTimeout},
+		{"windows", windowsEscapeTimeout},
+	}
+	for _, test := range tests {
+		t.Run(test.goos, func(t *testing.T) {
+			if got := escapeTimeoutForPlatform(test.goos); got != test.want {
+				t.Fatalf("escape timeout = %v, want %v", got, test.want)
+			}
+		})
 	}
 }
 

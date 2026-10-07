@@ -131,11 +131,15 @@ variables provide user escape hatches when the automatic path is not reliable:
   terminal responses themselves are problematic.
 - `TCELL_MOUSE=auto|disable` prevents applications from enabling terminal mouse
   reporting.
+- `TCELL_ESCDELAY=<milliseconds>` controls how long tcell waits for a possible
+  escape sequence after receiving Escape. This defaults to 50 ms (125 ms on
+  Windows); increasing it avoids split-sequence input at the cost of delaying a
+  standalone Escape.
 
-Applications can also choose a keyboard protocol with `OptKeyboardProtocol` or
-disable startup negotiation with `OptNegotiation`. Environment variables take
-precedence so users can recover from bad terminal behavior without modifying an
-application.
+Applications can also choose a keyboard protocol with `OptKeyboardProtocol`,
+disable startup negotiation with `OptNegotiation`, or set an escape delay with
+`OptEscapeTimeout`. Environment variables take precedence so users can recover
+from bad terminal behavior without modifying an application.
 
 ## Performance
 
