@@ -114,6 +114,26 @@ func TestOptAltScreenDefault(t *testing.T) {
 	}
 }
 
+func TestOptEscapeTimeout(t *testing.T) {
+	tscreen := &tScreen{escapeTimeout: platformEscapeTimeout()}
+	OptEscapeTimeout(125 * time.Millisecond).apply(tscreen)
+	if got := tscreen.escapeTimeout; got != 125*time.Millisecond {
+		t.Fatalf("option timeout = %v, want %v", got, 125*time.Millisecond)
+	}
+	OptEscapeTimeout(0).apply(tscreen)
+	if got := tscreen.escapeTimeout; got != 125*time.Millisecond {
+		t.Fatalf("zero option changed timeout to %v, want %v", got, 125*time.Millisecond)
+	}
+
+	// A valid environment override lets users tune applications that do not
+	// explicitly pass the option.
+	t.Setenv("TCELL_ESCDELAY", "175")
+	tscreen.applyEnvironmentOverrides()
+	if got := tscreen.escapeTimeout; got != 175*time.Millisecond {
+		t.Fatalf("environment timeout = %v, want %v", got, 175*time.Millisecond)
+	}
+}
+
 func TestMainLoopEscapeTimeout(t *testing.T) {
 	evch := make(chan Event, 2)
 	tscreen := &tScreen{
@@ -133,7 +153,7 @@ func TestMainLoopEscapeTimeout(t *testing.T) {
 
 	tscreen.keyQ <- []byte{'\x1b'}
 	deadline := time.After(time.Second)
-	for tscreen.input.WaitDuration() != loneEscapeTimeout {
+	for tscreen.input.WaitDuration() != platformEscapeTimeout() {
 		select {
 		case <-deadline:
 			t.Fatal("input timeout was not scheduled")
@@ -143,7 +163,7 @@ func TestMainLoopEscapeTimeout(t *testing.T) {
 	}
 	// Refresh the parser timestamp before the first timer fires. This verifies
 	// that mainLoop re-arms its timer when parsing remains incomplete.
-	time.Sleep(loneEscapeTimeout / 2)
+	time.Sleep(platformEscapeTimeout() / 2)
 	tscreen.input.l.Lock()
 	tscreen.input.keyTime = time.Now()
 	tscreen.input.l.Unlock()
@@ -152,7 +172,7 @@ func TestMainLoopEscapeTimeout(t *testing.T) {
 		if key, ok := ev.(*EventKey); !ok || key.Key() != KeyEscape {
 			t.Fatalf("expired ESC event = %T %v, want KeyEscape", ev, ev)
 		}
-	case <-time.After(loneEscapeTimeout * 4):
+	case <-time.After(platformEscapeTimeout() * 4):
 		t.Fatal("bare ESC did not expire")
 	}
 
@@ -210,7 +230,7 @@ func TestMainLoopKittyEscapeTimeout(t *testing.T) {
 	// The bound matches the one TestMainLoopEscapeTimeout already allows, which
 	// leaves a slow machine plenty of room while still catching a regression to
 	// the sequence deadline, since that one cannot deliver before a full second.
-	tooSlow := loneEscapeTimeout * 4
+	tooSlow := platformEscapeTimeout() * 4
 	start := time.Now()
 	tscreen.keyQ <- []byte{'\x1b'}
 	select {
@@ -222,8 +242,8 @@ func TestMainLoopKittyEscapeTimeout(t *testing.T) {
 		if elapsed > tooSlow {
 			t.Fatalf("bare ESC took %v, want no more than %v", elapsed, tooSlow)
 		}
-		if elapsed < loneEscapeTimeout/2 {
-			t.Fatalf("bare ESC took %v, want at least %v", elapsed, loneEscapeTimeout/2)
+		if elapsed < platformEscapeTimeout()/2 {
+			t.Fatalf("bare ESC took %v, want at least %v", elapsed, platformEscapeTimeout()/2)
 		}
 	case <-time.After(escapeSequenceTimeout * 2):
 		t.Fatal("bare ESC did not expire")
@@ -241,7 +261,7 @@ func TestMainLoopKittyEscapeTimeout(t *testing.T) {
 			time.Sleep(time.Millisecond)
 		}
 	}
-	time.Sleep(loneEscapeTimeout * 2)
+	time.Sleep(platformEscapeTimeout() * 2)
 	select {
 	case ev := <-evch:
 		t.Fatalf("started sequence expired at the bare-ESC deadline: %v", ev)

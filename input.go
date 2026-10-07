@@ -30,6 +30,7 @@ package tcell
 import (
 	"encoding/base64"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -64,10 +65,16 @@ const (
 const defaultControlStringLimit = 64 * 1024
 
 const (
-	// loneEscapeTimeout keeps bare Escape responsive.  A lone ESC byte is
+	// defaultEscapeTimeout keeps bare Escape responsive. A lone ESC byte is
 	// always ambiguous, because it can also prefix an Alt-modified key or a
 	// longer sequence, so it cannot be resolved until this expires.
-	loneEscapeTimeout = 50 * time.Millisecond
+	defaultEscapeTimeout = 50 * time.Millisecond
+
+	// windowsEscapeTimeout allows for the delayed VT input batches observed
+	// from ConPTY. It is deliberately shorter than the previous 200 ms
+	// default, while leaving enough headroom for the 80-90 ms gaps observed
+	// between an ESC byte and the rest of a mouse report.
+	windowsEscapeTimeout = 125 * time.Millisecond
 
 	// escapeSequenceTimeout bounds incomplete escape sequences. Once a
 	// sequence introducer has arrived, it is no longer ambiguous with a lone
@@ -75,38 +82,51 @@ const (
 	escapeSequenceTimeout = time.Second
 )
 
+func escapeTimeoutForPlatform(goos string) time.Duration {
+	if goos == "windows" {
+		return windowsEscapeTimeout
+	}
+	return defaultEscapeTimeout
+}
+
+func platformEscapeTimeout() time.Duration {
+	return escapeTimeoutForPlatform(runtime.GOOS)
+}
+
 func newInputParser(eq chan<- Event) *inputParser {
 	return &inputParser{
 		evch:             eq,
 		buf:              make([]rune, 0, 128),
 		legacy:           true,
 		controlStringMax: defaultControlStringLimit,
+		escapeTimeout:    platformEscapeTimeout(),
 	}
 }
 
 type inputParser struct {
-	buf              []rune       // bytes to process (ingest data)
-	utfBuf           []byte       // accrued UTF8 bytes
-	strBuf           []byte       // accrued string data (for ST, OSC, etc.)
-	csiParams        []byte       // accrued parameter bytes for CSI (and SS3)
-	csiInterm        []byte       // accrued intermediate bytes for CSI
-	escChar          byte         // last byte for escape
-	escaped          bool         // true if next key should be modified by ESC
-	btnsDown         ButtonMask   // mouse buttons down (excludes wheel buttons)
-	state            inputState   // tracks processor state
-	strState         inputState   // saved str state (needed for ST)
-	l                sync.Mutex   // protects local state
-	evch             chan<- Event // where events are routed
-	rows             int          // used for clipping mouse coordinates
-	cols             int          // used for clipping mouse coordinates
-	pixelMouse       bool         // mouse reports in pixels (CSI ?1016h); skip cell clipping
-	keyTime          time.Time    // time of last key press / byte ingested
-	nested           *inputParser // for buggy win32-input-mode implementations
-	surrogate        rune         // high surrogate pair seen (for Win32 input mode)
-	advanced         bool         // use advanced key reporting semantics
-	legacy           bool         // keyboard protocol has ambiguous ESC prefixes
-	controlStringMax int          // maximum inbound OSC/XDA payload size; 0 means unlimited
-	discardString    bool         // drop the rest of an over-limit OSC/XDA sequence
+	buf              []rune        // bytes to process (ingest data)
+	utfBuf           []byte        // accrued UTF8 bytes
+	strBuf           []byte        // accrued string data (for ST, OSC, etc.)
+	csiParams        []byte        // accrued parameter bytes for CSI (and SS3)
+	csiInterm        []byte        // accrued intermediate bytes for CSI
+	escChar          byte          // last byte for escape
+	escaped          bool          // true if next key should be modified by ESC
+	btnsDown         ButtonMask    // mouse buttons down (excludes wheel buttons)
+	state            inputState    // tracks processor state
+	strState         inputState    // saved str state (needed for ST)
+	l                sync.Mutex    // protects local state
+	evch             chan<- Event  // where events are routed
+	rows             int           // used for clipping mouse coordinates
+	cols             int           // used for clipping mouse coordinates
+	pixelMouse       bool          // mouse reports in pixels (CSI ?1016h); skip cell clipping
+	keyTime          time.Time     // time of last key press / byte ingested
+	escapeTimeout    time.Duration // time to wait for a possible ESC sequence
+	nested           *inputParser  // for buggy win32-input-mode implementations
+	surrogate        rune          // high surrogate pair seen (for Win32 input mode)
+	advanced         bool          // use advanced key reporting semantics
+	legacy           bool          // keyboard protocol has ambiguous ESC prefixes
+	controlStringMax int           // maximum inbound OSC/XDA payload size; 0 means unlimited
+	discardString    bool          // drop the rest of an over-limit OSC/XDA sequence
 }
 
 func keyFromInt(n int) (Key, bool) {
@@ -139,7 +159,7 @@ func (ip *inputParser) waitDuration() time.Duration {
 		return 0
 	}
 	if ip.state == istEsc {
-		return loneEscapeTimeout
+		return ip.escapeTimeout
 	}
 	return escapeSequenceTimeout
 }
@@ -822,6 +842,19 @@ func (ip *inputParser) scan() {
 	}
 }
 
+func (ip *inputParser) SetEscapeTimeout(timeout time.Duration) {
+	if timeout <= 0 {
+		timeout = platformEscapeTimeout()
+	}
+	ip.l.Lock()
+	ip.escapeTimeout = timeout
+	nested := ip.nested
+	ip.l.Unlock()
+	if nested != nil {
+		nested.SetEscapeTimeout(timeout)
+	}
+}
+
 func (ip *inputParser) appendStringBytes(bs ...byte) {
 	if ip.controlStringMax > 0 && len(ip.strBuf)+len(bs) > ip.controlStringMax {
 		ip.strBuf = nil
@@ -1135,6 +1168,7 @@ func (ip *inputParser) handleWinKey(P []int) {
 					legacy:           ip.legacy,
 					pixelMouse:       ip.pixelMouse,
 					controlStringMax: ip.controlStringMax,
+					escapeTimeout:    ip.escapeTimeout,
 				}
 			}
 			ip.nested.ScanUTF8([]byte{b})

@@ -119,6 +119,20 @@ func (o OptNegotiation) apply(t *tScreen) {
 	t.negotiate = bool(o)
 }
 
+// OptEscapeTimeout sets how long the input parser waits for bytes that may
+// follow an Escape. The default is 50 ms, or 125 ms on Windows. Increasing
+// this can accommodate terminals that split escape sequences across delayed
+// reads, at the cost of delaying a standalone Escape by the same amount. A
+// positive TCELL_ESCDELAY environment variable, expressed in milliseconds,
+// overrides this setting. Values less than or equal to zero use the default.
+type OptEscapeTimeout time.Duration
+
+func (o OptEscapeTimeout) apply(t *tScreen) {
+	if o > 0 {
+		t.escapeTimeout = time.Duration(o)
+	}
+}
+
 // OptControlStringLimit sets the maximum inbound control-string payload size
 // accepted from the terminal before the parser drops the sequence. This limits
 // OSC and XDA strings, including OSC 52 clipboard strings; OSC 52 is the
@@ -196,6 +210,7 @@ func NewTerminfoScreenFromTty(tty Tty, opts ...TerminfoScreenOption) (Screen, er
 		altScreen:          true,
 		negotiate:          true,
 		controlStringLimit: defaultControlStringLimit,
+		escapeTimeout:      platformEscapeTimeout(),
 	}
 
 	t.prepareCursorStyles()
@@ -285,6 +300,7 @@ type tScreen struct {
 	mouseDisabled      bool
 	advancedKeys       bool
 	controlStringLimit int
+	escapeTimeout      time.Duration
 	input              *inputParser
 	compat             struct {
 		mouseUnsupported         bool
@@ -342,6 +358,10 @@ func (t *tScreen) applyKeyboardProtocolOverride() {
 }
 
 func (t *tScreen) applyEnvironmentOverrides() {
+	if delay, err := strconv.Atoi(os.Getenv("TCELL_ESCDELAY")); err == nil && delay > 0 {
+		t.escapeTimeout = time.Duration(delay) * time.Millisecond
+	}
+
 	switch os.Getenv("TCELL_KEYBOARD_PROTOCOL") {
 	case "auto":
 		t.forceKbd = false
@@ -460,6 +480,7 @@ func (t *tScreen) Init() error {
 	t.input = newInputParser(t.filterEvents())
 	t.input.advanced = t.advancedKeys
 	t.input.controlStringMax = t.controlStringLimit
+	t.input.SetEscapeTimeout(t.escapeTimeout)
 
 	t.Lock()
 	t.cx = -1
