@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"sync"
+	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v3/color"
 )
@@ -441,7 +442,25 @@ func (b *baseScreen) FillArea(x, y, width, height int, r rune, style Style) {
 	b.Unlock()
 }
 
+// asciiRuneStrings caches single-character strings for all ASCII runes (0-127)
+// to eliminate per-cell allocations when drawing ASCII content.
+var asciiRuneStrings = func() [utf8.RuneSelf]string {
+	var table [utf8.RuneSelf]string
+	for i := 0; i < utf8.RuneSelf; i++ {
+		table[i] = string(rune(i))
+	}
+	return table
+}()
+
 func (b *baseScreen) SetContent(x, y int, mainc rune, combc []rune, style Style) {
+	if len(combc) == 0 {
+		if mainc >= 0 && mainc < utf8.RuneSelf {
+			b.Put(x, y, asciiRuneStrings[mainc], style)
+			return
+		}
+		b.Put(x, y, string(mainc), style)
+		return
+	}
 	b.Put(x, y, string(append([]rune{mainc}, combc...)), style)
 }
 

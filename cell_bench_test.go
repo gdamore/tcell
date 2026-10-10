@@ -94,3 +94,35 @@ func BenchmarkCellBufferFillArea(b *testing.B) {
 		cb.FillArea(0, 0, 200, 50, ' ', style)
 	}
 }
+
+// BenchmarkSetContentRedrawASCII measures re-setting identical ASCII content via SetContent,
+// verifying the identical-string fast path operates with zero allocations.
+func BenchmarkSetContentRedrawASCII(b *testing.B) {
+	_, scr := NewMockScreen(b)
+	defer scr.Fini()
+	style := StyleDefault
+	scr.SetContent(0, 0, 'x', nil, style)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		scr.SetContent(0, 0, 'x', nil, style)
+	}
+}
+
+// BenchmarkSetContentChangedASCII measures updating a cell with alternating ASCII runes,
+// verifying static lookup table reuse operates with zero allocations.
+func BenchmarkSetContentChangedASCII(b *testing.B) {
+	_, scr := NewMockScreen(b)
+	defer scr.Fini()
+	style := StyleDefault
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if i%2 == 0 {
+			scr.SetContent(0, 0, 'x', nil, style)
+		} else {
+			scr.SetContent(0, 0, 'y', nil, style)
+		}
+	}
+}
+

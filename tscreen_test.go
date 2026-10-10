@@ -1479,7 +1479,7 @@ func TestNoColorEnv(t *testing.T) {
 	drainInput()
 }
 
-func NewMockScreen(t *testing.T, opts ...vt.MockOpt) (vt.MockTerm, Screen) {
+func NewMockScreen(t testing.TB, opts ...vt.MockOpt) (vt.MockTerm, Screen) {
 	t.Helper()
 	if runtime.GOOS == "js" {
 		t.Skip("not supported on webasm")
