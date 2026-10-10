@@ -1607,6 +1607,58 @@ func TestInputMouseSgrPixelNoClip(t *testing.T) {
 	}
 }
 
+// TestInputReleaseButtonsFullQueue verifies that ReleaseButtons does not hold
+// the parser lock while it waits for room in the event queue. Resume
+// configures the parser while the main loop posts the release, and the
+// application cannot drain the queue until Resume returns.
+func TestInputReleaseButtonsFullQueue(t *testing.T) {
+	evch := make(chan Event, 1)
+	ip := newInputParser(evch)
+	ip.cols = 80
+	ip.rows = 24
+
+	// The press fills the queue, so the release has to wait for room.
+	ip.ScanUTF8([]byte("\x1b[<0;3;4M"))
+	released := make(chan struct{})
+	go func() {
+		ip.ReleaseButtons()
+		close(released)
+	}()
+
+	// ReleaseButtons clears the buttons under the lock before it posts the
+	// release. Once they are clear, the lock must be free, even though the
+	// release is still waiting for room in the queue.
+	deadline := time.Now().Add(time.Second)
+	for {
+		if ip.l.TryLock() {
+			cleared := ip.btnsDown == ButtonNone
+			ip.l.Unlock()
+			if cleared {
+				break
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("parser stayed locked while the release waited for the queue")
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	if me := firstMouse(evch); me == nil || me.Buttons() != Button1 {
+		t.Fatalf("expected the press, got %v", me)
+	}
+	me := firstMouse(evch)
+	if me == nil {
+		t.Fatal("expected the release")
+	}
+	if me.Buttons() != ButtonNone {
+		t.Errorf("expected no buttons, got %x", me.Buttons())
+	}
+	if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("expected position (2,3), got (%d,%d)", x, y)
+	}
+	<-released
+}
+
 // TestInputInBandResizePixels tests that an in-band resize report carries the size in pixels.
 func TestInputInBandResizePixels(t *testing.T) {
 	evch := make(chan Event, 10)

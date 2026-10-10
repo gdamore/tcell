@@ -1469,6 +1469,10 @@ func (t *tScreen) scanInput(buf *bytes.Buffer) {
 
 func (t *tScreen) mainLoop(stopQ chan struct{}) {
 	defer t.wg.Done()
+	// Report buttons that were down when the screen was last disengaged as
+	// released, before any new input. Doing this here keeps Resume from
+	// blocking on a full event queue.
+	t.input.ReleaseButtons()
 	buf := &bytes.Buffer{}
 	var ta <-chan time.Time
 	for {
