@@ -276,6 +276,7 @@ type tScreen struct {
 	wg                 sync.WaitGroup
 	eventWg            sync.WaitGroup
 	mouseFlags         MouseFlags
+	consoleMouse       consoleMouse
 	pasteEnabled       bool
 	focusEnabled       bool
 	setTitle           string
@@ -1119,6 +1120,11 @@ func (t *tScreen) EnableMouse(flags ...MouseFlags) {
 }
 
 func (t *tScreen) enableMouse(f MouseFlags) {
+	t.stopConsoleMouse()
+	if f != 0 && !t.mouseDisabled && t.startConsoleMouse(f) {
+		return
+	}
+
 	// Rather than using terminfo to find mouse escape sequences, we rely on the fact that
 	// pretty much *every* terminal that supports mouse tracking follows the
 	// XTerm standards (the modern ones).  It is expected that all terminals understand
@@ -1168,6 +1174,31 @@ func (t *tScreen) enableMouse(f MouseFlags) {
 		} else {
 			t.Print(vt.PmMouseSgr.Enable())
 		}
+	}
+}
+
+func (t *tScreen) startConsoleMouse(f MouseFlags) bool {
+	if t.eventQ == nil || f&(MouseButtonEvents|MouseDragEvents|MouseMotionEvents) == 0 {
+		return false
+	}
+	cm, err := newConsoleMouse(t.eventQ)
+	if err != nil {
+		return false
+	}
+	cm.SetSize(t.w, t.h)
+	if err = cm.Start(f); err != nil {
+		cm.Stop()
+		return false
+	}
+	t.consoleMouse = cm
+	t.input.SetPixelMouse(false)
+	return true
+}
+
+func (t *tScreen) stopConsoleMouse() {
+	if t.consoleMouse != nil {
+		t.consoleMouse.Stop()
+		t.consoleMouse = nil
 	}
 }
 
@@ -1275,6 +1306,9 @@ func (t *tScreen) resize() {
 	t.h = ws.Height
 	t.w = ws.Width
 	t.input.SetSize(ws)
+	if t.consoleMouse != nil {
+		t.consoleMouse.SetSize(ws.Width, ws.Height)
+	}
 }
 
 func (t *tScreen) Colors() int {

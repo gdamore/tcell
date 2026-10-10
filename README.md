@@ -151,6 +151,14 @@ avoiding repeated sequences or drawing the same cell on refresh updates.
 Mouse tracking, buttons, and even wheel mice are supported on most terminal
 emulators, as well as Windows.
 
+On the Linux virtual console, _Tcell_ can receive mouse events through GPM
+when the `gpm` daemon is installed and running.  For example, on Debian or
+Ubuntu systems install it with `apt install gpm`; the daemon provides
+`/dev/gpmctl`, which _Tcell_ uses automatically when available.  If GPM is
+not installed, not running, or the application is not attached to a virtual
+console, mouse enablement remains best-effort and falls back to the usual
+terminal mouse protocols.
+
 ## Bracketed Paste
 
 Terminals that support support it, can use bracketed paste.

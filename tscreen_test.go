@@ -1609,3 +1609,141 @@ func TestScreenFillArea(t *testing.T) {
 		t.Errorf("overflowing fill should paint in-bounds cells, got %q", got)
 	}
 }
+
+type fakeConsoleMouse struct {
+	startErr error
+	started  int
+	stopped  int
+	flags    MouseFlags
+	sizes    []tty.WindowSize
+}
+
+func (m *fakeConsoleMouse) Start(flags MouseFlags) error {
+	if m.startErr != nil {
+		return m.startErr
+	}
+	m.started++
+	m.flags = flags
+	return nil
+}
+
+func (m *fakeConsoleMouse) Stop() {
+	m.stopped++
+}
+
+func (m *fakeConsoleMouse) SetSize(w, h int) {
+	m.sizes = append(m.sizes, tty.WindowSize{Width: w, Height: h})
+}
+
+func withConsoleMouseFactory(t *testing.T, f consoleMouseFactory) {
+	t.Helper()
+	old := newConsoleMouse
+	newConsoleMouse = f
+	t.Cleanup(func() { newConsoleMouse = old })
+}
+
+func TestNativeConsoleMouseSuppressesVTMouseEnable(t *testing.T) {
+	fm := &fakeConsoleMouse{}
+	withConsoleMouseFactory(t, func(chan<- Event) (consoleMouse, error) {
+		return fm, nil
+	})
+
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	tty.writes.Reset()
+	s.EnableMouse(MouseButtonEvents)
+	if fm.started != 1 {
+		t.Fatalf("native console mouse was not started: %d", fm.started)
+	}
+	if fm.flags != MouseButtonEvents {
+		t.Fatalf("native console mouse got flags %x", fm.flags)
+	}
+	out := tty.Output()
+	for _, seq := range []string{vt.PmMouseButton.Enable(), vt.PmMouseDrag.Enable(), vt.PmMouseMotion.Enable(), vt.PmMouseSgr.Enable(), vt.PmMouseSgrPixel.Enable()} {
+		if strings.Contains(out, seq) {
+			t.Fatalf("native console mouse emitted VT mouse enable sequence %q", seq)
+		}
+	}
+}
+
+func TestNativeConsoleMouseFailureFallsBackToVTMouse(t *testing.T) {
+	withConsoleMouseFactory(t, func(chan<- Event) (consoleMouse, error) {
+		return nil, errNoConsoleMouse
+	})
+
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	tty.writes.Reset()
+	s.EnableMouse(MouseButtonEvents)
+	out := tty.Output()
+	for _, seq := range []string{vt.PmMouseButton.Enable(), vt.PmMouseSgr.Enable()} {
+		if !strings.Contains(out, seq) {
+			t.Fatalf("native console mouse failure did not fall back to VT sequence %q", seq)
+		}
+	}
+}
+
+func TestNativeConsoleMouseStopsOnDisable(t *testing.T) {
+	fm := &fakeConsoleMouse{}
+	withConsoleMouseFactory(t, func(chan<- Event) (consoleMouse, error) {
+		return fm, nil
+	})
+
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	s.EnableMouse(MouseMotionEvents)
+	s.DisableMouse()
+	if fm.started != 1 {
+		t.Fatalf("native console mouse starts = %d", fm.started)
+	}
+	if fm.stopped != 1 {
+		t.Fatalf("native console mouse stops = %d", fm.stopped)
+	}
+}
+
+func TestMouseDisabledPreventsNativeConsoleMouse(t *testing.T) {
+	t.Setenv("TCELL_MOUSE", "disable")
+	fm := &fakeConsoleMouse{}
+	withConsoleMouseFactory(t, func(chan<- Event) (consoleMouse, error) {
+		return fm, nil
+	})
+
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+	s, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false), OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	s.EnableMouse()
+	if fm.started != 0 {
+		t.Fatalf("native console mouse started despite TCELL_MOUSE=disable")
+	}
+}
