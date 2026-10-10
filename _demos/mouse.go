@@ -104,6 +104,34 @@ func drawSelect(s tcell.Screen, x1, y1, x2, y2 int, sel bool) {
 	}
 }
 
+type savedMouseMarker struct {
+	x, y  int
+	str   string
+	style tcell.Style
+	valid bool
+}
+
+func drawMouseMarker(s tcell.Screen, marker *savedMouseMarker, x, y int, style tcell.Style) {
+	str, cellStyle, width := s.Get(x, y)
+	if width == 0 {
+		return
+	}
+	marker.x = x
+	marker.y = y
+	marker.str = str
+	marker.style = cellStyle
+	marker.valid = true
+	s.Put(x, y, string(tcell.RuneBullet), style)
+}
+
+func restoreMouseMarker(s tcell.Screen, marker *savedMouseMarker) {
+	if !marker.valid {
+		return
+	}
+	s.Put(marker.x, marker.y, marker.str, marker.style)
+	marker.valid = false
+}
+
 // This program just shows simple mouse and keyboard events.  Press ESC twice to
 // exit.
 func main() {
@@ -148,6 +176,8 @@ func main() {
 		Foreground(color.MidnightBlue).Background(color.LightCoral)
 	keyDownStyle := style.Foreground(color.Green)
 	keyUpStyle := style
+	mouseMarkerStyle := tcell.StyleDefault.
+		Foreground(color.White).Background(color.Red)
 
 	mx, my := -1, -1
 	ox, oy := -1, -1
@@ -155,6 +185,8 @@ func main() {
 	w, h := s.Size()
 	lchar := '*'
 	bstr := ""
+	mouseButton := tcell.ButtonNone
+	var mouseMarker savedMouseMarker
 	lks := ""
 	lkey := ""
 	kcnt := 0
@@ -166,7 +198,7 @@ func main() {
 
 	for {
 		drawBox(s, 1, 1, 42, 10, style, ' ')
-		s.PutStrStyled(2, 2, "Press Ctrl-Q to Quit, C to clear.", style)
+		s.PutStrStyled(2, 2, "Move/click/drag mouse. Ctrl-Q quits.", style)
 		s.PutStrStyled(2, 3, fmt.Sprintf(posfmt, mx, my), style)
 		s.PutStrStyled(2, 4, fmt.Sprintf(btnfmt, bstr), style)
 		s.PutStrStyled(2, 5, fmt.Sprintf(keyfmt, ""), style)
@@ -187,8 +219,12 @@ func main() {
 		n, v := s.Terminal()
 		s.PutStrStyled(2, 8, fmt.Sprintf(termFmt, n, v), style)
 		s.PutStrStyled(2, 9, fmt.Sprintf(kbdFmt, keyboardProtocolName(s.KeyboardProtocol())), style)
+		if mx >= 0 && my >= 0 && mouseButton == tcell.ButtonNone {
+			drawMouseMarker(s, &mouseMarker, mx, my, mouseMarkerStyle)
+		}
 
 		s.Show()
+		restoreMouseMarker(s, &mouseMarker)
 		bstr = ""
 		ev := <-s.EventQ()
 		st := tcell.StyleDefault.Background(color.Red)
@@ -312,8 +348,11 @@ func main() {
 			if button&tcell.WheelRight != 0 {
 				bstr += " WheelRight"
 			}
-			// Only buttons, not wheel events
+			// Only buttons, not wheel events.  We keep this separately so
+			// bare motion has a visible marker even when GPM or the terminal
+			// does not draw a mouse pointer of its own.
 			button &= tcell.ButtonMask(0xff)
+			mouseButton = button
 			ch := '*'
 
 			if button != tcell.ButtonNone && ox < 0 {
