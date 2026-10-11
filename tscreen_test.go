@@ -1479,6 +1479,35 @@ func TestNoColorEnv(t *testing.T) {
 	drainInput()
 }
 
+func TestClearErasesCombiningSpill(t *testing.T) {
+	mt, scr := NewMockScreen(t, vt.MockOptSize{X: 80, Y: 5})
+	defer scr.Fini()
+
+	scr.PutStr(0, 0, "ไพจิตร อักษรณรงค์ - สุดแท้แต่จะให้")
+	scr.Show()
+
+	spilled := false
+	for x := 0; x < 80; x++ {
+		cell := mt.GetCell(vt.Coord{X: vt.Col(x), Y: 0})
+		if cell.W == 0 && cell.C != "" {
+			spilled = true
+			break
+		}
+	}
+	if !spilled {
+		t.Fatal("expected a combining mark in the next column")
+	}
+
+	scr.Clear()
+	scr.Show()
+	for x := 0; x < 80; x++ {
+		cell := mt.GetCell(vt.Coord{X: vt.Col(x), Y: 0})
+		if cell.C != " " && cell.C != "" {
+			t.Fatalf("x=%d still %q width %d", x, cell.C, cell.W)
+		}
+	}
+}
+
 func NewMockScreen(t *testing.T, opts ...vt.MockOpt) (vt.MockTerm, Screen) {
 	t.Helper()
 	if runtime.GOOS == "js" {

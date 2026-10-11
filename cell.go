@@ -150,6 +150,20 @@ func (cb *CellBuffer) Invalidate() {
 	}
 }
 
+// combiningReplaced reports whether a dirty cell's previous content
+// included a combining mark. Terminals store that mark in the next
+// column, which stays on screen when that column is already blank.
+func (cb *CellBuffer) combiningReplaced(x, y int) bool {
+	if x < 0 || y < 0 || x >= cb.w || y >= cb.h {
+		return false
+	}
+	c := &cb.cells[(y*cb.w)+x]
+	if c.lastStr == c.currStr {
+		return false
+	}
+	return utf8.RuneCountInString(c.lastStr) > 1
+}
+
 // Dirty checks if a character at the given location needs to be
 // refreshed on the physical display.  This returns true if the cell
 // content is different since the last time it was marked clean.

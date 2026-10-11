@@ -863,6 +863,8 @@ func (t *tScreen) drawCell(x, y int) int {
 	if !t.cells.Dirty(x, y) {
 		return width
 	}
+	// Read this before SetDirty(false) copies the new string over lastStr.
+	replacedCombining := t.cells.combiningReplaced(x, y)
 
 	if t.cy != y || t.cx != x {
 		t.Printf(setCursorPosition, y+1, x+1)
@@ -930,6 +932,11 @@ func (t *tScreen) drawCell(x, y int) int {
 	t.Print(str)
 	t.cx += width
 	t.cells.SetDirty(x, y, false)
+	// The mark from the previous cluster sits in the next column. A single
+	// rune does not replace it, and a blank neighbor is not redrawn.
+	if replacedCombining && width == 1 && utf8.RuneCountInString(str) < 2 && x+1 < t.w {
+		t.cells.SetDirty(x+1, y, true)
+	}
 	if width > 1 && len([]rune(str)) > 1 {
 		t.cx = -1
 	}
