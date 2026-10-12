@@ -1346,6 +1346,37 @@ func TestAdvancedWinKeyMetadata(t *testing.T) {
 	}
 }
 
+func TestWinKeyWithoutChar(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		seq  string
+		str  string
+		mod  ModMask
+	}{
+		{"CtrlComma", "\x1b[188;51;0;1;8;1_", ",", ModCtrl},
+		{"CtrlMinus", "\x1b[189;12;0;1;8;1_", "-", ModCtrl},
+		{"CtrlPeriod", "\x1b[190;52;0;1;8;1_", ".", ModCtrl},
+		{"CtrlAltPeriod", "\x1b[190;52;0;1;10;1_", ".", ModCtrl | ModAlt},
+		{"CtrlAltDigit", "\x1b[50;3;0;1;10;1_", "2", ModCtrl | ModAlt},
+		{"AltGrChar", "\x1b[50;3;64;1;9;1_", "@", ModNone},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			evch := make(chan Event, 10)
+			ip := newInputParser(evch)
+			ip.ScanUTF8([]byte(tc.seq))
+
+			got := nextKey(evch)
+			if got == nil {
+				t.Fatal("expected key event")
+			}
+
+			if got.Key() != KeyRune || got.Str() != tc.str || got.Modifiers() != tc.mod {
+				t.Fatalf("got key=%v str=%q mod=%v, want str=%q mod=%v", got.Key(), got.Str(), got.Modifiers(), tc.str, tc.mod)
+			}
+		})
+	}
+}
+
 func TestWinKeyASCIIFallbackRangeCheck(t *testing.T) {
 	evch := make(chan Event, 10)
 	ip := newInputParser(evch)

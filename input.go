@@ -1197,6 +1197,9 @@ func (ip *inputParser) handleWinKey(P []int) {
 		// Already decoded.
 	} else if chr == 0 && P[0] >= 0x30 && P[0] <= 0x39 {
 		chr = rune(P[0])
+	} else if chr == 0 && P[0] >= 0xbc && P[0] <= 0xbe {
+		// vkOemComma, vkOemMinus, vkOemPeriod: the same character on every layout
+		chr = rune(P[0] - 0x90)
 	} else if chr < ' ' && P[0] >= 0x41 && P[0] <= 0x5a {
 		if ip.advanced {
 			key = KeyRune
@@ -1237,7 +1240,7 @@ func (ip *inputParser) handleWinKey(P []int) {
 		// filter out lone shift for printable chars
 		mod = ModNone
 	}
-	if chr != 0 && mod&(ModCtrl|ModAlt) == ModCtrl|ModAlt {
+	if P[2] >= ' ' && mod&(ModCtrl|ModAlt) == ModCtrl|ModAlt {
 		// Filter out ctrl+alt (it means AltGr)
 		mod = ModNone
 	}
