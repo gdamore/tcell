@@ -85,3 +85,14 @@ func TestEncodeWinKeyRecordFallbackIgnoresRelease(t *testing.T) {
 		t.Fatalf("encodeWinKeyRecord() = %q, want %q", got, "AAA")
 	}
 }
+
+func TestConsoleInfoWindowSize(t *testing.T) {
+	// A scrolled window into a buffer with scrollback, as conhost reports it.
+	ci := consoleInfo{
+		size: coord{x: 92, y: 9001},
+		win:  rect{left: 0, top: 38, right: 91, bottom: 59},
+	}
+	if cols, rows := ci.windowSize(); cols != 92 || rows != 22 {
+		t.Fatalf("windowSize() = %dx%d, want 92x22", cols, rows)
+	}
+}
