@@ -106,7 +106,7 @@ type Screen interface {
 	// and the terminal supports doing so.
 	SetCursorStyle(CursorStyle, ...color.Color)
 
-	// GetCursor return the last cursor's location as x,y coordinates.
+	// GetCursor returns the last cursor's location as x,y coordinates.
 	// If the cursor is hidden, -1, -1 are returned
 	GetCursor() (x, y int)
 
