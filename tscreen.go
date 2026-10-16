@@ -963,6 +963,10 @@ func (t *tScreen) HideCursor() {
 	t.ShowCursor(-1, -1)
 }
 
+func (t *tScreen) GetCursor() (x, y int) {
+	return t.cursorx, t.cursory
+}
+
 func (t *tScreen) showCursor() {
 
 	x, y := t.cursorx, t.cursory
