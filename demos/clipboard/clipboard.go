@@ -30,7 +30,7 @@ func displayHelloWorld(s tcell.Screen) {
 	s.Clear()
 	style := tcell.StyleDefault.Foreground(color.CadetBlue.TrueColor()).Background(color.White)
 	has := "does NOT claim"
-	if s.HasClipboard() {
+	if s.Capabilities().Clipboard {
 		has = "claims to"
 	}
 	term, version := s.Terminal()
