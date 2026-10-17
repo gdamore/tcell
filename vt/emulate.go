@@ -1168,10 +1168,11 @@ func (em *emulator) processLineFeed() {
 	}
 }
 
-// processReverseIndex moves up, unless already on the top margin, in which case it scrolls down.
+// processReverseIndex moves up, unless already on the top margin (and within the
+// left and right margins), in which case it scrolls down.
 func (em *emulator) processReverseIndex() {
 	pos := em.getPosition()
-	if pos.Y == em.topMargin {
+	if pos.Y == em.topMargin && em.ltMargin <= pos.X && pos.X <= em.rtMargin {
 		em.scrollDown()
 	} else {
 		em.processCursorUp("")
