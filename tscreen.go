@@ -963,8 +963,13 @@ func (t *tScreen) HideCursor() {
 	t.ShowCursor(-1, -1)
 }
 
-func (t *tScreen) showCursor() {
+func (t *tScreen) GetCursor() (x, y int) {
+	t.Lock()
+	defer t.Unlock()
+	return t.cursorx, t.cursory
+}
 
+func (t *tScreen) showCursor() {
 	x, y := t.cursorx, t.cursory
 	w, h := t.cells.Size()
 	if x < 0 || y < 0 || x >= w || y >= h {
