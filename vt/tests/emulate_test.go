@@ -437,6 +437,43 @@ func TestRIv7(t *testing.T) {
 	CheckContent(t, term, 2, 3, "")
 }
 
+// TestRIv8 resetting DECLRMM clears the left and right margins
+func TestRIv8(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "ABC\r\n")
+	WriteF(t, term, "DEF\r\n")
+	WriteF(t, term, "GHI\r\n")
+	WriteF(t, term, "\033[?69h")
+	WriteF(t, term, "\033[2;3s")
+	WriteF(t, term, "\033[?69l")
+	WriteF(t, term, "\033[1;1H")
+	WriteF(t, term, "\033M")
+
+	// |c_______|
+	// |ABC_____|
+	// |DEF_____|
+	// |GHI_____|
+
+	CheckPos(t, term, 0, 0)
+	CheckContent(t, term, 0, 0, "")
+	CheckContent(t, term, 1, 0, "")
+	CheckContent(t, term, 2, 0, "")
+	CheckContent(t, term, 0, 1, "A")
+	CheckContent(t, term, 1, 1, "B")
+	CheckContent(t, term, 2, 1, "C")
+	CheckContent(t, term, 0, 2, "D")
+	CheckContent(t, term, 1, 2, "E")
+	CheckContent(t, term, 2, 2, "F")
+	CheckContent(t, term, 0, 3, "G")
+	CheckContent(t, term, 1, 3, "H")
+	CheckContent(t, term, 2, 3, "I")
+}
+
 // TestINDv1 no scroll region, top of screen
 func TestINDv1(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
