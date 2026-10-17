@@ -331,8 +331,111 @@ func TestRIv4(t *testing.T) {
 	CheckContent(t, term, 2, 3, "")
 }
 
-// TODO: RIv5 - left right scroll regions (when we implement left/right regions)
-// TODO: RIv6 - outside left/right scroll regions (when we implement left/right regions)
+// TestRIv5 left/right scroll region - only the region scrolls
+func TestRIv5(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "ABC\r\n")
+	WriteF(t, term, "DEF\r\n")
+	WriteF(t, term, "GHI\r\n")
+	WriteF(t, term, "\033[?69h")
+	WriteF(t, term, "\033[2;3s")
+	WriteF(t, term, "\033[1;2H")
+	WriteF(t, term, "\033M")
+
+	// |Ac______|
+	// |DBC_____|
+	// |GEF_____|
+	// |_HI_____|
+
+	CheckPos(t, term, 1, 0)
+	CheckContent(t, term, 0, 0, "A")
+	CheckContent(t, term, 1, 0, "")
+	CheckContent(t, term, 2, 0, "")
+	CheckContent(t, term, 0, 1, "D")
+	CheckContent(t, term, 1, 1, "B")
+	CheckContent(t, term, 2, 1, "C")
+	CheckContent(t, term, 0, 2, "G")
+	CheckContent(t, term, 1, 2, "E")
+	CheckContent(t, term, 2, 2, "F")
+	CheckContent(t, term, 0, 3, "")
+	CheckContent(t, term, 1, 3, "H")
+	CheckContent(t, term, 2, 3, "I")
+}
+
+// TestRIv6 outside left/right scroll region - just moves up
+func TestRIv6(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "ABC\r\n")
+	WriteF(t, term, "DEF\r\n")
+	WriteF(t, term, "GHI\r\n")
+	WriteF(t, term, "\033[?69h")
+	WriteF(t, term, "\033[2;3s")
+	WriteF(t, term, "\033[2;1H")
+	WriteF(t, term, "\033M")
+
+	// |cBC_____|
+	// |DEF_____|
+	// |GHI_____|
+	// |________|
+
+	CheckPos(t, term, 0, 0)
+	CheckContent(t, term, 0, 0, "A")
+	CheckContent(t, term, 1, 0, "B")
+	CheckContent(t, term, 2, 0, "C")
+	CheckContent(t, term, 0, 1, "D")
+	CheckContent(t, term, 1, 1, "E")
+	CheckContent(t, term, 2, 1, "F")
+	CheckContent(t, term, 0, 2, "G")
+	CheckContent(t, term, 1, 2, "H")
+	CheckContent(t, term, 2, 2, "I")
+	CheckContent(t, term, 0, 3, "")
+}
+
+// TestRIv7 on the top margin, but outside the left/right margins - no scroll
+func TestRIv7(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "ABC\r\n")
+	WriteF(t, term, "DEF\r\n")
+	WriteF(t, term, "GHI\r\n")
+	WriteF(t, term, "\033[?69h")
+	WriteF(t, term, "\033[2;3s")
+	WriteF(t, term, "\033[1;1H")
+	WriteF(t, term, "\033M")
+
+	// |cBC_____|
+	// |DEF_____|
+	// |GHI_____|
+	// |________|
+
+	CheckPos(t, term, 0, 0)
+	CheckContent(t, term, 0, 0, "A")
+	CheckContent(t, term, 1, 0, "B")
+	CheckContent(t, term, 2, 0, "C")
+	CheckContent(t, term, 0, 1, "D")
+	CheckContent(t, term, 1, 1, "E")
+	CheckContent(t, term, 2, 1, "F")
+	CheckContent(t, term, 0, 2, "G")
+	CheckContent(t, term, 1, 2, "H")
+	CheckContent(t, term, 2, 2, "I")
+	CheckContent(t, term, 0, 3, "")
+	CheckContent(t, term, 1, 3, "")
+	CheckContent(t, term, 2, 3, "")
+}
 
 // TestINDv1 no scroll region, top of screen
 func TestINDv1(t *testing.T) {
