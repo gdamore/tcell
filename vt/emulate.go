@@ -2287,6 +2287,12 @@ func (em *emulator) setPrivateMode(pm PrivateMode, ms ModeStatus) {
 			}
 			cursor = em.cursor
 			setCursor = true
+		case PmLeftRightMargin:
+			if ms != ModeOn {
+				// resetting DECLRMM also resets the left and right margins
+				em.ltMargin = 0
+				em.rtMargin = em.size.X - 1
+			}
 		}
 		em.modeLock.Unlock()
 
