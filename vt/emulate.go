@@ -1218,7 +1218,7 @@ func (em *emulator) processInsertLine(str string) {
 			em.scrollDown()
 		}
 		em.topMargin = top
-		em.pos.X = 0
+		em.pos.X = em.ltMargin
 		em.setPosition(em.pos)
 	}
 }
@@ -1244,7 +1244,7 @@ func (em *emulator) processDeleteLine(str string) {
 			em.scrollUp()
 		}
 		em.topMargin = top
-		em.pos.X = 0
+		em.pos.X = em.ltMargin
 		em.setPosition(em.pos)
 	}
 }
