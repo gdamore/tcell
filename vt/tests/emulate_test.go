@@ -1119,7 +1119,7 @@ func TestILv4(t *testing.T) {
 	// |GEF489__|
 	// |_HI7____|
 
-	CheckPos(t, term, 0, 1)
+	CheckPos(t, term, 1, 1)
 	CheckContent(t, term, 0, 0, "A")
 	CheckContent(t, term, 1, 0, "B")
 	CheckContent(t, term, 2, 0, "C")
@@ -1274,7 +1274,7 @@ func TestDLv4(t *testing.T) {
 	// |G___89__|
 	// |________|
 
-	CheckPos(t, term, 0, 1)
+	CheckPos(t, term, 1, 1)
 	CheckContent(t, term, 0, 0, "A")
 	CheckContent(t, term, 1, 0, "B")
 	CheckContent(t, term, 2, 0, "C")
