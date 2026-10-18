@@ -36,6 +36,7 @@ import (
 	gencoding "github.com/gdamore/encoding"
 	"github.com/gdamore/tcell/v3/color"
 	"github.com/gdamore/tcell/v3/vt"
+	"golang.org/x/text/encoding"
 	"golang.org/x/text/transform"
 )
 
@@ -409,7 +410,7 @@ func (t *tScreen) Init() error {
 
 	t.charset = getCharset()
 	if enc := GetEncoding(t.charset); enc != nil {
-		t.utf8 = enc == gencoding.UTF8
+		t.utf8 = enc == gencoding.UTF8 || enc == encoding.Nop
 		t.encoder = enc.NewEncoder()
 		t.decoder = enc.NewDecoder()
 	} else {
