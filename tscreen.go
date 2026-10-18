@@ -256,8 +256,8 @@ type tScreen struct {
 	cursory            int
 	acs                map[rune]string
 	charset            string
-	encoder            transform.Transformer
-	utf8               bool // the encoder passes valid UTF-8 through unchanged
+	encoder            transform.Transformer // nil for UTF-8
+	asciiSuperset      bool                  // the encoder passes ASCII through unchanged
 	decoder            transform.Transformer
 	fallback           map[rune]string
 	ncolor             int
@@ -417,8 +417,11 @@ func (t *tScreen) Init() error {
 
 	t.charset = getCharset()
 	if enc := GetEncoding(t.charset); enc != nil {
-		t.utf8 = enc == gencoding.UTF8 || enc == encoding.Nop
-		t.encoder = enc.NewEncoder()
+		// UTF-8 needs no encoder; drawCell writes valid UTF-8 as is.
+		if enc != gencoding.UTF8 && enc != encoding.Nop {
+			t.encoder = enc.NewEncoder()
+			t.asciiSuperset = isASCIISuperset(enc)
+		}
 		t.decoder = enc.NewDecoder()
 	} else {
 		return ErrNoCharset
@@ -715,6 +718,26 @@ func (t *tScreen) encodeStr(s string) []byte {
 	return buf
 }
 
+// isASCIISuperset reports whether enc encodes the 7-bit ASCII range as
+// itself, as ISO 8859, KOI8 and most other encodings do (EBCDIC does not).
+func isASCIISuperset(enc encoding.Encoding) bool {
+	ascii := make([]byte, utf8.RuneSelf)
+	for i := range ascii {
+		ascii[i] = byte(i)
+	}
+	out, err := enc.NewEncoder().Bytes(ascii)
+	return err == nil && bytes.Equal(out, ascii)
+}
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
+}
+
 // resolvePalette looks up a color to obtain the palette entry for it.
 func (t *tScreen) resolvePalette(c Color) Color {
 	if v, ok := t.colors[c]; ok {
@@ -919,10 +942,9 @@ func (t *tScreen) drawCell(x, y int) int {
 		width = 1
 	}
 
-	// Valid UTF-8 comes out of the UTF-8 encoder unchanged, so skip the
-	// encoder and its allocations.  (SUB is what the encoder path treats
-	// as unencodable.)
-	if !t.utf8 || str[0] == '\x1a' || !utf8.ValidString(str) {
+	// Skip the encoder (and its allocations) for text it would pass through
+	// unchanged.  (SUB is what the encoder path treats as unencodable.)
+	if str[0] == '\x1a' || !(t.encoder == nil && utf8.ValidString(str) || t.asciiSuperset && isASCII(str)) {
 		str = string(t.encodeStr(str))
 	}
 
