@@ -1010,8 +1010,13 @@ func (t *tScreen) Write(b []byte) (int, error) {
 	return t.tty.Write(b)
 }
 
+// Print writes s without converting it to a []byte first.
 func (t *tScreen) Print(s string) {
-	_, _ = io.WriteString(t, s)
+	if t.buffering {
+		_, _ = t.buf.WriteString(s)
+		return
+	}
+	_, _ = io.WriteString(t.tty, s)
 }
 
 func (t *tScreen) Printf(f string, args ...any) {
