@@ -770,6 +770,46 @@ func TestUnlockRegionRedrawsUntouchedBlankCell(t *testing.T) {
 	}
 }
 
+// Content the UTF-8 fast path must not emit raw still goes through the
+// encoder and comes out as "?".  Put strips SUB, but Fill does not.
+func TestUnencodableContentDrawsFallback(t *testing.T) {
+	t.Setenv("LANG", "en_US.UTF-8")
+	t.Setenv("LC_ALL", "en_US.UTF-8")
+
+	for _, tc := range []struct {
+		str  string
+		draw func(Screen)
+	}{
+		{"\xff", func(s Screen) { s.Put(0, 0, "\xff", StyleDefault) }},
+		{"\xe2\x82", func(s Screen) { s.Put(0, 0, "\xe2\x82", StyleDefault) }},
+		{"\x1a", func(s Screen) { s.Fill('\x1a', StyleDefault) }},
+	} {
+		str := tc.str
+		tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+		s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))
+		if err != nil {
+			t.Fatalf("failed to get screen: %v", err)
+		}
+		if err := s.Init(); err != nil {
+			t.Fatalf("failed to initialize screen: %v", err)
+		}
+		if s.CharacterSet() != "UTF-8" {
+			t.Fatalf("Character Set (%v) not UTF-8", s.CharacterSet())
+		}
+
+		tc.draw(s)
+		s.Show()
+		s.Fini()
+
+		if out := tty.Output(); strings.Contains(out, str) {
+			t.Errorf("%q was emitted raw: %q", str, out)
+		}
+		if got := string(tty.GetCell(vt.Coord{}).C); got != "?" {
+			t.Errorf("%q drew %q, want %q", str, got, "?")
+		}
+	}
+}
+
 func TestOSC8ControlsAreStrippedFromOutput(t *testing.T) {
 	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
 	s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))
