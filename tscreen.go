@@ -863,10 +863,12 @@ func urlNeedsEmission(oldUrl, newUrl urlInfo) bool {
 
 func (t *tScreen) drawCell(x, y int) int {
 
-	str, style, width := t.cells.Get(x, y)
+	// Check Dirty first: most cells are clean, and Get copies the style.
 	if !t.cells.Dirty(x, y) {
+		_, _, width := t.cells.Get(x, y)
 		return width
 	}
+	str, style, width := t.cells.Get(x, y)
 
 	if t.cy != y || t.cx != x {
 		t.Printf(setCursorPosition, y+1, x+1)
