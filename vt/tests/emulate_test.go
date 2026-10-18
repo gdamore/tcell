@@ -725,6 +725,102 @@ func TestINDv7(t *testing.T) {
 	CheckContent(t, term, 5, 2, "3")
 }
 
+// TestCRv1 CR clears a pending wrap
+func TestCRv1(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "ABCDEFGH")  // fill the line, wrap is now pending
+	WriteF(t, term, "\r")
+	WriteF(t, term, "X")
+
+	// |XBCDEFGH| (cursor on the B)
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 1, 0)
+	CheckContent(t, term, 0, 0, "X")
+	CheckContent(t, term, 1, 0, "B")
+	CheckContent(t, term, 7, 0, "H")
+	CheckContent(t, term, 0, 1, "")
+}
+
+// TestCRv2 CR to the right of the left margin moves to the left margin
+func TestCRv2(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[?69h") // enable left/right margins
+	WriteF(t, term, "\033[3;6s") // margins at columns 3 and 6
+	WriteF(t, term, "\033[1;5H")
+	WriteF(t, term, "\r")
+	WriteF(t, term, "X")
+
+	// |__Xc____|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 3, 0)
+	CheckContent(t, term, 0, 0, "")
+	CheckContent(t, term, 2, 0, "X")
+}
+
+// TestCRv3 CR to the left of the left margin moves to the first column
+func TestCRv3(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[?69h") // enable left/right margins
+	WriteF(t, term, "\033[3;6s") // margins at columns 3 and 6
+	WriteF(t, term, "\033[1;2H")
+	WriteF(t, term, "\r")
+	WriteF(t, term, "X")
+
+	// |Xc______|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 1, 0)
+	CheckContent(t, term, 0, 0, "X")
+	CheckContent(t, term, 2, 0, "")
+}
+
+// TestCRv4 CR to the right of the right margin moves to the left margin
+func TestCRv4(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[?69h") // enable left/right margins
+	WriteF(t, term, "\033[3;6s") // margins at columns 3 and 6
+	WriteF(t, term, "\033[1;8H")
+	WriteF(t, term, "\r")
+	WriteF(t, term, "X")
+
+	// |__Xc____|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 3, 0)
+	CheckContent(t, term, 0, 0, "")
+	CheckContent(t, term, 2, 0, "X")
+}
+
 // TestCUDv1 - cursor down
 func TestCUDv1(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})

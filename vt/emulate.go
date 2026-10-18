@@ -1153,10 +1153,18 @@ func (em *emulator) processIndex() {
 	}
 }
 
-// processCarriageReturn handle CR.
+// processCarriageReturn handle CR.  This clears any pending wrap, and moves to the
+// left margin, or to the first column if we are already to the left of the margin.
 func (em *emulator) processCarriageReturn() {
 	em.lastIndex = 0
-	em.setPosition(Coord{0, em.getPosition().Y})
+	em.autoWrap = false
+	pos := em.getPosition()
+	if pos.X >= em.ltMargin {
+		pos.X = em.ltMargin
+	} else {
+		pos.X = 0
+	}
+	em.setPosition(pos)
 }
 
 // processLineFeed is like IND, but if ANSI mode 20 is set, then a CR is appended as well.
