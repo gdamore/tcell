@@ -839,6 +839,9 @@ func TestIsASCIISuperset(t *testing.T) {
 // the encoder would emit it.
 func TestASCIIScreenDrawsLikeEncoder(t *testing.T) {
 	t.Setenv("LC_ALL", "C")
+	if getCharset() != "US-ASCII" {
+		t.Skip("no ASCII locale on this platform") // Windows and Plan 9 are always UTF-8
+	}
 
 	for _, tc := range []struct {
 		str, want string
