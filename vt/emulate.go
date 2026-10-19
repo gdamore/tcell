@@ -902,19 +902,38 @@ func (em *emulator) processCursorDown(str string) {
 	}
 }
 
-// processCursorForward implements CUF.
+// processCursorForward implements CUF.  The cursor stops at the right margin,
+// or at the last column if it started to the right of the right margin.
 func (em *emulator) processCursorForward(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
 		em.autoWrap = false
-		em.moveRightN(Col(max(1, pi[0])))
+		pos := em.getPosition()
+		limit := em.rtMargin
+		if pos.X > limit {
+			limit = em.size.X - 1
+		}
+		if n := Col(max(1, pi[0])); pos.X < limit {
+			pos.X += min(n, limit-pos.X)
+		}
+		em.setPosition(pos)
 	}
 }
 
-// processCursorBackward implements CUB.
+// processCursorBackward implements CUB.  The cursor stops at the left margin,
+// or at the first column if it started to the left of the left margin.
 func (em *emulator) processCursorBackward(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
 		em.autoWrap = false
-		em.moveLeftN(Col(max(1, pi[0])))
+		em.lastIndex = 0
+		pos := em.getPosition()
+		limit := em.ltMargin
+		if pos.X < limit {
+			limit = 0
+		}
+		if n := Col(max(1, pi[0])); pos.X > limit {
+			pos.X -= min(n, pos.X-limit)
+		}
+		em.setPosition(pos)
 	}
 }
 

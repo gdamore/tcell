@@ -1022,6 +1022,171 @@ func TestCUUv3(t *testing.T) {
 	CheckContent(t, term, 2, 3, "")
 }
 
+// TestCUFv1 - cursor forward
+func TestCUFv1(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[2C")
+	WriteF(t, term, "X")
+	WriteF(t, term, "\033[10C") // stops at the last column
+	CheckPos(t, term, 7, 0)
+	WriteF(t, term, "Y")
+
+	// |__X____Y|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckContent(t, term, 2, 0, "X")
+	CheckContent(t, term, 7, 0, "Y")
+}
+
+// TestCUFv2 - cursor forward stops at the right margin
+func TestCUFv2(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[?69h") // enable left/right margins
+	WriteF(t, term, "\033[3;6s") // margins at columns 3 and 6
+	WriteF(t, term, "\033[1;4H")
+	WriteF(t, term, "\033[10C")
+	CheckPos(t, term, 5, 0)
+	WriteF(t, term, "X")
+
+	// |_____X__|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckContent(t, term, 5, 0, "X")
+	CheckContent(t, term, 7, 0, "")
+}
+
+// TestCUFv3 - cursor forward right of the right margin stops at the last column
+func TestCUFv3(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[?69h") // enable left/right margins
+	WriteF(t, term, "\033[3;6s") // margins at columns 3 and 6
+	WriteF(t, term, "\033[1;7H")
+	WriteF(t, term, "\033[10C")
+	CheckPos(t, term, 7, 0)
+	WriteF(t, term, "X")
+
+	// |_______X|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckContent(t, term, 7, 0, "X")
+}
+
+// TestCUBv1 - cursor backward
+func TestCUBv1(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[1;6H")
+	WriteF(t, term, "\033[2D")
+	WriteF(t, term, "X")
+	WriteF(t, term, "\033[10D") // stops at the first column
+	WriteF(t, term, "Y")
+
+	// |YcX_____|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 1, 0)
+	CheckContent(t, term, 0, 0, "Y")
+	CheckContent(t, term, 3, 0, "X")
+}
+
+// TestCUBv2 - cursor backward stops at the left margin
+func TestCUBv2(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[?69h") // enable left/right margins
+	WriteF(t, term, "\033[3;6s") // margins at columns 3 and 6
+	WriteF(t, term, "\033[1;5H")
+	WriteF(t, term, "\033[10D")
+	WriteF(t, term, "X")
+
+	// |__Xc____|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 3, 0)
+	CheckContent(t, term, 0, 0, "")
+	CheckContent(t, term, 2, 0, "X")
+}
+
+// TestCUBv3 - cursor backward left of the left margin stops at the first column
+func TestCUBv3(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[?69h") // enable left/right margins
+	WriteF(t, term, "\033[3;6s") // margins at columns 3 and 6
+	WriteF(t, term, "\033[1;2H")
+	WriteF(t, term, "\033[10D")
+	WriteF(t, term, "X")
+
+	// |Xc______|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 1, 0)
+	CheckContent(t, term, 0, 0, "X")
+}
+
+// TestCUBv4 - cursor backward right of the right margin stops at the left margin
+func TestCUBv4(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[?69h") // enable left/right margins
+	WriteF(t, term, "\033[3;6s") // margins at columns 3 and 6
+	WriteF(t, term, "\033[1;8H")
+	WriteF(t, term, "\033[10D")
+	WriteF(t, term, "X")
+
+	// |__Xc____|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 3, 0)
+	CheckContent(t, term, 1, 0, "")
+	CheckContent(t, term, 2, 0, "X")
+}
+
 // TestCNLv1 - cursor next line
 func TestCNLv1(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
