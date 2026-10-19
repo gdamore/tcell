@@ -907,15 +907,7 @@ func (em *emulator) processCursorDown(str string) {
 func (em *emulator) processCursorForward(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
 		em.autoWrap = false
-		pos := em.getPosition()
-		limit := em.rtMargin
-		if pos.X > limit {
-			limit = em.size.X - 1
-		}
-		if n := Col(max(1, pi[0])); pos.X < limit {
-			pos.X += min(n, limit-pos.X)
-		}
-		em.setPosition(pos)
+		em.moveRightN(Col(max(1, pi[0])))
 	}
 }
 
@@ -923,17 +915,7 @@ func (em *emulator) processCursorForward(str string) {
 // or at the first column if it started to the left of the left margin.
 func (em *emulator) processCursorBackward(str string) {
 	if pi, err := numericParams(str, 1); err == nil {
-		em.autoWrap = false
-		em.lastIndex = 0
-		pos := em.getPosition()
-		limit := em.ltMargin
-		if pos.X < limit {
-			limit = 0
-		}
-		if n := Col(max(1, pi[0])); pos.X > limit {
-			pos.X -= min(n, pos.X-limit)
-		}
-		em.setPosition(pos)
+		em.moveLeftN(Col(max(1, pi[0])))
 	}
 }
 
@@ -1707,15 +1689,32 @@ func (em *emulator) moveDownN(count Row) {
 	}
 }
 
+// moveLeftN moves left by count, to the limit of either the left margin, or zero if outside the margin.
 func (em *emulator) moveLeftN(count Col) {
-	for range count {
-		em.moveLeft()
+	em.autoWrap = false
+	em.lastIndex = 0
+	pos := em.getPosition()
+	limit := em.ltMargin
+	if pos.X < limit {
+		limit = 0
+	}
+	if pos.X > limit {
+		pos.X -= min(count, pos.X-limit)
+		em.setPosition(pos)
 	}
 }
 
+// moveRightN moves right by count, to the limit of either the right margin, or the right edge of the
+// screen if outside the margin.
 func (em *emulator) moveRightN(count Col) {
-	for range count {
-		em.moveRight()
+	pos := em.getPosition()
+	limit := em.rtMargin
+	if pos.X > limit {
+		limit = em.size.X - 1
+	}
+	if pos.X < limit {
+		pos.X += min(count, limit-pos.X)
+		em.setPosition(pos)
 	}
 }
 
