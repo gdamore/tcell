@@ -22,8 +22,13 @@ import (
 	"testing"
 	"time"
 
+	gencoding "github.com/gdamore/encoding"
 	"github.com/gdamore/tcell/v3/tty"
 	"github.com/gdamore/tcell/v3/vt"
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 )
 
@@ -806,6 +811,65 @@ func TestUnencodableContentDrawsFallback(t *testing.T) {
 		}
 		if got := string(tty.GetCell(vt.Coord{}).C); got != "?" {
 			t.Errorf("%q drew %q, want %q", str, got, "?")
+		}
+	}
+}
+
+func TestIsASCIISuperset(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		enc  encoding.Encoding
+		want bool
+	}{
+		{"ASCII", gencoding.ASCII, true},
+		{"ISO8859-1", gencoding.ISO8859_1, true},
+		{"KOI8-R", charmap.KOI8R, true},
+		{"Shift_JIS", japanese.ShiftJIS, true},
+		{"GB18030", simplifiedchinese.GB18030, true},
+		{"EBCDIC", gencoding.EBCDIC, false},
+		{"HZ-GB2312", simplifiedchinese.HZGB2312, false}, // "~" encodes as "~~"
+	} {
+		if got := isASCIISuperset(tc.enc); got != tc.want {
+			t.Errorf("%s: isASCIISuperset = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// On an ASCII screen, ASCII skips the encoder but must come out exactly as
+// the encoder would emit it.
+func TestASCIIScreenDrawsLikeEncoder(t *testing.T) {
+	t.Setenv("LC_ALL", "C")
+	if getCharset() != "US-ASCII" {
+		t.Skip("no ASCII locale on this platform") // Windows and Plan 9 are always UTF-8
+	}
+
+	for _, tc := range []struct {
+		str, want string
+		draw      func(Screen)
+	}{
+		{"x", "x", func(s Screen) { s.Put(0, 0, "x", StyleDefault) }},
+		{"é", "?", func(s Screen) { s.Put(0, 0, "é", StyleDefault) }},
+		{"─", "\x0eq\x0f", func(s Screen) { s.Put(0, 0, "─", StyleDefault) }},
+		{"\x1a", "?", func(s Screen) { s.Fill('\x1a', StyleDefault) }},
+	} {
+		tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})}
+		s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))
+		if err != nil {
+			t.Fatalf("failed to get screen: %v", err)
+		}
+		if err := s.Init(); err != nil {
+			t.Fatalf("failed to initialize screen: %v", err)
+		}
+		if s.CharacterSet() != "US-ASCII" {
+			t.Fatalf("Character Set (%v) not US-ASCII", s.CharacterSet())
+		}
+
+		tc.draw(s)
+		s.Show()
+		s.Fini()
+
+		if out := tty.Output(); !strings.Contains(out, "\x1b[1;1H\x1b[m"+tc.want) {
+			t.Errorf("%q: want %q emitted, got %q", tc.str, tc.want, out)
 		}
 	}
 }
