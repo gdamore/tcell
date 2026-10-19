@@ -23,33 +23,34 @@ import "fmt"
 type PrivateMode int
 
 const (
-	PmAppCursor        PrivateMode = 1    // Application cursor keys.
-	PmVT52             PrivateMode = 2    // Clear to enable VT52 compatibility (not supported).
-	PmColumns          PrivateMode = 3    // Set to enable 132 columns, reset for 80 columns.
-	PmScrolling        PrivateMode = 4    // Smooth scrolling (jump by default).
-	PmScreen           PrivateMode = 5    // Set to reverse dark and light on screen.
-	PmOrigin           PrivateMode = 6    // Coordinates are relative to margins.
-	PmAutoMargin       PrivateMode = 7    // Automatically wrap at margin.
-	PmAutoRepeat       PrivateMode = 8    // Enable automatic key repeat.
-	PmMouseX10         PrivateMode = 9    // Legacy (X10) mouse reporting.
-	PmBlinkCursor      PrivateMode = 12   // Blinking (on) or steady (off) cursor.
-	PmPrintFF          PrivateMode = 18   // Print form feed after printing screen.
-	PmPrintExtent      PrivateMode = 19   // Print full screen (on) or scrolling region (off).
-	PmShowCursor       PrivateMode = 25   // Show the cursor (default on).
-	PmCharSet          PrivateMode = 42   // Enable national (on) or multinational (off) character sets.
-	PmLeftRightMargin  PrivateMode = 69   // Enable left and right margins
-	PmMouseButton      PrivateMode = 1000 // Report mouse button events.
-	PmMouseDrag        PrivateMode = 1002 // Report mouse motion events when button depressed, requires PmMouseButton.
-	PmMouseMotion      PrivateMode = 1003 // Report mouse motion events, requires PmMouseButton.
-	PmFocusReports     PrivateMode = 1004 // Send focus gained or lost reports.
-	PmMouseSgr         PrivateMode = 1006 // Use SGR sequences for mouse reports.
-	PmMouseSgrPixel    PrivateMode = 1016 // Use SGR sequences for mouse reports, using pixel-level coordinates.
-	PmAltScreen        PrivateMode = 1049 // 47 and 1047 are alternates, but we use 1049
-	PmBracketedPaste   PrivateMode = 2004 // Bracket pasted text with bracketed paste escape sequences.
-	PmSyncOutput       PrivateMode = 2026 // Buffer output when enabled, updating screen when reset.
-	PmGraphemeClusters PrivateMode = 2027 // Support for grapheme cluster handling.
-	PmResizeReports    PrivateMode = 2048 // Send in-band resize reports.
-	PmWin32Input       PrivateMode = 9001 // Use Win32-Input-Mode for keyboard reports
+	PmAppCursor          PrivateMode = 1    // Application cursor keys.
+	PmVT52               PrivateMode = 2    // Clear to enable VT52 compatibility (not supported).
+	PmColumns            PrivateMode = 3    // Set to enable 132 columns, reset for 80 columns.
+	PmScrolling          PrivateMode = 4    // Smooth scrolling (jump by default).
+	PmScreen             PrivateMode = 5    // Set to reverse dark and light on screen.
+	PmOrigin             PrivateMode = 6    // Coordinates are relative to margins.
+	PmAutoMargin         PrivateMode = 7    // Automatically wrap at margin.
+	PmAutoRepeat         PrivateMode = 8    // Enable automatic key repeat.
+	PmMouseX10           PrivateMode = 9    // Legacy (X10) mouse reporting.
+	PmBlinkCursor        PrivateMode = 12   // Blinking (on) or steady (off) cursor.
+	PmPrintFF            PrivateMode = 18   // Print form feed after printing screen.
+	PmPrintExtent        PrivateMode = 19   // Print full screen (on) or scrolling region (off).
+	PmShowCursor         PrivateMode = 25   // Show the cursor (default on).
+	PmCharSet            PrivateMode = 42   // Enable national (on) or multinational (off) character sets.
+	PmLeftRightMargin    PrivateMode = 69   // Enable left and right margins
+	PmMouseButton        PrivateMode = 1000 // Report mouse button events.
+	PmMouseDrag          PrivateMode = 1002 // Report mouse motion events when button depressed, requires PmMouseButton.
+	PmMouseMotion        PrivateMode = 1003 // Report mouse motion events, requires PmMouseButton.
+	PmFocusReports       PrivateMode = 1004 // Send focus gained or lost reports.
+	PmMouseSgr           PrivateMode = 1006 // Use SGR sequences for mouse reports.
+	PmMouseSgrPixel      PrivateMode = 1016 // Use SGR sequences for mouse reports, using pixel-level coordinates.
+	PmAltScreen          PrivateMode = 1049 // 47 and 1047 are alternates, but we use 1049
+	PmBracketedPaste     PrivateMode = 2004 // Bracket pasted text with bracketed paste escape sequences.
+	PmSyncOutput         PrivateMode = 2026 // Buffer output when enabled, updating screen when reset.
+	PmGraphemeClusters   PrivateMode = 2027 // Support for grapheme cluster handling.
+	PmColorSchemeReports PrivateMode = 2031 // Send reports when the color scheme changes between dark and light.
+	PmResizeReports      PrivateMode = 2048 // Send in-band resize reports.
+	PmWin32Input         PrivateMode = 9001 // Use Win32-Input-Mode for keyboard reports
 )
 
 // Enable returns the string used to enable this private mode.
