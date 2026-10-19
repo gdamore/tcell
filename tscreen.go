@@ -934,8 +934,16 @@ func (t *tScreen) drawCell(x, y int) int {
 	}
 
 	// Skip the encoder (and its allocations) for text it would pass through
-	// unchanged.  (SUB is what the encoder path treats as unencodable.)
-	if str[0] == '\x1a' || !(t.encoder == nil && utf8.ValidString(str) || t.asciiSuperset && isASCII(str)) {
+	// unchanged.
+	switch {
+	case str[0] == encoding.ASCIISub:
+		// The encoder path treats SUB as unencodable and draws the fallback.
+		str = string(t.encodeStr(str))
+	case t.encoder == nil && utf8.ValidString(str):
+		// UTF-8 is written as is.
+	case t.asciiSuperset && isASCII(str):
+		// The encoding writes ASCII as itself.
+	default:
 		str = string(t.encodeStr(str))
 	}
 
