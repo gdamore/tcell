@@ -770,6 +770,44 @@ func TestUnlockRegionRedrawsUntouchedBlankCell(t *testing.T) {
 	}
 }
 
+// Redrawing an unchanged wide character after Clear, as immediate-mode
+// apps do every frame, must not send it again; a changed one must be sent.
+func TestWideCharAfterClear(t *testing.T) {
+	t.Setenv("LC_ALL", "en_US.UTF-8")
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})}
+	s, err := NewTerminfoScreenFromTty(tty, OptAltScreen(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer s.Fini()
+
+	frame := func(wide string) string {
+		before := len(tty.Output())
+		s.Clear()
+		s.Put(0, 0, wide, StyleDefault)
+		s.Put(2, 0, "a", StyleDefault)
+		s.Show()
+		return tty.Output()[before:]
+	}
+
+	frame("你")
+	if out := frame("你"); strings.Contains(out, "你") {
+		t.Fatalf("unchanged wide character was sent again: %q", out)
+	}
+	if out := frame("好"); !strings.Contains(out, "好") {
+		t.Fatalf("changed wide character was not sent: %q", out)
+	}
+	if got := tty.GetCell(vt.Coord{}).C; got != "好" {
+		t.Fatalf("terminal shows %q, want %q", got, "好")
+	}
+	if got := tty.GetCell(vt.Coord{X: 2}).C; got != "a" {
+		t.Fatalf("terminal shows %q after the wide character, want %q", got, "a")
+	}
+}
+
 // Content the UTF-8 fast path must not emit raw still goes through the
 // encoder and comes out as "?".  Put strips SUB, but Fill does not.
 func TestUnencodableContentDrawsFallback(t *testing.T) {
