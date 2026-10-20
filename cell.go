@@ -23,6 +23,7 @@ type cell struct {
 	lastStyle Style
 	width     int
 	lock      bool
+	lastWidth int8 // width of lastStr, or 0 when lastStr marks a redraw
 }
 
 func (c *cell) setDirty(dirty bool) {
@@ -36,12 +37,14 @@ func (c *cell) setDirty(dirty bool) {
 		} else {
 			c.lastStr = ""
 		}
+		c.lastWidth = 0
 	} else {
 		if c.currStr == "" {
 			c.currStr = " "
 		}
 		c.lastStr = c.currStr
 		c.lastStyle = c.currStyle
+		c.lastWidth = int8(c.width)
 	}
 }
 
@@ -82,6 +85,10 @@ func (cb *CellBuffer) put(x int, y int, str string, style Style) (string, int) {
 			// Printable ASCII followed by ASCII cannot be part of a larger
 			// grapheme cluster, so avoid constructing a grapheme iterator.
 			cl, width, str = str[:1], 1, str[1:]
+		} else if str == c.lastStr && c.lastWidth > 0 {
+			// Putting back what is on screen, as after a Clear: reuse the
+			// width measured when it was drawn.
+			cl, width, str = str, int(c.lastWidth), ""
 		} else {
 			g := textWidthOptions.StringGraphemes(str)
 			for width == 0 && g.Next() {
