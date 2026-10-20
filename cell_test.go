@@ -349,3 +349,33 @@ func TestCellBufferFillAreaColorNone(t *testing.T) {
 		t.Fatalf("ColorNone should preserve existing colors, got %v", style)
 	}
 }
+
+func TestCellBufferRePutAfterClear(t *testing.T) {
+	cb := &CellBuffer{}
+	cb.Resize(4, 1)
+	for _, str := range []string{"宽", "🎉", "👩‍👩‍👧‍👦", "e\u0301"} {
+		_, want := cb.Put(0, 0, str, StyleDefault)
+		cb.SetDirty(0, 0, false) // drawn
+
+		// Putting back what is on screen after a Clear reuses the width
+		// measured when it was drawn.
+		cb.Put(0, 0, " ", StyleDefault) // what Clear leaves
+		if rest, width := cb.Put(0, 0, str, StyleDefault); rest != "" || width != want {
+			t.Errorf("%q: got %q, %d after clearing, want \"\", %d", str, rest, width, want)
+		}
+	}
+}
+
+func TestCellBufferRePutAfterRedrawMarker(t *testing.T) {
+	cb := &CellBuffer{}
+	cb.Resize(4, 1)
+	cb.Put(0, 0, "宽", StyleDefault)
+	cb.SetDirty(0, 0, false) // drawn, two columns wide
+
+	// Marking the cell for redraw sets lastStr to "", which must not keep
+	// the width of what was drawn.
+	cb.SetDirty(0, 0, true)
+	if _, width := cb.Put(0, 0, "", StyleDefault); width != 0 {
+		t.Fatalf("empty string width %d, want 0", width)
+	}
+}
