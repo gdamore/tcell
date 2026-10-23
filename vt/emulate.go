@@ -2005,12 +2005,13 @@ func (em *emulator) putRune(r rune) {
 					row := Row(lastIdx / int(dim.X))
 					// we may have to move position if this switches to wide, so recalculate expected end
 					next := col + Col(width)
-					if em.getPrivateMode(PmAutoMargin) == ModeOn && next >= dim.X {
+					limit := em.wrapLimit(col)
+					if em.getPrivateMode(PmAutoMargin) == ModeOn && next >= limit {
 						em.autoWrap = true
 					}
 					end := next
-					if end >= dim.X {
-						end = dim.X - 1
+					if end >= limit {
+						end = limit - 1
 					}
 					if width == 2 && col < dim.X-1 && em.cells[lastIdx+1].W != 0 {
 						// erase the next cell before putting down a character
@@ -2031,14 +2032,21 @@ func (em *emulator) putRune(r rune) {
 	}
 
 	if em.autoWrap {
+		// Wrapping at the right margin continues at the left margin; wrapping at the
+		// edge of the screen, from right of the margins, at the first column.
+		x := em.pos.X
 		em.nextLine()
+		if x >= em.ltMargin && x <= em.rtMargin {
+			em.pos.X = em.ltMargin
+			em.setPosition(em.pos)
+		}
 	}
 
 	autoMargin := em.getPrivateMode(PmAutoMargin) == ModeOn
 
 	pos := em.getPosition()
 	w := textWidthOptions.Rune(r)
-	if autoMargin && pos.X+Col(w) >= dim.X {
+	if autoMargin && pos.X+Col(w) >= em.wrapLimit(pos.X) {
 		em.autoWrap = true
 	}
 	index := em.index(pos)
@@ -2058,6 +2066,15 @@ func (em *emulator) putRune(r rune) {
 	// Note that if auto margin is enabled, we will have set
 	// autoWrap above if we were at the margin already.
 	em.moveRightN(Col(w))
+}
+
+// wrapLimit is the column a character at x wraps before: the right margin when x is
+// within it, the edge of the screen when x is right of it, as for moveRightN.
+func (em *emulator) wrapLimit(x Col) Col {
+	if x > em.rtMargin {
+		return em.size.X
+	}
+	return em.rtMargin + 1
 }
 
 func (em *emulator) runeString(r rune) string {
