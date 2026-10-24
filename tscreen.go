@@ -194,6 +194,7 @@ const (
 	enterKeypad       = "\x1b[?1h\x1b="               // Note mode 1 might not be supported everywhere
 	exitKeypad        = "\x1b[?1l\x1b>"               // Also mode 1
 	requestWindowSize = "\x1b[18t"                    // For modern terminals
+	requestPixelSize  = "\x1b[14t"                    // Text area in pixels, for when the tty does not know it
 	requestPrimaryDA  = "\x1b[c"                      // Request primary device attributes
 	requestExtAttr    = "\x1b[>q"                     // Request extended attribute (emulator name and version)
 	setClipboard      = "\x1b]52;c;%s\x1b\\"          // Clipboard content is base64
@@ -1350,6 +1351,9 @@ func (t *tScreen) resize() {
 	t.h = ws.Height
 	t.w = ws.Width
 	t.input.SetSize(ws)
+	if t.running && t.shouldRequestPixelSize(ws) {
+		t.Print(requestPixelSize)
+	}
 	if t.consoleMouse != nil {
 		t.consoleMouse.SetSize(ws.Width, ws.Height)
 	}
@@ -1656,6 +1660,12 @@ func useVTWindowSizeQuery(goos string) bool {
 	return goos != "windows"
 }
 
+// shouldRequestPixelSize reports whether to ask the terminal for its size in pixels,
+// which the tty does not know through some layers, such as ConPTY.
+func (t *tScreen) shouldRequestPixelSize(ws WindowSize) bool {
+	return ws.PixelWidth == 0 && t.negotiate && !t.legacy && useVTWindowSizeQuery(runtime.GOOS)
+}
+
 func useXTermKeyboardQuery(goos string) bool {
 	return goos != "windows"
 }
@@ -1742,7 +1752,8 @@ func (t *tScreen) engageLocked() error {
 	}
 
 	t.running = true
-	if ws, err := t.tty.WindowSize(); err == nil && ws.Width != 0 && ws.Height != 0 {
+	ws, err := t.tty.WindowSize()
+	if err == nil && ws.Width != 0 && ws.Height != 0 {
 		t.cells.Resize(ws.Width, ws.Height)
 	}
 	t.enableMouse(t.mouseFlags)
@@ -1760,6 +1771,9 @@ func (t *tScreen) engageLocked() error {
 	}
 	if t.negotiate && !t.legacy && useVTWindowSizeQuery(runtime.GOOS) {
 		t.Print(requestWindowSize)
+	}
+	if t.shouldRequestPixelSize(ws) {
+		t.Print(requestPixelSize)
 	}
 
 	if t.inlineResize {
