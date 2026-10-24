@@ -1494,6 +1494,12 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 			break
 		}
 		switch P[0] {
+		case 4:
+			if len(P) > 2 {
+				// text area size report, in pixels
+				ip.post(newEventResize(WindowSize{Width: ip.cols, Height: ip.rows, PixelWidth: P[2], PixelHeight: P[1]}))
+				return
+			}
 		case 8:
 			if len(P) > 2 {
 				// window size report
