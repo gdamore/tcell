@@ -1655,3 +1655,29 @@ func TestInputPixelSizeReport(t *testing.T) {
 		t.Fatal("Timeout waiting for resize event")
 	}
 }
+
+// TestInputWindowAndPixelSizeReports tests that a pixel size report is paired with the window size reported just before it.
+func TestInputWindowAndPixelSizeReports(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.rows, ip.cols = 25, 80
+
+	ip.ScanUTF8([]byte("\x1b[8;30;100t\x1b[4;600;1000t"))
+
+	for _, want := range []WindowSize{{Width: 100, Height: 30}, {Width: 100, Height: 30, PixelWidth: 1000, PixelHeight: 600}} {
+		select {
+		case ev := <-evch:
+			rev, ok := ev.(*EventResize)
+			if !ok {
+				t.Fatalf("Expected EventResize, got %T", ev)
+			}
+			width, height := rev.Size()
+			pixelWidth, pixelHeight := rev.PixelSize()
+			if got := (WindowSize{Width: width, Height: height, PixelWidth: pixelWidth, PixelHeight: pixelHeight}); got != want {
+				t.Errorf("Expected %+v, got %+v", want, got)
+			}
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Timeout waiting for resize event")
+		}
+	}
+}

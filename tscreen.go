@@ -1352,7 +1352,8 @@ func (t *tScreen) resize() {
 	t.w = ws.Width
 	t.input.SetSize(ws)
 	if t.running && t.shouldRequestPixelSize(ws) {
-		t.Print(requestPixelSize)
+		// The terminal answers in order, so the size in cells is known when the pixel size arrives.
+		t.Print(requestWindowSize + requestPixelSize)
 	}
 	if t.consoleMouse != nil {
 		t.consoleMouse.SetSize(ws.Width, ws.Height)
