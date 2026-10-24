@@ -1513,6 +1513,11 @@ func (ip *inputParser) handleCsi(mode rune, params []byte, intermediate []byte) 
 				if height != ip.rows || width != ip.cols {
 					// Not through SetSize's goroutine, so that the pixel size report sent after it is paired with this size.
 					ip.rows, ip.cols = height, width
+					if nested := ip.nested; nested != nil {
+						nested.l.Lock()
+						nested.rows, nested.cols = height, width
+						nested.l.Unlock()
+					}
 					ip.post(newEventResize(WindowSize{Width: width, Height: height}))
 				}
 				return
