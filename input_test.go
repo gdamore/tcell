@@ -1681,3 +1681,37 @@ func TestInputWindowAndPixelSizeReports(t *testing.T) {
 		}
 	}
 }
+
+// TestInputWindowSizeReportNested tests that a window size report also sizes the nested Win32 parser, without a second resize event.
+func TestInputWindowSizeReportNested(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+	ip.rows, ip.cols = 25, 80
+	nested := newInputParser(evch)
+	nested.rows, nested.cols = 25, 80
+	ip.nested = nested
+
+	ip.ScanUTF8([]byte("\x1b[8;30;100t"))
+
+	nested.l.Lock()
+	rows, cols := nested.rows, nested.cols
+	nested.l.Unlock()
+	if rows != 30 || cols != 100 {
+		t.Errorf("Expected nested size 100x30, got %dx%d", cols, rows)
+	}
+
+	select {
+	case ev := <-evch:
+		if width, height := ev.(*EventResize).Size(); width != 100 || height != 30 {
+			t.Errorf("Expected size 100x30, got %dx%d", width, height)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Timeout waiting for resize event")
+	}
+
+	select {
+	case ev := <-evch:
+		t.Errorf("Expected one resize event, got another %T", ev)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
