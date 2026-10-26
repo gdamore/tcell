@@ -1162,6 +1162,48 @@ func TestAutoWrapMarginsCluster(t *testing.T) {
 	CheckPos(t, term, 3, 1)
 }
 
+// TestAutoWrapMarginsWide - a wide character that does not fit before the right margin
+// wraps to the left margin before it is written; one that fits is written at the margin
+func TestAutoWrapMarginsWide(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "\033[?7h")  // auto-wrap on
+	WriteF(t, term, "abcdefgh")
+	WriteF(t, term, "\033[?69h") // enable left/right margins
+	WriteF(t, term, "\033[3;6s") // margins at columns 3 and 6
+	WriteF(t, term, "\033[1;6H")
+	WriteF(t, term, "\u4e2d") // wide, starting at the right margin
+
+	// |abcdefgh|
+	// |__中____|
+	// |________|
+	// |________|
+
+	CheckContent(t, term, 5, 0, "f")
+	CheckContent(t, term, 6, 0, "g")
+	CheckContent(t, term, 2, 1, "\u4e2d")
+	CheckPos(t, term, 4, 1)
+
+	WriteF(t, term, "\033[3;5H")
+	WriteF(t, term, "\u4e2d") // wide, ending at the right margin
+	CheckPos(t, term, 5, 2)   // held at the right margin
+	WriteF(t, term, "Z")
+
+	// |abcdefgh|
+	// |__中____|
+	// |____中__|
+	// |__Z_____|
+
+	CheckContent(t, term, 4, 2, "\u4e2d")
+	CheckContent(t, term, 6, 2, "")
+	CheckContent(t, term, 2, 3, "Z")
+	CheckPos(t, term, 3, 3)
+}
+
 // TestAutoWrapMarginsBeyond - right of the right margin, auto-wrap happens at the edge
 // of the screen and continues at the first column, as in TestICHv5a
 func TestAutoWrapMarginsBeyond(t *testing.T) {

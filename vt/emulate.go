@@ -2031,7 +2031,15 @@ func (em *emulator) putRune(r rune) {
 		}
 	}
 
-	if em.autoWrap {
+	autoMargin := em.getPrivateMode(PmAutoMargin) == ModeOn
+
+	pos := em.getPosition()
+	w := textWidthOptions.Rune(r)
+
+	// A wide character that would run past a right margin inside the screen wraps
+	// before it is written, rather than spill over the margin.
+	limit := em.wrapLimit(pos.X)
+	if em.autoWrap || (autoMargin && limit < dim.X && pos.X+Col(w) > limit) {
 		// Wrapping at the right margin continues at the left margin; wrapping at the
 		// edge of the screen, from right of the margins, at the first column.
 		x := em.pos.X
@@ -2040,12 +2048,9 @@ func (em *emulator) putRune(r rune) {
 			em.pos.X = em.ltMargin
 			em.setPosition(em.pos)
 		}
+		pos = em.getPosition()
 	}
 
-	autoMargin := em.getPrivateMode(PmAutoMargin) == ModeOn
-
-	pos := em.getPosition()
-	w := textWidthOptions.Rune(r)
 	if autoMargin && pos.X+Col(w) >= em.wrapLimit(pos.X) {
 		em.autoWrap = true
 	}
