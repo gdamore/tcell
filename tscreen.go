@@ -1974,7 +1974,9 @@ func (t *tScreen) ShowNotification(title string, body string) {
 		t.Unlock()
 		return
 	}
-	t.Printf(t.notifyDesktop, stripOSCControlsIfNeeded(title), stripOSCControlsIfNeeded(body))
+	if t.notifyDesktop != "" {
+		t.Printf(t.notifyDesktop, stripOSCControlsIfNeeded(title), stripOSCControlsIfNeeded(body))
+	}
 	t.Unlock()
 }
 
