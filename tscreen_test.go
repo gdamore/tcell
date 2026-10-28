@@ -1201,8 +1201,9 @@ func TestStProfileSkipsUnsupportedOperations(t *testing.T) {
 	start = len(tty.Output())
 	s.SetTitle("title")
 	s.GetClipboard()
+	s.ShowNotification("title", "body")
 	if got, want := tty.Output()[start:], "\x1b]2;title\x1b\\"; got != want {
-		t.Fatalf("st title and clipboard escapes = %q, want %q", got, want)
+		t.Fatalf("st title, clipboard and notification escapes = %q, want %q", got, want)
 	}
 }
 
