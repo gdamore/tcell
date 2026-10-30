@@ -1260,6 +1260,28 @@ func TestBackendBlitReverse(t *testing.T) {
 	CheckAttrs(t, term, 2, 2, vt.Bold)
 }
 
+func TestGraphemeClusterAfterResize(t *testing.T) {
+	for _, tc := range []struct {
+		name               string
+		size, cell, cursor Coord
+	}{
+		{"shrink", Coord{X: 4, Y: 2}, Coord{X: 3, Y: 1}, Coord{X: 3, Y: 1}},
+		{"grow", Coord{X: 16, Y: 8}, Coord{X: 7, Y: 3}, Coord{X: 8, Y: 3}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+			defer MustClose(t, term)
+			MustStart(t, term)
+
+			WriteF(t, term, "\x1b[?2027h\x1b[4;7He")
+			term.SetSize(tc.size)
+			WriteF(t, term, "x\u0301")
+			CheckContent(t, term, tc.cell.X, tc.cell.Y, "x\u0301")
+			CheckPos(t, term, tc.cursor.X, tc.cursor.Y)
+		})
+	}
+}
+
 func TestGraphemeCluster(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 10, Y: 5})
 	defer MustClose(t, term)
