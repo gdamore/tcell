@@ -240,6 +240,20 @@ type Screen interface {
 	// the results may vary.  Use of unicode characters may not be supported.
 	SetTitle(string)
 
+	// SetForegroundColor sets the terminal's default foreground color, which
+	// text without a color of its own is drawn in. An invalid color, such as
+	// color.Default, restores the terminal's own. Tcell restores it when the
+	// screen is finalized or suspended, and sets it again on resume.
+	// Terminals may ignore this.
+	SetForegroundColor(color.Color)
+
+	// SetBackgroundColor sets the terminal's default background color, which
+	// cells without a color of their own are drawn in. An invalid color, such as
+	// color.Default, restores the terminal's own. Tcell restores it when the
+	// screen is finalized or suspended, and sets it again on resume.
+	// Terminals may ignore this.
+	SetBackgroundColor(color.Color)
+
 	// SetClipboard is used to post arbitrary data to the system clipboard.
 	// This need not be UTF-8 string data.  It's up to the recipient to decode the
 	// data meaningfully.  Terminals may prevent this for security reasons.
@@ -366,6 +380,8 @@ type screenImpl interface {
 	Resume() error
 	Beep() error
 	SetSize(int, int)
+	SetForegroundColor(color.Color)
+	SetBackgroundColor(color.Color)
 	SetTitle(string)
 	Tty() (Tty, bool)
 	SetClipboard([]byte)
