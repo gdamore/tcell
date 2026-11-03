@@ -232,3 +232,32 @@ func TestColorString(t *testing.T) {
 		t.Errorf("wrong string for red: %q", s)
 	}
 }
+
+// TestColorNameAliases verifies that colors with more than one W3C name
+// (e.g. "gray" and "grey") always report the same name.
+func TestColorNameAliases(t *testing.T) {
+	cases := []struct {
+		c    Color
+		name string
+	}{
+		{Gray, "gray"},
+		{DarkGray, "darkgray"},
+		{DarkSlateGray, "darkslategray"},
+		{DimGray, "dimgray"},
+		{LightGray, "lightgray"},
+		{LightSlateGray, "lightslategray"},
+		{SlateGray, "slategray"},
+	}
+	for _, cs := range cases {
+		t.Run(cs.name, func(t *testing.T) {
+			for i := 0; i < 200; i++ {
+				if got := cs.c.Name(); got != cs.name {
+					t.Fatalf("iteration %d: Name() = %q, want %q", i, got, cs.name)
+				}
+				if got := cs.c.String(); got != cs.name {
+					t.Fatalf("iteration %d: String() = %q, want %q", i, got, cs.name)
+				}
+			}
+		})
+	}
+}
