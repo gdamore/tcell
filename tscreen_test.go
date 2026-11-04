@@ -775,6 +775,51 @@ func TestUnlockRegionRedrawsUntouchedBlankCell(t *testing.T) {
 	}
 }
 
+// After the screen is cleared, the terminal shows blank cells, not spaces.
+// Some terminals treat the two differently. kitty, for example, draws a
+// private use symbol such as a Nerd Font icon over two cells only if an
+// actual space follows it. So the first frame after clearing the screen
+// must write the spaces it puts, both at startup and after resuming.
+func TestSpacesAreDrawnAfterClearingTheScreen(t *testing.T) {
+	t.Setenv("LC_ALL", "en_US.UTF-8")
+	frame := func(scr Screen) {
+		scr.Clear()
+		scr.Put(0, 0, "\uf313", StyleDefault)
+		scr.Put(1, 0, " ", StyleDefault)
+		scr.Put(2, 0, "a", StyleDefault)
+		scr.Show()
+	}
+	expectSpaceAfterSymbol := func(t *testing.T, mt vt.MockTerm) {
+		t.Helper()
+		if got := mt.GetCell(vt.Coord{X: 1}); got.C != " " {
+			t.Fatalf("terminal shows %q after the symbol, want a space", got.C)
+		}
+	}
+
+	t.Run("startup", func(t *testing.T) {
+		mt, scr := NewMockScreen(t, vt.MockOptSize{X: 3, Y: 1})
+		defer scr.Fini()
+
+		frame(scr)
+		expectSpaceAfterSymbol(t, mt)
+	})
+
+	t.Run("resume", func(t *testing.T) {
+		mt, scr := NewMockScreen(t, vt.MockOptSize{X: 3, Y: 1})
+		defer scr.Fini()
+
+		frame(scr)
+		if err := scr.Suspend(); err != nil {
+			t.Fatalf("failed to suspend screen: %v", err)
+		}
+		if err := scr.Resume(); err != nil {
+			t.Fatalf("failed to resume screen: %v", err)
+		}
+		frame(scr)
+		expectSpaceAfterSymbol(t, mt)
+	})
+}
+
 // Redrawing an unchanged wide character after Clear, as immediate-mode
 // apps do every frame, must not send it again; a changed one must be sent.
 func TestWideCharAfterClear(t *testing.T) {
