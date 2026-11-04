@@ -607,6 +607,7 @@ func TestOptNegotiation(t *testing.T) {
 func TestSetSizeTakesScreenLock(t *testing.T) {
 	mt := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 2})
 	ts := &tScreen{tty: mt, w: 8, h: 2}
+	ts.cells.Resize(ts.w, ts.h)
 
 	done := make(chan struct{})
 	ts.Lock()

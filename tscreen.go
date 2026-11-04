@@ -1370,7 +1370,9 @@ func (t *tScreen) resize() {
 	if err != nil {
 		return
 	}
-	if ws.Width == t.w && ws.Height == t.h {
+	// Resume may have resized the cells while the TTY size was transient.
+	cw, ch := t.cells.Size()
+	if ws.Width == t.w && ws.Height == t.h && ws.Width == cw && ws.Height == ch {
 		return
 	}
 	t.cx = -1
