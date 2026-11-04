@@ -1844,6 +1844,13 @@ func (t *tScreen) disengageStart() bool {
 	}
 
 	t.running = false
+	// Reset the colors now, as setters stop writing them once we are not running.
+	if t.foreground.Valid() {
+		t.Print(resetForeground)
+	}
+	if t.background.Valid() {
+		t.Print(resetBackground)
+	}
 	if t.inlineResize {
 		t.Print(vt.PmResizeReports.Disable())
 	} else {
@@ -1869,12 +1876,6 @@ func (t *tScreen) disengageFinish() {
 	}
 	if t.cursorFg != "" && t.cursorColor.Valid() {
 		t.Print(t.cursorFg)
-	}
-	if t.foreground.Valid() {
-		t.Print(resetForeground)
-	}
-	if t.background.Valid() {
-		t.Print(resetBackground)
 	}
 	t.Print(exitKeypad)
 	t.Print(sgr0)

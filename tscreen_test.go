@@ -16,6 +16,7 @@ package tcell
 
 import (
 	"bytes"
+	"fmt"
 	"runtime"
 	"strings"
 	"sync"
@@ -1888,5 +1889,128 @@ func TestMouseDisabledPreventsNativeConsoleMouse(t *testing.T) {
 	s.EnableMouse()
 	if fm.started != 0 {
 		t.Fatalf("native console mouse started despite TCELL_MOUSE=disable")
+	}
+}
+
+// TestDefaultColorSequences pins the xterm sequences the other default color tests use.
+func TestDefaultColorSequences(t *testing.T) {
+	for _, c := range []struct{ got, want string }{
+		{fmt.Sprintf(setForeground, 0xc0, 0xca, 0xf5), "\x1b]10;#c0caf5\x07"},
+		{fmt.Sprintf(setBackground, 0x1a, 0x1b, 0x26), "\x1b]11;#1a1b26\x07"},
+		{resetForeground, "\x1b]110\x07"},
+		{resetBackground, "\x1b]111\x07"},
+	} {
+		if c.got != c.want {
+			t.Errorf("got %q, want %q", c.got, c.want)
+		}
+	}
+}
+
+func TestDefaultColors(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm()}
+	scr, err := NewTerminfoScreenFromTty(tty)
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+
+	setFg := fmt.Sprintf(setForeground, 0xc0, 0xca, 0xf5)
+	setBg := fmt.Sprintf(setBackground, 0x1a, 0x1b, 0x26)
+	// written returns what step wrote to the terminal.
+	written := func(step func()) string {
+		before := len(tty.Output())
+		step()
+		return tty.Output()[before:]
+	}
+	expect := func(t *testing.T, got string, want ...string) {
+		t.Helper()
+		for _, w := range want {
+			if !strings.Contains(got, w) {
+				t.Fatalf("%q not written, got %q", w, got)
+			}
+		}
+	}
+
+	t.Run("set", func(t *testing.T) {
+		expect(t, written(func() {
+			scr.SetForegroundColor(NewHexColor(0xc0caf5))
+			scr.SetBackgroundColor(NewHexColor(0x1a1b26))
+		}), setFg, setBg)
+	})
+	t.Run("restored while suspended", func(t *testing.T) {
+		expect(t, written(func() { _ = scr.Suspend() }), resetForeground, resetBackground)
+		expect(t, written(func() { _ = scr.Resume() }), setFg, setBg)
+	})
+	t.Run("reset", func(t *testing.T) {
+		expect(t, written(func() { scr.SetForegroundColor(ColorDefault) }), resetForeground)
+		if got := written(scr.Fini); strings.Contains(got, resetForeground) || !strings.Contains(got, resetBackground) {
+			t.Fatalf("Fini wrote %q, want only the background restored", got)
+		}
+	})
+}
+
+// pausingTty blocks the first write that contains pause, once armed, until released.
+type pausingTty struct {
+	spyTty
+	mu      sync.Mutex
+	pause   string
+	paused  chan struct{}
+	release chan struct{}
+}
+
+func (t *pausingTty) Write(b []byte) (int, error) {
+	t.mu.Lock()
+	hit := t.pause != "" && strings.Contains(string(b), t.pause)
+	if hit {
+		t.pause = ""
+	}
+	t.mu.Unlock()
+	if hit {
+		close(t.paused)
+		<-t.release
+	}
+	return t.spyTty.Write(b)
+}
+
+func TestDefaultColorResetDuringSuspend(t *testing.T) {
+	tty := &pausingTty{
+		spyTty:  spyTty{MockTerm: vt.NewMockTerm()},
+		paused:  make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	scr, err := NewTerminfoScreenFromTty(tty)
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+
+	scr.SetForegroundColor(NewHexColor(0xc0caf5))
+	before := len(tty.Output())
+
+	// Pause Suspend after it has stopped running, but before it restores the terminal.
+	tty.mu.Lock()
+	tty.pause = vt.PmShowCursor.Enable()
+	tty.mu.Unlock()
+	done := make(chan struct{})
+	go func() {
+		_ = scr.Suspend()
+		close(done)
+	}()
+	select {
+	case <-tty.paused:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Suspend did not reach the terminal restore")
+	}
+	scr.SetForegroundColor(ColorDefault)
+	close(tty.release)
+	<-done
+
+	if got := tty.Output()[before:]; !strings.Contains(got, resetForeground) {
+		t.Fatalf("foreground was never restored, got %q", got)
 	}
 }
