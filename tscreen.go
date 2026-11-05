@@ -195,6 +195,10 @@ const (
 	exitKeypad        = "\x1b[?1l\x1b>"               // Also mode 1
 	requestWindowSize = "\x1b[18t"                    // For modern terminals
 	requestPixelSize  = "\x1b[14t"                    // Text area in pixels, for when the tty does not know it
+	setForeground     = "\x1b]10;#%02x%02x%02x\007"   // Set the terminal's default foreground
+	setBackground     = "\x1b]11;#%02x%02x%02x\007"   // Set the terminal's default background
+	resetForeground   = "\x1b]110\007"                // Restore the terminal's default foreground
+	resetBackground   = "\x1b]111\007"                // Restore the terminal's default background
 	requestPrimaryDA  = "\x1b[c"                      // Request primary device attributes
 	requestExtAttr    = "\x1b[>q"                     // Request extended attribute (emulator name and version)
 	setClipboard      = "\x1b]52;c;%s\x1b\\"          // Clipboard content is base64
@@ -293,6 +297,8 @@ type tScreen struct {
 	saveTitle          string
 	restoreTitle       string
 	title              string
+	foreground         color.Color // the terminal's default foreground, if valid
+	background         color.Color // the terminal's default background, if valid
 	setClipboard       string
 	notifyDesktop      string
 	termName           string
@@ -1800,6 +1806,8 @@ func (t *tScreen) engageLocked() error {
 	if t.title != "" && t.setTitle != "" {
 		t.Printf(t.setTitle, t.title)
 	}
+	t.printColor(setForeground, t.foreground)
+	t.printColor(setBackground, t.background)
 	if t.negotiate && !t.legacy && useVTWindowSizeQuery(runtime.GOOS) {
 		t.Print(requestWindowSize)
 	}
@@ -1836,6 +1844,13 @@ func (t *tScreen) disengageStart() bool {
 	}
 
 	t.running = false
+	// Reset the colors now, as setters stop writing them once we are not running.
+	if t.foreground.Valid() {
+		t.Print(resetForeground)
+	}
+	if t.background.Valid() {
+		t.Print(resetBackground)
+	}
 	if t.inlineResize {
 		t.Print(vt.PmResizeReports.Disable())
 	} else {
@@ -1923,6 +1938,41 @@ func (t *tScreen) EventQ() chan Event {
 
 func (t *tScreen) GetCells() *CellBuffer {
 	return &t.cells
+}
+
+func (t *tScreen) SetForegroundColor(c color.Color) {
+	t.setColor(&t.foreground, c, setForeground, resetForeground)
+}
+
+func (t *tScreen) SetBackgroundColor(c color.Color) {
+	t.setColor(&t.background, c, setBackground, resetBackground)
+}
+
+// setColor stores c in dst, and sends it with set, or reset if it is invalid, while running.
+func (t *tScreen) setColor(dst *color.Color, c color.Color, set, reset string) {
+	t.Lock()
+	defer t.Unlock()
+	if t.fini {
+		return
+	}
+	old := *dst
+	*dst = c
+	if !t.running {
+		return
+	}
+	if c.Valid() {
+		t.printColor(set, c)
+	} else if old.Valid() {
+		t.Print(reset)
+	}
+}
+
+// printColor prints c with set, if it is valid.
+func (t *tScreen) printColor(set string, c color.Color) {
+	if c.Valid() {
+		r, g, b := c.RGB()
+		t.Printf(set, r, g, b)
+	}
 }
 
 func (t *tScreen) SetTitle(title string) {
