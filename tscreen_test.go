@@ -119,6 +119,30 @@ func TestOptAltScreenDefault(t *testing.T) {
 	}
 }
 
+// TestInitShiftsInToG0 checks that Init shifts in to G0.
+// The terminal may have been left shifted out, say by cat of a binary file.
+// G1 is line drawing, so text would come out as box characters.
+func TestInitShiftsInToG0(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm()}
+	s, err := NewTerminfoScreenFromTty(tty)
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	s.Fini()
+
+	out := tty.Output()
+	g1 := strings.Index(out, "\x1b)0")
+	if g1 < 0 {
+		t.Fatalf("G1 was not designated as DEC line drawing")
+	}
+	if !strings.HasPrefix(out[g1:], "\x1b)0\x0f") {
+		t.Fatalf("Shift-In was not emitted after designating G1")
+	}
+}
+
 func TestOptEscapeTimeout(t *testing.T) {
 	tscreen := &tScreen{escapeTimeout: platformEscapeTimeout()}
 	OptEscapeTimeout(125 * time.Millisecond).apply(tscreen)
