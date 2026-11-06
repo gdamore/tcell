@@ -413,6 +413,65 @@ func TestMouseEvents(t *testing.T) {
 	}
 }
 
+// An application may suspend the screen in response to a button press, for
+// example to run an editor. The terminal does not report mouse events while
+// suspended, so the release goes unseen. After resuming, the button must be
+// reported as released before any new input, and must not turn later motion
+// into a drag.
+func TestMouseButtonReleasedWhileSuspended(t *testing.T) {
+	term, s := NewMockScreen(t)
+	defer s.Fini()
+
+	s.EnableMouse(MouseMotionEvents)
+	time.Sleep(time.Millisecond * 10)
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button1,
+		Down:     true,
+	})
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != Button1 {
+		t.Fatalf("wrong buttons: %x", me.Buttons())
+	}
+
+	if err := s.Suspend(); err != nil {
+		t.Fatalf("failed to suspend screen: %v", err)
+	}
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 2, Y: 3},
+		Button:   vt.Button1,
+		Down:     false,
+	})
+	if err := s.Resume(); err != nil {
+		t.Fatalf("failed to resume screen: %v", err)
+	}
+
+	term.MouseEvent(vt.MouseEvent{
+		Position: vt.Coord{X: 4, Y: 5},
+		Button:   vt.NoButton,
+		Down:     true,
+		Motion:   true,
+	})
+
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != ButtonNone {
+		t.Errorf("button still held after resume: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 2 || y != 3 {
+		t.Errorf("wrong position %d,%d != 2,3", x, y)
+	}
+
+	if me, ok := getMouseEvent(t, s); !ok {
+		return
+	} else if me.Buttons() != ButtonNone {
+		t.Errorf("motion reported with buttons: %x", me.Buttons())
+	} else if x, y := me.Position(); x != 4 || y != 5 {
+		t.Errorf("wrong position %d,%d != 4,5", x, y)
+	}
+}
+
 func TestFocusEvents(t *testing.T) {
 	term, s := NewMockScreen(t)
 	defer s.Fini()
