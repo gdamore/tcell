@@ -113,6 +113,26 @@ func TestCellBufferDirtyState(t *testing.T) {
 	}
 }
 
+// A cell that is marked dirty must be drawn even if a blank is put into it
+// before the next draw.
+func TestCellBufferBlankKeepsDirtyCellDirty(t *testing.T) {
+	for _, drawn := range []bool{false, true} {
+		for _, blank := range []string{"", " "} {
+			cb := &CellBuffer{}
+			cb.Resize(1, 1) // marks the cell dirty
+			if drawn {
+				cb.Put(0, 0, "x", StyleDefault)
+				cb.SetDirty(0, 0, false)
+				cb.Invalidate()
+			}
+			cb.Put(0, 0, blank, StyleDefault)
+			if !cb.Dirty(0, 0) {
+				t.Errorf("drawn=%v, put %q: the cell is no longer dirty", drawn, blank)
+			}
+		}
+	}
+}
+
 func TestCellBufferLockResizeFill(t *testing.T) {
 	cb := &CellBuffer{w: 2, h: 2, cells: make([]cell, 4)}
 	cb.Fill('x', StyleDefault)
