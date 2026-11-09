@@ -2076,10 +2076,10 @@ func (em *emulator) eraseCell(c Coord) {
 }
 
 // eraseStart returns the first column to erase when erasing from pos to the
-// right.  If pos is on the second cell of a wide character, the erase starts
+// right.  If pos is still the second cell of a wide character, the erase starts
 // at the first cell, so that the character is not split.
 func (em *emulator) eraseStart(pos Coord) Col {
-	if pos.X > 0 && em.cells[em.index(pos)-1].W > 1 {
+	if index := em.index(pos); pos.X > 0 && em.cells[index].W == 0 && em.cells[index-1].W > 1 {
 		return pos.X - 1
 	}
 	return pos.X

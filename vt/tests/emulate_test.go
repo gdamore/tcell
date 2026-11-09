@@ -1562,6 +1562,33 @@ func TestELv4(t *testing.T) {
 	CheckContent(t, term, 4, 0, "")
 }
 
+// TestELv5 tests erase right after the second cell of a wide character was overwritten.
+func TestELv5(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "AB橋DE")
+	WriteF(t, term, "\033[4G")
+	WriteF(t, term, "x")
+	WriteF(t, term, "\033[4G")
+	WriteF(t, term, "\033[41m")
+	WriteF(t, term, "\033[0K")
+
+	// |AB______|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 3, 0)
+	CheckContent(t, term, 2, 0, "")
+	CheckContent(t, term, 3, 0, "")
+	CheckColors(t, term, 2, 0, color.Silver, color.Black)
+	CheckColors(t, term, 3, 0, color.Silver, color.Maroon)
+}
+
 // TestEDv3 tests erase below starting on the second cell of a wide character.
 func TestEDv3(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
