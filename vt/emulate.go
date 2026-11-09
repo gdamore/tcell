@@ -2075,11 +2075,21 @@ func (em *emulator) eraseCell(c Coord) {
 	em.be.Put(c, em.cells[index])
 }
 
+// eraseStart returns the first column to erase when erasing from pos to the
+// right.  If pos is on the second cell of a wide character, the erase starts
+// at the first cell, so that the character is not split.
+func (em *emulator) eraseStart(pos Coord) Col {
+	if pos.X > 0 && em.cells[em.index(pos)-1].W > 1 {
+		return pos.X - 1
+	}
+	return pos.X
+}
+
 // eraseBelow erases from (and including) the current cursor position to the end of the window.
 func (em *emulator) eraseBelow() {
 	size := em.size
 	pos := em.getPosition()
-	for x := pos.X; x < size.X; x++ {
+	for x := em.eraseStart(pos); x < size.X; x++ {
 		em.eraseCell(Coord{X: x, Y: pos.Y})
 	}
 	for y := pos.Y + 1; y < size.Y; y++ {
@@ -2121,7 +2131,7 @@ func (em *emulator) eraseAll() {
 func (em *emulator) eraseToLineEnd() {
 	size := em.size
 	pos := em.getPosition()
-	for x := pos.X; x < size.X; x++ {
+	for x := em.eraseStart(pos); x < size.X; x++ {
 		em.eraseCell(Coord{x, pos.Y})
 	}
 	em.setPosition(pos)
