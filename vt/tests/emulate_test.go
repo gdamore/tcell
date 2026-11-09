@@ -1537,6 +1537,48 @@ func TestDLv4(t *testing.T) {
 	CheckContent(t, term, 5, 3, "")
 }
 
+// TestELPendingWrap tests that every form of EL resets a pending wrap.
+func TestELPendingWrap(t *testing.T) {
+	for _, mode := range []string{"0", "1", "2"} {
+		t.Run("EL"+mode, func(t *testing.T) {
+			term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+			defer MustClose(t, term)
+			MustStart(t, term)
+
+			WriteF(t, term, "\033[1;1H")      // move to top-left
+			WriteF(t, term, "\033[0J")        //  clear screen
+			WriteF(t, term, "ABCDEFGH")       // fill the line, wrap is now pending
+			WriteF(t, term, "\033[%sK", mode) // erase
+			WriteF(t, term, "X")
+
+			CheckPos(t, term, 7, 0)
+			CheckContent(t, term, 7, 0, "X")
+			CheckContent(t, term, 0, 1, "")
+		})
+	}
+}
+
+// TestEDPendingWrap tests that ED 0, 1 and 2 reset a pending wrap.
+func TestEDPendingWrap(t *testing.T) {
+	for _, mode := range []string{"0", "1", "2"} {
+		t.Run("ED"+mode, func(t *testing.T) {
+			term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+			defer MustClose(t, term)
+			MustStart(t, term)
+
+			WriteF(t, term, "\033[1;1H")      // move to top-left
+			WriteF(t, term, "\033[0J")        //  clear screen
+			WriteF(t, term, "ABCDEFGH")       // fill the line, wrap is now pending
+			WriteF(t, term, "\033[%sJ", mode) // erase
+			WriteF(t, term, "X")
+
+			CheckPos(t, term, 7, 0)
+			CheckContent(t, term, 7, 0, "X")
+			CheckContent(t, term, 0, 1, "")
+		})
+	}
+}
+
 // TestDCv1 tests a simple delete character.
 func TestDCv1(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})
