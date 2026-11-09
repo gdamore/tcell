@@ -2029,6 +2029,7 @@ func (em *emulator) putRune(r rune) {
 		// as the backend does
 		em.cells[index-1].C = ""
 		em.cells[index-1].W = 0
+		em.be.Put(Coord{X: pos.X - 1, Y: pos.Y}, em.cells[index-1])
 	}
 	em.cells[index].C = em.runeString(r)
 	em.cells[index].S = em.style
