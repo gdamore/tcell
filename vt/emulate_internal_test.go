@@ -207,3 +207,32 @@ func TestPutRuneGraphemeExtensions(t *testing.T) {
 		}
 	})
 }
+
+// putLogBackend records the last cell put at each position, without the
+// neighbor clearing done by the mock backend, like a stateless backend.
+type putLogBackend struct {
+	noMouseBackend
+	puts map[Coord]Cell
+}
+
+func (p putLogBackend) Put(pos Coord, cell Cell) { p.puts[pos] = cell }
+
+func TestPutRuneOverwriteWideSecondCell(t *testing.T) {
+	be := putLogBackend{
+		noMouseBackend: noMouseBackend{mb: NewMockBackend(MockOptSize{X: 8, Y: 1}).(*mockBackend)},
+		puts:           map[Coord]Cell{},
+	}
+	em := NewEmulator(be).(*emulator)
+
+	em.setPosition(Coord{X: 2, Y: 0})
+	em.putRune('橋')
+	em.setPosition(Coord{X: 3, Y: 0})
+	em.putRune('x')
+
+	if c := be.puts[Coord{X: 2, Y: 0}]; c.C != "" || c.W != 0 {
+		t.Fatalf("expected blank cell put at 2,0, got %q width %d", c.C, c.W)
+	}
+	if c := be.puts[Coord{X: 3, Y: 0}]; c.C != "x" || c.W != 1 {
+		t.Fatalf("expected x put at 3,0, got %q width %d", c.C, c.W)
+	}
+}

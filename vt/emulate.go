@@ -2024,6 +2024,13 @@ func (em *emulator) putRune(r rune) {
 		em.autoWrap = true
 	}
 	index := em.index(pos)
+	if w > 0 && pos.X > 0 && em.cells[index-1].W > 1 {
+		// writing over the second cell of a wide character clears it,
+		// as the backend does
+		em.cells[index-1].C = ""
+		em.cells[index-1].W = 0
+		em.be.Put(Coord{X: pos.X - 1, Y: pos.Y}, em.cells[index-1])
+	}
 	em.cells[index].C = em.runeString(r)
 	em.cells[index].S = em.style
 	em.cells[index].W = w
@@ -2075,11 +2082,21 @@ func (em *emulator) eraseCell(c Coord) {
 	em.be.Put(c, em.cells[index])
 }
 
+// eraseStart returns the first column to erase when erasing from pos to the
+// right.  If pos is still the second cell of a wide character, the erase starts
+// at the first cell, so that the character is not split.
+func (em *emulator) eraseStart(pos Coord) Col {
+	if index := em.index(pos); pos.X > 0 && em.cells[index].W == 0 && em.cells[index-1].W > 1 {
+		return pos.X - 1
+	}
+	return pos.X
+}
+
 // eraseBelow erases from (and including) the current cursor position to the end of the window.
 func (em *emulator) eraseBelow() {
 	size := em.size
 	pos := em.getPosition()
-	for x := pos.X; x < size.X; x++ {
+	for x := em.eraseStart(pos); x < size.X; x++ {
 		em.eraseCell(Coord{X: x, Y: pos.Y})
 	}
 	for y := pos.Y + 1; y < size.Y; y++ {
@@ -2121,7 +2138,7 @@ func (em *emulator) eraseAll() {
 func (em *emulator) eraseToLineEnd() {
 	size := em.size
 	pos := em.getPosition()
-	for x := pos.X; x < size.X; x++ {
+	for x := em.eraseStart(pos); x < size.X; x++ {
 		em.eraseCell(Coord{x, pos.Y})
 	}
 	em.setPosition(pos)
