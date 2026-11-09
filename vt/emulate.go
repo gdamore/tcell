@@ -2024,6 +2024,12 @@ func (em *emulator) putRune(r rune) {
 		em.autoWrap = true
 	}
 	index := em.index(pos)
+	if w > 0 && pos.X > 0 && em.cells[index-1].W > 1 {
+		// writing over the second cell of a wide character clears it,
+		// as the backend does
+		em.cells[index-1].C = ""
+		em.cells[index-1].W = 0
+	}
 	em.cells[index].C = em.runeString(r)
 	em.cells[index].S = em.style
 	em.cells[index].W = w
