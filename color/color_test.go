@@ -232,3 +232,15 @@ func TestColorString(t *testing.T) {
 		t.Errorf("wrong string for red: %q", s)
 	}
 }
+
+// TestGetColorHexSigns tests that hex strings with a sign are not colors.
+func TestGetColorHexSigns(t *testing.T) {
+	for _, s := range []string{"#-00001", "#+00001", "#-FFFFF", "#+12345"} {
+		if c := GetColor(s); c != Default {
+			t.Errorf("GetColor(%q) = %x, want Default", s, uint64(c))
+		}
+	}
+	if c := GetColor("#00000F"); c != NewHexColor(0xF) {
+		t.Errorf("GetColor(\"#00000F\") = %x", uint64(c))
+	}
+}
