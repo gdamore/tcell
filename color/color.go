@@ -1148,7 +1148,7 @@ func GetColor(name string) Color {
 		return c
 	}
 	if len(name) == 7 && name[0] == '#' {
-		if v, e := strconv.ParseInt(name[1:], 16, 32); e == nil {
+		if v, e := strconv.ParseUint(name[1:], 16, 32); e == nil {
 			return NewHexColor(int32(v))
 		}
 	}
