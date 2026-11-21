@@ -1715,3 +1715,24 @@ func TestInputWindowSizeReportNested(t *testing.T) {
 	case <-time.After(50 * time.Millisecond):
 	}
 }
+
+// TestInputEventTime tests that key events carry the time of the input.
+func TestInputEventTime(t *testing.T) {
+	evch := make(chan Event, 10)
+	ip := newInputParser(evch)
+
+	before := time.Now()
+	ip.ScanUTF8([]byte("ab\x1b[A"))
+	after := time.Now()
+
+	for range 3 {
+		select {
+		case ev := <-evch:
+			if when := ev.When(); when.Before(before) || when.After(after) {
+				t.Errorf("event time %v is not between %v and %v", when, before, after)
+			}
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Timeout waiting for key event")
+		}
+	}
+}

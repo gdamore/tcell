@@ -235,10 +235,19 @@ func (ip *inputParser) post(ev Event) {
 }
 
 func (ip *inputParser) newKey(k Key, str string, mod ModMask, pressed bool, physical Key, repeat int) *EventKey {
+	var ev *EventKey
 	if ip.advanced {
-		return NewEventKeyEx(k, str, mod, pressed, physical, repeat)
+		ev = newEventKeyNoTime(k, str, mod, pressed, physical, repeat, true)
+	} else {
+		ev = newEventKeyNoTime(k, str, mod, true, 0, 1, false)
 	}
-	return NewEventKey(k, str, mod)
+	// Use the time that scan read for this input.
+	if ip.keyTime.IsZero() {
+		ev.SetEventNow()
+	} else {
+		ev.SetEventTime(ip.keyTime)
+	}
+	return ev
 }
 
 func (ip *inputParser) postKey(k Key, str string, mod ModMask) {
@@ -599,10 +608,14 @@ var linuxFKeys = map[rune]Key{
 }
 
 func (ip *inputParser) scan() {
+	// Read the clock once for all bytes in this call.
+	ingested := len(ip.buf) > 0
+	if ingested {
+		ip.keyTime = time.Now()
+	}
 	for _, r := range ip.buf {
 		ip.buf = ip.buf[1:]
 		ip.escChar = 0
-		ip.keyTime = time.Now()
 		if r >= 0xA0 {
 			// 8-bit extended Unicode we just treat as such - this will swallow anything else queued up
 			ip.state = istInit
@@ -837,7 +850,14 @@ func (ip *inputParser) scan() {
 		}
 	}
 
-	if timeout := ip.waitDuration(); timeout > 0 && time.Since(ip.keyTime) > timeout {
+	timeout := ip.waitDuration()
+	if timeout > 0 && ingested {
+		// the wait starts after the last byte, not at the start of this call.
+		ip.keyTime = time.Now()
+	}
+	if timeout > 0 && time.Since(ip.keyTime) > timeout {
+		// the events below are posted now, not when the last byte came in.
+		ip.keyTime = time.Now()
 		if ip.state == istEsc {
 			ip.postKey(KeyEscape, "", ModNone)
 		} else if ec := ip.escChar; ec != 0 {
