@@ -487,6 +487,7 @@ func TestFiniPreventsFurtherTerminalMutation(t *testing.T) {
 	scr.SetClipboard([]byte("after"))
 	scr.GetClipboard()
 	scr.ShowNotification("after", "after")
+	scr.SetPointerShape("after")
 
 	if got := tty.Output(); got != beforeOutput {
 		t.Fatal("terminal output changed after Fini")
@@ -1247,8 +1248,9 @@ func TestStProfileSkipsUnsupportedOperations(t *testing.T) {
 	s.SetTitle("title")
 	s.GetClipboard()
 	s.ShowNotification("title", "body")
+	s.SetPointerShape("pointer")
 	if got, want := tty.Output()[start:], "\x1b]2;title\x1b\\"; got != want {
-		t.Fatalf("st title, clipboard and notification escapes = %q, want %q", got, want)
+		t.Fatalf("st title, clipboard, notification and pointer shape escapes = %q, want %q", got, want)
 	}
 }
 
@@ -1776,6 +1778,174 @@ func TestExtendedSequencesOnlyForModernTerminals(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+const (
+	osc22Prefix         = "\x1b]22;"
+	osc22EwResize       = "\x1b]22;ew-resize\x1b\\"
+	osc22Pointer        = "\x1b]22;pointer\x1b\\"
+	osc22DefaultPointer = "\x1b]22;default\x1b\\"
+)
+
+// newPointerShapeTestScreen returns a screen for a terminal that isn't legacy
+// and has no special profile, so that it gets the extended OSC sequences.
+func newPointerShapeTestScreen(t *testing.T) (*spyTty, Screen) {
+	t.Helper()
+	t.Setenv("TERM_PROGRAM", "")
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})}
+	scr, err := NewTerminfoScreenFromTty(tty, OptTerm("xterm-256color"))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	return tty, scr
+}
+
+func TestSetPointerShape(t *testing.T) {
+	tty, scr := newPointerShapeTestScreen(t)
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+
+	start := len(tty.Output())
+	scr.SetPointerShape("ew-resize")
+	scr.SetPointerShape("ew-resize")
+	scr.SetPointerShape("")
+	if got, want := tty.Output()[start:], osc22EwResize+osc22DefaultPointer; got != want {
+		t.Fatalf("pointer shape escapes = %q, want %q", got, want)
+	}
+}
+
+func TestSetPointerShapeBeforeInit(t *testing.T) {
+	tty, scr := newPointerShapeTestScreen(t)
+	scr.SetPointerShape("ew-resize")
+	if strings.Contains(tty.Output(), osc22Prefix) {
+		t.Fatalf("pointer shape emitted before Init: %q", tty.Output())
+	}
+
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+
+	if !strings.Contains(tty.Output(), osc22EwResize) {
+		t.Fatalf("Init did not emit the pointer shape: %q", tty.Output())
+	}
+}
+
+func TestPointerShapeIsRestoredAcrossSuspendAndFini(t *testing.T) {
+	tty, scr := newPointerShapeTestScreen(t)
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	scr.SetPointerShape("ew-resize")
+
+	start := len(tty.Output())
+	if err := scr.Suspend(); err != nil {
+		t.Fatalf("failed to suspend screen: %v", err)
+	}
+	if got := strings.Count(tty.Output()[start:], osc22Prefix); got != 1 ||
+		!strings.Contains(tty.Output()[start:], osc22DefaultPointer) {
+		t.Fatalf("Suspend did not restore the default pointer once: %q", tty.Output()[start:])
+	}
+
+	// A shape set while suspended is only emitted on resume
+	start = len(tty.Output())
+	scr.SetPointerShape("pointer")
+	if got := tty.Output()[start:]; got != "" {
+		t.Fatalf("pointer shape emitted while suspended: %q", got)
+	}
+	if err := scr.Resume(); err != nil {
+		t.Fatalf("failed to resume screen: %v", err)
+	}
+	if got := strings.Count(tty.Output()[start:], osc22Prefix); got != 1 ||
+		!strings.Contains(tty.Output()[start:], osc22Pointer) {
+		t.Fatalf("Resume did not emit the pointer shape once: %q", tty.Output()[start:])
+	}
+
+	start = len(tty.Output())
+	scr.Fini()
+	if got := strings.Count(tty.Output()[start:], osc22Prefix); got != 1 ||
+		!strings.Contains(tty.Output()[start:], osc22DefaultPointer) {
+		t.Fatalf("Fini did not restore the default pointer once: %q", tty.Output()[start:])
+	}
+}
+
+// A shape that is requested while the screen is being disengaged must not
+// cancel the reset of the shape that the terminal shows.
+func TestPointerShapeResetWhenChangedDuringDisengage(t *testing.T) {
+	tty, scr := newPointerShapeTestScreen(t)
+	ts := scr.(*baseScreen).screenImpl.(*tScreen)
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+	scr.SetPointerShape("ew-resize")
+
+	// The steps of Suspend, with SetPointerShape in between
+	ts.Lock()
+	finish, resetPointerShape := ts.disengageStart()
+	ts.Unlock()
+	scr.SetPointerShape("")
+	start := len(tty.Output())
+	if finish {
+		ts.disengageFinish(resetPointerShape)
+	}
+
+	if got := tty.Output()[start:]; !strings.Contains(got, osc22DefaultPointer) {
+		t.Fatalf("disengaging did not restore the default pointer: %q", got)
+	}
+}
+
+func TestDefaultPointerShapeEmitsNothing(t *testing.T) {
+	tty, scr := newPointerShapeTestScreen(t)
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	scr.SetPointerShape("")
+	if err := scr.Suspend(); err != nil {
+		t.Fatalf("failed to suspend screen: %v", err)
+	}
+	if err := scr.Resume(); err != nil {
+		t.Fatalf("failed to resume screen: %v", err)
+	}
+	scr.Fini()
+
+	if strings.Contains(tty.Output(), osc22Prefix) {
+		t.Fatalf("pointer shape emitted although the application never set one: %q", tty.Output())
+	}
+}
+
+func TestSetPointerShapeStripsOSCControls(t *testing.T) {
+	tty, scr := newPointerShapeTestScreen(t)
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	defer scr.Fini()
+
+	start := len(tty.Output())
+	scr.SetPointerShape("ew\x07-re\x1b\\size")
+	if got, want := tty.Output()[start:], "\x1b]22;ew-re\\size\x1b\\"; got != want {
+		t.Fatalf("pointer shape escape = %q, want %q", got, want)
+	}
+}
+
+func TestSetPointerShapeOnLegacyTerminal(t *testing.T) {
+	t.Setenv("TERM_PROGRAM", "")
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})}
+	scr, err := NewTerminfoScreenFromTty(tty, OptTerm("vt100"))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := scr.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	scr.SetPointerShape("ew-resize")
+	scr.Fini()
+
+	if strings.Contains(tty.Output(), osc22Prefix) {
+		t.Fatalf("pointer shape emitted to a legacy terminal: %q", tty.Output())
 	}
 }
 
