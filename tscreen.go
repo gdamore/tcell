@@ -267,6 +267,7 @@ type tScreen struct {
 	noColor            bool
 	legacy             bool
 	hasClipboard       bool // true if OSC 52 reported via DA1
+	answersPrimaryDA   bool // true if the terminal answered DA1 at startup
 	finiOnce           sync.Once
 	initFiniLock       sync.Mutex
 	enterUrl           string
@@ -277,7 +278,9 @@ type tScreen struct {
 	cursorColor        color.Color
 	cursorRGB          string
 	cursorFg           string
-	stopQ              chan struct{}
+	stopQ              chan struct{} // closed to stop mainLoop and the handling of input
+	readStopQ          chan struct{} // closed to stop inputLoop
+	inputDoneQ         chan struct{} // closed when inputLoop returns
 	eventQ             chan Event
 	initQ              chan Event
 	initted            bool
@@ -547,6 +550,7 @@ func (t *tScreen) processInitQ() {
 					t.setClipboard = setClipboard
 				}
 				t.hasClipboard = ev.Clipboard
+				t.answersPrimaryDA = true
 				t.initted = true
 				return
 			case *eventTermName:
@@ -1507,16 +1511,20 @@ func (t *tScreen) mainLoop(stopQ chan struct{}) {
 	}
 }
 
-func (t *tScreen) inputLoop(stopQ chan struct{}) {
-
-	defer t.wg.Done()
+// inputLoop reads from the terminal until readStopQ is closed. It passes what
+// it reads to the main loop until stopQ or quit is closed. After that it
+// discards it, and returns early once it has read an answer to a primary
+// device attributes query (see awaitTerminal).
+func (t *tScreen) inputLoop(stopQ, readStopQ, doneQ chan struct{}) {
+	defer close(doneQ)
+	var replies primaryDAScanner
 	for {
 		readDone := make(chan bool)
 		chunk := make([]byte, 128)
 		var n int
 		var e error
 		select {
-		case <-stopQ:
+		case <-readStopQ:
 			return
 		default:
 			go func() {
@@ -1524,7 +1532,7 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 				close(readDone)
 			}()
 			select {
-			case <-stopQ:
+			case <-readStopQ:
 				return
 			case <-readDone:
 			}
@@ -1543,14 +1551,51 @@ func (t *tScreen) inputLoop(stopQ chan struct{}) {
 			}
 			return
 		}
-		if n > 0 {
+		if n == 0 {
+			continue
+		}
+		// Check for stopQ first, so that what the terminal sends after we
+		// stopped handling input doesn't go to keyQ just because it has room.
+		select {
+		case <-stopQ:
+		case <-t.quit:
+		default:
 			select {
 			case t.keyQ <- chunk[:n]:
+				continue
+			case <-stopQ:
 			case <-t.quit:
-				return
 			}
 		}
+		if replies.scan(chunk[:n]) {
+			return
+		}
 	}
+}
+
+// primaryDAScanner finds an answer to a primary device attributes query,
+// ESC [ ? Ps ; ... c, in what the terminal sends, which may split it anywhere.
+type primaryDAScanner struct {
+	matched int // how much of the prefix we have seen
+}
+
+func (s *primaryDAScanner) scan(input []byte) bool {
+	const prefix = "\x1b[?"
+	for _, b := range input {
+		switch {
+		case s.matched < len(prefix) && b == prefix[s.matched]:
+			s.matched++
+		case s.matched == len(prefix) && (b >= '0' && b <= '9' || b == ';'):
+		case s.matched == len(prefix) && b == 'c':
+			s.matched = 0
+			return true
+		case b == prefix[0]:
+			s.matched = 1
+		default:
+			s.matched = 0
+		}
+	}
+	return false
 }
 
 func (t *tScreen) Sync() {
@@ -1723,9 +1768,13 @@ func (t *tScreen) engageLocked() error {
 	}
 
 	stopQ := make(chan struct{})
+	readStopQ := make(chan struct{})
+	inputDoneQ := make(chan struct{})
 	t.stopQ = stopQ
-	t.wg.Add(2)
-	go t.inputLoop(stopQ)
+	t.readStopQ = readStopQ
+	t.inputDoneQ = inputDoneQ
+	t.wg.Add(1)
+	go t.inputLoop(stopQ, readStopQ, inputDoneQ)
 	go t.mainLoop(stopQ)
 
 	if !t.initted {
@@ -1841,16 +1890,14 @@ func (t *tScreen) disengageStart() bool {
 	} else {
 		t.tty.NotifyResize(nil)
 	}
-	stopQ := t.stopQ
-	close(stopQ)
-	_ = t.tty.Drain()
+	close(t.stopQ)
 	return true
 }
 
 // disengageFinish completes a disengage operation after disengageStart has
 // released the running loops.
 func (t *tScreen) disengageFinish() {
-	// wait for everything to shut down
+	// wait for the main loop to shut down
 	t.wg.Wait()
 
 	// shutdown the screen and disable special modes (e.g. mouse and bracketed paste)
@@ -1890,7 +1937,30 @@ func (t *tScreen) disengageFinish() {
 	t.enablePasting(false)
 	t.disableFocusReporting()
 
+	t.awaitTerminal()
+	close(t.readStopQ)
+	_ = t.tty.Drain()
+	<-t.inputDoneQ
+
 	_ = t.tty.Stop()
+}
+
+// awaitTerminal waits until the terminal has answered a primary device
+// attributes query; meanwhile, inputLoop discards what the terminal sends.
+// Terminals answer in order, so this discards the reports that the terminal
+// sent before it acted on our requests to stop sending them, which would
+// otherwise reach the program that gets the terminal next. For example, in
+// win32-input-mode the terminal reports the release of the key that made the
+// application exit, often before our request to leave that mode reaches it.
+func (t *tScreen) awaitTerminal() {
+	if !t.answersPrimaryDA {
+		return
+	}
+	t.Print(requestPrimaryDA)
+	select {
+	case <-t.inputDoneQ:
+	case <-time.After(time.Second):
+	}
 }
 
 // Beep emits a beep to the terminal.
