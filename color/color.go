@@ -1056,10 +1056,17 @@ func (c Color) String() string {
 // if passed true as an argument it will falls back to
 // the CSS hex string if no W3C name found '#ABCDEF'
 func (c Color) Name(css ...bool) string {
+	// Some colors have more than one name (e.g. "gray" and "grey"), and map
+	// iteration order is random, so pick the alphabetically first name to
+	// keep the result stable.
+	found := ""
 	for name, hex := range Names {
-		if c == hex {
-			return name
+		if c == hex && (found == "" || name < found) {
+			found = name
 		}
+	}
+	if found != "" {
+		return found
 	}
 	if len(css) > 0 && css[0] {
 		return c.CSS()
