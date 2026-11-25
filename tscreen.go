@@ -200,6 +200,7 @@ const (
 	setClipboard      = "\x1b]52;c;%s\x1b\\"          // Clipboard content is base64
 	notifyDesktop9    = "\x1b]9;%[2]s\x1b\\"          // Args are title, body (but OSC 9 only has body)
 	notifyDesktop777  = "\x1b]777;notify;%s;%s\x1b\\" // Most commonly supported
+	setPointerShape   = "\x1b]22;%s\x1b\\"            // Arg is the name of the shape
 	queryKittyKbd     = "\x1b[?u"                     // Query for Kitty keyboard support
 	enableKittyKbd    = "\x1b[=1u"                    // Technically this pushes
 	enableKittyKbdAdv = "\x1b[=31u"                   // disambiguation, events, alternate keys, all keys, text
@@ -293,6 +294,8 @@ type tScreen struct {
 	title              string
 	setClipboard       string
 	notifyDesktop      string
+	setPointerShape    string
+	pointerShape       string // as requested by the application, "" for the default
 	termName           string
 	termVers           string
 	term               string // value from $TERM
@@ -638,6 +641,10 @@ func (t *tScreen) prepareExtendedOSC() {
 	// newer terminals.  (There was also OSC 9 and OSC 99, but they
 	// are not as widely deployed, and OSC 9 is not unique.)
 	t.notifyDesktop = notifyDesktop777
+
+	// OSC 22 sets the shape of the mouse pointer.  Terminals disagree on
+	// the names; most of them use the names of the CSS cursor property.
+	t.setPointerShape = setPointerShape
 }
 
 func (t *tScreen) prepareCursorStyles() {
@@ -1603,10 +1610,10 @@ func (t *tScreen) Suspend() error {
 		t.Unlock()
 		return nil
 	}
-	finish := t.disengageStart()
+	finish, resetPointerShape := t.disengageStart()
 	t.Unlock()
 	if finish {
-		t.disengageFinish()
+		t.disengageFinish(resetPointerShape)
 	}
 	return nil
 }
@@ -1648,6 +1655,7 @@ func (t *tScreen) applyKnownTerminalProfile(goos, term, termProgram string) bool
 		t.restoreTitle = ""
 		t.setTitle = "\x1b]2;%s\x1b\\"
 		t.notifyDesktop = ""
+		t.setPointerShape = ""
 		t.compat.clipboardReadUnsupported = true
 		t.termName = "st"
 		return true
@@ -1800,6 +1808,9 @@ func (t *tScreen) engageLocked() error {
 	if t.title != "" && t.setTitle != "" {
 		t.Printf(t.setTitle, t.title)
 	}
+	if t.pointerShape != "" {
+		t.sendPointerShape(t.pointerShape)
+	}
 	if t.negotiate && !t.legacy && useVTWindowSizeQuery(runtime.GOOS) {
 		t.Print(requestWindowSize)
 	}
@@ -1821,21 +1832,27 @@ func (t *tScreen) engageLocked() error {
 // present when the application was first started.
 func (t *tScreen) disengage() {
 	t.Lock()
-	finish := t.disengageStart()
+	finish, resetPointerShape := t.disengageStart()
 	t.Unlock()
 	if finish {
-		t.disengageFinish()
+		t.disengageFinish(resetPointerShape)
 	}
 }
 
 // disengageStart begins a disengage operation while t's lock is already held.
-// It returns true when disengageFinish must be called after releasing the lock.
-func (t *tScreen) disengageStart() bool {
+// It returns true when disengageFinish must be called after releasing the lock,
+// and whether disengageFinish must restore the default pointer shape.
+func (t *tScreen) disengageStart() (finish bool, resetPointerShape bool) {
 	if !t.running {
-		return false
+		return false, false
 	}
 
 	t.running = false
+	// SetPointerShape sends the shape only while the screen is running, so the
+	// terminal shows the shape that is requested now.  This has to be decided
+	// while the lock is held, because the requested shape can change before
+	// disengageFinish runs.
+	resetPointerShape = t.pointerShape != ""
 	if t.inlineResize {
 		t.Print(vt.PmResizeReports.Disable())
 	} else {
@@ -1844,12 +1861,12 @@ func (t *tScreen) disengageStart() bool {
 	stopQ := t.stopQ
 	close(stopQ)
 	_ = t.tty.Drain()
-	return true
+	return true, resetPointerShape
 }
 
 // disengageFinish completes a disengage operation after disengageStart has
 // released the running loops.
-func (t *tScreen) disengageFinish() {
+func (t *tScreen) disengageFinish(resetPointerShape bool) {
 	// wait for everything to shut down
 	t.wg.Wait()
 
@@ -1878,6 +1895,10 @@ func (t *tScreen) disengageFinish() {
 	// Hack for Windows.
 	if runtime.GOOS == "windows" {
 		t.Print(vt.PmWin32Input.Disable())
+	}
+
+	if resetPointerShape {
+		t.sendPointerShape("")
 	}
 
 	// t.Print(t.disableCsiU)
@@ -1978,6 +1999,37 @@ func (t *tScreen) ShowNotification(title string, body string) {
 		t.Printf(t.notifyDesktop, stripOSCControlsIfNeeded(title), stripOSCControlsIfNeeded(body))
 	}
 	t.Unlock()
+}
+
+func (t *tScreen) SetPointerShape(shape string) {
+	t.Lock()
+	defer t.Unlock()
+	if t.fini {
+		return
+	}
+	shape = stripOSCControlsIfNeeded(shape)
+	if shape == t.pointerShape {
+		return
+	}
+	t.pointerShape = shape
+	if t.running {
+		t.sendPointerShape(shape)
+	}
+}
+
+// sendPointerShape emits the shape, or the default shape if it is empty.
+// Kitty and xterm also restore the default pointer for an empty name, but
+// not every terminal documents that.  The name "default" works in the
+// terminals that use CSS names, and xterm falls back to its default pointer
+// for names that it doesn't know.
+func (t *tScreen) sendPointerShape(shape string) {
+	if t.setPointerShape == "" {
+		return
+	}
+	if shape == "" {
+		shape = "default"
+	}
+	t.Printf(t.setPointerShape, shape)
 }
 
 func (t *tScreen) Terminal() (string, string) {

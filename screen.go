@@ -262,6 +262,16 @@ type Screen interface {
 	// supports it.  Right now only terminals supporting OSC 777 support this.
 	ShowNotification(title string, body string)
 
+	// SetPointerShape asks the terminal to show the mouse pointer in the given
+	// shape while it is over the screen, using OSC 22.  The shape is a name from
+	// the CSS cursor property, such as "pointer", "text", or "ew-resize".  The
+	// empty string restores the terminal's default pointer.  Support varies
+	// between terminals.  Some don't implement OSC 22, and the others differ in
+	// the names that they understand, so applications should treat the shape
+	// as a hint.  Tcell restores the default pointer when the screen is
+	// suspended or finalized, and sets the shape again when it is resumed.
+	SetPointerShape(shape string)
+
 	// KeyboardProtocol returns the keyboard protocol currently in use.
 	KeyboardProtocol() KeyProtocol
 
@@ -372,6 +382,7 @@ type screenImpl interface {
 	GetClipboard()
 	HasClipboard() bool
 	ShowNotification(string, string)
+	SetPointerShape(string)
 	KeyboardProtocol() KeyProtocol
 	Terminal() (string, string)
 
