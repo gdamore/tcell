@@ -1537,6 +1537,116 @@ func TestDLv4(t *testing.T) {
 	CheckContent(t, term, 5, 3, "")
 }
 
+// TestELv4 tests erase right starting on the second cell of a wide character.
+func TestELv4(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "AB橋DE")
+	WriteF(t, term, "\033[4G")
+	WriteF(t, term, "\033[0K")
+
+	// |AB_c____|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 3, 0)
+	CheckContent(t, term, 0, 0, "A")
+	CheckContent(t, term, 1, 0, "B")
+	CheckContent(t, term, 2, 0, "")
+	CheckContent(t, term, 3, 0, "")
+	CheckContent(t, term, 4, 0, "")
+}
+
+// TestELv5 tests erase right after the second cell of a wide character was overwritten.
+func TestELv5(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "AB橋DE")
+	WriteF(t, term, "\033[4G")
+	WriteF(t, term, "x")
+	WriteF(t, term, "\033[4G")
+	WriteF(t, term, "\033[41m")
+	WriteF(t, term, "\033[0K")
+
+	// |AB______|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 3, 0)
+	CheckContent(t, term, 2, 0, "")
+	CheckContent(t, term, 3, 0, "")
+	CheckColors(t, term, 2, 0, color.Silver, color.Black)
+	CheckColors(t, term, 3, 0, color.Silver, color.Maroon)
+}
+
+// TestELv6 tests a repeated erase right after the second cell of a wide character was overwritten.
+func TestELv6(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "AB橋DE")
+	WriteF(t, term, "\033[4G")
+	WriteF(t, term, "x")
+	WriteF(t, term, "\033[4G")
+	WriteF(t, term, "\033[0K")
+	WriteF(t, term, "\033[41m")
+	WriteF(t, term, "\033[0K")
+
+	// |AB______|
+	// |________|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 3, 0)
+	CheckContent(t, term, 2, 0, "")
+	CheckContent(t, term, 3, 0, "")
+	CheckColors(t, term, 2, 0, color.Silver, color.Black)
+	CheckColors(t, term, 3, 0, color.Silver, color.Maroon)
+}
+
+// TestEDv3 tests erase below starting on the second cell of a wide character.
+func TestEDv3(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 4})
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\033[1;1H") // move to top-left
+	WriteF(t, term, "\033[0J")   //  clear screen
+	WriteF(t, term, "AB橋C\r\n")
+	WriteF(t, term, "DE橋F\r\n")
+	WriteF(t, term, "GH橋I")
+	WriteF(t, term, "\033[2;4H")
+	WriteF(t, term, "\033[0J")
+
+	// |AB橋C___|
+	// |DE_c____|
+	// |________|
+	// |________|
+
+	CheckPos(t, term, 3, 1)
+	CheckContent(t, term, 2, 0, "橋")
+	CheckContent(t, term, 4, 0, "C")
+	CheckContent(t, term, 0, 1, "D")
+	CheckContent(t, term, 1, 1, "E")
+	CheckContent(t, term, 2, 1, "")
+	CheckContent(t, term, 4, 1, "")
+	CheckContent(t, term, 0, 2, "")
+	CheckContent(t, term, 2, 2, "")
+}
+
 // TestDCv1 tests a simple delete character.
 func TestDCv1(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 8, Y: 5})
