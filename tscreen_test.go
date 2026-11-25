@@ -1821,6 +1821,182 @@ func TestShowWhileSuspendedEmitsNothing(t *testing.T) {
 	s.Fini()
 }
 
+// slowTty is a terminal that is slow to act on what the application writes,
+// like one at the other end of an ssh connection. The user releases the key
+// that made the application exit while the request to leave win32-input-mode
+// is still on its way, so the terminal reports the release in that mode.
+type slowTty struct {
+	vt.MockTerm
+	released bool
+	unread   []byte
+}
+
+func (t *slowTty) Write(b []byte) (int, error) {
+	if !t.released && bytes.Contains(b, []byte(vt.PmWin32Input.Disable())) {
+		t.SendRaw([]byte("\x1b[81;16;113;0;32;1_")) // q released
+		t.released = true
+	}
+	return t.MockTerm.Write(b)
+}
+
+// Stop records what the application left unread, which would reach the
+// program that gets the terminal next.
+func (t *slowTty) Stop() error {
+	_ = t.Drain() // so that Read doesn't block when there is nothing to read
+	buf := make([]byte, 128)
+	n, _ := t.Read(buf)
+	t.unread = append(t.unread, buf[:n]...)
+	return t.MockTerm.Stop()
+}
+
+func TestDisengageReadsReportsSentBeforeTerminalLeftWin32InputMode(t *testing.T) {
+	t.Setenv("TERM", "xterm-256color")
+	t.Setenv("TERM_PROGRAM", "")
+	t.Setenv("TCELL_KEYBOARD_PROTOCOL", "")
+	t.Setenv("TCELL_NEGOTIATE", "")
+
+	tests := []struct {
+		name      string
+		disengage func(Screen)
+	}{
+		{"Fini", func(s Screen) { s.Fini() }},
+		{"Suspend", func(s Screen) { _ = s.Suspend() }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tty := &slowTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})}
+			s, err := NewTerminfoScreenFromTty(tty, OptKeyboardProtocol(Win32Keyboard))
+			if err != nil {
+				t.Fatalf("failed to get screen: %v", err)
+			}
+			if err := s.Init(); err != nil {
+				t.Fatalf("failed to initialize screen: %v", err)
+			}
+			defer s.Fini()
+
+			tt.disengage(s)
+
+			if len(tty.unread) != 0 {
+				t.Fatalf("left %q unread", tty.unread)
+			}
+		})
+	}
+}
+
+func TestPrimaryDAScanner(t *testing.T) {
+	tests := []struct {
+		name   string
+		chunks []string
+		want   bool
+	}{
+		{"Reply", []string{"\x1b[?63;22c"}, true},
+		{"ReplyWithoutParameters", []string{"\x1b[?c"}, true},
+		{"ReplyAfterOtherInput", []string{"q\x1b[81;16;113;0;32;1_\x1b[?1;2c"}, true},
+		{"ReplySplitAcrossChunks", []string{"\x1b", "[", "?6", "3;", "22", "c"}, true},
+		{"EscapeRestartsReply", []string{"\x1b[?6\x1b[?63c"}, true},
+		{"Win32KeyReport", []string{"\x1b[67;46;99;1;0;1_"}, false},
+		{"PrivateModeReport", []string{"\x1b[?9001;2$y"}, false},
+		{"FinalByteWithoutPrefix", []string{"\x1b[63c", "?c"}, false},
+		{"Text", []string{"[?63c"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var s primaryDAScanner
+			got := false
+			for _, chunk := range tt.chunks {
+				got = s.scan([]byte(chunk)) || got
+			}
+			if got != tt.want {
+				t.Fatalf("scan(%q) = %v, want %v", tt.chunks, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDisengageDoesNotQueryTerminalThatWasNotQueriedAtStartup(t *testing.T) {
+	tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})}
+	s, err := NewTerminfoScreenFromTty(tty, OptNegotiation(false))
+	if err != nil {
+		t.Fatalf("failed to get screen: %v", err)
+	}
+	if err := s.Init(); err != nil {
+		t.Fatalf("failed to initialize screen: %v", err)
+	}
+	s.Fini()
+
+	if strings.Contains(tty.Output(), requestPrimaryDA) {
+		t.Fatalf("queried the terminal: %q", tty.Output())
+	}
+}
+
+// pausingTty holds up the first Stop until release is closed, so that a test
+// can act while the screen is still disengaging.
+type pausingTty struct {
+	vt.MockTerm
+	stopping chan struct{} // closed when Stop is first called
+	release  chan struct{} // closed to let the first Stop finish
+	paused   bool
+}
+
+func (t *pausingTty) Stop() error {
+	if !t.paused {
+		t.paused = true
+		close(t.stopping)
+		<-t.release
+	}
+	return t.MockTerm.Stop()
+}
+
+func TestSuspendFinishesBeforeResumeOrFiniStarts(t *testing.T) {
+	tests := []struct {
+		name string
+		next func(Screen) error
+	}{
+		{"Resume", func(s Screen) error { return s.Resume() }},
+		{"Fini", func(s Screen) error { s.Fini(); return nil }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tty := &pausingTty{
+				MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24}),
+				stopping: make(chan struct{}),
+				release:  make(chan struct{}),
+			}
+			s, err := NewTerminfoScreenFromTty(tty)
+			if err != nil {
+				t.Fatalf("failed to get screen: %v", err)
+			}
+			if err := s.Init(); err != nil {
+				t.Fatalf("failed to initialize screen: %v", err)
+			}
+			defer s.Fini()
+
+			suspended := make(chan struct{})
+			go func() {
+				_ = s.Suspend()
+				close(suspended)
+			}()
+			<-tty.stopping
+
+			nextDone := make(chan error, 1)
+			go func() { nextDone <- tt.next(s) }()
+			select {
+			case err := <-nextDone:
+				t.Errorf("%s returned (error %v) before Suspend finished", tt.name, err)
+				close(tty.release)
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
+
+			close(tty.release)
+			<-suspended
+			if err := <-nextDone; err != nil {
+				t.Fatalf("%s failed: %v", tt.name, err)
+			}
+		})
+	}
+}
+
 func TestScreenFillArea(t *testing.T) {
 	_, s := NewMockScreen(t, vt.MockOptSize{X: 20, Y: 10})
 	defer s.Fini()
