@@ -995,10 +995,13 @@ func (em *emulator) processEraseDisplay(str string) {
 
 		switch pi[0] {
 		case 0: // erase below
+			em.autoWrap = false
 			em.eraseBelow()
 		case 1: // erase above
+			em.autoWrap = false
 			em.eraseAbove()
 		case 2: // erase all
+			em.autoWrap = false
 			em.eraseAll()
 			// others not supported (3 is erase saved lines)
 		}
@@ -1013,10 +1016,13 @@ func (em *emulator) processEraseLine(str string) {
 
 		switch pi[0] {
 		case 0:
+			em.autoWrap = false
 			em.eraseToLineEnd()
 		case 1:
+			em.autoWrap = false
 			em.eraseToLineStart()
 		case 2:
+			em.autoWrap = false
 			em.eraseLine()
 		}
 	}
