@@ -119,6 +119,8 @@ type inputParser struct {
 	escChar          byte          // last byte for escape
 	escaped          bool          // true if next key should be modified by ESC
 	btnsDown         ButtonMask    // mouse buttons down (excludes wheel buttons)
+	mouseX           int           // position of the last mouse event
+	mouseY           int           // position of the last mouse event
 	state            inputState    // tracks processor state
 	strState         inputState    // saved str state (needed for ST)
 	l                sync.Mutex    // protects local state
@@ -1133,7 +1135,35 @@ func (ip *inputParser) handleMouse(mode rune, params []int) {
 		mod |= ModCtrl
 	}
 
+	ip.mouseX, ip.mouseY = x, y
 	ip.post(NewEventMouse(x, y, button, mod))
+}
+
+// ReleaseButtons reports the mouse buttons that are still down as released,
+// at the position of the last mouse event. The terminal does not report mouse
+// events while the screen is disengaged, so a button released in that time
+// would otherwise stay down, and every later motion would be reported as a
+// drag.
+//
+// The release is posted after the lock is released. If the event queue is
+// full, this blocks only the caller, and Resume can still configure the
+// parser. To keep the release ahead of new input, the caller must be the
+// goroutine that scans the input.
+func (ip *inputParser) ReleaseButtons() {
+	var ev Event
+	ip.l.Lock()
+	if ip.btnsDown != ButtonNone {
+		ip.btnsDown = ButtonNone
+		ev = NewEventMouse(ip.mouseX, ip.mouseY, ButtonNone, ModNone)
+	}
+	nested := ip.nested
+	ip.l.Unlock()
+	if ev != nil {
+		ip.evch <- ev
+	}
+	if nested != nil {
+		nested.ReleaseButtons()
+	}
 }
 
 func (ip *inputParser) handleWinKey(P []int) {
