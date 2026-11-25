@@ -270,6 +270,7 @@ type tScreen struct {
 	answersPrimaryDA   bool // true if the terminal answered DA1 at startup
 	finiOnce           sync.Once
 	initFiniLock       sync.Mutex
+	engageLock         sync.Mutex // held while engaging or disengaging; take it before t's lock
 	enterUrl           string
 	exitUrl            string
 	setWinSize         string
@@ -1643,6 +1644,8 @@ func (t *tScreen) SetSize(w, h int) {
 func (t *tScreen) Resize(int, int, int, int) {}
 
 func (t *tScreen) Suspend() error {
+	t.engageLock.Lock()
+	defer t.engageLock.Unlock()
 	t.Lock()
 	if t.fini {
 		t.Unlock()
@@ -1657,6 +1660,8 @@ func (t *tScreen) Suspend() error {
 }
 
 func (t *tScreen) Resume() error {
+	t.engageLock.Lock()
+	defer t.engageLock.Unlock()
 	t.Lock()
 	defer t.Unlock()
 	if t.fini {
@@ -1750,6 +1755,8 @@ func useXTermKeyboardQuery(goos string) bool {
 // Think of this is as tcell "engaging" the clutch, as it's going to be driving the
 // terminal interface.
 func (t *tScreen) engage() error {
+	t.engageLock.Lock()
+	defer t.engageLock.Unlock()
 	t.Lock()
 	defer t.Unlock()
 	return t.engageLocked()
@@ -1869,6 +1876,8 @@ func (t *tScreen) engageLocked() error {
 // can take over the terminal interface.  This restores the TTY mode that was
 // present when the application was first started.
 func (t *tScreen) disengage() {
+	t.engageLock.Lock()
+	defer t.engageLock.Unlock()
 	t.Lock()
 	finish := t.disengageStart()
 	t.Unlock()
@@ -1877,8 +1886,11 @@ func (t *tScreen) disengage() {
 	}
 }
 
-// disengageStart begins a disengage operation while t's lock is already held.
-// It returns true when disengageFinish must be called after releasing the lock.
+// disengageStart begins a disengage operation while t's lock and engageLock
+// are held. It returns true when disengageFinish must be called after
+// releasing t's lock. engageLock must stay held until disengageFinish
+// returns, so that the terminal can't be engaged again while
+// disengageFinish still works with it.
 func (t *tScreen) disengageStart() bool {
 	if !t.running {
 		return false

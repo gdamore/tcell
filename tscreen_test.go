@@ -1877,6 +1877,74 @@ func TestDisengageDoesNotQueryTerminalThatWasNotQueriedAtStartup(t *testing.T) {
 	}
 }
 
+// pausingTty holds up the first Stop until release is closed, so that a test
+// can act while the screen is still disengaging.
+type pausingTty struct {
+	vt.MockTerm
+	stopping chan struct{} // closed when Stop is first called
+	release  chan struct{} // closed to let the first Stop finish
+	paused   bool
+}
+
+func (t *pausingTty) Stop() error {
+	if !t.paused {
+		t.paused = true
+		close(t.stopping)
+		<-t.release
+	}
+	return t.MockTerm.Stop()
+}
+
+func TestSuspendFinishesBeforeResumeOrFiniStarts(t *testing.T) {
+	tests := []struct {
+		name string
+		next func(Screen) error
+	}{
+		{"Resume", func(s Screen) error { return s.Resume() }},
+		{"Fini", func(s Screen) error { s.Fini(); return nil }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tty := &pausingTty{
+				MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24}),
+				stopping: make(chan struct{}),
+				release:  make(chan struct{}),
+			}
+			s, err := NewTerminfoScreenFromTty(tty)
+			if err != nil {
+				t.Fatalf("failed to get screen: %v", err)
+			}
+			if err := s.Init(); err != nil {
+				t.Fatalf("failed to initialize screen: %v", err)
+			}
+			defer s.Fini()
+
+			suspended := make(chan struct{})
+			go func() {
+				_ = s.Suspend()
+				close(suspended)
+			}()
+			<-tty.stopping
+
+			nextDone := make(chan error, 1)
+			go func() { nextDone <- tt.next(s) }()
+			select {
+			case err := <-nextDone:
+				t.Errorf("%s returned (error %v) before Suspend finished", tt.name, err)
+				close(tty.release)
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
+
+			close(tty.release)
+			<-suspended
+			if err := <-nextDone; err != nil {
+				t.Fatalf("%s failed: %v", tt.name, err)
+			}
+		})
+	}
+}
+
 func TestScreenFillArea(t *testing.T) {
 	_, s := NewMockScreen(t, vt.MockOptSize{X: 20, Y: 10})
 	defer s.Fini()
