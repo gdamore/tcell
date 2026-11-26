@@ -359,6 +359,14 @@ func NewEventKeyEx(k Key, str string, mod ModMask, pressed bool, physical Key, r
 }
 
 func newEventKey(k Key, str string, mod ModMask, pressed bool, physical Key, repeat int, advanced bool) *EventKey {
+	ev := newEventKeyNoTime(k, str, mod, pressed, physical, repeat, advanced)
+	ev.SetEventNow()
+	return ev
+}
+
+// newEventKeyNoTime is newEventKey without the time stamp.  The caller must
+// set the event time.
+func newEventKeyNoTime(k Key, str string, mod ModMask, pressed bool, physical Key, repeat int, advanced bool) *EventKey {
 	ch := rune(0)
 	if len(str) == 1 {
 		ch = []rune(str)[0]
@@ -425,9 +433,7 @@ func newEventKey(k Key, str string, mod ModMask, pressed bool, physical Key, rep
 		k = KeyBacktab
 		mod &^= ModShift
 	}
-	ev := &EventKey{key: k, str: str, mod: mod, pressed: pressed, physical: physical, repeat: repeat}
-	ev.SetEventNow()
-	return ev
+	return &EventKey{key: k, str: str, mod: mod, pressed: pressed, physical: physical, repeat: repeat}
 }
 
 // ModMask is a mask of modifier keys.  Note that it will not always be
