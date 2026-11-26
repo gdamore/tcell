@@ -222,8 +222,6 @@ func NewTerminfoScreenFromTty(tty Tty, opts ...TerminfoScreenOption) (Screen, er
 		escapeTimeout:      platformEscapeTimeout(),
 	}
 
-	t.prepareCursorStyles()
-	t.prepareExtendedOSC()
 	t.buildAcsMap()
 	t.resizeQ = make(chan bool, 1)
 	t.fallback = make(map[rune]string)
@@ -485,6 +483,8 @@ func (t *tScreen) Init() error {
 		// these terminals are "legacy" and not expected to support most OSC functions
 		t.legacy = true
 	}
+	t.prepareCursorStyles()
+	t.prepareExtendedOSC()
 
 	t.applyEnvironmentOverrides()
 

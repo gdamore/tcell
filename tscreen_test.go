@@ -1751,6 +1751,58 @@ func TestShowNotificationStripsOSCControls(t *testing.T) {
 	}
 }
 
+func TestExtendedSequencesOnlyForModernTerminals(t *testing.T) {
+	extendedSequences := []string{
+		"\x1b[22;2t",    // save title
+		"\x1b[23;2t",    // restore title
+		"\x1b]2;",       // set title
+		"\x1b[8;10;40t", // set window size
+		"\x1b]777;",     // desktop notification
+		"\x1b]12;",      // cursor color
+		"\x1b]8;",       // hyperlink
+	}
+
+	for _, tc := range []struct {
+		term   string
+		legacy bool
+	}{
+		{term: "xterm-256color", legacy: false},
+		{term: "vt100", legacy: true},
+		{term: "linux", legacy: true},
+		{term: "ansi", legacy: true},
+	} {
+		t.Run(tc.term, func(t *testing.T) {
+			t.Setenv("TERM_PROGRAM", "")
+			tty := &spyTty{MockTerm: vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})}
+			scr, err := NewTerminfoScreenFromTty(tty, OptTerm(tc.term))
+			if err != nil {
+				t.Fatalf("failed to get screen: %v", err)
+			}
+			if err := scr.Init(); err != nil {
+				t.Fatalf("failed to initialize screen: %v", err)
+			}
+			scr.SetTitle("title")
+			scr.SetSize(40, 10)
+			scr.ShowNotification("title", "body")
+			scr.SetCursorStyle(CursorStyleSteadyBlock, ColorRed)
+			scr.ShowCursor(1, 1)
+			scr.PutStrStyled(0, 0, "link", StyleDefault.Url("https://example.com"))
+			scr.Show()
+			scr.Fini()
+
+			out := tty.Output()
+			for _, seq := range extendedSequences {
+				if tc.legacy && strings.Contains(out, seq) {
+					t.Errorf("legacy terminal got extended sequence %q", seq)
+				}
+				if !tc.legacy && !strings.Contains(out, seq) {
+					t.Errorf("modern terminal didn't get extended sequence %q", seq)
+				}
+			}
+		})
+	}
+}
+
 // A Show on a suspended screen must return without emitting anything: the
 // terminal has been handed back to the caller on disengage, and the released
 // cell buffer disagrees with the screen's remembered width and height, which
