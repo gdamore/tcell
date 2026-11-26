@@ -186,7 +186,7 @@ const (
 	underColor        = "\x1b[58:5:%dm"
 	underRGB          = "\x1b[58:2::%d:%d:%dm"
 	underFg           = "\x1b[59m"
-	enableAltChars    = "\x1b(B\x1b)0"                // set G0 as US-ASCII, G1 as DEC line drawing
+	enableAltChars    = "\x1b(B\x1b)0\x0f"            // G0 ASCII, G1 line drawing; shift in to G0
 	startAltChars     = "\x0e"                        // aka Shift-Out
 	endAltChars       = "\x0f"                        // aka Shift-In
 	enterCA           = "\x1b[?1049h"                 // alternate screen
