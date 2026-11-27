@@ -769,6 +769,28 @@ func TestSgrColorRGB(t *testing.T) {
 	CheckAttrs(t, term, 0, 0, vt.Bold)
 }
 
+// TestSgrColorRGBColorSpace tests the ITU T.416 form of direct color, which has
+// a color space identifier (usually empty) before the red, green and blue values.
+func TestSgrColorRGBColorSpace(t *testing.T) {
+	term := vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24}, vt.MockOptColors(1<<24))
+	defer MustClose(t, term)
+	MustStart(t, term)
+
+	WriteF(t, term, "\x1b[m\x1b[H\x1b[38:2::255:128:0mA")
+	CheckColors(t, term, 0, 0, color.NewRGBColor(255, 128, 0), color.Black)
+
+	WriteF(t, term, "\x1b[m\x1b[H\x1b[48:2::1:2:3mA")
+	CheckColors(t, term, 0, 0, color.Silver, color.NewRGBColor(1, 2, 3))
+
+	// the color space identifier is ignored
+	WriteF(t, term, "\x1b[m\x1b[H\x1b[38:2:0:10:20:30mA")
+	CheckColors(t, term, 0, 0, color.NewRGBColor(10, 20, 30), color.Black)
+
+	// this is what tcell itself sends for the underline color
+	WriteF(t, term, "\x1b[m\x1b[H\x1b[58:2::99:98:91mA")
+	VerifyF(t, term.GetCell(Coord{X: 0, Y: 0}).S.Uc() == color.NewRGBColor(99, 98, 91), "underline color is wrong")
+}
+
 // TestTitles tests that we can set a window title.
 func TestTitles(t *testing.T) {
 	term := vt.NewMockTerm(vt.MockOptSize{X: 80, Y: 24})

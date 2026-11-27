@@ -725,6 +725,10 @@ func (em *emulator) parseSgrColor(args []string, words []string) (color.Color, [
 
 	switch args[0] {
 	case "2": // RGB color
+		// The ITU T.416 form has a color space ID, usually empty, before the values.
+		if len(args) >= 5 {
+			args = args[1:]
+		}
 		if len(args) < 4 || em.be.Colors() <= 256 {
 			return color.None, nil, errors.New("invalid color specification")
 		}
